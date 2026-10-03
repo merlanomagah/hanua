@@ -550,24 +550,13 @@ button:disabled { opacity: 0.5; cursor: progress; }
 .ts-btn svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
 .ts-btn:hover { background: rgb(250 247 242 / 0.1); color: var(--cream); }
 .ts-btn.on { background: rgb(250 247 242 / 0.14); color: var(--glow); box-shadow: inset 0 0 0 1px rgb(240 201 174 / 0.35); }
-/* the Feed, set into the shelf */
-.feed {
-  flex: 1 1 280px; min-width: 0; height: 46px; display: flex; align-items: center; gap: 12px; padding: 0 4px 0 16px;
-  background: rgb(28 24 20 / 0.72); border-radius: 3px; box-shadow: inset 0 2px 4px rgb(0 0 0 / 0.5), 0 1px 0 rgb(255 255 255 / 0.08);
-}
-.feed-label { font: 10px var(--mono); letter-spacing: 0.18em; color: var(--terra-soft); }
-.feed .divider { background: var(--ink-3); }
-.feed input { flex: 1; min-width: 0; border: 0; background: transparent; font: 15px var(--ui); color: var(--page); }
-.feed input::placeholder { color: var(--muted); }
-.feed button {
-  height: 38px; padding: 0 16px; border: 0; border-radius: 2px; background: var(--terra); color: var(--cream);
-  font: 11px var(--mono); letter-spacing: 0.16em; cursor: pointer; white-space: nowrap; transition: background 200ms;
-}
-.feed button:hover { background: var(--terra-hover); }
+/* three zones: buttons left, earnings centre, music right */
+.ts-nav { flex: 1 1 0; }
+.ts-centre { flex: none; display: flex; align-items: center; gap: 2px; }
+.ts-right { flex: 1 1 0; display: flex; justify-content: flex-end; min-width: 0; }
 /* earnings: big dollars, faint target underneath */
-.ts-earn { flex: none; display: flex; align-items: center; gap: 12px; padding: 4px 6px 4px 4px; border: 0; border-radius: 3px; background: transparent; cursor: pointer; text-align: left; transition: background 200ms; }
+.ts-earn { flex: none; display: flex; align-items: center; gap: 12px; padding: 4px 8px 4px 4px; border: 0; border-radius: 3px; background: transparent; cursor: pointer; text-align: left; transition: background 200ms; }
 .ts-earn:hover { background: rgb(250 247 242 / 0.08); }
-.ts-tin { width: 38px; height: auto; filter: drop-shadow(-2px 3px 3px rgb(0 0 0 / 0.5)); }
 .ts-periods { display: flex; gap: 18px; }
 .ts-period { display: grid; gap: 1px; min-width: 64px; }
 .ts-label { font: 9px var(--mono); letter-spacing: 0.16em; text-transform: uppercase; color: var(--border-2); }
@@ -577,12 +566,131 @@ button:disabled { opacity: 0.5; cursor: progress; }
   filter: drop-shadow(0 1px 0 rgb(0 0 0 / 0.55));
 }
 .ts-target { font: 10px var(--mono); color: rgb(250 247 242 / 0.45); white-space: nowrap; }
+/* hover labels for every shelf control */
+[data-tip] { position: relative; }
+[data-tip]::after {
+  content: attr(data-tip); position: absolute; left: 50%; top: calc(100% + 8px); transform: translate(-50%, -4px); z-index: 30;
+  padding: 5px 8px; border-radius: 3px; background: var(--ink); color: var(--page); white-space: nowrap; pointer-events: none;
+  font: 10px var(--mono); letter-spacing: 0.08em; opacity: 0; transition: opacity 150ms 250ms, transform 150ms 250ms; box-shadow: 0 6px 14px -6px rgb(0 0 0 / 0.6);
+}
+[data-tip]:hover::after, [data-tip]:focus-visible::after { opacity: 1; transform: translate(-50%, 0); }
+.ts-right [data-tip]::after { left: auto; right: 0; transform: translate(0, -4px); }
+.ts-right [data-tip]:hover::after, .ts-right [data-tip]:focus-visible::after { transform: none; }
+/* the gold coin (drawn until the Canva image arrives) */
+.coin {
+  position: relative; flex: none; display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #FFF1B8 0 8%, #F2CE6A 22%, #D9A53E 58%, #A8731F 100%);
+  box-shadow: inset 0 0 0 2px rgb(255 236 170 / 0.55), inset 0 0 0 4px #B98226, inset 0 -3px 5px rgb(90 55 10 / 0.45), -2px 3px 4px rgb(0 0 0 / 0.5);
+}
+.coin b { font: italic 600 17px/1 var(--display); color: #8A5A14; text-shadow: 0 1px 0 rgb(255 240 190 / 0.7); }
+.coin img { width: 100%; height: 100%; object-fit: contain; }
+.ts-toggle {
+  display: grid; place-items: center; width: 30px; height: 40px; padding: 0; border: 0; border-radius: 3px; cursor: pointer;
+  background: transparent; color: var(--border-2); transition: background 200ms, color 200ms;
+}
+.ts-toggle svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; transition: transform 250ms; }
+.ts-toggle:hover { background: rgb(250 247 242 / 0.1); color: var(--cream); }
+.ts-toggle.open svg { transform: rotate(180deg); }
+/* music on the shelf: compact, dark glass */
+.ts-right .now-playing { margin: 0; animation: none; background: rgb(28 24 20 / 0.45); border-color: rgb(250 247 242 / 0.14); box-shadow: inset 0 1px 3px rgb(0 0 0 / 0.4); padding: 3px 4px 3px 8px; }
+.ts-right .np-text b { color: var(--page); font-size: 15px; }
+.ts-right .np-text span { color: var(--border-2); }
+.ts-right .np-text { max-width: min(170px, 18vw); }
+.ts-right .np-btn { color: var(--border-2); width: 28px; height: 28px; }
+.ts-right .np-btn:hover { background: rgb(250 247 242 / 0.1); color: var(--glow); }
+.ts-right .np-btn.main { width: 32px; height: 32px; background: rgb(250 247 242 / 0.12); color: var(--cream); }
+.ts-right .np-btn.main:hover { background: var(--terra); }
+.ts-right .np-disc { width: 20px; height: 20px; }
+/* ---- the earnings panel: a digital readout like the TV screen ---- */
+.ts-panel {
+  position: absolute; top: calc(100% + 6px); left: 50%; transform: translateX(-50%); z-index: 25; width: min(760px, calc(100% - 24px));
+  display: grid; gap: 18px; padding: 20px 22px; border-radius: 5px; color: var(--cream);
+  background: repeating-linear-gradient(0deg, rgb(0 0 0 / 0.07) 0 1px, transparent 1px 3px), radial-gradient(120% 90% at 50% 30%, var(--screen-lit), var(--screen));
+  box-shadow: 0 0 0 10px var(--ink-2), 0 0 0 11px #000, 0 30px 50px -20px rgb(0 0 0 / 0.8);
+  animation: panel-in 220ms ease-out;
+}
+@keyframes panel-in { from { opacity: 0; transform: translate(-50%, -8px); } to { opacity: 1; transform: translateX(-50%); } }
+.ep-label { display: block; margin-bottom: 6px; font: 9px var(--mono); letter-spacing: 0.18em; text-transform: uppercase; color: var(--green-soft); opacity: 0.7; }
+.ep-sub { display: block; margin-top: 6px; font: 10px var(--mono); color: var(--green-soft); opacity: 0.6; }
+.ep-top { display: flex; flex-wrap: wrap; gap: 18px 32px; align-items: flex-start; }
+.ep-flaps { display: inline-flex; gap: 3px; }
+.ep-flap {
+  position: relative; display: grid; place-items: center; width: 28px; height: 40px; border-radius: 3px;
+  background: linear-gradient(180deg, #3a312a 0 49%, #2a231e 51% 100%); font: 500 26px var(--ui); color: var(--cream); box-shadow: 0 2px 3px rgb(0 0 0 / 0.5);
+}
+.ep-flap::after { content: ""; position: absolute; left: 0; right: 0; top: calc(50% - 0.5px); height: 1px; background: rgb(0 0 0 / 0.7); }
+.ep-sym { display: grid; place-items: end; padding-bottom: 6px; font: 500 22px var(--ui); color: var(--screen-good); }
+.ep-owed { margin-left: auto; text-align: right; }
+.ep-owed b { font: 400 30px var(--display); color: var(--glow); }
+.ep-rings { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.ep-ring { display: grid; justify-items: center; gap: 2px; text-align: center; }
+.ep-ring-svg { position: relative; width: 84px; height: 84px; margin-bottom: 4px; }
+.ep-ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+.ep-ring .track { fill: none; stroke: rgb(216 237 232 / 0.12); stroke-width: 6; }
+.ep-ring .fill { fill: none; stroke: #E2B54E; stroke-width: 6; stroke-linecap: round; filter: drop-shadow(0 0 4px rgb(226 181 78 / 0.6)); transition: stroke-dashoffset 800ms ease; }
+.ep-ring b { font: 400 24px/1 var(--display); color: var(--cream); }
+.ep-ring span { font: 9px var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--green-soft); opacity: 0.75; }
+.ep-ring i { font: 10px var(--mono); font-style: normal; color: var(--green-soft); opacity: 0.55; }
+.ep-bars { display: grid; grid-template-columns: repeat(8, 1fr); gap: 8px; align-items: end; height: 120px; }
+.ep-bar { display: grid; grid-template-rows: auto 1fr auto; justify-items: center; height: 100%; gap: 3px; }
+.ep-bar i { align-self: end; width: 70%; min-height: 2px; border-radius: 2px 2px 0 0; background: linear-gradient(180deg, #F2CE6A, #A8731F); opacity: 0.75; }
+.ep-bar.now i { opacity: 1; box-shadow: 0 0 8px rgb(242 206 106 / 0.6); }
+.ep-bar-v { font: 9px var(--mono); color: var(--cream); opacity: 0.8; }
+.ep-bar-l { font: 9px var(--mono); color: var(--green-soft); opacity: 0.55; }
+.ep-epics { display: grid; gap: 8px; }
+.ep-epic { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(80px, 2fr) auto; gap: 12px; align-items: center; font: 13px var(--ui); }
+.ep-epic span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ep-track { height: 6px; border-radius: 3px; background: rgb(216 237 232 / 0.12); overflow: hidden; }
+.ep-track i { display: block; height: 100%; background: linear-gradient(90deg, #A8731F, #F2CE6A); }
+.ep-epic b { font: 11px var(--mono); font-weight: 400; color: var(--glow); }
+.ep-foot { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; padding-top: 12px; border-top: 1px solid rgb(216 237 232 / 0.12); font: 10px var(--mono); color: var(--green-soft); opacity: 0.85; }
+.ep-btn { height: 34px; padding: 0 14px; border: 1px solid rgb(242 206 106 / 0.5); border-radius: 3px; background: transparent; color: #F2CE6A; cursor: pointer; font: 10px var(--mono); letter-spacing: 0.14em; text-transform: uppercase; }
+.ep-btn:hover { background: rgb(242 206 106 / 0.12); }
+/* ---- Hanua spotlight (⌘S): the Feed, centred over everything ---- */
+.spotlight { width: min(680px, calc(100% - 32px)); margin-top: 18vh; padding: 14px; background: var(--ink); border: 1px solid var(--ink-3); box-shadow: 0 30px 60px -20px rgb(0 0 0 / 0.8); }
+.spotlight::backdrop { background: rgb(28 24 20 / 0.45); backdrop-filter: blur(3px); }
+.feed { height: 54px; display: flex; align-items: center; gap: 12px; padding: 0 4px 0 16px; background: rgb(250 247 242 / 0.06); border-radius: 3px; }
+.feed-label { font: 10px var(--mono); letter-spacing: 0.18em; color: var(--terra-soft); }
+.feed .divider { background: var(--ink-3); }
+.feed input { flex: 1; min-width: 0; border: 0; background: transparent; font: 18px var(--ui); color: var(--page); }
+.feed input::placeholder { color: var(--muted); }
+.feed button {
+  height: 44px; padding: 0 18px; border: 0; border-radius: 2px; background: var(--terra); color: var(--cream);
+  font: 11px var(--mono); letter-spacing: 0.16em; cursor: pointer; white-space: nowrap; transition: background 200ms;
+}
+.feed button:hover { background: var(--terra-hover); }
+.spot-hint { margin: 10px 4px 2px; font: 12px/1.45 var(--ui); color: var(--faint); }
+.spot-hint kbd { padding: 1px 5px; border: 1px solid var(--ink-3); border-radius: 3px; font: 10px var(--mono); color: var(--border-2); }
+/* confirm before deleting */
+.confirm-dialog { width: min(420px, calc(100% - 32px)); }
+.dialog-actions button.danger { background: var(--terra-hover); }
+.dialog-actions button.danger:hover { background: #9E3F14; }
+/* delete × in a card's top-right corner, on hover */
+.g-del {
+  position: absolute; top: 4px; right: 4px; z-index: 2; display: grid; place-items: center; width: 24px; height: 24px; padding: 0;
+  border: 0; border-radius: 3px; background: transparent; color: var(--faint); font: 18px/1 var(--ui); cursor: pointer; opacity: 0; transition: opacity 150ms, background 150ms, color 150ms;
+}
+.goal-card:hover .g-del, .goal-card:focus-within .g-del { opacity: 1; }
+.g-del:hover { background: var(--terra-hover); color: var(--cream); }
+@media (hover: none) { .g-del { opacity: 0.6; } }
+.goal-card .g-top { padding-right: 18px; }
+/* calendar month arrows */
+.cal-head { gap: 8px; }
+.cal-head h2 { flex: 1; }
+.cal-nav { order: 0; width: 32px; height: 32px; border: 1px solid var(--border); border-radius: 3px; background: transparent; cursor: pointer; font-size: 18px; color: var(--ink-3); align-self: center; }
+.cal-nav:hover { background: var(--page); color: var(--ink); }
+.cal-head h2 + .cal-nav { order: 2; }
+.cal-head h2 { order: 1; }
+.cal-year { order: 3; display: flex; align-items: center; gap: 8px; font: 11px var(--mono); letter-spacing: 0.18em; color: var(--ink-4); }
+.cal-today { padding: 3px 7px; border: 1px solid var(--terra); border-radius: 3px; background: transparent; color: var(--terra); cursor: pointer; font: 9px var(--mono); letter-spacing: 0.12em; text-transform: uppercase; }
+.link-btn { padding: 0; border: 0; background: none; color: var(--terra); cursor: pointer; font: inherit; text-decoration: none; }
+.link-btn:hover { text-decoration: underline; }
 .g-value { font: 10px var(--mono); color: #A9792A; letter-spacing: 0.04em; }
-/* narrower rooms: quick buttons and earnings on one row, the Feed full width below */
-@media (max-width: 1240px) {
-  .topshelf { flex-wrap: wrap; gap: 8px 12px; }
-  .ts-nav { margin-right: auto; }
-  .feed { order: 3; flex-basis: 100%; }
+/* narrower rooms: music drops to its own row */
+@media (max-width: 1100px) {
+  .topshelf { flex-wrap: wrap; gap: 6px 12px; }
+  .ts-right { order: 3; flex-basis: 100%; justify-content: center; }
+  .ts-right .np-text { max-width: 50vw; }
 }
 
 /* ---------- open book ---------- */
@@ -1114,7 +1222,6 @@ dialog h3 { margin: 0 0 4px; font: italic 300 32px/1.1 var(--display); }
   .shelf-row { margin-top: 14px; }
   .case-fill, .case-foot { display: none; }
   .topshelf { flex-wrap: wrap; gap: 8px 10px; }
-  .feed { order: 3; flex-basis: 100%; }
   .desk { padding: 44px 20px 120px; }
   .cup { width: 84px; top: 8px; right: 12px; }
   .open-book { grid-template-columns: 1fr; height: calc(100vh - 48px); }
@@ -1170,9 +1277,14 @@ dialog h3 { margin: 0 0 4px; font: italic 300 32px/1.1 var(--display); }
   .ts-label { font-size: 7px; letter-spacing: 0.1em; }
   .ts-value { font-size: 17px; }
   .ts-target { font-size: 8px; }
-  .ts-tin { display: none; }
-  .feed { height: 40px; }
-  .feed button { height: 32px; padding: 0 12px; }
+  .coin { width: 26px; height: 26px; }
+  .coin b { font-size: 13px; }
+  .ts-panel { padding: 16px 14px; gap: 14px; }
+  .ep-ring-svg { width: 64px; height: 64px; }
+  .ep-flap { width: 22px; height: 32px; font-size: 20px; }
+  .ep-epic { grid-template-columns: 1fr auto; }
+  .ep-track { grid-column: 1 / -1; grid-row: 2; }
+  [data-tip]::after { display: none; }
   .scatter { height: 160px; }
   .cork { padding: 18px 10px 20px; }
   .cork-cols { grid-template-columns: 1fr; gap: 22px; }

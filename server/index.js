@@ -4,7 +4,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
-import { notionEnabled, queryArea, getSchema, toNotionProperties, clearedProperties, createPage, updatePage, NotionError } from "./notion.js";
+import { notionEnabled, queryArea, getSchema, toNotionProperties, clearedProperties, createPage, updatePage, archivePage, NotionError } from "./notion.js";
 import { claudeEnabled, ask, draftEntry, coachGoal, suggestChildren } from "./claude.js";
 import { getMoney } from "./money.js";
 import { musicStatus, musicAction, playPlaylist } from "./music.js";
@@ -213,6 +213,18 @@ app.post("/api/goals/ideas", async (req, res, next) => {
   if (!claudeEnabled()) return res.status(503).json({ error: "Add ANTHROPIC_API_KEY to .env to use ideas." });
   try {
     res.json(await suggestChildren(parent, children || [], level));
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Delete a goal, after the user confirms on the board: moves it to Notion's trash.
+app.post("/api/goals/:id/delete", async (req, res, next) => {
+  if (!goalsArea || !isLive(goalsArea)) return res.json({ ok: true, live: false });
+  try {
+    await archivePage(req.params.id);
+    cache.delete(goalsArea.id);
+    res.json({ ok: true, live: true });
   } catch (err) {
     next(err);
   }

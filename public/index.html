@@ -37,22 +37,34 @@
       <!-- The top shelf: always in view. Quick ways around the room, the Feed, and what you've earned -->
       <header class="topshelf" id="topshelf">
         <nav class="ts-nav" aria-label="Quick actions">
-          <button type="button" class="ts-btn" id="ts-home" title="Home: the wall" aria-label="Home"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg></button>
-          <button type="button" class="ts-btn" id="ts-desk" title="The desk: today" aria-label="Go to the desk"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 9h18"/><path d="M5 9v10M19 9v10"/><path d="M8 5h8v4H8z"/></svg></button>
-          <button type="button" class="ts-btn" id="ts-goals" title="Goals board" aria-label="Goals board"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="0.8" fill="currentColor"/></svg></button>
-          <button type="button" class="ts-btn" id="ts-library" title="Library" aria-label="Open the library"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4v16M9 4v16M13 6l4 14"/><path d="M3 20h18"/></svg></button>
-          <button type="button" class="ts-btn" id="ts-music" title="Record player" aria-label="Open the record player"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="2"/></svg></button>
+          <button type="button" class="ts-btn" id="ts-home" data-tip="Home: the wall" aria-label="Home"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg></button>
+          <button type="button" class="ts-btn" id="ts-desk" data-tip="The desk: today" aria-label="Go to the desk"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 9h18"/><path d="M5 9v10M19 9v10"/><path d="M8 5h8v4H8z"/></svg></button>
+          <button type="button" class="ts-btn" id="ts-goals" data-tip="Goals board" aria-label="Goals board"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="0.8" fill="currentColor"/></svg></button>
+          <button type="button" class="ts-btn" id="ts-library" data-tip="Library" aria-label="Open the library"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4v16M9 4v16M13 6l4 14"/><path d="M3 20h18"/></svg></button>
+          <button type="button" class="ts-btn" id="ts-feed" data-tip="Feed: add anything (⌘S)" aria-label="Open the Feed"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
+          <button type="button" class="ts-btn" id="ts-music" data-tip="Record player" aria-label="Open the record player"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="2"/></svg></button>
         </nav>
-        <form class="feed" id="feed-form">
-          <span class="feed-label">FEED</span>
-          <span class="divider" aria-hidden="true"></span>
-          <input id="feed-input" type="text" autocomplete="off" aria-label="Feed" placeholder="“Paid $64 for groceries” · “Dentist next Tuesday” · “Learned: …”">
-          <button type="submit">ADD</button>
-        </form>
-        <button type="button" class="ts-earn" id="ts-earn" aria-label="Earnings: open the treat shop">
-          <img src="assets/obj/tin.png" alt="" class="ts-tin">
-          <span class="ts-periods" id="ts-periods"></span>
-        </button>
+        <div class="ts-centre">
+          <button type="button" class="ts-earn" id="ts-earn" data-tip="Open the treat shop" aria-label="Earnings: open the treat shop">
+            <span class="coin" aria-hidden="true"><b>H</b></span>
+            <span class="ts-periods" id="ts-periods"></span>
+          </button>
+          <button type="button" class="ts-toggle" id="ts-toggle" data-tip="Earnings in detail" aria-expanded="false" aria-controls="ts-panel" aria-label="Show earnings in detail">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+          </button>
+        </div>
+        <div class="ts-right">
+            <!-- The Music app on this Mac: what's playing, with play / previous / next -->
+            <div class="now-playing" id="now-playing" role="group" aria-label="Music" hidden>
+              <span class="np-disc" aria-hidden="true"></span>
+              <span class="np-text"><b id="np-track">Music</b><span id="np-artist">Not playing</span></span>
+              <button type="button" class="np-btn" id="np-prev" data-tip="Previous song" aria-label="Previous song"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 5v14M19 5L9 12l10 7z"/></svg></button>
+              <button type="button" class="np-btn main" id="np-play" data-tip="Play / pause" aria-label="Play"><svg viewBox="0 0 24 24" aria-hidden="true"><path id="np-icon" d="M7 4l13 8-13 8z"/></svg></button>
+              <button type="button" class="np-btn" id="np-next" data-tip="Next song" aria-label="Next song"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 5v14M5 5l10 7-10 7z"/></svg></button>
+            </div>
+        </div>
+        <!-- the earnings panel: drops down from the shelf, styled like the TV screen -->
+        <section class="ts-panel" id="ts-panel" aria-label="Earnings in detail" hidden></section>
       </header>
       <!-- The wall: your overview -->
       <section class="wall" id="wall" aria-label="Overview">
@@ -100,14 +112,6 @@
           <div class="wall-row">
             <div class="wall-left">
               <div class="greet-shelf">
-                <!-- The Music app on this Mac: what's playing, with play / previous / next -->
-            <div class="now-playing" id="now-playing" role="group" aria-label="Music" hidden>
-              <span class="np-disc" aria-hidden="true"></span>
-              <span class="np-text"><b id="np-track">Music</b><span id="np-artist">Not playing</span></span>
-              <button type="button" class="np-btn" id="np-prev" aria-label="Previous song"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 5v14M19 5L9 12l10 7z"/></svg></button>
-              <button type="button" class="np-btn main" id="np-play" aria-label="Play"><svg viewBox="0 0 24 24" aria-hidden="true"><path id="np-icon" d="M7 4l13 8-13 8z"/></svg></button>
-              <button type="button" class="np-btn" id="np-next" aria-label="Next song"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 5v14M5 5l10 7-10 7z"/></svg></button>
-            </div>
                 <div class="greet-row">
                   <button class="lamp" id="lamp" type="button">
                     <span class="lamp-glow" aria-hidden="true"></span>
@@ -407,6 +411,27 @@
     <div class="dialog-actions">
       <a class="b-link" id="shop-notion" target="_blank" rel="noopener" hidden>Add rewards in Notion ↗</a>
       <button type="button" id="shop-close">Close</button>
+    </div>
+  </dialog>
+
+  <!-- Hanua spotlight: ⌘S from anywhere opens the Feed -->
+  <dialog id="spotlight" class="spotlight" aria-label="Feed">
+    <form class="feed" id="feed-form">
+      <span class="feed-label">FEED</span>
+      <span class="divider" aria-hidden="true"></span>
+      <input id="feed-input" type="text" autocomplete="off" aria-label="Feed" placeholder="“Paid $64 for groceries” · “Dentist next Tuesday” · “Learned: …”">
+      <button type="submit">ADD</button>
+    </form>
+    <p class="spot-hint">Type anything: “Paid $64 for groceries”, “Dentist next Tuesday 10am”, “Learned: …”. Claude drafts a Notion entry; you check it before it's saved. <kbd>Esc</kbd> to close.</p>
+  </dialog>
+
+  <!-- asks before anything is deleted -->
+  <dialog id="confirm-dialog" class="confirm-dialog">
+    <h3 id="confirm-title"></h3>
+    <p class="draft-note" id="confirm-note"></p>
+    <div class="dialog-actions">
+      <button type="button" class="ghost" id="confirm-no">Keep it</button>
+      <button type="button" class="danger" id="confirm-yes">Delete</button>
     </div>
   </dialog>
 

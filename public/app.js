@@ -313,14 +313,21 @@ applyRemote();
 const TYPE_COLORS = { work: "#2b3f6b", personal: "#3B6B5A", family: "#C4602A", social: "#9a5530" };
 let selectedDay = todayStr();
 
+// Goal levels' colours, matching the cards on the goals board
+const LEVEL_COLORS = { Epic: "#C4602A", Feature: "#5a4372", PBI: "#2b3f6b", Task: "#C9962F" };
+let calOffset = 0; // months away from this one
+
 function calendarItems() {
   const ev = records(ROLE.events).filter((r) => r.date).map((r) => ({ ...r, kind: r.status || "Event", color: TYPE_COLORS[(r.status || "").toLowerCase()] || "#3B6B5A" }));
   const due = records(ROLE.tasks).filter((r) => r.date && !isDone(r)).map((r) => ({ ...r, kind: "Due", color: "#C4602A" }));
-  return [...ev, ...due];
+  // goals land on their due date automatically, in their level's colour
+  const goals = (state.goals?.goals || []).filter((g) => g.due && !isGoalDone(g)).map((g) => ({ id: g.id, url: g.url, title: g.title, date: g.due, status: g.status, kind: g.level || "Task", color: LEVEL_COLORS[g.level] || "#C9962F", goal: g }));
+  return [...ev, ...due, ...goals];
 }
 
 function renderCalendar() {
-  const now = new Date();
+  const real = new Date();
+  const now = new Date(real.getFullYear(), real.getMonth() + calOffset, 1);
   const first = new Date(now.getFullYear(), now.getMonth(), 1);
   const startOffset = (first.getDay() + 6) % 7; // Monday first
   const gridStart = new Date(first.getFullYear(), first.getMonth(), 1 - startOffset);
@@ -351,7 +358,7 @@ function renderCalendar() {
       inMonth ? h("span", { className: "peek", ariaHidden: "true" },
         h("b", { textContent: fmtDay(key, { weekday: "short", day: "numeric", month: "short" }) }),
         dayItems.length
-          ? sortByTime(dayItems).slice(0, 4).map((x) => h("span", {}, h("em", { textContent: timeOf(x.date) || (x.kind === "Due" ? "Due" : "All day") }), x.title))
+          ? sortByTime(dayItems).slice(0, 4).map((x) => h("span", {}, h("em", { textContent: timeOf(x.date) || (x.goal ? x.kind : x.kind === "Due" ? "Due" : "All day") }), x.title))
           : h("span", { className: "quiet", textContent: "Nothing scheduled" }),
         dayItems.length > 4 ? h("span", { className: "quiet", textContent: `+ ${dayItems.length - 4} more` }) : null) : null,
     );
@@ -367,8 +374,11 @@ function renderCalendar() {
   $("calendar").closest(".wall-right").classList.toggle("has-list", list.length > 0);
   $("calendar").replaceChildren(
     h("div", { className: "cal-head" },
+      calNav("‹", "Previous month", -1),
       h("h2", { textContent: now.toLocaleDateString(undefined, { month: "long" }) }),
-      h("span", { textContent: String(now.getFullYear()) })),
+      calNav("›", "Next month", 1),
+      h("span", { className: "cal-year" }, String(now.getFullYear()),
+        calOffset ? (() => { const b = h("button", { type: "button", className: "cal-today", textContent: "Today" }); b.addEventListener("click", () => { calOffset = 0; selectedDay = todayStr(); renderCalendar(); }); return b; })() : null)),
     h("div", { className: "dow", ariaHidden: "true" }, ["M", "T", "W", "T", "F", "S", "S"].map((d) => h("span", { textContent: d }))),
     grid,
     h("div", { className: "cal-foot" },
@@ -390,21 +400,28 @@ let dialogDay = null;
 function openDay(key) {
   dialogDay = key;
   const items = calendarItems().filter((x) => dayOf(x.date) === key);
-  const events = sortByTime(items.filter((x) => x.kind !== "Due"));
+  const goalsDue = items.filter((x) => x.goal);
+  const events = sortByTime(items.filter((x) => x.kind !== "Due" && !x.goal));
   const due = items.filter((x) => x.kind === "Due");
   const d = parseDay(key);
   const rel = daysBetween(todayStr(), key);
   $("day-eyebrow").textContent = rel === 0 ? "Today" : rel === 1 ? "Tomorrow" : rel === -1 ? "Yesterday" : rel > 0 ? `In ${rel} days` : `${-rel} days ago`;
   $("day-title").textContent = longDate(d, false);
-  const line = (x, label) => h("li", { className: "entry" },
-    h("span", { className: "t", textContent: x.title }),
-    h("span", { className: "v", textContent: label }),
-    h("span", { className: "m" }, x.kind, x.url ? h("span", {}, " · ", h("a", { href: x.url, target: "_blank", rel: "noopener", textContent: "Open in Notion ↗" })) : null));
+  const line = (x, label) => {
+    const openGoalBtn = x.goal ? h("button", { type: "button", className: "link-btn", textContent: "Open goal" }) : null;
+    openGoalBtn?.addEventListener("click", () => { $("day-dialog").close(); openGoal(x.goal); });
+    return h("li", { className: "entry" },
+      h("span", { className: "t", textContent: x.title }),
+      h("span", { className: "v", textContent: label }),
+      h("span", { className: "m" }, x.kind, openGoalBtn ? h("span", {}, " · ", openGoalBtn) : null, x.url ? h("span", {}, " · ", h("a", { href: x.url, target: "_blank", rel: "noopener", textContent: "Open in Notion ↗" })) : null));
+  };
   $("day-body").replaceChildren(...[
     events.length ? h("div", {}, h("h4", { textContent: `${events.length} event${events.length > 1 ? "s" : ""}` }),
       h("ul", { className: "entries" }, events.map((x) => line(x, timeOf(x.date) || "All day")))) : null,
     due.length ? h("div", {}, h("h4", { textContent: `${due.length} task${due.length > 1 ? "s" : ""} due` }),
       h("ul", { className: "entries" }, due.map((x) => line({ ...x, kind: "Work" }, x.status || "To do")))) : null,
+    goalsDue.length ? h("div", {}, h("h4", { textContent: `${goalsDue.length} goal${goalsDue.length > 1 ? "s" : ""} due` }),
+      h("ul", { className: "entries" }, goalsDue.map((x) => line(x, x.status || "New")))) : null,
     items.length ? null : h("p", { className: "empty", textContent: "Nothing scheduled. “Add to this day” drafts something with the Feed bar." }),
   ].filter(Boolean));
   const cal = area(ROLE.events);
@@ -419,9 +436,19 @@ $("day-close").addEventListener("click", () => $("day-dialog").close());
 $("day-dialog").addEventListener("click", (e) => { if (e.target === $("day-dialog")) $("day-dialog").close(); });
 $("day-add").addEventListener("click", () => {
   $("day-dialog").close();
-  $("feed-input").value = `${fmtDay(dialogDay, { weekday: "short", day: "numeric", month: "short" })}: `;
-  $("feed-input").focus();
+  openSpotlight(`${fmtDay(dialogDay, { weekday: "short", day: "numeric", month: "short" })}: `);
 });
+
+function calNav(label, aria, step) {
+  const b = h("button", { type: "button", className: "cal-nav", textContent: label, ariaLabel: aria, title: aria });
+  b.addEventListener("click", () => {
+    calOffset += step;
+    const real = new Date();
+    selectedDay = calOffset ? ymd(new Date(real.getFullYear(), real.getMonth() + calOffset, 1)) : todayStr();
+    renderCalendar();
+  });
+  return b;
+}
 
 // ---------- wall: pinned notes ----------
 
@@ -725,6 +752,7 @@ document.addEventListener("keydown", (e) => {
   if (!$("reader").hidden) closeBook();
   else if (!$("library").hidden) closeLibrary();
   else if ($("turntable").classList.contains("open")) closeTurntable();
+  else if (!$("ts-panel").hidden) toggleEarnings(false);
   else if (onBoard) showBoard(false);
 });
 
@@ -941,6 +969,7 @@ function renderBoard() {
   $("cork-cols").replaceChildren(...cols);
   $("cork-cols").querySelectorAll(".pin-list").forEach((l) => l.addEventListener("scroll", drawThreads, { passive: true }));
   renderTopShelf();
+  renderCalendar();
   // the wall stretches to fit a long board (phones stack the columns)
   $("wall").style.minHeight = onBoard ? `${$("board-pane").offsetHeight}px` : "";
   requestAnimationFrame(drawThreads);
@@ -983,12 +1012,17 @@ function goalCard(g, i, thread) {
       actButton("edit", "Edit"),
       childLevel ? actButton("child", `+ ${childLevel.name}`) : null,
       g.url ? h("a", { className: "g-act", href: g.url, target: "_blank", rel: "noopener", textContent: "Notion ↗" }) : null) : null,
-    st === "done" ? h("span", { className: "g-stamp", textContent: "Done" }) : null);
+    st === "done" ? h("span", { className: "g-stamp", textContent: "Done" }) : null,
+    actButton("delete", "×"));
+  el.querySelector('[data-act="delete"]').className = "g-del";
+  el.querySelector('[data-act="delete"]').title = "Delete";
+  el.querySelector('[data-act="delete"]').ariaLabel = `Delete ${g.title}`;
   el.dataset.id = g.id;
   el.style.setProperty("--r", CARD_TILTS[i % CARD_TILTS.length]);
   el.addEventListener("click", (e) => {
     const act = e.target.closest("[data-act]")?.dataset.act;
     if (act === "edit") return openGoal(g);
+    if (act === "delete") return confirmDelete(g);
     if (act === "child") return openGoal(null, { level: childLevel.name, parent: g.id, area: g.area });
     if (e.target.closest("a")) return;
     focusGoal = focusGoal === g.id ? null : g.id;
@@ -1003,6 +1037,27 @@ function goalCard(g, i, thread) {
   }
   return el;
 }
+
+// Deleting asks first, then moves the goal to Notion's trash (restorable there).
+let confirmAction = null;
+function confirmDelete(g) {
+  const kids = state.goals.goals.filter((c) => c.parent === g.id).length;
+  $("confirm-title").textContent = `Delete “${g.title}”?`;
+  $("confirm-note").textContent = `${state.goals.live ? "It moves to Notion's trash, where you can restore it for 30 days." : "Sample goals: this only removes it from this page."}${kids ? ` Its ${kids} ${LEVELS[levelIndex(g.level) + 1]?.plural || "children"} stay, but lose their link to it.` : ""}`;
+  confirmAction = async () => {
+    try {
+      const res = await api(`/api/goals/${g.id}/delete`, {});
+      if (res.live) state.goals = await api("/api/goals");
+      else { state.goals.goals = state.goals.goals.filter((x) => x.id !== g.id).map((x) => (x.parent === g.id ? { ...x, parent: null } : x)); recalcSample(); }
+      if (focusGoal === g.id) focusGoal = null;
+      toast(res.live ? "Moved to Notion's trash" : "Removed (sample goals)");
+      renderBoard();
+    } catch (err) { toast(err.message, true); }
+  };
+  $("confirm-dialog").showModal();
+}
+$("confirm-no").addEventListener("click", () => { confirmAction = null; $("confirm-dialog").close(); });
+$("confirm-yes").addEventListener("click", () => { const run = confirmAction; confirmAction = null; $("confirm-dialog").close(); run?.(); });
 
 // Red string, pin to pin, between a picked goal and its parents and children.
 function drawThreads() {
@@ -1649,7 +1704,66 @@ function renderTopShelf() {
       h("span", { className: "ts-target", textContent: t[`${k}Target`] ? `of ${dollars(t[`${k}Target`])}` : "nothing planned" }))));
   $("ts-earn").title = `${dollars(t.balance)} to spend · open the treat shop`;
   $("ts-goals").classList.toggle("on", onBoard);
+  if (!$("ts-panel").hidden) renderEarnings();
 }
+
+// ---- the earnings panel: a digital readout dropping down from the shelf ----
+function toggleEarnings(show = $("ts-panel").hidden) {
+  $("ts-panel").hidden = !show;
+  $("ts-toggle").setAttribute("aria-expanded", String(show));
+  $("ts-toggle").classList.toggle("open", show);
+  if (show) renderEarnings();
+}
+const ring = (earned, target, label) => {
+  const pct = target ? Math.min(1, earned / target) : 0;
+  const c = 2 * Math.PI * 26;
+  return h("div", { className: "ep-ring" },
+    Object.assign(document.createElement("div"), { className: "ep-ring-svg", innerHTML:
+      `<svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="26" class="track"/><circle cx="32" cy="32" r="26" class="fill" stroke-dasharray="${c}" stroke-dashoffset="${c * (1 - pct)}"/></svg>` }),
+    h("b", { textContent: dollars(earned) }),
+    h("span", { textContent: label }),
+    h("i", { textContent: target ? `of ${dollars(target)} · ${Math.round(pct * 100)}%` : "nothing planned" }));
+};
+function renderEarnings() {
+  const t = coinTotals();
+  const goals = state.goals.goals;
+  // last 8 weeks of earnings, oldest first
+  const monday = mondayOf(new Date());
+  const weeks = Array.from({ length: 8 }, (_, i) => {
+    const start = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() - (7 - i) * 7);
+    const end = new Date(start.getFullYear(), start.getMonth(), start.getDate() + 6);
+    const coins = goals.filter((g) => isGoalDone(g) && g.completed && dayOf(g.completed) >= ymd(start) && dayOf(g.completed) <= ymd(end)).reduce((n, g) => n + coinsFor(g), 0);
+    return { start, coins };
+  });
+  const max = Math.max(1, ...weeks.map((w) => w.coins));
+  const flaps = (text) => h("span", { className: "ep-flaps" }, [...text].map((ch) => h("span", { className: /\d/.test(ch) ? "ep-flap" : "ep-sym", textContent: ch })));
+  const epics = goals.filter((g) => g.level === "Epic" && !isGoalDone(g));
+  const open = h("button", { type: "button", className: "ep-btn", textContent: "Open the treat shop" });
+  open.addEventListener("click", () => { toggleEarnings(false); openShop(); });
+  $("ts-panel").replaceChildren(
+    h("div", { className: "ep-top" },
+      h("div", {}, h("span", { className: "ep-label", textContent: "To spend" }), flaps(dollars(t.balance)), h("span", { className: "ep-sub", textContent: `${t.balance.toLocaleString()} coins` })),
+      h("div", {}, h("span", { className: "ep-label", textContent: "Earned this year" }), flaps(dollars(t.year)), h("span", { className: "ep-sub", textContent: `of ${dollars(t.yearTarget)} planned` })),
+      t.owed > 0 ? h("div", { className: "ep-owed" }, h("span", { className: "ep-label", textContent: "Treat account top-up" }), h("b", { textContent: money(t.owed, t.owed % 1 ? 2 : 0) })) : null),
+    h("div", { className: "ep-rings" }, ring(t.today, t.todayTarget, "Today"), ring(t.week, t.weekTarget, "This week"), ring(t.month, t.monthTarget, "This month")),
+    h("div", { className: "ep-chart" },
+      h("span", { className: "ep-label", textContent: "Last 8 weeks" }),
+      h("div", { className: "ep-bars" }, weeks.map((w, i) => h("div", { className: `ep-bar${i === 7 ? " now" : ""}`, title: `Week of ${fmtDay(ymd(w.start), { day: "numeric", month: "short" })}: ${dollars(w.coins)}` },
+        h("span", { className: "ep-bar-v", textContent: w.coins ? dollars(w.coins) : "" }),
+        Object.assign(h("i"), { style: `height:${(w.coins / max) * 100}%` }),
+        h("span", { className: "ep-bar-l", textContent: i === 7 ? "now" : fmtDay(ymd(w.start), { day: "numeric", month: "numeric" }) }))))),
+    epics.length ? h("div", { className: "ep-epics" }, h("span", { className: "ep-label", textContent: "Epics: earned of target" }),
+      epics.map((e) => { const v = epicValue(e); return h("div", { className: "ep-epic" },
+        h("span", { textContent: e.title }),
+        h("span", { className: "ep-track" }, Object.assign(h("i"), { style: `width:${v.target ? (v.earned / v.target) * 100 : 0}%` })),
+        h("b", { textContent: `${dollars(v.earned)} / ${dollars(v.target)}` })); })) : null,
+    h("div", { className: "ep-foot" }, h("span", { textContent: `Task ${state.shop.coinsPerLevel.Task} · PBI ${state.shop.coinsPerLevel.PBI} · Feature ${state.shop.coinsPerLevel.Feature} · Epic ${state.shop.coinsPerLevel.Epic.toLocaleString()} coins · ${state.shop.coinsPerDollar} coins = $1` }), open),
+  );
+}
+$("ts-toggle").addEventListener("click", () => toggleEarnings());
+document.addEventListener("click", (e) => {
+  if (!$("ts-panel").hidden && !e.target.closest("#ts-panel, #ts-toggle")) toggleEarnings(false);
+});
 
 // ---- the shop ----
 let confirmBuy = null;
@@ -1900,6 +2014,23 @@ $("to-desk").addEventListener("click", () => {
 
 let pendingDraft = null;
 
+// Hanua spotlight: ⌘S (or Ctrl+S) from anywhere opens the Feed.
+function openSpotlight(prefill) {
+  if (prefill != null) $("feed-input").value = prefill;
+  if (!$("spotlight").open) $("spotlight").showModal();
+  const input = $("feed-input");
+  input.focus();
+  input.setSelectionRange(input.value.length, input.value.length);
+}
+document.addEventListener("keydown", (e) => {
+  if ((e.metaKey || e.ctrlKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === "s") {
+    e.preventDefault();
+    if (!document.querySelector("dialog[open]:not(#spotlight)")) openSpotlight();
+  }
+});
+$("ts-feed").addEventListener("click", () => openSpotlight());
+$("spotlight").addEventListener("click", (e) => { if (e.target === $("spotlight")) $("spotlight").close(); });
+
 $("feed-form").addEventListener("submit", async (e) => {
   e.preventDefault();
   const text = $("feed-input").value.trim();
@@ -1916,6 +2047,7 @@ $("feed-form").addEventListener("submit", async (e) => {
       input.dataset.index = i;
       return h("label", {}, p.name, input);
     }));
+    $("spotlight").close();
     $("draft-dialog").showModal();
   } catch (err) {
     toast(err.message, true);

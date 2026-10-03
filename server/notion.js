@@ -198,3 +198,8 @@ export async function createPage(area, properties) {
   });
   return normalisePage(page, area.fields);
 }
+
+// Moves a page to Notion's trash (restorable there for 30 days). Never a permanent delete.
+export async function archivePage(pageId) {
+  await call(`/pages/${pageId}`, { method: "PATCH", body: { archived: true } });
+}
