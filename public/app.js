@@ -915,8 +915,8 @@ $("goal-dialog").addEventListener("close", async () => {
 
 // ---------- record player ----------
 
-// Swap these for the Canva images once they're in public/assets/obj/ (e.g. "assets/obj/record-player.png")
-const RECORD_ART = { shelf: null, top: null };
+// Canva images (set either to null to fall back to the drawn version)
+const RECORD_ART = { shelf: "assets/obj/record-player.png", top: "assets/obj/record-player-top.png" };
 let playing = null;
 
 function renderRecordPlayer() {
@@ -926,7 +926,10 @@ function renderRecordPlayer() {
   btn.replaceChildren(RECORD_ART.shelf
     ? h("img", { src: RECORD_ART.shelf, alt: "" })
     : h("span", { className: "rp-draw", ariaHidden: "true" }, h("span", { className: "rp-lid" }), h("span", { className: "rp-top" }, h("i")), h("span", { className: "rp-box" }, h("b"), h("b"))));
-  if (RECORD_ART.top) $("deck").style.setProperty("--deck-art", `url("${RECORD_ART.top}")`);
+  if (RECORD_ART.top) {
+    $("deck").style.setProperty("--deck-art", `url("${RECORD_ART.top}")`);
+    $("deck").classList.add("art");
+  }
 }
 
 function renderCrate() {

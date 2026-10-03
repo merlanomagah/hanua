@@ -345,10 +345,10 @@ button:disabled { opacity: 0.5; cursor: progress; }
 /* books and plant on a shelf */
 .deco-shelf { position: relative; z-index: 4; margin-top: auto; }
 .deco-row { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; padding: 0 7%; margin-bottom: -7px; position: relative; z-index: 1; }
-.deco-books { flex: none; width: clamp(150px, 46%, 210px); height: auto; margin-top: -90px; filter: drop-shadow(-5px 6px 8px rgb(28 24 20 / 0.25)); }
+.deco-books { flex: none; width: clamp(120px, 34%, 200px); height: auto; margin-top: -90px; filter: drop-shadow(-5px 6px 8px rgb(28 24 20 / 0.25)); }
 /* when the calendar lists events, the books only tuck into its bottom margin */
 .wall-right.has-list .deco-books { margin-top: -22px; }
-.deco-plant { flex: none; width: clamp(136px, 42%, 190px); height: auto; margin-bottom: -44px; filter: var(--object-shadow); }
+.deco-plant { flex: none; width: clamp(100px, 30%, 180px); height: auto; margin-bottom: -44px; filter: var(--object-shadow); }
 
 /* pinned notes */
 .notes-row { margin-top: 56px; }
@@ -696,7 +696,7 @@ button:disabled { opacity: 0.5; cursor: progress; }
 
 /* ---------- record player on the shelf (drawn until the Canva image arrives) ---------- */
 .deco-row { align-items: flex-end; }
-.record-player { flex: none; width: clamp(110px, 30%, 150px); padding: 0; border: 0; background: none; cursor: pointer; filter: var(--object-shadow); transition: transform 250ms; }
+.record-player { flex: none; width: clamp(140px, 40%, 220px); margin: 0 -3% 2px; padding: 0; border: 0; background: none; cursor: pointer; filter: var(--object-shadow); transition: transform 250ms; }
 .record-player:hover { transform: translateY(-3px); }
 .record-player img { width: 100%; height: auto; }
 .rp-draw { position: relative; display: block; height: 92px; }
@@ -739,6 +739,11 @@ button:disabled { opacity: 0.5; cursor: progress; }
 .deck.spinning .tonearm { transform: rotate(24deg); }
 .deck-knobs { position: absolute; right: 7%; bottom: 7%; display: flex; gap: 12px; }
 .deck-knobs i { width: 22px; height: 22px; border-radius: 50%; background: radial-gradient(circle at 35% 35%, var(--cream), var(--border-2)); box-shadow: 0 2px 4px rgb(0 0 0 / 0.5); }
+/* with the photographed deck: the image brings its own arm and knobs; the record sits on its platter */
+.deck.art { background: var(--deck-art) center / contain no-repeat; box-shadow: none; filter: drop-shadow(0 30px 30px rgb(0 0 0 / 0.55)); }
+.deck.art .platter { left: 12.8%; top: 16.1%; width: 62%; background: none; box-shadow: none; }
+.deck.art .vinyl { inset: 0; }
+.deck.art .tonearm, .deck.art .deck-knobs { display: none; }
 .crate { color: var(--page); display: flex; flex-direction: column; gap: 10px; }
 .crate .eyebrow { color: var(--terra-soft); }
 .crate h3 { margin: 0; font: italic 300 40px/1 var(--display); }
