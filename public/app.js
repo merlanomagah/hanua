@@ -130,15 +130,58 @@ const bookEl = (id) => document.querySelector(`.book[data-id="${id}"]`);
 
 let lampOn = store("room-lamp") !== "off";
 
+// One switch for the whole room: every lamp and every pull cord turns all the lights on or off together.
 function renderLamp() {
   $("app").classList.toggle("lamp-off", !lampOn);
-  $("lamp").title = lampOn ? "Switch lamp off" : "Switch lamp on";
-  $("lamp").setAttribute("aria-pressed", String(lampOn));
+  document.querySelectorAll(".lamp").forEach((b) => {
+    b.title = lampOn ? "Switch the lights off" : "Switch the lights on";
+    b.setAttribute("aria-pressed", String(lampOn));
+  });
+  document.querySelectorAll(".pull-cord").forEach((c) => {
+    c.setAttribute("aria-pressed", String(lampOn));
+    c.ariaLabel = lampOn ? "Pull to switch all the lights off" : "Pull to switch all the lights on";
+    c.title = lampOn ? "Pull: lights off" : "Pull: lights on";
+  });
 }
-$("lamp").addEventListener("click", () => {
+function toggleLights() {
   lampOn = !lampOn;
   store("room-lamp", lampOn ? "on" : "off");
   renderLamp();
+}
+document.querySelectorAll(".lamp").forEach((b) => b.addEventListener("click", toggleLights));
+
+// The pull cord: click it, or drag the bead down and let go. It springs back either way.
+document.querySelectorAll(".pull-cord").forEach((cord) => {
+  let startY = null, pulled = 0, dragged = false;
+  const spring = () => {
+    cord.style.setProperty("--pull", "0px");
+    cord.classList.remove("held");
+    if (!reducedMotion) { cord.classList.remove("tug"); void cord.offsetWidth; cord.classList.add("tug"); }
+  };
+  cord.addEventListener("pointerdown", (e) => {
+    startY = e.clientY; pulled = 0; dragged = false;
+    cord.setPointerCapture(e.pointerId);
+    cord.classList.add("held");
+  });
+  cord.addEventListener("pointermove", (e) => {
+    if (startY == null) return;
+    pulled = Math.max(0, Math.min(26, e.clientY - startY));
+    if (pulled > 3) dragged = true;
+    cord.style.setProperty("--pull", `${pulled}px`);
+  });
+  cord.addEventListener("pointerup", () => {
+    if (startY == null) return;
+    startY = null;
+    if (dragged && pulled >= 10) toggleLights();
+    if (dragged) spring();
+    cord.dataset.skipClick = dragged ? "1" : "";
+  });
+  cord.addEventListener("pointercancel", () => { startY = null; spring(); });
+  cord.addEventListener("click", () => {
+    if (cord.dataset.skipClick === "1") { cord.dataset.skipClick = ""; return; } // a drag already decided
+    toggleLights();
+    spring();
+  });
 });
 
 // Retro flip clock: each digit is a card; when it changes, the top half flips down to show the new one.

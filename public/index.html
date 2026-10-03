@@ -77,6 +77,7 @@
               <h2>Goals</h2>
               <p class="board-sub" id="board-sub"></p>
             </div>
+            
             <div class="board-tools">
               <div class="seg" role="tablist" aria-label="Board view">
                 <button type="button" role="tab" data-view="tree" aria-selected="true">Hierarchy</button>
@@ -95,6 +96,15 @@
             </div>
           </div>
           <div class="cork" id="cork">
+            <!-- the same lamp, standing on the board's frame; its cord switches every light -->
+            <div class="lamp-wrap board-lamp">
+          <button type="button" class="lamp" aria-label="Lamp">
+            <span class="lamp-glow" aria-hidden="true"></span>
+            <img src="assets/obj/lamp-off.png" alt="" class="lamp-img">
+            <img src="assets/obj/lamp-on.png" alt="" class="lamp-img lamp-lit">
+          </button>
+          <button type="button" class="pull-cord" aria-label="Pull to switch all the lights" aria-pressed="true"><span class="cord-string"></span><span class="cord-bead"></span></button>
+        </div>
             <svg class="threads" id="threads" aria-hidden="true"></svg>
             <div class="cork-cols" id="cork-cols"></div>
           </div>
@@ -113,6 +123,7 @@
             <div class="wall-left">
               <div class="greet-shelf">
                 <div class="greet-row">
+                  <div class="lamp-wrap">
                   <button class="lamp" id="lamp" type="button">
                     <span class="lamp-glow" aria-hidden="true"></span>
                     <img src="assets/obj/lamp-off.png" alt="Lamp" class="lamp-img">
@@ -123,6 +134,9 @@
                       <text><textPath href="#dome-arc" startOffset="50%" text-anchor="middle" id="arc-date"></textPath></text>
                     </svg>
                   </button>
+                  <!-- pull cord: switches every light in Hanua -->
+                  <button type="button" class="pull-cord" aria-label="Pull to switch all the lights" aria-pressed="true"><span class="cord-string"></span><span class="cord-bead"></span></button>
+                  </div>
                   <div class="greet-text">
                     <span class="sr-only" id="today-label"></span>
                     <h1 id="greet">Good morning.</h1>
@@ -240,6 +254,16 @@
           <img src="assets/obj/clips.png" alt="" class="clips">
         </div>
         <img src="assets/obj/cup.png" alt="" class="cup" aria-hidden="true">
+        <!-- the same lamp on the desk; its cord switches every light -->
+        <div class="lamp-wrap desk-lamp">
+          <button type="button" class="lamp" aria-label="Lamp">
+            <span class="lamp-glow" aria-hidden="true"></span>
+            <img src="assets/obj/lamp-off.png" alt="" class="lamp-img">
+            <img src="assets/obj/lamp-on.png" alt="" class="lamp-img lamp-lit">
+          </button>
+          <button type="button" class="pull-cord" aria-label="Pull to switch all the lights" aria-pressed="true"><span class="cord-string"></span><span class="cord-bead"></span></button>
+        </div>
+        <div class="desk-dim" aria-hidden="true"></div>
       </section>
 
     </main>

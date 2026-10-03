@@ -180,7 +180,8 @@ button:disabled { opacity: 0.5; cursor: progress; }
 /* greeting shelf: lamp, greeting, clock */
 .greet-shelf { position: relative; z-index: 4; }
 .greet-row { display: flex; align-items: flex-end; gap: 6px; padding: 0 4%; margin-bottom: -7px; position: relative; z-index: 1; }
-.lamp { position: relative; flex: none; width: clamp(88px, 19%, 124px); padding: 0; border: 0; background: transparent; cursor: pointer; }
+.lamp-wrap { position: relative; flex: none; width: clamp(88px, 19%, 124px); }
+.lamp { position: relative; display: block; width: 100%; padding: 0; border: 0; background: transparent; cursor: pointer; }
 .lamp-glow {
   position: absolute; left: 50%; top: 38%; width: 440px; height: 440px; transform: translate(-50%, -50%); border-radius: 50%; pointer-events: none;
   background: radial-gradient(circle, rgb(240 201 174 / 0.75) 0%, rgb(240 201 174 / 0.3) 32%, rgb(240 201 174 / 0) 68%);
@@ -189,6 +190,39 @@ button:disabled { opacity: 0.5; cursor: progress; }
 .lamp-img { position: relative; width: 100%; height: auto; filter: var(--object-shadow); }
 .lamp-img.lamp-lit { position: absolute; inset: 0; filter: none; transition: opacity 400ms; }
 .lamp-off .lamp-glow, .lamp-off .lamp-lit { opacity: 0; }
+
+/* the pull cord: a cotton cord and brass bead hanging under the shade; drag it down or click it */
+.pull-cord {
+  --len: 34px; --pull: 0px;
+  position: absolute; z-index: 2; left: 82%; top: 34%; width: 22px; height: calc(var(--len) + var(--pull) + 16px); margin-left: -11px;
+  padding: 0; border: 0; background: none; cursor: grab; touch-action: none; transform-origin: top center;
+}
+.pull-cord.held { cursor: grabbing; }
+.cord-string { position: absolute; left: calc(50% - 0.75px); top: 0; width: 1.5px; height: calc(var(--len) + var(--pull)); background: linear-gradient(180deg, #E8DCC4, #BFA987); box-shadow: 1px 0 1px rgb(0 0 0 / 0.25); }
+.cord-bead {
+  position: absolute; left: calc(50% - 4.5px); top: calc(var(--len) + var(--pull) - 1px); width: 9px; height: 13px; border-radius: 45% 45% 50% 50% / 40% 40% 60% 60%;
+  background: radial-gradient(circle at 35% 30%, #F6E2A6, #C9962F 55%, #8A6420); box-shadow: -1px 2px 3px rgb(0 0 0 / 0.45);
+}
+.pull-cord:hover .cord-bead, .pull-cord:focus-visible .cord-bead { filter: brightness(1.12); }
+.pull-cord.tug { animation: tug 440ms cubic-bezier(.3,1.6,.5,1); }
+@keyframes tug { 0% { transform: translateY(0); } 30% { transform: translateY(9px); } 65% { transform: translateY(-3px); } 100% { transform: translateY(0); } }
+
+/* lights off: the whole room dims, each lamp keeps its warm glow */
+.desk-dim { position: absolute; inset: 0; z-index: 3; pointer-events: none; background: var(--ink); opacity: 0; transition: opacity 600ms; }
+.lamp-off .desk-dim { opacity: 0.38; }
+.case { transition: filter 600ms; }
+.lamp-off .case { filter: brightness(0.68); }
+.topshelf { transition: filter 600ms; }
+.lamp-off .topshelf { filter: brightness(0.86); }
+.wall.on-board .wall-dim { z-index: 1; }
+.board-pane::before { content: ""; position: absolute; inset: 0; z-index: 1; pointer-events: none; background: var(--ink); opacity: 0; transition: opacity 600ms; }
+.lamp-off .board-pane::before { opacity: 0.34; }
+/* the same lamp on the desk and on top of the goals board frame */
+.desk-lamp { position: absolute; z-index: 4; right: calc(var(--pad-r) + 6px); top: 190px; width: clamp(84px, 8vw, 108px); }
+.desk-lamp .lamp-glow, .board-lamp .lamp-glow { width: 300px; height: 300px; }
+.board-lamp { position: absolute; z-index: 4; right: 22px; bottom: calc(100% + 10px); width: clamp(58px, 6vw, 78px); }
+.board-head { padding-right: clamp(96px, 9vw, 120px); }
+.board-lamp .pull-cord { --len: 22px; }
 .greet-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 12px; padding-bottom: 14px; }
 .greet-text h1 {
   margin: 0; font: italic 300 clamp(38px, 3.7vw, 66px)/0.9 var(--display); white-space: nowrap; letter-spacing: -0.025em; color: var(--ink-2);
@@ -1233,6 +1267,9 @@ dialog h3 { margin: 0 0 4px; font: italic 300 32px/1.1 var(--display); }
   .topshelf { flex-wrap: wrap; gap: 8px 10px; }
   .desk { padding: 44px 20px 120px; }
   .cup { width: 84px; top: 8px; right: 12px; }
+  /* narrow desks have no side gutter: the lamp stands beside the cup above the notepad */
+  .desk { padding-top: 120px; }
+  .desk-lamp { top: 6px; right: 108px; width: 76px; }
   .open-book { grid-template-columns: 1fr; height: calc(100vh - 48px); }
   .open-book .page.left { display: none; }
   .open-book .page.right { border-radius: 2px; }
@@ -1247,7 +1284,11 @@ dialog h3 { margin: 0 0 4px; font: italic 300 32px/1.1 var(--display); }
   .wall-left, .wall-right { flex-basis: 100%; }
   .wall-left { gap: 32px; padding-top: 20px; }
   .greet-row { padding: 0 2%; gap: 4px; }
-  .lamp { width: 76px; }
+  .lamp-wrap { width: 76px; }
+  .pull-cord { --len: 26px; }
+  .desk-lamp { width: 64px; right: 100px; top: 10px; }
+  .board-lamp { width: 50px; right: 12px; }
+  .board-head { padding-right: 64px; }
   .lamp-date text { font-size: 56px; letter-spacing: 0.1em; }
   .flip-clock { --card-w: 17px; padding: 6px 6px 12px; }
   .flip-face { gap: 4px; padding: 3px; }
