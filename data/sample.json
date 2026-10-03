@@ -1,34 +1,174 @@
 {
-  "finances": [
-    { "title": "Rent", "date": "2026-10-01", "amount": -1450, "status": "Housing" },
-    { "title": "Salary", "date": "2026-09-28", "amount": 4200, "status": "Income" },
-    { "title": "Groceries", "date": "2026-09-27", "amount": -86.4, "status": "Food" },
-    { "title": "Electricity", "date": "2026-09-22", "amount": -112, "status": "Bills" },
-    { "title": "Gym membership", "date": "2026-09-15", "amount": -45, "status": "Health" }
+  "budget": [
+    {
+      "title": "Rent",
+      "date": "2026-10-01",
+      "amount": -1450,
+      "status": "Housing"
+    },
+    {
+      "title": "Salary",
+      "date": "2026-09-28",
+      "amount": 4200,
+      "status": "Income"
+    },
+    {
+      "title": "Groceries",
+      "date": "2026-09-27",
+      "amount": -86.4,
+      "status": "Food"
+    },
+    {
+      "title": "Electricity",
+      "date": "2026-09-22",
+      "amount": -112,
+      "status": "Bills"
+    },
+    {
+      "title": "Gym membership",
+      "date": "2026-09-15",
+      "amount": -45,
+      "status": "Health"
+    }
+  ],
+  "subscriptions": [
+    {
+      "title": "Netflix",
+      "date": "2026-10-12",
+      "amount": -22.99,
+      "status": "Monthly"
+    },
+    {
+      "title": "Spotify",
+      "date": "2026-10-07",
+      "amount": -15.99,
+      "status": "Monthly"
+    },
+    {
+      "title": "iCloud 200GB",
+      "date": "2026-10-15",
+      "amount": -4.99,
+      "status": "Monthly"
+    },
+    {
+      "title": "Notion Plus",
+      "date": "2027-01-04",
+      "amount": -120,
+      "status": "Yearly"
+    },
+    {
+      "title": "Gym",
+      "date": "2026-10-15",
+      "amount": -45,
+      "status": "Monthly"
+    }
+  ],
+  "savings": [
+    {
+      "title": "Emergency fund",
+      "date": "2027-03-31",
+      "amount": 6200,
+      "status": "On track"
+    },
+    {
+      "title": "Japan trip",
+      "date": "2027-04-15",
+      "amount": 1850,
+      "status": "Behind"
+    },
+    {
+      "title": "New laptop",
+      "date": "2026-12-01",
+      "amount": 900,
+      "status": "On track"
+    }
   ],
   "work": [
-    { "title": "Q4 roadmap draft", "date": "2026-10-06", "status": "In progress" },
-    { "title": "Client review deck", "date": "2026-10-08", "status": "Not started" },
-    { "title": "Hiring loop feedback", "date": "2026-10-03", "status": "Done" },
-    { "title": "Budget sign-off", "date": "2026-10-10", "status": "Blocked" }
+    {
+      "title": "Q4 roadmap draft",
+      "date": "2026-10-06",
+      "status": "In progress"
+    },
+    {
+      "title": "Client review deck",
+      "date": "2026-10-08",
+      "status": "Not started"
+    },
+    {
+      "title": "Hiring loop feedback",
+      "date": "2026-10-03",
+      "status": "Done"
+    },
+    {
+      "title": "Budget sign-off",
+      "date": "2026-10-10",
+      "status": "Blocked"
+    }
   ],
   "calendar": [
-    { "title": "Dentist", "date": "2026-10-05", "status": "Personal" },
-    { "title": "Team offsite", "date": "2026-10-09", "status": "Work" },
-    { "title": "Mum's birthday", "date": "2026-10-14", "status": "Family" }
+    {
+      "title": "Dentist",
+      "date": "2026-10-05",
+      "status": "Personal"
+    },
+    {
+      "title": "Team offsite",
+      "date": "2026-10-09",
+      "status": "Work"
+    },
+    {
+      "title": "Mum's birthday",
+      "date": "2026-10-14",
+      "status": "Family"
+    }
   ],
   "health": [
-    { "title": "Run", "date": "2026-10-02", "amount": 35, "status": "Cardio" },
-    { "title": "Yoga", "date": "2026-09-30", "amount": 50, "status": "Mobility" },
-    { "title": "Strength", "date": "2026-09-28", "amount": 45, "status": "Strength" }
+    {
+      "title": "Run",
+      "date": "2026-10-02",
+      "amount": 35,
+      "status": "Cardio"
+    },
+    {
+      "title": "Yoga",
+      "date": "2026-09-30",
+      "amount": 50,
+      "status": "Mobility"
+    },
+    {
+      "title": "Strength",
+      "date": "2026-09-28",
+      "amount": 45,
+      "status": "Strength"
+    }
   ],
   "learning": [
-    { "title": "Notion API", "date": "2026-10-01", "status": "In progress" },
-    { "title": "Te reo Māori lesson 4", "date": "2026-09-29", "status": "Done" }
+    {
+      "title": "Notion API",
+      "date": "2026-10-01",
+      "status": "In progress"
+    },
+    {
+      "title": "Te reo Māori lesson 4",
+      "date": "2026-09-29",
+      "status": "Done"
+    }
   ],
   "relationships": [
-    { "title": "Sam", "date": "2026-09-12", "status": "Close friends" },
-    { "title": "Aunty Lani", "date": "2026-08-30", "status": "Family" },
-    { "title": "Priya", "date": "2026-09-25", "status": "Work" }
+    {
+      "title": "Sam",
+      "date": "2026-09-12",
+      "status": "Close friends"
+    },
+    {
+      "title": "Aunty Lani",
+      "date": "2026-08-30",
+      "status": "Family"
+    },
+    {
+      "title": "Priya",
+      "date": "2026-09-25",
+      "status": "Work"
+    }
   ]
 }

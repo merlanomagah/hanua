@@ -286,9 +286,7 @@ function wireAsk(form, area) {
 function fillBook(book, area, highlightId) {
   const { recent, level } = activity(area.records);
   const stats = [[area.records.length, "entries"], [recent, "within 30 days"], [`Lv ${level}`, "activity"]];
-  const spend = area.records.filter((r) => typeof r.amount === "number" && r.date && daysAgo(r.date) >= 0 && daysAgo(r.date) <= 30);
-  if (spend.length) stats.push([money.format(spend.reduce((s, r) => s + r.amount, 0)), "net · 30 days"]);
-  else stats.push([area.records[0]?.date ? fmtDate(area.records[0].date) : "—", "latest"]);
+  stats.push(summaryStat(area));
   const statEls = () => stats.map(([v, l]) => h("div", { className: "stat" }, h("b", { textContent: v }), h("span", { textContent: l })));
   book.querySelectorAll(".stats").forEach((s) => s.replaceChildren(...statEls()));
 
@@ -296,6 +294,28 @@ function fillBook(book, area, highlightId) {
   if (area.error) return list.replaceChildren(h("li", { className: "error", textContent: area.error }));
   if (!area.records.length) return list.replaceChildren(h("li", { className: "empty", textContent: "Blank pages. Use the Feed bar to write the first entry." }));
   list.replaceChildren(...area.records.map((r) => recordItem(r, r.id === highlightId)));
+}
+
+// The fourth stat on the left page. Set per book with "summary" in config/areas.json.
+function summaryStat(area) {
+  const priced = area.records.filter((r) => typeof r.amount === "number");
+  const sum = (rows, fn = (r) => r.amount) => rows.reduce((s, r) => s + fn(r), 0);
+  if (area.summary === "total" && priced.length) {
+    return [money.format(sum(priced)), "total"];
+  }
+  if (area.summary === "per-month" && priced.length) {
+    // Yearly / annual / weekly plans are normalised to a monthly cost via the status column.
+    const perMonth = (r) => {
+      const s = (r.status || "").toLowerCase();
+      if (/year|annual/.test(s)) return r.amount / 12;
+      if (/week/.test(s)) return (r.amount * 52) / 12;
+      return r.amount;
+    };
+    return [money.format(Math.abs(sum(priced, perMonth))), "per month"];
+  }
+  const recent = priced.filter((r) => r.date && daysAgo(r.date) >= 0 && daysAgo(r.date) <= 30);
+  if (recent.length) return [money.format(sum(recent)), "net · 30 days"];
+  return [area.records[0]?.date ? fmtDate(area.records[0].date) : "—", "latest"];
 }
 
 function recordItem(r, highlight) {

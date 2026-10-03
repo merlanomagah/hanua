@@ -49,6 +49,7 @@ Uses `claude-opus-5-5` by default. Override it with `CLAUDE_MODEL` in `.env`.
 - **Add a book:** add an object to `areas` (`id`, `label`, `icon`, `color`, `notionDatabaseId`, `fields`).
 - **Spine colour:** `color`. Deep, desaturated colours look most like real bindings.
 - **Heading:** `centre.title`.
+- **Summary stat:** `summary` sets the fourth stat in a book: `"total"` (e.g. savings), `"per-month"` (subscriptions; yearly/weekly plans are converted using the status column), or leave it out for net over the last 30 days.
 
 Spine thickness grows with the number of entries. "Lv" is activity: how many entries fall within 30 days of today.
 

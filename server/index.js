@@ -41,7 +41,7 @@ app.get("/api/areas", async (_req, res, next) => {
   try {
     const areas = await Promise.all(
       config.areas.map(async (area) => {
-        const base = { id: area.id, label: area.label, icon: area.icon, color: area.color, live: isLive(area) };
+        const base = { id: area.id, label: area.label, icon: area.icon, color: area.color, summary: area.summary, live: isLive(area) };
         try {
           return { ...base, records: await recordsFor(area) };
         } catch (err) {

@@ -1,13 +1,50 @@
 {
-  "centre": { "label": "Me", "icon": "✦", "title": "Welcome to my library" },
+  "centre": {
+    "label": "Me",
+    "icon": "✦",
+    "title": "Welcome to my library"
+  },
   "areas": [
     {
-      "id": "finances",
-      "label": "Finances",
+      "id": "budget",
+      "label": "Budget",
       "icon": "$",
       "color": "#2e5e4e",
       "notionDatabaseId": "",
-      "fields": { "title": "Name", "date": "Date", "amount": "Amount", "status": "Category" }
+      "fields": {
+        "title": "Name",
+        "date": "Date",
+        "amount": "Amount",
+        "status": "Category"
+      }
+    },
+    {
+      "id": "subscriptions",
+      "label": "Subscriptions",
+      "icon": "↻",
+      "color": "#4a5a3a",
+      "notionDatabaseId": "",
+      "fields": {
+        "title": "Service",
+        "date": "Next payment",
+        "amount": "Cost",
+        "status": "Billing"
+      },
+      "summary": "per-month"
+    },
+    {
+      "id": "savings",
+      "label": "Savings",
+      "icon": "◈",
+      "color": "#7a6230",
+      "notionDatabaseId": "",
+      "fields": {
+        "title": "Goal",
+        "date": "Target date",
+        "amount": "Saved",
+        "status": "Status"
+      },
+      "summary": "total"
     },
     {
       "id": "work",
@@ -15,7 +52,11 @@
       "icon": "⚒",
       "color": "#2b3f6b",
       "notionDatabaseId": "",
-      "fields": { "title": "Task", "date": "Due", "status": "Status" }
+      "fields": {
+        "title": "Task",
+        "date": "Due",
+        "status": "Status"
+      }
     },
     {
       "id": "calendar",
@@ -23,7 +64,11 @@
       "icon": "◷",
       "color": "#9a5530",
       "notionDatabaseId": "",
-      "fields": { "title": "Event", "date": "When", "status": "Type" }
+      "fields": {
+        "title": "Event",
+        "date": "When",
+        "status": "Type"
+      }
     },
     {
       "id": "health",
@@ -31,7 +76,12 @@
       "icon": "♥",
       "color": "#8c2f3a",
       "notionDatabaseId": "",
-      "fields": { "title": "Entry", "date": "Date", "amount": "Minutes", "status": "Kind" }
+      "fields": {
+        "title": "Entry",
+        "date": "Date",
+        "amount": "Minutes",
+        "status": "Kind"
+      }
     },
     {
       "id": "learning",
@@ -39,7 +89,11 @@
       "icon": "✎",
       "color": "#5a4372",
       "notionDatabaseId": "",
-      "fields": { "title": "Topic", "date": "Date", "status": "Status" }
+      "fields": {
+        "title": "Topic",
+        "date": "Date",
+        "status": "Status"
+      }
     },
     {
       "id": "relationships",
@@ -47,7 +101,11 @@
       "icon": "☺",
       "color": "#2f6a6e",
       "notionDatabaseId": "",
-      "fields": { "title": "Name", "date": "Last contact", "status": "Circle" }
+      "fields": {
+        "title": "Name",
+        "date": "Last contact",
+        "status": "Circle"
+      }
     }
   ]
 }
