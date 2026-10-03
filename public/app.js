@@ -170,6 +170,32 @@ function renderMoneyScreen() {
   );
 }
 
+// The power button blanks the screen, for when someone is looking over your shoulder. Remembered between visits.
+let screenOn = store("room-screen") !== "off";
+const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)");
+function applyScreen(animate) {
+  const mon = $("monitor");
+  mon.classList.remove("powering-off", "powering-on");
+  const done = () => { mon.classList.remove("powering-off", "powering-on"); mon.classList.toggle("off", !screenOn); };
+  if (animate && !reduceMotion.matches) {
+    if (screenOn) mon.classList.remove("off");
+    void mon.offsetWidth;
+    mon.classList.add(screenOn ? "powering-on" : "powering-off");
+    setTimeout(done, screenOn ? 320 : 380);
+  } else done();
+  $("screen-power").setAttribute("aria-pressed", String(screenOn));
+  $("screen-power").title = screenOn ? "Turn the screen off" : "Turn the screen on";
+  $("screen-power").ariaLabel = screenOn ? "Turn the spending screen off" : "Turn the spending screen on";
+  $("money-screen").ariaLabel = screenOn ? "Open the Money book" : "Spending screen is off";
+  $("screen").setAttribute("aria-hidden", String(!screenOn));
+}
+$("screen-power").addEventListener("click", () => {
+  screenOn = !screenOn;
+  store("room-screen", screenOn ? "on" : "off");
+  applyScreen(true);
+});
+applyScreen(false);
+
 // ---------- wall: calendar ----------
 
 const TYPE_COLORS = { work: "#2b3f6b", personal: "#3B6B5A", family: "#C4602A", social: "#9a5530" };
@@ -518,7 +544,7 @@ async function closeBook() {
 
 $("reader-close").addEventListener("click", closeBook);
 $("reader").addEventListener("click", (e) => { if (e.target === $("reader")) closeBook(); });
-$("money-screen").addEventListener("click", () => openBook("money", bookEl("money")));
+$("money-screen").addEventListener("click", () => { if (screenOn) openBook("money", bookEl("money")); });
 document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("reader").hidden && !$("draft-dialog").open) closeBook(); });
 
 // ---------- ask across everything ----------
