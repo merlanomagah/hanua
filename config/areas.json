@@ -10,7 +10,7 @@
       "label": "Budget",
       "icon": "$",
       "color": "#2e5e4e",
-      "notionDatabaseId": "",
+      "notionDatabaseId": "14e20ff9b3c3498ab5f57201f79c6c48",
       "fields": {
         "title": "Name",
         "date": "Date",
@@ -23,7 +23,7 @@
       "label": "Subscriptions",
       "icon": "↻",
       "color": "#4a5a3a",
-      "notionDatabaseId": "",
+      "notionDatabaseId": "e667cf61c5e644b3bcecb6189a780470",
       "fields": {
         "title": "Service",
         "date": "Next payment",
@@ -37,7 +37,7 @@
       "label": "Savings",
       "icon": "◈",
       "color": "#7a6230",
-      "notionDatabaseId": "",
+      "notionDatabaseId": "0cc1f8b8ec144224a4169d6cb38c0268",
       "fields": {
         "title": "Goal",
         "date": "Target date",
@@ -51,7 +51,7 @@
       "label": "Work",
       "icon": "⚒",
       "color": "#2b3f6b",
-      "notionDatabaseId": "",
+      "notionDatabaseId": "20925d50956041e893d3ec05c2844296",
       "fields": {
         "title": "Task",
         "date": "Due",
@@ -63,7 +63,7 @@
       "label": "Calendar",
       "icon": "◷",
       "color": "#9a5530",
-      "notionDatabaseId": "",
+      "notionDatabaseId": "88a5d93b792b4287acf15104fdbb19e6",
       "fields": {
         "title": "Event",
         "date": "When",
@@ -75,7 +75,7 @@
       "label": "Health",
       "icon": "♥",
       "color": "#8c2f3a",
-      "notionDatabaseId": "",
+      "notionDatabaseId": "c4c0ec2f39fc4e6bbd10d07d774c0865",
       "fields": {
         "title": "Entry",
         "date": "Date",
@@ -88,7 +88,7 @@
       "label": "Learning",
       "icon": "✎",
       "color": "#5a4372",
-      "notionDatabaseId": "",
+      "notionDatabaseId": "e4acb10e9349410ca8553c687f4c5d0b",
       "fields": {
         "title": "Topic",
         "date": "Date",
@@ -100,7 +100,7 @@
       "label": "People",
       "icon": "☺",
       "color": "#2f6a6e",
-      "notionDatabaseId": "",
+      "notionDatabaseId": "012531e5748b43e28b7dea6b1ac1e587",
       "fields": {
         "title": "Name",
         "date": "Last contact",
