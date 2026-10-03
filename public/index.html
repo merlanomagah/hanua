@@ -34,6 +34,26 @@
     </aside>
 
     <main class="room">
+      <!-- The top shelf: always in view. Quick ways around the room, the Feed, and what you've earned -->
+      <header class="topshelf" id="topshelf">
+        <nav class="ts-nav" aria-label="Quick actions">
+          <button type="button" class="ts-btn" id="ts-home" title="Home: the wall" aria-label="Home"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg></button>
+          <button type="button" class="ts-btn" id="ts-desk" title="The desk: today" aria-label="Go to the desk"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 9h18"/><path d="M5 9v10M19 9v10"/><path d="M8 5h8v4H8z"/></svg></button>
+          <button type="button" class="ts-btn" id="ts-goals" title="Goals board" aria-label="Goals board"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="0.8" fill="currentColor"/></svg></button>
+          <button type="button" class="ts-btn" id="ts-library" title="Library" aria-label="Open the library"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4v16M9 4v16M13 6l4 14"/><path d="M3 20h18"/></svg></button>
+          <button type="button" class="ts-btn" id="ts-music" title="Record player" aria-label="Open the record player"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="2"/></svg></button>
+        </nav>
+        <form class="feed" id="feed-form">
+          <span class="feed-label">FEED</span>
+          <span class="divider" aria-hidden="true"></span>
+          <input id="feed-input" type="text" autocomplete="off" aria-label="Feed" placeholder="“Paid $64 for groceries” · “Dentist next Tuesday” · “Learned: …”">
+          <button type="submit">ADD</button>
+        </form>
+        <button type="button" class="ts-earn" id="ts-earn" aria-label="Earnings: open the treat shop">
+          <img src="assets/obj/tin.png" alt="" class="ts-tin">
+          <span class="ts-periods" id="ts-periods"></span>
+        </button>
+      </header>
       <!-- The wall: your overview -->
       <section class="wall" id="wall" aria-label="Overview">
         <div class="window-light" aria-hidden="true"></div>
@@ -194,17 +214,7 @@
             <div class="wall-left">
               <div class="notes" id="notes" aria-label="Pinned notes"></div>
             </div>
-            <div class="wall-right">
-              <!-- goal jars: one per active Epic, filling as it's done; the money tin opens the treat shop -->
-              <div class="jar-shelf">
-                <div class="jar-row" id="jar-row"></div>
-                <div class="float-shelf" aria-hidden="true">
-                  <img src="assets/shelf/bookend.png" alt="" class="bracket left">
-                  <img src="assets/shelf/bookend.png" alt="" class="bracket right">
-                  <img src="assets/shelf/plank.png" alt="" class="plank">
-                </div>
-              </div>
-            </div>
+            <div class="wall-right"></div>
           </div>
 
           <div class="to-desk">
@@ -228,12 +238,6 @@
         <img src="assets/obj/cup.png" alt="" class="cup" aria-hidden="true">
       </section>
 
-      <form class="feed" id="feed-form">
-        <span class="feed-label">FEED</span>
-        <span class="divider" aria-hidden="true"></span>
-        <input id="feed-input" type="text" autocomplete="off" aria-label="Feed" placeholder="“Paid $64 for groceries” · “Dentist next Tuesday” · “Learned: …”">
-        <button type="submit">ADD</button>
-      </form>
     </main>
   </div>
 
@@ -393,6 +397,8 @@
     </div>
     <div class="shop-periods" id="shop-periods"></div>
     <div class="shop-topup" id="shop-topup"></div>
+    <h4 class="shop-h" id="shop-epics-h">Epics: earned of target</h4>
+    <ul class="shop-list" id="shop-epics"></ul>
     <h4 class="shop-h">Rewards</h4>
     <ul class="shop-list" id="shop-list"></ul>
     <h4 class="shop-h" id="shop-recent-h">Recently</h4>

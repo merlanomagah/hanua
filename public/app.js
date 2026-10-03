@@ -836,10 +836,11 @@ function showBoard(on) {
   if (on) renderBoard();
   $("wall").classList.toggle("on-board", on);
   if (!on) $("wall").style.minHeight = "";
+  $("ts-goals")?.classList.toggle("on", on);
   $("board-pane").inert = !on;
   $("wall-in").inert = on;
-  const top = $("wall").getBoundingClientRect().top + window.scrollY;
-  if (window.scrollY > top + 40) window.scrollTo({ top, behavior: reducedMotion ? "auto" : "smooth" });
+  // the wall sits right under the top shelf, so the top of the page shows it (or the board) in full
+  if (window.scrollY > 40) window.scrollTo({ top: 0, behavior: reducedMotion || window.scrollY > 1200 ? "auto" : "smooth" });
   (on ? $("goal-add") : $("to-board")).focus({ preventScroll: true });
 }
 $("to-board").addEventListener("click", () => showBoard(true));
@@ -939,7 +940,7 @@ function renderBoard() {
       });
   $("cork-cols").replaceChildren(...cols);
   $("cork-cols").querySelectorAll(".pin-list").forEach((l) => l.addEventListener("scroll", drawThreads, { passive: true }));
-  renderJars();
+  renderTopShelf();
   // the wall stretches to fit a long board (phones stack the columns)
   $("wall").style.minHeight = onBoard ? `${$("board-pane").offsetHeight}px` : "";
   requestAnimationFrame(drawThreads);
@@ -977,6 +978,7 @@ function goalCard(g, i, thread) {
         g.effortTotal ? `${g.effortTotal} pts` : null,
         g.due ? `${late ? "was due" : "due"} ${fmtDay(g.due, { day: "numeric", month: "short" })}` : null,
       ].filter(Boolean).join(" · ") })),
+    g.level === "Epic" ? (() => { const v = epicValue(g); return h("span", { className: "g-value", textContent: `${dollars(v.earned)} of ${dollars(v.target)}` }); })() : null,
     focusGoal === g.id ? h("span", { className: "g-actions" },
       actButton("edit", "Edit"),
       childLevel ? actButton("child", `+ ${childLevel.name}`) : null,
@@ -1591,24 +1593,41 @@ const toDollars = (coins) => coins / (state.shop.coinsPerDollar || 10);
 const dollars = (coins) => money(toDollars(coins), toDollars(coins) % 1 ? 2 : 0);
 const coinText = (g) => (coinsFor(g) ? ` +${coinsFor(g)} coins (${dollars(coinsFor(g))}) in the treat fund.` : "");
 
-function coinTotals() {
+// Earned = finished in the period. Planned = everything due in the period (done or not) plus anything
+// finished in it: the dollar value you set yourself up to earn.
+function periodStarts() {
   const now = new Date();
-  const starts = {
-    today: todayStr(),
-    week: ymd(mondayOf(now)),
-    quarter: ymd(new Date(now.getFullYear(), Math.floor(now.getMonth() / 3) * 3, 1)),
-    year: `${now.getFullYear()}-01-01`,
+  const y = now.getFullYear(), m = now.getMonth();
+  return {
+    today: [todayStr(), todayStr()],
+    week: [ymd(mondayOf(now)), ymd(sundayOf(now))],
+    month: [ymd(new Date(y, m, 1)), ymd(new Date(y, m + 1, 0))],
+    quarter: [ymd(new Date(y, Math.floor(m / 3) * 3, 1)), ymd(new Date(y, Math.floor(m / 3) * 3 + 3, 0))],
+    year: [`${y}-01-01`, `${y}-12-31`],
   };
-  const done = state.goals.goals.filter((g) => isGoalDone(g) && g.completed);
-  const since = (d) => done.filter((g) => dayOf(g.completed) >= d).reduce((n, g) => n + coinsFor(g), 0);
-  const all = done.reduce((n, g) => n + coinsFor(g), 0);
+}
+function coinTotals() {
+  const goals = state.goals.goals;
+  const inRange = (d, [a, b]) => d && dayOf(d) >= a && dayOf(d) <= b;
+  const out = {};
+  for (const [key, range] of Object.entries(periodStarts())) {
+    const earned = goals.filter((g) => isGoalDone(g) && inRange(g.completed, range));
+    const planned = goals.filter((g) => inRange(g.due, range) || (isGoalDone(g) && inRange(g.completed, range)));
+    out[key] = earned.reduce((n, g) => n + coinsFor(g), 0);
+    out[`${key}Target`] = planned.reduce((n, g) => n + coinsFor(g), 0);
+  }
+  const all = goals.filter((g) => isGoalDone(g) && g.completed).reduce((n, g) => n + coinsFor(g), 0);
   const items = state.shop.items || [];
   const spent = items.filter((i) => i.type === "Bought").reduce((n, i) => n + (Number(i.coins) || 0), 0);
   const moved = items.filter((i) => i.type === "Moved").reduce((n, i) => n + (Number(i.dollars) || 0), 0);
-  return {
-    today: since(starts.today), week: since(starts.week), quarter: since(starts.quarter), year: since(starts.year),
-    all, spent, balance: all - spent, owed: Math.max(0, Math.round((toDollars(all) - moved) * 100) / 100),
-  };
+  return { ...out, all, spent, balance: all - spent, owed: Math.max(0, Math.round((toDollars(all) - moved) * 100) / 100) };
+}
+
+// An Epic's target is everything under it plus itself; earned is the part that's done.
+function epicValue(e) {
+  const ids = lineage(e.id);
+  const tree = state.goals.goals.filter((g) => ids.has(g.id) && (g.id === e.id || levelIndex(g.level) > levelIndex(e.level)));
+  return { target: tree.reduce((n, g) => n + coinsFor(g), 0), earned: tree.filter(isGoalDone).reduce((n, g) => n + coinsFor(g), 0) };
 }
 
 // The Epic a goal belongs to, by walking up its parents.
@@ -1618,34 +1637,18 @@ function epicOf(g) {
   return g?.level === "Epic" ? g : null;
 }
 
-function renderJars() {
-  const row = $("jar-row");
-  if (!row) return;
-  const epics = state.goals.goals.filter((g) => g.level === "Epic" && !isGoalDone(g))
-    .sort((a, b) => (a.priority ?? 9) - (b.priority ?? 9) || (b.progress ?? 0) - (a.progress ?? 0)).slice(0, 4);
-  const jar = (title, pct, sub, onClick) => {
-    const el = h("button", { type: "button", className: "jar", ariaLabel: `${title}: ${pct}% done` },
-      h("img", { src: "assets/obj/jar.png", alt: "" }),
-      h("span", { className: "jar-coins", ariaHidden: "true" }),
-      h("span", { className: "jar-tag" }, h("span", { className: "jar-name", textContent: title }), h("b", { textContent: sub })));
-    el.style.setProperty("--fill", `${Math.max(0, Math.min(100, pct))}%`);
-    el.addEventListener("click", onClick);
-    return el;
-  };
+// The top shelf: what you've earned today, this week and this month, with what you planned for.
+function renderTopShelf() {
+  const box = $("ts-periods");
+  if (!box) return;
   const t = coinTotals();
-  const tin = h("button", { type: "button", className: "tin", ariaLabel: `Treat fund: ${dollars(t.balance)} to spend. Open the shop` },
-    h("img", { src: "assets/obj/tin.png", alt: "" }),
-    h("span", { className: "jar-tag tin-tag" }, h("span", { className: "jar-name", textContent: `${dollars(t.week)} this week` }), h("b", { textContent: `${dollars(t.balance)} to spend` })));
-  tin.addEventListener("click", openShop);
-  row.replaceChildren(
-    ...(epics.length
-      ? epics.map((e) => jar(e.title, e.progress ?? 0, `${e.progress ?? 0}%${e.children?.length ? ` · ${e.childDone}/${e.children.length}` : ""}`, () => {
-          showBoard(true);
-          focusGoal = e.id;
-          renderBoard();
-        }))
-      : [jar("Your first Epic", 0, "start here", () => { showBoard(true); openGoal(null, { level: "Epic" }); })]),
-    tin);
+  box.replaceChildren(...[["Today", "today"], ["This week", "week"], ["This month", "month"]].map(([label, k]) =>
+    h("span", { className: "ts-period" },
+      h("span", { className: "ts-label", textContent: label }),
+      h("b", { className: "ts-value", textContent: dollars(t[k]) }),
+      h("span", { className: "ts-target", textContent: t[`${k}Target`] ? `of ${dollars(t[`${k}Target`])}` : "nothing planned" }))));
+  $("ts-earn").title = `${dollars(t.balance)} to spend · open the treat shop`;
+  $("ts-goals").classList.toggle("on", onBoard);
 }
 
 // ---- the shop ----
@@ -1660,8 +1663,18 @@ function renderShop() {
   const shop = state.shop;
   $("shop-title").textContent = `${dollars(t.balance)} to spend`;
   $("shop-sub").textContent = `${t.balance.toLocaleString()} coins · earned by finishing goals${shop.live ? "" : " (sample data)"}`;
-  $("shop-periods").replaceChildren(...[["Today", t.today], ["This week", t.week], ["This quarter", t.quarter], ["This year", t.year]].map(([l, c]) =>
-    h("div", { className: "shop-period" }, h("b", { textContent: dollars(c) }), h("span", { textContent: l }), h("i", { textContent: `${c.toLocaleString()} coins` }))));
+  $("shop-periods").replaceChildren(...[["This week", "week"], ["This month", "month"], ["This quarter", "quarter"], ["This year", "year"]].map(([l, k]) =>
+    h("div", { className: "shop-period" }, h("b", { textContent: dollars(t[k]) }), h("span", { textContent: l }), h("i", { textContent: `of ${dollars(t[`${k}Target`])} planned` }))));
+  // each open Epic: what it's worth in total, and how much of that is already earned
+  const epics = state.goals.goals.filter((g) => g.level === "Epic" && !isGoalDone(g));
+  $("shop-epics-h").hidden = !epics.length;
+  $("shop-epics").replaceChildren(...epics.map((e) => {
+    const v = epicValue(e);
+    return h("li", { className: "shop-item" },
+      h("span", { className: "si-name", textContent: e.title }),
+      h("span", { className: "si-price", textContent: `${dollars(v.earned)} of ${dollars(v.target)} earned` }),
+      h("span", { className: "si-bar" }, Object.assign(h("i"), { style: `width:${v.target ? (v.earned / v.target) * 100 : 0}%` })));
+  }));
   // real money: what to move into the treat account, by hand (Hanua never moves money)
   const top = $("shop-topup");
   if (t.owed > 0) {
@@ -1702,10 +1715,27 @@ async function shopWrite(values, okText) {
     else state.shop.items = [...state.shop.items, { id: `local-${Date.now()}`, date: todayStr(), ...values }];
     toast(res.live ? okText : `${okText} (sample data, not saved)`);
     renderShop();
-    renderJars();
+    renderTopShelf();
   } catch (err) { toast(err.message, true); }
 }
 $("shop-close").addEventListener("click", () => $("shop-dialog").close());
+$("ts-earn").addEventListener("click", openShop);
+
+// ---- top shelf quick actions ----
+function closeOverlays() {
+  if (!$("reader").hidden) closeBook();
+  if (!$("library").hidden) closeLibrary();
+  if ($("turntable").classList.contains("open")) closeTurntable();
+}
+$("ts-home").addEventListener("click", () => { closeOverlays(); showBoard(false); window.scrollTo({ top: 0, behavior: reducedMotion ? "auto" : "smooth" }); });
+$("ts-desk").addEventListener("click", () => {
+  closeOverlays();
+  showBoard(false);
+  window.scrollTo({ top: $("desk-edge").getBoundingClientRect().top + window.scrollY - $("topshelf").offsetHeight, behavior: reducedMotion ? "auto" : "smooth" });
+});
+$("ts-goals").addEventListener("click", () => { closeOverlays(); showBoard(!onBoard); renderTopShelf(); });
+$("ts-library").addEventListener("click", () => { closeOverlays(); openLibrary(); });
+$("ts-music").addEventListener("click", () => { closeOverlays(); openTurntable(); });
 
 // ---------- record player and music controls (the Music app on this Mac) ----------
 
@@ -1862,7 +1892,7 @@ $("ask-form").addEventListener("submit", async (e) => {
 // ---------- to the desk ----------
 
 $("to-desk").addEventListener("click", () => {
-  const top = $("desk-edge").getBoundingClientRect().top + window.scrollY;
+  const top = $("desk-edge").getBoundingClientRect().top + window.scrollY - $("topshelf").offsetHeight;
   window.scrollTo({ top, behavior: reducedMotion ? "auto" : "smooth" });
 });
 
@@ -1935,7 +1965,7 @@ function renderAll() {
   renderTodo();
   renderAgenda();
   renderWeek();
-  renderJars();
+  renderTopShelf();
   if (onBoard) renderBoard();
 }
 
