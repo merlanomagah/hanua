@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Hanua</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=IBM+Plex+Mono:wght@400;500&display=swap">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="status" id="status"></div>
+
+  <header class="hero">
+    <p class="eyebrow">A personal archive</p>
+    <h1 id="hero-title">Welcome to my library</h1>
+    <p class="eyebrow" id="hero-count"></p>
+
+    <div class="view-toggle" role="tablist" aria-label="View">
+      <button role="tab" data-view="shelf" aria-selected="true">Shelf</button>
+      <button role="tab" data-view="tree" aria-selected="false">Tree</button>
+    </div>
+
+    <form class="search" id="ask-all-form">
+      <input id="ask-all-input" type="text" autocomplete="off" placeholder="What are you looking for?">
+    </form>
+    <div class="answer" id="ask-all-answer" hidden></div>
+  </header>
+
+  <main class="stage">
+    <section class="shelf-view" id="shelf-view">
+      <div class="shelf" id="shelf"></div>
+      <div class="plank"></div>
+      <div class="spine-card" id="spine-card" hidden></div>
+    </section>
+
+    <section class="tree-view" id="tree-view" hidden>
+      <svg id="tree" viewBox="-520 -520 1040 1040" role="group" aria-label="Life areas skill tree"></svg>
+    </section>
+  </main>
+
+  <form class="feed" id="feed-form">
+    <span class="feed-label">Feed</span>
+    <input id="feed-input" type="text" autocomplete="off" placeholder="e.g. “Paid $64 for groceries today” or “Dentist next Tuesday”">
+    <button type="submit">Add</button>
+  </form>
+
+  <!-- The open book lives here while reading -->
+  <div class="reader" id="reader" hidden>
+    <button class="reader-close" id="reader-close" aria-label="Close book">×</button>
+  </div>
+
+  <dialog id="draft-dialog">
+    <form method="dialog" id="draft-form">
+      <h3>Add to <span id="draft-area"></span>?</h3>
+      <p class="draft-note" id="draft-note"></p>
+      <div id="draft-fields"></div>
+      <div class="dialog-actions">
+        <button value="cancel" type="submit" class="ghost">Cancel</button>
+        <button value="save" type="submit">Save to Notion</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script src="app.js" type="module"></script>
+</body>
+</html>

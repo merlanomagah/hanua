@@ -1,0 +1,53 @@
+{
+  "centre": { "label": "Me", "icon": "✦", "title": "Welcome to my library" },
+  "areas": [
+    {
+      "id": "finances",
+      "label": "Finances",
+      "icon": "$",
+      "color": "#2e5e4e",
+      "notionDatabaseId": "",
+      "fields": { "title": "Name", "date": "Date", "amount": "Amount", "status": "Category" }
+    },
+    {
+      "id": "work",
+      "label": "Work",
+      "icon": "⚒",
+      "color": "#2b3f6b",
+      "notionDatabaseId": "",
+      "fields": { "title": "Task", "date": "Due", "status": "Status" }
+    },
+    {
+      "id": "calendar",
+      "label": "Calendar",
+      "icon": "◷",
+      "color": "#9a5530",
+      "notionDatabaseId": "",
+      "fields": { "title": "Event", "date": "When", "status": "Type" }
+    },
+    {
+      "id": "health",
+      "label": "Health",
+      "icon": "♥",
+      "color": "#8c2f3a",
+      "notionDatabaseId": "",
+      "fields": { "title": "Entry", "date": "Date", "amount": "Minutes", "status": "Kind" }
+    },
+    {
+      "id": "learning",
+      "label": "Learning",
+      "icon": "✎",
+      "color": "#5a4372",
+      "notionDatabaseId": "",
+      "fields": { "title": "Topic", "date": "Date", "status": "Status" }
+    },
+    {
+      "id": "relationships",
+      "label": "People",
+      "icon": "☺",
+      "color": "#2f6a6e",
+      "notionDatabaseId": "",
+      "fields": { "title": "Name", "date": "Last contact", "status": "Circle" }
+    }
+  ]
+}
