@@ -16,7 +16,12 @@ PORT=$(grep -E '^PORT=' .env 2>/dev/null | cut -d= -f2 | tr -d '[:space:]' || tr
 PORT=${PORT:-3000}
 URL="http://localhost:$PORT"
 
+# Opens Hanua in a new Safari window (falls back to the default browser).
 open_browser() {
+  if osascript -e "tell application \"Safari\" to make new document with properties {URL:\"$URL\"}" \
+               -e 'tell application "Safari" to activate' >/dev/null 2>&1; then
+    return
+  fi
   if command -v open >/dev/null 2>&1; then open "$URL"; else echo "Open $URL in your browser."; fi
 }
 

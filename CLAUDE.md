@@ -10,7 +10,7 @@ A personal daily dashboard drawn as a room: a bookcase menu (Notion databases), 
 
 ## Running and checking
 
-- `npm start`, or `scripts/start.sh` (it backgrounds the server, then opens the browser). Port comes from `.env` (`PORT`), default 3000.
+- `npm start`, or `scripts/start.sh` (it backgrounds the server, then opens a new Safari window). `scripts/restart.sh` ("Restart Hanua.command") stops it and starts it fresh, for after an update. Port comes from `.env` (`PORT`), default 3000.
 - Without keys, everything runs on sample data (`data/sample.json`, dates shifted to today) and sample money. Use that to check changes in a browser at desktop and phone widths before pushing.
 
 ## Layout
