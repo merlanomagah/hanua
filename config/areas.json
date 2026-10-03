@@ -6,47 +6,6 @@
   },
   "areas": [
     {
-      "id": "budget",
-      "label": "Budget",
-      "icon": "$",
-      "color": "#2e5e4e",
-      "notionDatabaseId": "14e20ff9b3c3498ab5f57201f79c6c48",
-      "fields": {
-        "title": "Name",
-        "date": "Date",
-        "amount": "Amount",
-        "status": "Category"
-      }
-    },
-    {
-      "id": "subscriptions",
-      "label": "Subscriptions",
-      "icon": "↻",
-      "color": "#4a5a3a",
-      "notionDatabaseId": "e667cf61c5e644b3bcecb6189a780470",
-      "fields": {
-        "title": "Service",
-        "date": "Next payment",
-        "amount": "Cost",
-        "status": "Billing"
-      },
-      "summary": "per-month"
-    },
-    {
-      "id": "savings",
-      "label": "Savings",
-      "icon": "◈",
-      "color": "#7a6230",
-      "notionDatabaseId": "0cc1f8b8ec144224a4169d6cb38c0268",
-      "fields": {
-        "title": "Goal",
-        "date": "Target date",
-        "amount": "Saved",
-        "status": "Status"
-      },
-      "summary": "total"
-    },
-    {
       "id": "work",
       "label": "Work",
       "icon": "⚒",
