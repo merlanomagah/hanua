@@ -2,6 +2,12 @@
   "_note": "The record crate on the record player. Each record is an Apple Music playlist: paste its share link as url. Colour is the record label.",
   "records": [
     {
+      "name": "Happy Music",
+      "note": "Mel's playlist",
+      "url": "https://music.apple.com/nz/playlist/happy-music/pl.u-b3b88d8skr9EgL",
+      "color": "#D4A13E"
+    },
+    {
       "name": "Pure Calm",
       "note": "Mellow jazz, contemporary classical",
       "url": "https://music.apple.com/nz/playlist/pure-calm/pl.ffc344338c3d4ff394ddcf94d766c143",

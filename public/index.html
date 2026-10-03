@@ -59,7 +59,17 @@
 
         <div class="wall-in" id="wall-in">
           <button type="button" class="edge-tab left" id="to-board" title="Swipe right, or click, for your goals"><span>GOALS</span><span aria-hidden="true">›</span></button>
-          <div class="status" id="status"></div>
+          <div class="wall-top">
+            <!-- The Music app on this Mac: what's playing, with play / previous / next -->
+            <div class="now-playing" id="now-playing" role="group" aria-label="Music" hidden>
+              <span class="np-disc" aria-hidden="true"></span>
+              <span class="np-text"><b id="np-track">Music</b><span id="np-artist">Not playing</span></span>
+              <button type="button" class="np-btn" id="np-prev" aria-label="Previous song"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 5v14M19 5L9 12l10 7z"/></svg></button>
+              <button type="button" class="np-btn main" id="np-play" aria-label="Play"><svg viewBox="0 0 24 24" aria-hidden="true"><path id="np-icon" d="M7 4l13 8-13 8z"/></svg></button>
+              <button type="button" class="np-btn" id="np-next" aria-label="Next song"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 5v14M5 5l10 7-10 7z"/></svg></button>
+            </div>
+            <div class="status" id="status"></div>
+          </div>
 
           <div class="wall-row">
             <div class="wall-left">
@@ -233,7 +243,7 @@
         <h3 id="tt-now">Choose a record</h3>
         <div class="sleeves" id="sleeves"></div>
         <div class="am-player" id="am-player"></div>
-        <p class="tt-note">Press play on the Apple Music player. Signed in to Apple Music in Safari, you get full songs; otherwise 30-second previews.</p>
+        <p class="tt-note" id="tt-note">Records play in the Music app on your Mac. Use the controls by the greeting to pause or skip.</p>
         <button type="button" class="b-btn ghost" id="lift-needle" hidden>Lift the needle</button>
       </div>
     </div>

@@ -913,16 +913,18 @@ $("goal-dialog").addEventListener("close", async () => {
   }
 });
 
-// ---------- record player ----------
+// ---------- record player and music controls (the Music app on this Mac) ----------
 
-// Canva images (set either to null to fall back to the drawn version)
+// Mel's Canva images (set either to null to fall back to the drawn version)
 const RECORD_ART = { shelf: "assets/obj/record-player.png", top: "assets/obj/record-player-top.png" };
-let playing = null;
+let music = { available: false };
+let placed = null; // the record on the platter
+
+const PLAY_ICON = "M7 4l13 8-13 8z";
+const PAUSE_ICON = "M7 4h4v16H7zM14 4h4v16h-4z";
 
 function renderRecordPlayer() {
   const btn = $("record-player");
-  btn.classList.toggle("playing", Boolean(playing));
-  btn.title = playing ? `Playing ${playing.name}` : "Play some music";
   btn.replaceChildren(RECORD_ART.shelf
     ? h("img", { src: RECORD_ART.shelf, alt: "" })
     : h("span", { className: "rp-draw", ariaHidden: "true" }, h("span", { className: "rp-lid" }), h("span", { className: "rp-top" }, h("i")), h("span", { className: "rp-box" }, h("b"), h("b"))));
@@ -932,9 +934,54 @@ function renderRecordPlayer() {
   }
 }
 
+function renderMusic() {
+  const playing = music.state === "playing";
+  const active = playing || music.state === "paused";
+  $("now-playing").hidden = !music.available;
+  $("now-playing").classList.toggle("playing", playing);
+  $("np-track").textContent = active && music.track ? music.track : "Music";
+  $("np-artist").textContent = music.state === "unknown"
+    ? "Allow Hanua to control Music"
+    : active ? [music.artist, music.playlist].filter(Boolean).join(" · ") : "Pick a record, or press play";
+  $("np-icon").setAttribute("d", playing ? PAUSE_ICON : PLAY_ICON);
+  $("np-play").ariaLabel = playing ? "Pause" : "Play";
+  $("np-prev").disabled = $("np-next").disabled = !active;
+  // the record spins only while music is really playing
+  const record = state.records.find((r) => r.name === music.playlist) || placed;
+  if (playing && record) setVinyl(record);
+  $("deck").classList.toggle("spinning", playing);
+  $("record-player").classList.toggle("playing", playing);
+  $("record-player").title = playing ? `Playing ${music.playlist || music.track}` : "Play some music";
+  $("lift-needle").hidden = !playing;
+  if (active && record) $("tt-now").textContent = record.name;
+}
+
+async function refreshMusic() {
+  try { music = await api("/api/music"); } catch { music = { available: false }; }
+  renderMusic();
+}
+
+async function musicDo(action) {
+  try {
+    music = await api(`/api/music/${action}`, {});
+    renderMusic();
+  } catch (err) {
+    toast(/not allowed|not authori[sz]ed|-1743/i.test(err.message) ? "Allow Hanua to control Music in System Settings → Privacy & Security → Automation" : err.message, true);
+  }
+}
+$("np-play").addEventListener("click", () => musicDo("playpause"));
+$("np-prev").addEventListener("click", () => musicDo("previous"));
+$("np-next").addEventListener("click", () => musicDo("next"));
+
+function setVinyl(r) {
+  $("vinyl").style.setProperty("--lc", r.color || "#C4602A");
+  $("vinyl-label").textContent = r.name;
+  $("deck").classList.add("loaded");
+}
+
 function renderCrate() {
   $("sleeves").replaceChildren(...state.records.map((r) => {
-    const el = h("button", { type: "button", className: `sleeve${playing?.url === r.url ? " on" : ""}` },
+    const el = h("button", { type: "button", className: `sleeve${placed?.name === r.name ? " on" : ""}` },
       h("span", { className: "sl-art" }, h("i")),
       h("span", { className: "sl-name", textContent: r.name }),
       h("span", { className: "sl-note", textContent: r.note || "" }));
@@ -946,36 +993,44 @@ function renderCrate() {
 
 const embedUrl = (url) => url.replace("://music.apple.com/", "://embed.music.apple.com/");
 
-function playRecord(r) {
-  playing = r;
-  $("vinyl").style.setProperty("--lc", r.color || "#C4602A");
-  $("vinyl-label").textContent = r.name;
-  $("deck").classList.remove("spinning", "drop");
+async function playRecord(r) {
+  placed = r;
+  setVinyl(r);
+  $("deck").classList.remove("drop");
   void $("deck").offsetWidth;
-  $("deck").classList.add("drop", "spinning");
+  $("deck").classList.add("drop");
   $("tt-now").textContent = r.name;
-  $("am-player").replaceChildren(h("iframe", {
-    src: embedUrl(r.url), title: `${r.name} on Apple Music`, height: 175, loading: "lazy",
-    allow: "autoplay *; encrypted-media *; clipboard-write",
-    sandbox: "allow-forms allow-popups allow-same-origin allow-scripts allow-storage-access-by-user-activation allow-top-navigation-by-user-activation",
-  }));
-  $("lift-needle").hidden = false;
   renderCrate();
-  renderRecordPlayer();
+  if (!music.available) {
+    // Not on the Mac (or Music unreachable): fall back to Apple's player inside the page
+    $("am-player").replaceChildren(h("iframe", {
+      src: embedUrl(r.url), title: `${r.name} on Apple Music`, height: 175, loading: "lazy",
+      allow: "autoplay *; encrypted-media *; clipboard-write",
+      sandbox: "allow-forms allow-popups allow-same-origin allow-scripts allow-storage-access-by-user-activation allow-top-navigation-by-user-activation",
+    }));
+    return;
+  }
+  try {
+    music = await api("/api/music/record", { name: r.name });
+    $("tt-note").textContent = music.via === "opened"
+      ? `“${r.name}” isn't in your Music library yet, so it's open in the Music app: press play there, or add it to your library and Hanua can start it next time.`
+      : "Playing in the Music app. Use the controls by the greeting to pause or skip.";
+    renderMusic();
+  } catch (err) {
+    toast(err.message, true);
+  }
 }
 
-$("lift-needle").addEventListener("click", () => {
-  playing = null;
-  $("deck").classList.remove("spinning", "drop");
+$("lift-needle").addEventListener("click", async () => {
+  await musicDo("pause");
+  placed = null;
+  $("deck").classList.remove("loaded", "drop");
   $("vinyl-label").textContent = "";
   $("tt-now").textContent = "Choose a record";
-  $("am-player").replaceChildren();
-  $("lift-needle").hidden = true;
   renderCrate();
-  renderRecordPlayer();
 });
 
-// Closing only hides the player, so the music keeps going while you work.
+// Closing only hides the player view; the music carries on in the Music app.
 function openTurntable() {
   renderCrate();
   $("turntable").classList.add("open");
@@ -1101,6 +1156,9 @@ async function load() {
 renderLamp();
 renderClock();
 renderRecordPlayer();
+refreshMusic();
+// keep the song name current (only while Hanua's tab is showing)
+setInterval(() => { if (document.visibilityState === "visible") refreshMusic(); }, 5000);
 renderMoneyScreen();
 load();
 setInterval(renderClock, 1000);

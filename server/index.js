@@ -7,6 +7,7 @@ import path from "node:path";
 import { notionEnabled, queryArea, getSchema, toNotionProperties, createPage, updatePage, NotionError } from "./notion.js";
 import { claudeEnabled, ask, draftEntry } from "./claude.js";
 import { getMoney } from "./money.js";
+import { musicStatus, musicAction, playPlaylist } from "./music.js";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const config = JSON.parse(await readFile(path.join(root, "config/areas.json"), "utf8"));
@@ -169,6 +170,27 @@ app.post("/api/goals/:id", async (req, res, next) => {
 
 // The record crate: Apple Music playlists listed in config/records.json.
 app.get("/api/records", (_req, res) => res.json({ records: recordCrate }));
+
+// The Music app on this Mac: what's playing, play/pause/next/previous, and starting a record.
+app.get("/api/music", async (_req, res) => res.json(await musicStatus()));
+
+app.post("/api/music/record", async (req, res, next) => {
+  const record = recordCrate.find((r) => r.name === req.body?.name);
+  if (!record) return res.status(404).json({ error: "That record isn't in the crate." });
+  try {
+    res.json(await playPlaylist(record.library || record.name, record.url));
+  } catch (err) {
+    next(err);
+  }
+});
+
+app.post("/api/music/:action", async (req, res, next) => {
+  try {
+    res.json(await musicAction(req.params.action));
+  } catch (err) {
+    next(err);
+  }
+});
 
 app.post("/api/ask", async (req, res, next) => {
   const { question, areaId } = req.body ?? {};

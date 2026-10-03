@@ -34,6 +34,7 @@ The reasoning behind Hanua lives in [Hanua OS](https://app.notion.com/p/3ee16603
 - `server/index.js`: Express API. `/api/areas` (Notion records per book), `/api/money` (Pūtea), `/api/areas/:id/records/:recordId/done` (tick a task), `/api/ask`, `/api/feed/draft` + `/api/feed/commit` (Claude drafts a Notion row; the user confirms before it's written), `/api/goals` (read, create, update rows in the Goals database; the pin board's dialog is the confirm step), `/api/records` (the record player's playlists).
 - `server/notion.js`: Notion REST calls (API version 2022-06-28).
 - `server/claude.js`: Claude calls (Anthropic SDK).
+- `server/music.js`: controls the Music app on this Mac with fixed AppleScripts (`/api/music`, `/api/music/:action`, `/api/music/record`). Powers the now-playing strip by the greeting and the record player. Records start by library playlist name; a playlist not in the library opens in Music instead.
 - `server/money.js`: reads Pūtea's read-only local API (`PUTEA_URL`, default `http://127.0.0.1:3456`). Pūtea lives in the separate `merlanomagah/putea` repo and syncs Akahu bank data.
 - `config/areas.json`: one entry per book (Notion database ID and column names). The page uses `work` for tasks, `calendar` for events, `learning` for notes and `relationships` for people. A separate `goals` entry points at the Goals database (pin board); its select options are mirrored in `public/app.js` (`TIMEFRAMES`, `GOAL_STATUS`, `GOAL_AREAS`).
 - `config/records.json`: the record player's crate, one Apple Music playlist link per record.
