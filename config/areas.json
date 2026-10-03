@@ -83,7 +83,9 @@
       "priority": "Priority",
       "effort": "Effort",
       "start": "Start",
-      "completed": "Completed"
+      "completed": "Completed",
+      "why": "Why",
+      "doneWhen": "Done when"
     },
     "guideUrl": "https://www.notion.so/3ee16603f0bd818bbe32c6cf887853b2"
   },

@@ -290,6 +290,8 @@
       <div class="goal-layout">
       <div class="goal-fields">
         <label class="wide">Title<input name="title" required autocomplete="off"></label>
+        <label class="wide" id="why-field"><span>Why (so that…)</span><textarea name="why" rows="2"></textarea></label>
+        <label class="wide"><span id="done-label">Done when</span><textarea name="doneWhen" rows="4"></textarea></label>
         <label>Level<select name="level"></select></label>
         <label>Parent<select name="parent"></select></label>
         <label>State<select name="status"></select></label>
@@ -300,16 +302,18 @@
         <label>Due<input name="due" type="date"></label>
         <label class="wide" id="progress-field">Progress <output name="progressOut"></output><input name="progress" type="range" min="0" max="100" step="5"></label>
         <p class="wide rolled" id="progress-rolled" hidden></p>
-        <label class="wide">Description / acceptance criteria<textarea name="description" rows="5"></textarea></label>
+        <label class="wide">Notes<textarea name="description" rows="2" placeholder="Anything else worth keeping: contacts, links, thoughts"></textarea></label>
       </div>
       <!-- the coach: Agile habits as gentle prompts while you write -->
       <aside class="coach" aria-label="Goal coach">
+        <!-- the parent's why and done-when, so the child is planned against them -->
+        <section class="coach-parent" id="coach-parent" hidden></section>
         <span class="eyebrow" id="coach-level"></span>
         <p class="coach-what" id="coach-what"></p>
         <p class="coach-eg" id="coach-eg"></p>
         <ul class="coach-checks" id="coach-checks" aria-live="polite"></ul>
         <div class="coach-actions">
-          <button type="button" class="g-act" id="coach-template">Use template</button>
+          <button type="button" class="g-act" id="coach-template">Start the list</button>
           <button type="button" class="g-act" id="coach-ask">Ask Claude</button>
           <a class="b-link" id="coach-guide" target="_blank" rel="noopener" hidden>Guide ↗</a>
         </div>

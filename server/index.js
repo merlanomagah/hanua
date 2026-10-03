@@ -5,7 +5,7 @@ import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { notionEnabled, queryArea, getSchema, toNotionProperties, clearedProperties, createPage, updatePage, NotionError } from "./notion.js";
-import { claudeEnabled, ask, draftEntry, coachGoal } from "./claude.js";
+import { claudeEnabled, ask, draftEntry, coachGoal, suggestChildren } from "./claude.js";
 import { getMoney } from "./money.js";
 import { musicStatus, musicAction, playPlaylist } from "./music.js";
 
@@ -118,15 +118,15 @@ app.post("/api/areas/:id/records/:recordId/done", async (req, res, next) => {
 // ---------- goals (the pin board): an ADO-style hierarchy, Epic > Feature > PBI > Task ----------
 // Notion is their home. Each goal links to its Parent; progress rolls up from children here, never stored.
 
-const GOAL_FORM = ["title", "level", "status", "area", "due", "start", "description", "parent", "priority", "effort", "progress", "completed"];
-const goalColumn = { title: "title", level: "level", status: "status", area: "area", due: "date", start: "start", description: "description", parent: "parent", priority: "priority", effort: "effort", progress: "amount", completed: "completed" };
+const GOAL_FORM = ["title", "level", "status", "area", "due", "start", "why", "doneWhen", "description", "parent", "priority", "effort", "progress", "completed"];
+const goalColumn = { title: "title", level: "level", status: "status", area: "area", due: "date", start: "start", why: "why", doneWhen: "doneWhen", description: "description", parent: "parent", priority: "priority", effort: "effort", progress: "amount", completed: "completed" };
 
 function toGoal(r) {
   const f = goalsArea.fields, v = r.fields || {};
   const first = (x) => (Array.isArray(x) ? x[0] ?? null : x ?? null);
   return {
     id: r.id, url: r.url, title: r.title, due: r.date, status: r.status,
-    level: v[f.level] ?? null, area: v[f.area] ?? null, description: v[f.description] ?? "",
+    level: v[f.level] ?? null, area: v[f.area] ?? null, description: v[f.description] ?? "", why: v[f.why] ?? "", doneWhen: v[f.doneWhen] ?? "",
     parent: first(v[f.parent]), priority: v[f.priority] ?? null, effort: v[f.effort] ?? null, start: v[f.start] ?? null, completed: v[f.completed] ?? null,
     progressSet: typeof r.amount === "number" ? Math.round(r.amount * 100) : null,
   };
@@ -200,6 +200,18 @@ app.post("/api/goals/coach", async (req, res, next) => {
   if (!claudeEnabled()) return res.status(503).json({ error: "Add ANTHROPIC_API_KEY to .env to use the coach." });
   try {
     res.json(await coachGoal(goal, parent));
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Ask Claude which children a goal still needs, from its why, its done-when and the children it has.
+app.post("/api/goals/ideas", async (req, res, next) => {
+  const { parent, children, level } = req.body ?? {};
+  if (!parent?.title) return res.status(400).json({ error: "Pick a parent first." });
+  if (!claudeEnabled()) return res.status(503).json({ error: "Add ANTHROPIC_API_KEY to .env to use ideas." });
+  try {
+    res.json(await suggestChildren(parent, children || [], level));
   } catch (err) {
     next(err);
   }

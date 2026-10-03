@@ -138,7 +138,8 @@
         "Level": "Epic",
         "Area": "Personal",
         "Priority": 1,
-        "Description": "First range on sale before Christmas"
+        "Why": "So that I'm earning from something I made, and Bula has a real product to build on",
+        "Done when": "- First range is on sale online\n- 20 pieces sold before Christmas\n- I know which design sells best"
       }
     },
     {
@@ -165,7 +166,9 @@
         "Parent": [
           "sample-goal-0"
         ],
-        "Priority": 1
+        "Priority": 1,
+        "Why": "So that there's something to sell when the shop opens",
+        "Done when": "- Three designs finalised\n- Samples approved\n- Stock ordered"
       }
     },
     {

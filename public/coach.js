@@ -8,14 +8,22 @@ export const GUIDE = {
     what: "An outcome you want your life to look like by the end of the year. Big, worth it, and too large to do in one go.",
     example: "Move to Sydney · Run a half marathon · Launch Bula Collective's first range",
     horizonDays: 400,
-    template: "Outcome: \nSo that: \n\nWe'll know it's done when:\n- \n- \n- ",
+    why: "Why does this matter to you? e.g. So that I'm closer to family and can start the next chapter",
+    doneLabel: "We'll know it's done when (2 to 4 measurable changes)",
+    done: "- Signed a lease in Sydney\n- Started a job there\n- Apartment here rented out",
+    scaffold: "- \n- \n- ",
+    childHint: "Each point is a clue to a Feature you'll need.",
   },
   Feature: {
     when: "This quarter",
     what: "One of the mini-projects that together achieve the Epic, each finished within about a quarter.",
     example: "Under “Move to Sydney”: Rent out the apartment · Land a job in Sydney · Declutter the flat · Close down power and broadband",
     horizonDays: 120,
-    template: "So that: \n\nDone when:\n- \n- ",
+    why: "How does it serve the Epic? e.g. So that I have income lined up before I move",
+    doneLabel: "Done when (2 to 4 measurable points)",
+    done: "- Accepted an offer in Sydney\n- Start date confirmed",
+    scaffold: "- \n- ",
+    childHint: "Each point is a clue to a PBI: a slice you can finish in a month.",
   },
   PBI: {
     when: "This month",
@@ -23,7 +31,11 @@ export const GUIDE = {
     example: "Shortlist three suburbs to live in · Apply for five Sydney roles",
     horizonDays: 45,
     maxEffort: 8,
-    template: "As me, I want  so that \n\nDone when:\n- Given , when , then \n- ",
+    why: "So that … e.g. So that I only spend viewing trips on places I'd actually live",
+    doneLabel: "Done when (acceptance criteria)",
+    done: "- Given my budget and commute, when I compare suburbs, then I have three picks",
+    scaffold: "- Given , when , then \n- ",
+    childHint: "Break it into Tasks you can each do in a day or two.",
   },
   Task: {
     when: "This week",
@@ -31,7 +43,10 @@ export const GUIDE = {
     example: "Book a flight for flat viewings · Email the recruiter at Atlassian",
     horizonDays: 14,
     maxEffort: 3,
-    template: "Done when: ",
+    why: "",
+    doneLabel: "Done when (one line is enough)",
+    done: "- Email sent to three agents",
+    scaffold: "- ",
   },
 };
 
@@ -77,20 +92,28 @@ export function coachChecks(values, ctx = {}) {
       : { ok: false, text: `Link it to a ${ctx.parentLevel || "parent"}: every piece of work should serve something bigger` });
   }
 
-  if (values.level === "Epic" || values.level === "Feature") {
-    out.push(/so that|because|\bwhy\b/i.test(desc.replace(/So that:\s*$/m, ""))
+  const why = (values.why || "").replace(/^so that\s*\.*\s*$/i, "").trim();
+  if (values.level !== "Task") {
+    out.push(why
       ? { ok: true, text: "Has a why" }
       : { ok: false, text: "Add the why (“So that …”). It's what keeps you going, and tells you when to stop" });
   }
-  if (values.level !== "Task") {
-    // filled-in bullets only (an untouched template doesn't count)
-    const listed = (desc.match(/^[ \t]*-[ \t]+(?!Given[ \t]*,)\S/gim) || []).length;
-    const gwt = /given\s+\w.*when\s+\w.*then\s+\w/i.test(desc);
-    out.push((/done when|know it's done/i.test(desc) && listed) || gwt
-      ? { ok: true, text: "Says what done looks like" }
-      : { ok: false, text: values.level === "PBI"
-          ? "Add a “Done when” (Given … when … then …) so you know when it's finished"
-          : "Add 2 to 4 measurable “we'll know it's done when” points: what will have changed, not what you'll do" });
+  // filled-in bullets only (an untouched scaffold doesn't count)
+  const done = values.doneWhen || "";
+  const points = (done.match(/^[ \t]*[-•*][ \t]+(?!Given[ \t]*,)\S/gim) || []).length + (done.trim() && !/^[ \t]*[-•*]/m.test(done) ? 1 : 0);
+  const gwt = /given\s+\w.*when\s+\w.*then\s+\w/i.test(done);
+  if (values.level === "Epic" || values.level === "Feature") {
+    out.push(points >= 2
+      ? { ok: true, text: `Says what done looks like (${points} point${points > 1 ? "s" : ""})` }
+      : { ok: false, text: points === 1
+          ? "Add one or two more “done when” points. What else will have changed?"
+          : "Add 2 to 4 measurable “done when” points: what will have changed, not what you'll do" });
+  } else if (values.level === "PBI") {
+    out.push(points || gwt
+      ? { ok: true, text: "Has acceptance criteria" }
+      : { ok: false, text: "Add a “done when” (Given … when … then …) so you know when it's finished" });
+  } else if (points) {
+    out.push({ ok: true, text: "Clear finish line" });
   }
 
   if (values.due && ctx.today) {

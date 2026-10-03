@@ -845,6 +845,24 @@ button:disabled { opacity: 0.5; cursor: progress; }
 .coach-suggest pre { margin: 0; white-space: pre-wrap; font: 12px/1.45 var(--ui); color: var(--ink-3); }
 .coach-suggest .g-act { justify-self: start; }
 .coach-small { margin: 8px 0 0; font: 11px var(--ui); color: var(--faint); }
+/* "From the Epic": the parent's why and done-when, shown while planning a child */
+.coach-parent { display: flex; flex-direction: column; gap: 6px; margin: -16px -16px 8px; padding: 14px 16px; border-bottom: 1px solid var(--hair); background: var(--cream); border-radius: 4px 4px 0 0; }
+.coach-parent .eyebrow { font-size: 9px; color: var(--muted); }
+.cp-title { font: italic 500 19px/1.2 var(--display); color: var(--ink); }
+.cp-why { margin: 0; font: italic 15px/1.35 var(--display); color: var(--ink-3); }
+.cp-label { display: block; margin-top: 4px; font: 9px var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
+.cp-points, .cp-kids { margin: 4px 0 0; padding-left: 16px; font: 13px/1.4 var(--ui); color: var(--ink-2); }
+.cp-kids li.done { color: var(--muted); text-decoration: line-through; }
+.cp-hint, .cp-missing { margin: 4px 0 0; font: italic 14px/1.35 var(--display); color: var(--muted); }
+.cp-ask { margin: 6px 0 0; padding-top: 8px; border-top: 1px dashed var(--border); font: italic 15px/1.35 var(--display); color: var(--ink-3); }
+.coach-parent > .g-act { align-self: flex-start; }
+.coach-ideas { display: grid; gap: 6px; }
+.cp-gaps { margin: 4px 0 0; font: 13px/1.4 var(--ui); color: var(--ink-3); }
+.cp-idea { display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; align-items: center; padding: 8px 10px; background: var(--page); border-left: 3px solid var(--terra); border-radius: 2px; }
+.cp-idea b { font: 16px/1.2 var(--display); font-weight: 400; color: var(--ink); }
+.cp-idea span { grid-column: 1; font: 11px var(--ui); color: var(--muted); }
+.cp-idea .g-act { grid-column: 2; grid-row: 1 / 3; }
+.g-why { font: italic 15px/1.3 var(--display); color: var(--ink-4); }
 @media (max-width: 760px) { .goal-layout { grid-template-columns: 1fr; } .coach { position: static; } }
 
 /* ---------- record player on the shelf (drawn until the Canva image arrives) ---------- */

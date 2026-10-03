@@ -967,6 +967,7 @@ function goalCard(g, i, thread) {
       g.area ? h("span", { className: "g-area", textContent: g.area }) : null),
     h("span", { className: "g-title", textContent: g.title }),
     boardView === "kanban" && parent ? h("span", { className: "g-parent", textContent: `↑ ${parent.title}` }) : null,
+    focusGoal === g.id && g.why ? h("span", { className: "g-why", textContent: g.why }) : null,
     h("span", { className: "g-bar", title: kids ? `${g.childDone} of ${kids} done` : "" }, Object.assign(h("i"), { style: `width:${g.progress ?? 0}%` })),
     h("span", { className: "g-meta" },
       h("span", { className: "g-state" }, h("i"), g.status || "New"),
@@ -1125,6 +1126,10 @@ function openGoal(g, preset = {}) {
   f.start.value = dayOf(v.start || "");
   f.due.value = dayOf(v.due || "");
   f.description.value = v.description || "";
+  f.why.value = v.why || "";
+  f.doneWhen.value = v.doneWhen || "";
+  ideasFor = null;
+  $("coach-parent").dataset.for = "";
   // a goal with children has its progress worked out from them
   const kids = g?.children?.length || 0;
   $("progress-field").hidden = kids > 0;
@@ -1147,13 +1152,21 @@ $("goal-form").elements.level.addEventListener("change", (e) => fillParents(e.ta
 function formValues() {
   const f = $("goal-form").elements;
   return { id: editingGoal?.id, title: f.title.value, level: f.level.value, parent: f.parent.disabled ? "" : f.parent.value, status: f.status.value,
-    priority: f.priority.value, effort: f.effort.value, area: f.area.value, start: f.start.value, due: f.due.value, description: f.description.value };
+    priority: f.priority.value, effort: f.effort.value, area: f.area.value, start: f.start.value, due: f.due.value,
+    why: f.why.value, doneWhen: f.doneWhen.value, description: f.description.value };
 }
 function updateCoach() {
   const v = formValues();
   const guide = GUIDE[v.level] || GUIDE.Task;
   const parentLevel = LEVELS[levelIndex(v.level) - 1]?.name;
   const siblings = state.goals.goals.filter((g) => g.level === v.level && !isGoalDone(g) && g.id !== v.id && (v.level === "Epic" || (v.parent && g.parent === v.parent)));
+  // level-specific labels and examples on the form
+  const f = $("goal-form").elements;
+  $("why-field").hidden = v.level === "Task";
+  f.why.placeholder = guide.why;
+  $("done-label").textContent = guide.doneLabel;
+  f.doneWhen.placeholder = guide.done;
+  renderCoachParent(v);
   $("coach-level").textContent = `${v.level} · ${guide.when}`;
   $("coach-what").textContent = guide.what;
   $("coach-eg").textContent = `e.g. ${guide.example}`;
@@ -1167,11 +1180,73 @@ $("goal-form").addEventListener("change", updateCoach);
 
 $("coach-template").addEventListener("click", () => {
   const f = $("goal-form").elements;
-  const t = (GUIDE[f.level.value] || GUIDE.Task).template;
-  f.description.value = f.description.value.trim() ? `${f.description.value.trimEnd()}\n\n${t}` : t;
-  f.description.focus();
+  const t = (GUIDE[f.level.value] || GUIDE.Task).scaffold;
+  if (f.level.value !== "Task" && !f.why.value.trim()) f.why.value = "So that ";
+  f.doneWhen.value = f.doneWhen.value.trim() ? `${f.doneWhen.value.trimEnd()}\n${t}` : t;
+  (f.level.value !== "Task" && f.why.value === "So that " ? f.why : f.doneWhen).focus();
   updateCoach();
 });
+
+// "From the Epic": the parent's why and done-when beside the form, plus the children it already has,
+// so each child is planned against what the parent needs. Ideas from Claude fill gaps.
+let ideasFor = null;
+function renderCoachParent(v) {
+  const box = $("coach-parent");
+  const parent = goalById(v.parent);
+  if (!parent) { box.hidden = true; ideasFor = null; return; }
+  box.hidden = false;
+  const kids = state.goals.goals.filter((g) => g.parent === parent.id && g.id !== v.id);
+  const pg = GUIDE[parent.level] || GUIDE.Task;
+  const points = (parent.doneWhen || "").split("\n").map((l) => l.replace(/^[ \t]*[-•*][ \t]*/, "").trim()).filter(Boolean);
+  if (ideasFor === parent.id && box.dataset.for === parent.id) return; // keep ideas showing while typing
+  box.dataset.for = parent.id;
+  const ideasBtn = state.goals.coach ? h("button", { type: "button", className: "g-act", textContent: `Ideas for missing ${v.level}s` }) : null;
+  const ideas = h("div", { className: "coach-ideas" });
+  ideasBtn?.addEventListener("click", () => loadIdeas(parent, kids, v.level, ideas, ideasBtn));
+  box.replaceChildren(
+    h("span", { className: "eyebrow", textContent: `From the ${parent.level}` }),
+    h("b", { className: "cp-title", textContent: parent.title }),
+    parent.why ? h("p", { className: "cp-why", textContent: parent.why }) : h("p", { className: "cp-missing", textContent: `This ${parent.level} has no why yet.` }),
+    points.length
+      ? h("div", {}, h("span", { className: "cp-label", textContent: "Done when" }), h("ul", { className: "cp-points" }, points.map((p) => h("li", { textContent: p }))), pg.childHint ? h("p", { className: "cp-hint", textContent: pg.childHint }) : null)
+      : h("p", { className: "cp-missing", textContent: `No “done when” on the ${parent.level} yet. Adding one makes it easier to see which ${v.level}s you need.` }),
+    h("div", {}, h("span", { className: "cp-label", textContent: `${v.level}s so far (${kids.length})` }),
+      kids.length ? h("ul", { className: "cp-kids" }, kids.map((k) => h("li", { className: isGoalDone(k) ? "done" : "", textContent: k.title }))) : h("p", { className: "cp-missing", textContent: "None yet: this is the first." })),
+    h("p", { className: "cp-ask", textContent: `If every ${v.level} were done, would “${parent.title}” be done?` }),
+    ...[ideasBtn, ideas].filter(Boolean));
+}
+
+async function loadIdeas(parent, kids, level, box, btn) {
+  btn.disabled = true;
+  ideasFor = parent.id;
+  box.replaceChildren(h("p", { className: "coach-reply loading", textContent: "Claude is looking for gaps…" }));
+  try {
+    const r = await api("/api/goals/ideas", {
+      parent: { level: parent.level, title: parent.title, why: parent.why, doneWhen: parent.doneWhen, notes: parent.description },
+      children: kids.map((k) => k.title), level,
+    });
+    const f = $("goal-form").elements;
+    box.replaceChildren(
+      h("p", { className: "cp-gaps", textContent: r.gaps }),
+      ...r.ideas.map((idea) => {
+        const use = h("button", { type: "button", className: "g-act", textContent: "Use" });
+        use.addEventListener("click", () => {
+          f.title.value = idea.title;
+          if (level !== "Task") f.why.value = idea.why;
+          f.doneWhen.value = idea.doneWhen;
+          updateCoach();
+          use.textContent = "Using ✓";
+        });
+        return h("div", { className: "cp-idea" }, h("b", { textContent: idea.title }), idea.covers ? h("span", { textContent: `for: ${idea.covers}` }) : null, use);
+      }),
+      h("p", { className: "coach-small", textContent: "Ideas only. Pick one to fill in the form; nothing saves until you press Save." }));
+  } catch (err) {
+    box.replaceChildren(h("p", { className: "coach-reply error", textContent: err.message }));
+    ideasFor = null;
+  } finally {
+    btn.disabled = false;
+  }
+}
 
 $("coach-ask").addEventListener("click", async () => {
   const v = formValues();
@@ -1183,7 +1258,7 @@ $("coach-ask").addEventListener("click", async () => {
   box.textContent = "Claude is reading your goal…";
   $("coach-ask").disabled = true;
   try {
-    const r = await api("/api/goals/coach", { goal: v, parent: parent ? { level: parent.level, title: parent.title } : null });
+    const r = await api("/api/goals/coach", { goal: v, parent: parent ? { level: parent.level, title: parent.title, why: parent.why, doneWhen: parent.doneWhen } : null });
     const use = (label, fn) => { const b = h("button", { type: "button", className: "g-act", textContent: label }); b.addEventListener("click", () => { fn(); updateCoach(); b.textContent = "Used ✓"; b.disabled = true; }); return b; };
     const f = $("goal-form").elements;
     box.className = "coach-reply";
@@ -1191,8 +1266,10 @@ $("coach-ask").addEventListener("click", async () => {
       h("b", { textContent: r.verdict === "good" ? "Looks good" : "A few tweaks" }),
       h("ul", {}, r.feedback.map((t) => h("li", { textContent: t }))),
       r.title && r.title.trim() !== v.title.trim() ? h("div", { className: "coach-suggest" }, h("span", { textContent: `Title: “${r.title}”` }), use("Use title", () => { f.title.value = r.title; })) : null,
-      r.description && r.description.trim() !== v.description.trim() ? h("div", { className: "coach-suggest" },
-        h("pre", { textContent: r.description }), use("Use description", () => { f.description.value = r.description; })) : null,
+      r.why && r.why.trim() !== v.why.trim() && v.level !== "Task" ? h("div", { className: "coach-suggest" },
+        h("pre", { textContent: r.why }), use("Use why", () => { f.why.value = r.why; })) : null,
+      r.doneWhen && r.doneWhen.trim() !== v.doneWhen.trim() ? h("div", { className: "coach-suggest" },
+        h("pre", { textContent: r.doneWhen }), use("Use done when", () => { f.doneWhen.value = r.doneWhen; })) : null,
       h("p", { className: "coach-small", textContent: "Suggestions only. Nothing is saved until you press Save." }));
   } catch (err) {
     box.className = "coach-reply error";
@@ -1209,6 +1286,7 @@ $("goal-dialog").addEventListener("close", async () => {
   const values = {
     title: f.title.value.trim(), level: f.level.value, parent: f.parent.disabled ? "" : f.parent.value, status: f.status.value,
     priority: f.priority.value, effort: f.effort.value, area: f.area.value, start: f.start.value, due: f.due.value, description: f.description.value.trim(),
+    why: f.level.value === "Task" ? "" : f.why.value.trim().replace(/^so that\s*$/i, ""), doneWhen: f.doneWhen.value.trim(),
   };
   const g = editingGoal;
   if (!(g?.children?.length)) values.progress = f.progress.value;

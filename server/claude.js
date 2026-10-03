@@ -90,29 +90,68 @@ In "note", say in one short sentence what you assumed, or "" if nothing.`,
   return response.parsed_output;
 }
 
-// The goal coach: reviews one goal (Epic / Feature / PBI / Task) against Agile habits and suggests a
-// better title and description. Suggestions only: the user decides what to keep, and nothing is saved here.
+const COACH_HABITS = `The person plans their own life with Agile habits, in an ADO-style hierarchy:
+Epic = an outcome for this year; Feature = one of the mini-projects that together achieve the Epic (about a quarter); PBI = a slice of value this month; Task = a next action this week.
+Every goal has: a title that names the outcome, not the topic ("Move to Sydney", not "Sydney move"; Tasks start with a verb); a Why ("So that ...", for Epics, Features and PBIs); and Done when (acceptance criteria): for Epics and Features 2-4 measurable points about what will have changed, not activities; for PBIs "Done when" bullets or Given/When/Then; for Tasks one line. Work fits its level's timeframe; anything too big is split into vertical slices that each deliver something real.
+Write in plain, warm New Zealand English. Keep the person's own facts and words; never invent facts, leave "..." where only they know.`;
+
+// The goal coach: reviews one goal against the habits and suggests a better title, why and done-when.
+// Suggestions only: the user decides what to keep, and nothing is saved here.
 export async function coachGoal(goal, parent) {
   const Review = z.object({
     verdict: z.enum(["good", "tweak"]),
     feedback: z.array(z.string()).max(3),
     title: z.string(),
-    description: z.string(),
+    why: z.string(),
+    doneWhen: z.string(),
   });
   const response = await getClient().messages.parse({
     model: MODEL,
     max_tokens: 4000,
     output_config: { effort: "low", format: zodOutputFormat(Review) },
-    system: `You coach one person who is learning to plan their own life with Agile habits, in an ADO-style hierarchy:
-Epic = an outcome for this year; Feature = a milestone this quarter; PBI = a slice of value this month; Task = a next action this week.
-Good habits: name the outcome, not the topic ("Move to Sydney", not "Sydney move"); Tasks start with a verb; Epics and Features have a why ("So that ...") and 2-4 measurable "we'll know it's done when" points about what changes, not activities; PBIs are INVEST-shaped (small, valuable on their own, testable) with "Done when" acceptance criteria (Given/When/Then is fine); work fits its level's timeframe; anything too big is split into vertical slices.
-Review the goal. "feedback": up to 3 short, warm, specific suggestions in plain New Zealand English, each teaching the principle behind it in a few words. If it's already good, say what makes it good in one item and use verdict "good".
-"title": your suggested title (or the same title if it's fine). "description": an improved description in the right shape for its level, keeping the person's own facts and words; never invent facts, leave blanks like "..." where only they know. Plain text, "- " bullets.`,
+    system: `${COACH_HABITS}
+Review the goal. "feedback": up to 3 short, specific suggestions, each teaching the principle behind it in a few words. If it's already good, say what makes it good in one item and use verdict "good".
+"title", "why" (starting "So that"; empty for a Task) and "doneWhen" ("- " bullets): your improved versions, or the same text if they're fine.`,
     messages: [{
       role: "user",
-      content: `Today: ${new Date().toISOString().slice(0, 10)} (a quarter is about 3 months from today)\nLevel: ${goal.level}\nTitle: ${goal.title}\nDescription: ${goal.description || "(none)"}\nDue: ${goal.due || "(none)"}\nEffort: ${goal.effort || "(none)"}\nParent ${parent ? `(${parent.level}): ${parent.title}` : ": (none)"}`,
+      content: `Today: ${new Date().toISOString().slice(0, 10)} (a quarter is about 3 months from today)
+Level: ${goal.level}
+Title: ${goal.title}
+Why: ${goal.why || "(none)"}
+Done when: ${goal.doneWhen || "(none)"}
+Notes: ${goal.description || "(none)"}
+Due: ${goal.due || "(none)"}  Effort: ${goal.effort || "(none)"}
+Parent ${parent ? `(${parent.level}): ${parent.title}${parent.why ? `\nParent why: ${parent.why}` : ""}${parent.doneWhen ? `\nParent done when: ${parent.doneWhen}` : ""}` : ": (none)"}`,
     }],
   });
   if (response.stop_reason === "refusal" || !response.parsed_output) throw new Error("Claude couldn't review this one. Try adding a little more detail.");
+  return response.parsed_output;
+}
+
+// Which children does this goal still need? Reads the parent's why and done-when (each done-when point is a
+// clue to a child) against the children it already has. Ideas only; the user picks what to add.
+export async function suggestChildren(parent, children, level) {
+  const Ideas = z.object({
+    gaps: z.string(),
+    ideas: z.array(z.object({ title: z.string(), why: z.string(), doneWhen: z.string(), covers: z.string() })).max(5),
+  });
+  const response = await getClient().messages.parse({
+    model: MODEL,
+    max_tokens: 4000,
+    output_config: { effort: "low", format: zodOutputFormat(Ideas) },
+    system: `${COACH_HABITS}
+You help break a goal down. Given a parent goal, its why, its done-when points and the ${level}s it already has, suggest the ${level}s that seem to be missing so that, all done together, the parent would be done (the completeness test). Don't repeat ones that already exist. 0 to 5 ideas, most important first.
+For each: "title" (outcome-named, or verb-first for a Task), "why" ("So that ..."; empty for a Task), "doneWhen" ("- " bullets, short), "covers" (which done-when point or part of the why it serves, a few words).
+"gaps": one sentence on what's missing, or that it already looks complete.`,
+    messages: [{
+      role: "user",
+      content: `Parent (${parent.level}): ${parent.title}
+Why: ${parent.why || "(none)"}
+Done when: ${parent.doneWhen || "(none)"}
+Notes: ${parent.notes || "(none)"}
+${level}s it already has: ${children.length ? children.map((c) => `\n- ${c}`).join("") : "none yet"}`,
+    }],
+  });
+  if (response.stop_reason === "refusal" || !response.parsed_output) throw new Error("Claude couldn't come up with ideas for this one.");
   return response.parsed_output;
 }
