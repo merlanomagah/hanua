@@ -8,6 +8,20 @@ A personal daily dashboard drawn as a room: a bookcase menu (Notion databases), 
 - The owner isn't a developer. Explain steps in plain language, using numbered tables. If a change needs `npm install` or a new `.env` value, say so explicitly.
 - Never commit `.env` (it holds the Notion and Claude keys).
 
+## Hanua OS (the project brain, in Notion)
+
+The reasoning behind Hanua lives in [Hanua OS](https://app.notion.com/p/3ee16603f0bd81be9dbec1188be4de79), built from the Brain Playbook. This file holds the routine; if the two disagree on routine, this file wins.
+
+**Start of session:** read [Context](https://app.notion.com/p/3ee16603f0bd815e968dde7b28bc0adc), then [Decision Model](https://app.notion.com/p/3ee16603f0bd818a9baed25485c8a86d). Before any design or feature work, also read [Preferences](https://app.notion.com/p/3ee16603f0bd81a2a90fffb302346d6e), so the owner never has to repeat what they like.
+
+**Close-out, before the session ends:**
+1. Update the [Map](https://app.notion.com/p/cf1c0555321d4865b4cc354d21a58da4) row for every part touched (status, confidence, what it shows, reads from / writes to, code, next action). A new room, panel or data source gets a new row.
+2. Follow the cascade table on the Decision Model for anything that changed (e.g. a renamed Notion column also means `config/areas.json`).
+3. Add a [Session Diary](https://app.notion.com/p/e21cd4138c75477ebe3a75b1b3a229ad) row, linked to the Map rows touched. Never skip "Reasoning worth keeping".
+4. A belief changed → a [Learning Log](https://app.notion.com/p/3ee16603f0bd8106b753c3be394efe0d) row. Then ask: would this change how a *different* system gets built, in a *different* domain? If yes, also add it to the Brain Playbook's Playbook Learning Log and mark the row Promoted.
+5. A preference stated or something deliberately cut → Preferences (and its cut list). A new image → full-size original in `prototypes/room-dashboard/assets/`, resized copy in `public/assets/`, and a row in the image library.
+6. At the end of every new room, run the promotion check (unpromoted Learning Log rows up; Playbook patterns not adopted, offered as proposals) and update Hanua OS's row in the OS Registry with the sweep date.
+
 ## Running and checking
 
 - `npm start`, or `scripts/start.sh` (it backgrounds the server, then opens a new Safari window). `scripts/restart.sh` ("Restart Hanua.command") stops it and starts it fresh, for after an update. Port comes from `.env` (`PORT`), default 3000.
@@ -21,5 +35,5 @@ A personal daily dashboard drawn as a room: a bookcase menu (Notion databases), 
 - `server/money.js`: reads Pūtea's read-only local API (`PUTEA_URL`, default `http://127.0.0.1:3456`). Pūtea lives in the separate `merlanomagah/putea` repo and syncs Akahu bank data.
 - `config/areas.json`: one entry per book (Notion database ID and column names). The page uses `work` for tasks, `calendar` for events, `learning` for notes and `relationships` for people.
 - `public/`: the page (plain HTML, CSS and JS, no build step). It follows the Claude Design "Room Dashboard" handoff (Bula Collective palette).
-- `public/assets/`: the room images (wall, desk, bookcase, objects), resized from the design handoff. They were generated with Canva AI, so check licensing before making anything public.
-- `prototypes/`: the product blueprint and an earlier 3D room prototype. For reference only.
+- `public/assets/`: the room images (wall, desk, bookcase, objects), resized from the originals in `prototypes/room-dashboard/assets/` (same names). They were generated with Canva AI, so check licensing before making anything public.
+- `prototypes/`: the product blueprint, an earlier 3D room prototype, and `room-dashboard/` (the Claude Design handoff for the current page, with full-size original images). For reference only; the page never loads from here.

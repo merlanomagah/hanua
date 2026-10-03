@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400;1,500&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+html,body{margin:0;background:#F5F0E8;color:#1C1814;-webkit-font-smoothing:antialiased;}
+*{box-sizing:border-box;}
+a{color:#C4602A;text-decoration:none;}
+a:hover{color:#9E3A10;text-decoration:underline;}
+input::placeholder{color:#A08D74;}
+input:focus{outline:none;}
+</style>
+</helmet>
+<div style="display:grid;grid-template-columns:280px minmax(0,1fr);min-height:100vh;font-family:'DM Sans',sans-serif;">
+
+  <aside style="position:sticky;top:0;height:100vh;z-index:5;padding:14px 0 14px 14px;background:#F5F0E8;">
+    <div style="position:relative;height:100%;display:flex;flex-direction:column;padding:22px 20px 18px;background-image:url('assets/shelf/case.png');background-size:100% 100%;border-radius:2px;box-shadow:14px 0 30px -12px rgba(28,24,20,0.5);">
+      <div style="display:flex;flex-direction:column;align-items:center;gap:4px;padding:30px 6px 10px;">
+        <span style="font-family:'Cormorant Garamond',serif;font-style:italic;font-size:32px;line-height:1;color:#F5F0E8;text-shadow:0 1px 0 rgba(0,0,0,0.6),0 0 18px rgba(240,201,174,0.35);">Hanua</span>
+        <span style="font-family:'DM Mono',monospace;font-size:9px;letter-spacing:0.28em;color:#D4C8B0;">LIBRARY</span>
+      </div>
+      <sc-for list="{{ shelves }}" as="shelf" hint-placeholder-count="2">
+        <div style="display:flex;flex-direction:column;margin-top:22px;">
+          <div style="display:flex;flex-direction:column;padding:0 4px;margin-bottom:-3px;position:relative;z-index:1;">
+            <sc-for list="{{ shelf.items }}" as="bk" hint-placeholder-count="3">
+              <button onClick="{{ bk.select }}" title="{{ bk.name }}" style="position:relative;display:block;width:{{ bk.w }};margin-left:{{ bk.ml }};padding:0;border:0;background:transparent;cursor:pointer;transform:{{ bk.tx }};transition:transform 300ms cubic-bezier(0.25,0.1,0.25,1),filter 300ms;filter:{{ bk.filter }};" style-hover="transform:translateX(6px);">
+                <span style="display:block;width:100%;height:36px;background-image:{{ bk.bg }};background-size:100% 100%;background-repeat:no-repeat;"></span>
+                <span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:0 {{ bk.padR }} 0 {{ bk.padL }};">
+                  <span style="font-family:'Cormorant Garamond',serif;font-style:italic;font-weight:500;font-size:18px;line-height:1;white-space:nowrap;background:linear-gradient(180deg,#FAF0EA 0%,#F0C9AE 55%,#C9A27A 100%);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 1px 0 rgba(0,0,0,0.55));">{{ bk.name }}</span>
+                  <span style="font-family:'DM Mono',monospace;font-size:9px;letter-spacing:0.14em;color:#E0D5BF;opacity:0.85;text-shadow:0 1px 0 rgba(0,0,0,0.5);">{{ bk.vol }}</span>
+                </span>
+              </button>
+            </sc-for>
+          </div>
+          <img src="assets/shelf/plank.png" alt="" style="display:block;width:100%;height:auto;filter:drop-shadow(0 8px 8px rgba(0,0,0,0.55));">
+        </div>
+      </sc-for>
+      <div style="flex:1;"></div>
+      <div style="display:flex;flex-direction:column;">
+        <div style="display:flex;align-items:flex-end;gap:12px;padding:0 8px;margin-bottom:-3px;position:relative;z-index:1;">
+          <img src="assets/shelf/bookend.png" alt="" style="display:block;width:46px;height:auto;filter:drop-shadow(-3px 4px 5px rgba(0,0,0,0.5));">
+          <span style="flex:1;padding-bottom:6px;font-family:'Cormorant Garamond',serif;font-style:italic;font-size:14px;line-height:1.35;color:#D4C8B0;">Plan with purpose.<br>Live with others in mind.</span>
+        </div>
+        <img src="assets/shelf/plank.png" alt="" style="display:block;width:100%;height:auto;filter:drop-shadow(0 8px 8px rgba(0,0,0,0.55));">
+      </div>
+    </div>
+  </aside>
+
+  <main style="position:relative;min-width:0;">
+
+    <section data-screen-label="Wall" style="position:relative;min-height:100vh;overflow:hidden;background-color:#C1B6AC;background-image:{{ wallBg }};background-size:100% 100%,max(100vw - 280px,1500px) calc(max(100vw - 280px,1500px) * 0.6667),max(100vw - 280px,1500px) auto;background-repeat:no-repeat;background-position:0 0,center top,center top;padding:36px clamp(28px,5vw,72px) 0;">
+      <sc-if value="{{ showLight }}" hint-placeholder-val="{{ true }}">
+        <div style="position:absolute;top:-10%;right:6%;width:46%;height:120%;pointer-events:none;background:linear-gradient(180deg,rgba(255,255,255,0.55),rgba(255,255,255,0) 80%);transform:skewX(-18deg);filter:blur(18px);"></div>
+      </sc-if>
+      <div style="position:absolute;inset:0;z-index:3;pointer-events:none;background:#1C1814;opacity:{{ dimOpacity }};transition:opacity 600ms;"></div>
+
+      <div style="position:relative;max-width:1240px;margin:0 auto;display:flex;flex-direction:column;">
+        <div style="display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap;">
+          <sc-for list="{{ chips }}" as="c" hint-placeholder-count="3">
+            <span style="display:flex;align-items:center;gap:7px;white-space:nowrap;padding:6px 10px;background:#FAF7F2;border:1px solid #E0D5BF;border-radius:2px;box-shadow:0 1px 1px rgba(28,24,20,0.06);font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.06em;color:#42382C;">
+              <span style="width:6px;height:6px;border-radius:50%;background:{{ c.color }};box-shadow:0 0 0 2px {{ c.halo }};"></span>{{ c.label }}
+            </span>
+          </sc-for>
+        </div>
+
+        <div style="display:flex;flex-wrap:wrap;align-items:stretch;gap:48px 64px;margin-top:4px;">
+          <div style="flex:1.4 1 520px;min-width:0;display:flex;flex-direction:column;gap:44px;padding-top:34px;">
+            <div style="position:relative;z-index:4;">
+              <div style="display:flex;align-items:flex-end;gap:6px;padding:0 4%;margin-bottom:-7px;position:relative;z-index:1;">
+                <button onClick="{{ toggleLamp }}" title="{{ lampLabel }}" style="position:relative;flex:none;width:clamp(84px,16%,118px);padding:0;border:0;background:transparent;cursor:pointer;display:block;">
+                <span style="position:absolute;left:50%;top:38%;width:440px;height:440px;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(circle,rgba(240,201,174,0.75) 0%,rgba(240,201,174,0.3) 32%,rgba(240,201,174,0) 68%);opacity:{{ glowOpacity }};transition:opacity 600ms;pointer-events:none;"></span>
+                <img src="assets/obj/lamp-off.png" alt="Lamp" style="position:relative;display:block;width:100%;height:auto;filter:drop-shadow(-6px 8px 10px rgba(28,24,20,0.28));">
+                <img src="assets/obj/lamp-on.png" alt="" style="position:absolute;inset:0;display:block;width:100%;height:auto;opacity:{{ glowOpacity }};transition:opacity 400ms;">
+              </button>
+                <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:12px;padding-bottom:14px;">
+                <span style="font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.22em;color:#42382C;">{{ dateLabel }}</span>
+                <h1 style="margin:0;font-family:'Cormorant Garamond',serif;font-weight:300;font-style:italic;font-size:clamp(42px,4.4vw,74px);white-space:nowrap;line-height:0.9;letter-spacing:-0.025em;color:#2E2620;text-shadow:0 1px 0 rgba(255,255,255,0.6),-4px 8px 14px rgba(28,24,20,0.12);">{{ greeting }}</h1>
+              </div>
+                <div style="position:relative;flex:none;width:clamp(88px,17%,118px);filter:drop-shadow(-4px 6px 8px rgba(28,24,20,0.28));">
+              <img src="assets/obj/clock.png" alt="Clock" style="display:block;width:100%;height:auto;">
+              <span style="position:absolute;left:calc(50% - 1.5px);bottom:49.9%;width:3px;height:19%;border-radius:2px;background:#2E2620;transform-origin:50% 100%;transform:rotate({{ hDeg }});"></span>
+              <span style="position:absolute;left:calc(50% - 1px);bottom:49.9%;width:2px;height:29%;border-radius:2px;background:#2E2620;transform-origin:50% 100%;transform:rotate({{ mDeg }});"></span>
+              <span style="position:absolute;left:calc(50% - 0.5px);bottom:49.9%;width:1px;height:32%;background:#C4602A;transform-origin:50% 100%;transform:rotate({{ sDeg }});"></span>
+              <span style="position:absolute;left:calc(50% - 3px);top:calc(50.1% - 3px);width:6px;height:6px;border-radius:50%;background:#C4602A;"></span>
+            </div>
+              </div>
+              <div style="position:relative;">
+                <img src="assets/shelf/bookend.png" alt="" style="position:absolute;top:60%;left:12%;width:clamp(26px,6%,40px);height:auto;transform:rotate(180deg);filter:drop-shadow(4px -6px 6px rgba(28,24,20,0.3));">
+                <img src="assets/shelf/bookend.png" alt="" style="position:absolute;top:60%;right:12%;width:clamp(26px,6%,40px);height:auto;transform:rotate(180deg);filter:drop-shadow(4px -6px 6px rgba(28,24,20,0.3));">
+                <img src="assets/shelf/plank.png" alt="" style="position:relative;display:block;width:100%;height:clamp(26px,2.4vw,36px);object-fit:fill;filter:drop-shadow(0 14px 12px rgba(28,24,20,0.32));">
+              </div>
+            </div>
+            <form onSubmit="{{ onAsk }}" style="position:relative;display:flex;align-items:center;gap:16px;height:56px;padding:0 6px 0 20px;background:#FAF7F2;border:1px solid #E0D5BF;border-radius:3px;box-shadow:0 1px 2px rgba(28,24,20,0.05),0 14px 24px -18px rgba(28,24,20,0.3);">
+              <span style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.18em;color:#C4602A;">CLAUDE</span>
+              <span style="width:1px;height:20px;background:#E0D5BF;"></span>
+              <input value="{{ ask }}" onChange="{{ onAskChange }}" placeholder="Ask about anything on your wall…" style="flex:1;min-width:0;border:0;background:transparent;font-family:'Cormorant Garamond',serif;font-style:italic;font-size:21px;color:#1C1814;padding:0;">
+              <button type="submit" style="height:44px;padding:0 18px;border:0;border-radius:2px;background:#1C1814;color:#F5F0E8;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.18em;cursor:pointer;white-space:nowrap;" style-hover="background:#C4602A;">ASK</button>
+            </form>
+            <div style="margin-top:auto;">
+            <div style="position:relative;z-index:4;padding:9px;background:linear-gradient(180deg,#2E2620,#1C1814);border-radius:5px;box-shadow:{{ bezelShadow }};transition:box-shadow 600ms;">
+          <div style="position:relative;border-radius:3px;overflow:hidden;background:#FAF7F2;box-shadow:inset 0 0 0 1px #D4C8B0;">
+            <div style="position:relative;padding:24px 28px 18px;background:linear-gradient(125deg,rgba(255,255,255,0.6) 0%,rgba(255,255,255,0) 32%);">
+              <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:6px 12px;">
+                <span style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.18em;color:#5C4F3A;white-space:nowrap;">OCTOBER SPENDING</span>
+                <span style="font-family:'DM Mono',monospace;font-size:11px;color:#3B6B5A;white-space:nowrap;">↓ 22% vs last month</span>
+              </div>
+              <div style="display:flex;align-items:baseline;gap:4px;margin:10px 0 18px;font-family:'Cormorant Garamond',serif;font-variant-numeric:lining-nums tabular-nums;letter-spacing:-0.02em;">
+                <span style="font-size:28px;color:#7A6B55;">$</span><span style="font-size:64px;line-height:1;">1,868</span>
+              </div>
+              <sc-for list="{{ spend }}" as="s" hint-placeholder-count="5">
+                <div style="display:grid;grid-template-columns:80px minmax(48px,1fr) 56px;align-items:center;gap:14px;padding:8px 0;border-top:1px solid #EDE5D4;">
+                  <span style="font-size:14px;color:#2E2620;">{{ s.name }}</span>
+                  <span style="position:relative;height:2px;background:#EDE5D4;"><span style="position:absolute;left:0;top:-1px;height:4px;width:{{ s.pct }};background:{{ s.color }};border-radius:1px;"></span></span>
+                  <span style="text-align:right;font-family:'DM Mono',monospace;font-size:12px;">{{ s.amt }}</span>
+                </div>
+              </sc-for>
+              <div style="display:flex;justify-content:space-between;gap:12px;margin-top:10px;padding-top:10px;border-top:1px solid #EDE5D4;font-family:'DM Mono',monospace;font-size:9px;letter-spacing:0.12em;color:#A08D74;">
+                <span>SAMPLE · PŪTEA ISN'T RUNNING</span><span>LAST MONTH $2,411</span>
+              </div>
+            </div>
+          </div>
+          </div>
+            </div>
+          </div>
+          <div style="flex:1 1 360px;min-width:0;display:flex;flex-direction:column;gap:40px;">
+            <div style="position:relative;padding-top:34px;">
+        <svg width="120" height="40" viewBox="0 0 120 40" style="position:absolute;top:0;left:calc(50% - 60px);overflow:visible;">
+          <line x1="60" y1="4" x2="14" y2="38" stroke="#7A6B55" stroke-width="1"></line>
+          <line x1="60" y1="4" x2="106" y2="38" stroke="#7A6B55" stroke-width="1"></line>
+          <circle cx="60" cy="4" r="3.5" fill="#42382C"></circle>
+        </svg>
+        <div style="background:#FAF7F2;box-shadow:0 1px 2px rgba(28,24,20,0.06),10px 22px 36px -18px rgba(28,24,20,0.4);">
+          <div style="height:16px;background:linear-gradient(180deg,#2E2620,#42382C);display:flex;justify-content:space-around;align-items:center;padding:0 12%;">
+            <span style="width:9px;height:9px;border-radius:50%;background:#EDE5D4;box-shadow:inset 0 1px 2px rgba(0,0,0,0.5);"></span>
+            <span style="width:9px;height:9px;border-radius:50%;background:#EDE5D4;box-shadow:inset 0 1px 2px rgba(0,0,0,0.5);"></span>
+          </div>
+          <div style="padding:26px 30px 22px;">
+            <div style="display:flex;justify-content:space-between;align-items:baseline;padding-bottom:14px;border-bottom:1px solid #1C1814;">
+              <span style="font-family:'Cormorant Garamond',serif;font-weight:300;font-style:italic;font-size:44px;line-height:1;letter-spacing:-0.02em;">October</span>
+              <span style="font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.18em;color:#5C4F3A;">2026</span>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(7,minmax(0,1fr));padding:12px 0 6px;">
+              <sc-for list="{{ dow }}" as="d" hint-placeholder-count="7">
+                <span style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.12em;color:#A08D74;padding-left:8px;">{{ d }}</span>
+              </sc-for>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(7,minmax(0,1fr));border-top:1px solid #EDE5D4;border-left:1px solid #EDE5D4;">
+              <sc-for list="{{ days }}" as="day" hint-placeholder-count="35">
+                <button onClick="{{ day.select }}" style="height:60px;border:0;border-right:1px solid #EDE5D4;border-bottom:1px solid #EDE5D4;background:{{ day.bg }};padding:7px;display:flex;align-items:flex-start;cursor:pointer;font:inherit;" style-hover="background:#F5F0E8;">
+                  <span style="display:flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:50%;background:{{ day.dotBg }};border:1px solid {{ day.dotBorder }};font-family:'Cormorant Garamond',serif;font-variant-numeric:lining-nums;font-size:18px;font-weight:{{ day.weight }};color:{{ day.color }};">{{ day.n }}</span>
+                </button>
+              </sc-for>
+            </div>
+            <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:4px 12px;margin-top:16px;">
+              <span style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.14em;color:#5C4F3A;">{{ selLabel }}</span>
+              <span style="font-family:'Cormorant Garamond',serif;font-style:italic;font-size:18px;color:#7A6B55;white-space:nowrap;">Nothing coming up.</span>
+            </div>
+          </div>
+        </div>
+      </div>
+            <div style="position:relative;z-index:4;margin-top:auto;">
+              <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:16px;padding:0 7%;margin-bottom:-7px;position:relative;z-index:1;">
+                <img src="assets/obj/books.png" alt="" style="flex:none;width:clamp(150px,46%,210px);height:auto;display:block;margin-top:-90px;filter:drop-shadow(-5px 6px 8px rgba(28,24,20,0.25));">
+                <img src="assets/obj/plant.png" alt="" style="flex:none;width:clamp(136px,42%,190px);height:auto;display:block;margin-bottom:-44px;filter:drop-shadow(-6px 8px 10px rgba(28,24,20,0.28));">
+              </div>
+              <div style="position:relative;">
+                <img src="assets/shelf/bookend.png" alt="" style="position:absolute;top:60%;left:12%;width:clamp(26px,6%,40px);height:auto;transform:rotate(180deg);filter:drop-shadow(4px -6px 6px rgba(28,24,20,0.3));">
+                <img src="assets/shelf/bookend.png" alt="" style="position:absolute;top:60%;right:12%;width:clamp(26px,6%,40px);height:auto;transform:rotate(180deg);filter:drop-shadow(4px -6px 6px rgba(28,24,20,0.3));">
+                <img src="assets/shelf/plank.png" alt="" style="position:relative;display:block;width:100%;height:clamp(26px,2.4vw,36px);object-fit:fill;filter:drop-shadow(0 14px 12px rgba(28,24,20,0.32));">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div style="display:flex;flex-wrap:wrap;gap:48px 64px;margin-top:56px;">
+          <div style="flex:1.4 1 520px;min-width:0;">
+            <div style="position:relative;min-height:220px;">
+          <sc-if value="{{ noNotes }}" hint-placeholder-val="{{ true }}">
+            <div style="display:flex;align-items:center;gap:20px;">
+              <div style="position:relative;width:132px;height:120px;border:1px dashed #D4C8B0;transform:rotate(-2deg);">
+                <span style="position:absolute;top:-9px;left:38px;width:56px;height:18px;background:rgba(224,213,191,0.7);transform:rotate(3deg);"></span>
+              </div>
+              <span style="font-family:'Cormorant Garamond',serif;font-style:italic;font-size:19px;color:#7A6B55;">Your notes will pin here.</span>
+            </div>
+          </sc-if>
+          <div style="display:flex;flex-wrap:wrap;gap:22px 18px;padding-top:10px;">
+            <sc-for list="{{ notes }}" as="n" hint-placeholder-count="0">
+              <div style="position:relative;width:150px;min-height:140px;padding:22px 16px 14px;background:{{ n.bg }};transform:rotate({{ n.rot }});box-shadow:0 1px 1px rgba(28,24,20,0.08),4px 12px 16px -10px rgba(28,24,20,0.35);display:flex;flex-direction:column;gap:8px;">
+                <span style="position:absolute;top:-9px;left:calc(50% - 28px);width:56px;height:18px;background:rgba(250,247,242,0.65);box-shadow:0 1px 1px rgba(28,24,20,0.08);"></span>
+                <span style="font-family:'DM Mono',monospace;font-size:9px;letter-spacing:0.14em;color:#5C4F3A;">{{ n.time }}</span>
+                <span style="font-family:'Cormorant Garamond',serif;font-size:19px;line-height:1.25;color:#1C1814;text-wrap:pretty;">{{ n.text }}</span>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+          </div>
+          <div style="flex:1 1 360px;min-width:0;"></div>
+        </div>
+
+        <div style="display:flex;justify-content:center;padding:48px 0 112px;">
+          <button onClick="{{ toDesk }}" style="display:flex;flex-direction:column;align-items:center;gap:6px;min-height:44px;border:0;background:transparent;cursor:pointer;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.2em;color:#5C4F3A;" style-hover="color:#C4602A;">
+            <span>TO THE DESK</span><span style="font-size:14px;">↓</span>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <div ref="{{ deskRef }}" style="height:26px;background:linear-gradient(180deg,#C79A72 0%,#A87650 35%,#7A4E30 100%);box-shadow:0 -1px 0 #E0D5BF,0 10px 18px -4px rgba(28,24,20,0.45);position:relative;z-index:1;"></div>
+
+    <section data-screen-label="Desk" style="position:relative;min-height:100vh;background-color:{{ wood.base }};background-image:radial-gradient(90% 70% at 40% 20%,rgba(255,240,220,0.22),rgba(0,0,0,0) 70%),linear-gradient(180deg,rgba(0,0,0,0.12),rgba(0,0,0,0) 12%),url('assets/desk.png'),repeating-linear-gradient(91deg,rgba(28,24,20,0.05) 0 1px,rgba(0,0,0,0) 1px 9px),repeating-linear-gradient(89.4deg,rgba(255,235,210,0.05) 0 2px,rgba(0,0,0,0) 2px 23px),repeating-linear-gradient(90.6deg,rgba(28,24,20,0.04) 0 3px,rgba(0,0,0,0) 3px 61px);background-size:100% 100%,100% 100%,1400px auto,auto,auto,auto;background-repeat:no-repeat,no-repeat,repeat,repeat,repeat,repeat;background-position:0 0,0 0,center top,0 0,0 0,0 0;padding:56px clamp(24px,4vw,52px) 140px clamp(28px,4.5vw,64px);display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));padding-right:calc(clamp(24px,4vw,52px) + 130px);gap:44px;align-items:start;">
+
+      <div style="position:relative;transform:rotate(-1.5deg);container-type:inline-size;filter:drop-shadow(6px 14px 12px rgba(28,24,20,0.4));">
+        <img src="assets/obj/notepad.png" alt="" style="display:block;width:100%;height:auto;">
+        <div style="position:absolute;inset:0;padding:11cqw 10cqw 0 7cqw;display:flex;flex-direction:column;">
+          <div style="font-family:'Cormorant Garamond',serif;font-style:italic;font-size:6.5cqw;line-height:6.3cqw;height:6.3cqw;">Today's list</div>
+          <div style="margin-top:0;font-family:'DM Mono',monospace;font-size:2.4cqw;letter-spacing:0.16em;line-height:4.52cqw;height:4.52cqw;color:#5C4F3A;">0 TO DO · FROM YOUR WORK BOOK</div>
+          <div style="margin-top:4.52cqw;font-family:'Cormorant Garamond',serif;font-style:italic;font-size:4cqw;line-height:4.52cqw;height:4.52cqw;color:#7A6B55;">Nothing due today. Enjoy it.</div>
+        </div>
+      </div>
+
+      <div style="position:relative;transform:rotate(0.6deg);background:#FAF7F2;border-radius:2px;overflow:hidden;box-shadow:0 1px 1px rgba(28,24,20,0.1),8px 18px 26px -12px rgba(28,24,20,0.5);">
+        <div style="height:30px;background:linear-gradient(180deg,#2E5243,#243F34);border-bottom:1px dashed rgba(216,237,232,0.4);box-shadow:inset 0 -6px 0 -5px rgba(0,0,0,0.3);"></div>
+        <div style="padding:24px 28px 34px;">
+          <div style="font-family:'Cormorant Garamond',serif;font-style:italic;font-size:32px;line-height:1.2;">Agenda</div>
+          <div style="font-family:'DM Mono',monospace;font-size:9px;letter-spacing:0.16em;color:#5C4F3A;margin-top:4px;">{{ dateLabel }}</div>
+          <div style="margin-top:22px;padding-top:16px;border-top:1px solid #EDE5D4;font-family:'Cormorant Garamond',serif;font-style:italic;font-size:18px;color:#7A6B55;">No meetings today.</div>
+        </div>
+      </div>
+
+      <div style="position:relative;transform:rotate(1.8deg);filter:drop-shadow(6px 14px 14px rgba(28,24,20,0.35));">
+        <div style="background:#FAF7F2;padding:26px 24px 18px;font-family:'DM Mono',monospace;color:#1C1814;">
+          <div style="text-align:center;font-size:11px;letter-spacing:0.28em;font-weight:500;">THIS WEEK</div>
+          <div style="text-align:center;font-size:10px;color:#7A6B55;margin-top:4px;">27 Sep – 3 Oct</div>
+          <div style="text-align:center;font-size:40px;font-weight:500;letter-spacing:-0.02em;margin:14px 0 14px;">$412</div>
+          <div style="position:relative;height:5px;background:#EDE5D4;border-radius:3px;">
+            <span style="position:absolute;left:0;top:0;bottom:0;width:72%;background:#3B6B5A;border-radius:3px;"></span>
+            <span style="position:absolute;left:86%;top:-5px;width:1px;height:15px;background:#1C1814;"></span>
+          </div>
+          <div style="display:flex;justify-content:space-between;gap:12px;white-space:nowrap;line-height:1.4;font-size:10px;color:#5C4F3A;margin-top:8px;"><span>$68 under usual</span><span>Usual $480</span></div>
+          <div style="display:grid;grid-template-columns:repeat(7,minmax(0,1fr));align-items:end;gap:10px;height:96px;margin-top:22px;padding-bottom:6px;border-bottom:1px dashed #D4C8B0;">
+            <sc-for list="{{ week }}" as="w" hint-placeholder-count="7">
+              <span style="height:{{ w.h }};background:{{ w.color }};border-radius:1px;"></span>
+            </sc-for>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:10px;margin-top:6px;">
+            <sc-for list="{{ week }}" as="w" hint-placeholder-count="7">
+              <span style="text-align:center;font-size:9px;color:#7A6B55;">{{ w.d }}</span>
+            </sc-for>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:6px;margin-top:16px;padding:12px 0;border-top:1px dashed #D4C8B0;border-bottom:1px dashed #D4C8B0;font-size:11px;">
+            <div style="display:flex;justify-content:space-between;gap:12px;line-height:1.4;white-space:nowrap;"><span>Daily average</span><span>$58.86</span></div>
+            <div style="display:flex;justify-content:space-between;gap:12px;line-height:1.4;white-space:nowrap;"><span>Biggest day (Mon)</span><span>$112.00</span></div>
+          </div>
+          <div style="text-align:center;font-size:9px;letter-spacing:0.14em;color:#7A6B55;margin-top:12px;">SAMPLE · START PŪTEA FOR LIVE</div>
+        </div>
+        <div style="height:10px;background-image:linear-gradient(135deg,#FAF7F2 50%,rgba(0,0,0,0) 50%),linear-gradient(225deg,#FAF7F2 50%,rgba(0,0,0,0) 50%);background-size:10px 10px;background-repeat:repeat-x;"></div>
+      </div>
+
+      <div style="grid-column:1 / -1;position:relative;height:220px;">
+        <img src="assets/obj/sticky-pad.png" alt="" style="position:absolute;left:2%;top:20px;width:120px;transform:rotate(-7deg);filter:drop-shadow(5px 10px 8px rgba(28,24,20,0.35));">
+        <img src="assets/obj/pencil.png" alt="" style="position:absolute;left:24%;top:150px;width:min(240px,30%);transform:rotate(-6deg);filter:drop-shadow(4px 8px 5px rgba(28,24,20,0.35));">
+        <img src="assets/obj/clips.png" alt="" style="position:absolute;left:58%;top:30px;width:110px;transform:rotate(12deg);filter:drop-shadow(2px 4px 3px rgba(28,24,20,0.35));">
+      </div>
+
+      <img src="assets/obj/cup.png" alt="" style="position:absolute;top:40px;right:clamp(24px,4vw,52px);width:124px;filter:drop-shadow(8px 14px 12px rgba(28,24,20,0.45));">
+    </section>
+
+    <form onSubmit="{{ onFeed }}" style="position:fixed;z-index:10;bottom:26px;left:calc(280px + (100vw - 280px) / 2);transform:translateX(-50%);width:min(720px,calc(100vw - 300px));display:flex;align-items:center;gap:16px;height:56px;padding:0 6px 0 22px;background:#1C1814;border-radius:4px;box-shadow:0 1px 0 #42382C inset,0 22px 40px -18px rgba(28,24,20,0.6);">
+      <span style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.18em;color:#EAAA84;">FEED</span>
+      <span style="width:1px;height:20px;background:#42382C;"></span>
+      <input value="{{ feed }}" onChange="{{ onFeedChange }}" placeholder="“Paid $64 for groceries” · “Dentist next Tuesday” · “Learned: …”" style="flex:1;min-width:0;border:0;background:transparent;font-family:'DM Sans',sans-serif;font-size:15px;color:#F5F0E8;">
+      <button type="submit" style="height:44px;padding:0 20px;border:0;border-radius:2px;background:#C4602A;color:#FAF7F2;font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.16em;cursor:pointer;" style-hover="background:#B84E1E;">ADD</button>
+    </form>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;deskWood&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Oak&quot;,&quot;Walnut&quot;,&quot;Teak&quot;],&quot;default&quot;:&quot;Oak&quot;,&quot;tsType&quot;:&quot;'Oak'|'Walnut'|'Teak'&quot;},&quot;windowLight&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;},&quot;todayMarker&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Filled&quot;,&quot;Ring&quot;],&quot;default&quot;:&quot;Filled&quot;,&quot;tsType&quot;:&quot;'Filled'|'Ring'&quot;}}">
+class Component extends DCLogic {
+  state = { active: 'Work', sel: 3, ask: '', feed: '', notes: [], lamp: localStorage.getItem('room-lamp') !== 'off', now: new Date() };
+  deskRef = React.createRef();
+  brickTile(palette, mortar, seed) {
+    let r = seed;
+    const rnd = () => { r = (r * 9301 + 49297) % 233280; return r / 233280; };
+    let s = `<svg xmlns="http://www.w3.org/2000/svg" width="256" height="180"><rect width="256" height="180" fill="${mortar}"/>`;
+    for (let row = 0; row < 6; row++) {
+      const off = row % 2 ? -32 : 0;
+      for (let col = 0; col < 5; col++) {
+        const x = col * 64 + off + 1, y = row * 30 + 1;
+        const f = palette[Math.floor(rnd() * palette.length)];
+        const o = (0.85 + rnd() * 0.15).toFixed(2);
+        s += `<rect x="${x}" y="${y}" width="61" height="27" rx="1.5" fill="${f}" opacity="${o}"/>`;
+        s += `<rect x="${x}" y="${y + 24}" width="61" height="3" fill="#1C1814" opacity="0.05"/>`;
+        s += `<rect x="${x}" y="${y}" width="61" height="2" fill="#FFFFFF" opacity="0.35"/>`;
+      }
+    }
+    return `url("data:image/svg+xml,${encodeURIComponent(s + '</svg>')}")`;
+  }
+  componentDidMount() { this.tick = setInterval(() => this.setState({ now: new Date() }), 1000); }
+  componentWillUnmount() { clearInterval(this.tick); }
+  renderVals() {
+    const on = this.state.lamp, t = this.state.now;
+    const s = t.getSeconds(), m = t.getMinutes() + s / 60, hr = (t.getHours() % 12) + m / 60;
+    const baseBezel = 'inset 0 1px 0 #42382C, 0 2px 0 #000, 14px 26px 40px -16px rgba(28,24,20,0.55)';
+    const room = {
+      dimOpacity: on ? 0 : 0.34,
+      glowOpacity: on ? 1 : 0,
+      bezelShadow: on ? baseBezel : baseBezel + ', 0 0 90px 24px rgba(216,237,232,0.22)',
+      shadeBg: on ? 'radial-gradient(circle at 50% 85%, #FAF0EA, #F0C9AE 60%, #EAAA84)' : 'linear-gradient(180deg, #D4733E, #9E3A10)',
+      shadeShadow: on ? '0 0 24px 4px rgba(240,201,174,0.8), inset 0 -6px 10px rgba(255,255,255,0.6)' : 'inset 0 -6px 8px rgba(0,0,0,0.25)',
+      bulbBg: on ? '#FAF7F2' : '#7A2E0A',
+      bulbShadow: on ? '0 6px 16px 4px rgba(250,240,234,0.9)' : 'none',
+      lampSrc: on ? 'assets/obj/lamp-on.png' : 'assets/obj/lamp-off.png',
+      lampLabel: on ? 'Switch lamp off' : 'Switch lamp on',
+      toggleLamp: () => this.setState(st => { localStorage.setItem('room-lamp', st.lamp ? 'off' : 'on'); return { lamp: !st.lamp }; }),
+      hDeg: hr * 30 + 'deg', mDeg: m * 6 + 'deg', sDeg: s * 6 + 'deg',
+      ticks: Array.from({ length: 12 }, (_, i) => ({ deg: i * 30 + 'deg', len: i % 3 === 0 ? '7px' : '4px' }))
+    };
+    const book = (name, vol, file, w, ml, rot, padL, padR) => {
+      const on = this.state.active === name;
+      return {
+        name, vol, w, ml, padL, padR, bg: 'url(assets/shelf/book-' + file + '.png)',
+        tx: on ? 'translateX(12px)' : 'none',
+        filter: on ? 'drop-shadow(-2px 5px 6px rgba(0,0,0,0.6)) brightness(1.08)' : 'drop-shadow(0 2px 3px rgba(0,0,0,0.5))',
+        select: () => this.setState({ active: name })
+      };
+    };
+    const shelves = [
+      { items: [
+        book('Work', 'I', 'work', '100%', '0', '0deg', '13%', '12%'),
+        book('Calendar', 'II', 'calendar', '100%', '0', '0deg', '16%', '12%'),
+        book('Money', 'III', 'money', '100%', '0', '0deg', '13%', '12%')
+      ] },
+      { items: [
+        book('Health', 'IV', 'health', '100%', '0', '0deg', '13%', '12%'),
+        book('Learning', 'V', 'learning', '100%', '0', '0deg', '13%', '12%'),
+        book('People', 'VI', 'people', '100%', '0', '0deg', '13%', '12%')
+      ] }
+    ];
+    const h = new Date().getHours();
+    const greeting = h < 12 ? 'Good morning.' : h < 18 ? 'Good afternoon.' : 'Good evening.';
+    const spend = [['Housing', 1450], ['Food', 212], ['Bills', 112], ['Transport', 58], ['Fun', 36]]
+      .map(([name, v], i) => ({ name, amt: '$' + v.toLocaleString(), pct: (v / 1450 * 100) + '%', color: i === 0 ? '#2E5243' : '#4D8470' }));
+    const marker = this.props.todayMarker ?? 'Filled';
+    const days = [];
+    for (let i = 0; i < 35; i++) {
+      const d = i - 2;
+      const inMonth = d >= 1 && d <= 31;
+      const n = inMonth ? d : d < 1 ? 30 + d : d - 31;
+      const isToday = inMonth && d === 3, isSel = inMonth && d === this.state.sel && !isToday;
+      const filled = isToday && marker === 'Filled';
+      days.push({
+        n, bg: isSel ? '#F5F0E8' : 'transparent',
+        dotBg: filled ? '#C4602A' : 'transparent',
+        dotBorder: isToday && !filled ? '#C4602A' : 'transparent',
+        color: filled ? '#FAF7F2' : isToday ? '#C4602A' : inMonth ? '#1C1814' : '#D4C8B0',
+        weight: isToday ? 500 : 400,
+        select: () => inMonth && this.setState({ sel: d })
+      });
+    }
+    const selLabel = new Date(2026, 9, this.state.sel).toLocaleDateString('en-NZ', { weekday: 'long', day: 'numeric', month: 'long' }).toUpperCase();
+    const wk = [38, 112, 30, 62, 18, 84, 68];
+    const week = wk.map((v, i) => ({ d: 'SMTWTFS'[i], h: (v / 112 * 100) + '%', color: i === 6 ? '#3B6B5A' : '#D4C8B0' }));
+    const wood = { Walnut: { base: '#8E6242' }, Oak: { base: '#A87650' }, Teak: { base: '#7A4E30' } }[this.props.deskWood ?? 'Oak'] || { base: '#A87650' };
+    const noteColors = ['#F5DDD0', '#D8EDE8', '#EDE5D4', '#D0E8F0'];
+    const rots = ['-2deg', '1.5deg', '-0.8deg', '2.4deg', '-1.6deg'];
+    if (!this._wall) {
+      const light = 'radial-gradient(110% 80% at 35% 10%, rgba(255,255,255,0.55), rgba(255,255,255,0) 60%)';
+      const shade = 'linear-gradient(180deg, rgba(28,24,20,0.10) 0%, rgba(28,24,20,0) 14%, rgba(28,24,20,0) 80%, rgba(28,24,20,0.12) 100%)';
+      this._wall = `${shade}, linear-gradient(180deg, rgba(193,182,172,0) 80%, #C1B6AC 99%), url("assets/wall.jpg")`;
+      this._exposed = this.brickTile(['#B84E1E', '#C4602A', '#9E3A10', '#D4733E', '#EAAA84', '#F2EEE6', '#E0D5BF'], '#D4C8B0', 11);
+    }
+    return {
+      ...room,
+      wallBg: this._wall, exposedBg: this._exposed,
+      shelves, greeting, spend, days, selLabel, week, wood,
+      showLight: this.props.windowLight ?? true,
+      deskRef: this.deskRef,
+      toDesk: () => { const el = this.deskRef.current; if (el) window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY, behavior: 'smooth' }); },
+      spiral: Array.from({ length: 16 }, (_, i) => i),
+      dateLabel: 'SATURDAY, 3 OCTOBER',
+      dow: ['M', 'T', 'W', 'T', 'F', 'S', 'S'],
+      chips: [
+        { label: 'Notion 5/5', color: '#3B6B5A', halo: '#D8EDE8' },
+        { label: 'Pūtea · sample', color: '#D4733E', halo: '#F5DDD0' },
+        { label: 'Claude on', color: '#3B6B5A', halo: '#D8EDE8' }
+      ],
+      ask: this.state.ask, feed: this.state.feed,
+      onAskChange: e => this.setState({ ask: e.target.value }),
+      onFeedChange: e => this.setState({ feed: e.target.value }),
+      onAsk: e => { e.preventDefault(); this.setState({ ask: '' }); },
+      onFeed: e => {
+        e.preventDefault();
+        const t = this.state.feed.trim(); if (!t) return;
+        const time = new Date().toLocaleTimeString('en-NZ', { hour: 'numeric', minute: '2-digit' }).toUpperCase();
+        this.setState(s => ({ feed: '', notes: [{ text: t, time }, ...s.notes] }));
+      },
+      notes: this.state.notes.map((n, i) => ({ ...n, bg: noteColors[i % 4], rot: rots[i % 5] })),
+      noNotes: this.state.notes.length === 0
+    };
+  }
+}
+</script>
+</body>
+</html>
