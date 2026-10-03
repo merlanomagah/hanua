@@ -587,8 +587,11 @@ button:disabled { opacity: 0.5; cursor: progress; }
   background: radial-gradient(circle at 35% 30%, #FFF1B8 0 8%, #F2CE6A 22%, #D9A53E 58%, #A8731F 100%);
   box-shadow: inset 0 0 0 2px rgb(255 236 170 / 0.55), inset 0 0 0 4px #B98226, inset 0 -3px 5px rgb(90 55 10 / 0.45), -2px 3px 4px rgb(0 0 0 / 0.5);
 }
-.coin b { font: italic 600 17px/1 var(--display); color: #8A5A14; text-shadow: 0 1px 0 rgb(255 240 190 / 0.7); }
-.coin img { width: 100%; height: 100%; object-fit: contain; }
+.coin b { position: relative; font: italic 600 17px/1 var(--display); color: #8A5A14; text-shadow: 0 1px 0 rgb(255 240 190 / 0.7); }
+/* Mel's Canva coin: the photo replaces the drawn gradient; the H sits embossed on its blank face */
+.coin:has(img) { background: none; box-shadow: none; filter: drop-shadow(-2px 3px 3px rgb(0 0 0 / 0.55)); width: 38px; height: 38px; }
+.coin img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+.coin:has(img) b { color: rgb(150 100 25 / 0.55); text-shadow: 0 1px 0 rgb(255 245 200 / 0.6), 0 -1px 0 rgb(110 70 10 / 0.35); }
 .ts-toggle {
   display: grid; place-items: center; width: 30px; height: 40px; padding: 0; border: 0; border-radius: 3px; cursor: pointer;
   background: transparent; color: var(--border-2); transition: background 200ms, color 200ms;

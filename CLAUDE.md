@@ -32,7 +32,7 @@ Read this first if you're picking Hanua up in a new session or a different Claud
 
 **Notion databases** (all on the "Hanua" page; each must be connected to the Hanua integration via ••• → Connections): the five books, Goals, Weekly reviews, Treat shop. Goals guide page: "Goals guide: Agile for life".
 
-**Open items for Mel:** connect the Treat shop database if not done and add rewards; make `coin.png` in Canva (prompt in the 4 Oct session; drawn CSS coin until then, see `.coin` in `public/styles.css`); fill the Notion books and goals with real data; run Pūtea and check the TV's Expenses / Income field names (`server/money.js` guesses the payee field).
+**Open items for Mel:** connect the Treat shop database if not done and add rewards; fill the Notion books and goals with real data; run Pūtea and check the TV's Expenses / Income field names (`server/money.js` guesses the payee field).
 
 **Open questions from the first brief, never answered:** are the five books the right databases; is the purpose's draft "working sentence" right; keep or remove the count badges on the Work and Calendar spines.
 
