@@ -12,7 +12,11 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const config = JSON.parse(await readFile(path.join(root, "config/areas.json"), "utf8"));
 const sample = JSON.parse(await readFile(path.join(root, "data/sample.json"), "utf8"));
 
+const recordCrate = JSON.parse(await readFile(path.join(root, "config/records.json"), "utf8")).records;
+const goalsArea = config.goals ? { id: "goals", ...config.goals } : null;
+
 const isLive = (area) => notionEnabled() && Boolean(area.notionDatabaseId);
+const notionUrl = (area) => (area.notionDatabaseId ? `https://www.notion.so/${area.notionDatabaseId}` : null);
 const findArea = (id) => config.areas.find((a) => a.id === id);
 
 // Short cache so clicking around the tree doesn't hammer Notion's rate limit (~3 req/s).
@@ -55,7 +59,7 @@ app.get("/api/areas", async (_req, res, next) => {
   try {
     const areas = await Promise.all(
       config.areas.map(async (area) => {
-        const base = { id: area.id, label: area.label, icon: area.icon, color: area.color, summary: area.summary, live: isLive(area) };
+        const base = { id: area.id, label: area.label, icon: area.icon, color: area.color, summary: area.summary, live: isLive(area), notionUrl: notionUrl(area) };
         try {
           return { ...base, records: await recordsFor(area) };
         } catch (err) {
@@ -104,6 +108,67 @@ app.post("/api/areas/:id/records/:recordId/done", async (req, res, next) => {
     next(err);
   }
 });
+
+// ---------- goals (the pin board). Notion is their home; Hanua reads and, once you confirm, edits them ----------
+
+function toGoal(r) {
+  const f = goalsArea.fields, v = r.fields || {};
+  const progress = typeof r.amount === "number" ? Math.round(r.amount * 100) : null;
+  return { id: r.id, url: r.url, title: r.title, due: r.date, status: r.status, progress, timeframe: v[f.timeframe] ?? null, area: v[f.area] ?? null, notes: v[f.notes] ?? "" };
+}
+
+// The pin board's form fields -> Notion column values.
+function goalValues(values = {}) {
+  const f = goalsArea.fields;
+  const out = [];
+  const put = (name, value) => { if (name && value !== undefined && value !== null && value !== "") out.push({ name, value: String(value) }); };
+  put(f.title, values.title?.trim());
+  put(f.status, values.status);
+  put(f.timeframe, values.timeframe);
+  put(f.area, values.area);
+  put(f.date, values.due);
+  put(f.notes, values.notes);
+  if (values.progress !== undefined && values.progress !== "") put(f.amount, Math.min(100, Math.max(0, Number(values.progress))) / 100);
+  return out;
+}
+
+app.get("/api/goals", async (_req, res) => {
+  if (!goalsArea) return res.json({ goals: [], live: false, notionUrl: null });
+  const base = { live: isLive(goalsArea), notionUrl: notionUrl(goalsArea) };
+  try {
+    res.json({ ...base, goals: (await recordsFor(goalsArea)).map(toGoal) });
+  } catch (err) {
+    res.json({ ...base, goals: [], error: err.message });
+  }
+});
+
+app.post("/api/goals", async (req, res, next) => {
+  if (!goalsArea || !isLive(goalsArea)) return res.json({ ok: true, live: false });
+  if (!req.body?.values?.title?.trim()) return res.status(400).json({ error: "Give the goal a name." });
+  try {
+    const schema = await getSchema(goalsArea);
+    const record = await createPage(goalsArea, toNotionProperties(schema, goalValues(req.body.values)));
+    cache.delete(goalsArea.id);
+    res.json({ ok: true, live: true, goal: toGoal(record) });
+  } catch (err) {
+    next(err);
+  }
+});
+
+app.post("/api/goals/:id", async (req, res, next) => {
+  if (!goalsArea || !isLive(goalsArea)) return res.json({ ok: true, live: false });
+  try {
+    const schema = await getSchema(goalsArea);
+    await updatePage(req.params.id, toNotionProperties(schema, goalValues(req.body?.values)));
+    cache.delete(goalsArea.id);
+    res.json({ ok: true, live: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// The record crate: Apple Music playlists listed in config/records.json.
+app.get("/api/records", (_req, res) => res.json({ records: recordCrate }));
 
 app.post("/api/ask", async (req, res, next) => {
   const { question, areaId } = req.body ?? {};

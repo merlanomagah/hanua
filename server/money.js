@@ -17,6 +17,12 @@ const txPath = (month) =>
 
 const isSpend = (t) =>
   t.amount < 0 && !t.is_transfer && !/^(income|transfer)/i.test(t.category || "");
+const isIncome = (t) => t.amount > 0 && !t.is_transfer && !/^transfer/i.test(t.category || "");
+const label = (t) => t.description || t.merchant || t.payee || t.name || t.category || "Transaction";
+const round2 = (n) => Math.round(n * 100) / 100;
+// The TV's Expenses and Income channels: newest first, a handful each.
+const line = (t) => ({ date: t.date.slice(0, 10), name: label(t), category: t.category || "", amount: round2(Math.abs(t.amount)) });
+const newest = (list, n) => [...list].sort((a, b) => b.date.localeCompare(a.date)).slice(0, n).map(line);
 
 // Last 7 days, today included, oldest first.
 function lastWeek(now) {
@@ -35,6 +41,8 @@ export async function getMoney(now = new Date()) {
       putea(txPath(ym(prev))),
     ]);
     const spend = [...cur.transactions, ...before.transactions].filter(isSpend);
+    const monthSpend = cur.transactions.filter(isSpend);
+    const monthIncome = cur.transactions.filter(isIncome);
     const days = lastWeek(now).map((date) => ({
       date,
       spent: Math.round(spend.filter((t) => t.date.slice(0, 10) === date).reduce((s, t) => s - t.amount, 0) * 100) / 100,
@@ -46,6 +54,10 @@ export async function getMoney(now = new Date()) {
         expenses: month.expenses,
         prevExpenses: month.prevExpenses,
         categories: (month.categoryBreakdown || []).slice(0, 5).map((c) => ({ name: c.category, total: c.total })),
+        income: typeof month.income === "number" ? month.income : round2(monthIncome.reduce((s, t) => s + t.amount, 0)),
+        expenseCount: monthSpend.length,
+        recentExpenses: newest(monthSpend, 6),
+        incomes: newest(monthIncome, 6),
       },
       week: {
         spent: Math.round(days.reduce((s, d) => s + d.spent, 0) * 100) / 100,
@@ -60,7 +72,9 @@ export async function getMoney(now = new Date()) {
 
 function sampleMoney(now) {
   const pattern = [48, 112, 36, 74, 22, 90, 30];
-  const days = lastWeek(now).map((date, i) => ({ date, spent: pattern[i] }));
+  const week = lastWeek(now);
+  const days = week.map((date, i) => ({ date, spent: pattern[i] }));
+  const day = (n) => ymd(new Date(now.getFullYear(), now.getMonth(), Math.max(1, now.getDate() - n)));
   return {
     live: false,
     month: {
@@ -73,6 +87,20 @@ function sampleMoney(now) {
         { name: "Bills", total: 112 },
         { name: "Transport", total: 58 },
         { name: "Fun", total: 36 },
+      ],
+      income: 3240,
+      expenseCount: 23,
+      recentExpenses: [
+        { date: day(0), name: "Countdown", category: "Food", amount: 64.2 },
+        { date: day(1), name: "Z Energy", category: "Transport", amount: 58 },
+        { date: day(1), name: "Little Bird Café", category: "Food", amount: 14.5 },
+        { date: day(2), name: "Spark", category: "Bills", amount: 85 },
+        { date: day(3), name: "Rent", category: "Housing", amount: 725 },
+        { date: day(4), name: "Rialto Cinemas", category: "Fun", amount: 36 },
+      ],
+      incomes: [
+        { date: day(2), name: "Salary", category: "Income", amount: 2980 },
+        { date: day(3), name: "Bula Collective sale", category: "Income", amount: 260 },
       ],
     },
     week: { spent: days.reduce((s, d) => s + d.spent, 0), usual: 480, days },

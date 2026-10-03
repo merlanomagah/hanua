@@ -1,0 +1,29 @@
+{
+  "_note": "The record crate on the record player. Each record is an Apple Music playlist: paste its share link as url. Colour is the record label.",
+  "records": [
+    {
+      "name": "Pure Calm",
+      "note": "Mellow jazz, contemporary classical",
+      "url": "https://music.apple.com/nz/playlist/pure-calm/pl.ffc344338c3d4ff394ddcf94d766c143",
+      "color": "#3B6B5A"
+    },
+    {
+      "name": "Jazz Chill",
+      "note": "The quieter side of jazz",
+      "url": "https://music.apple.com/nz/playlist/jazz-chill/pl.63271312c084419891982eab46cc68ac",
+      "color": "#C4602A"
+    },
+    {
+      "name": "Classical Chill",
+      "note": "Classical, toned down",
+      "url": "https://music.apple.com/nz/playlist/classical-chill/pl.5a26d34eb6ec4825976bdef03784537d",
+      "color": "#2b3f6b"
+    },
+    {
+      "name": "Pure Focus",
+      "note": "Introspective electronic, for deep work",
+      "url": "https://music.apple.com/nz/playlist/pure-focus/pl.dbd712beded846dca273d5d3259d28aa",
+      "color": "#5a4372"
+    }
+  ]
+}

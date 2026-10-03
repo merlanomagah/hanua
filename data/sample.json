@@ -126,5 +126,88 @@
       "date": "2026-09-25",
       "status": "Work"
     }
+  ],
+  "goals": [
+    {
+      "title": "Ship the Q4 roadmap",
+      "date": "2026-10-09",
+      "status": "On track",
+      "amount": 0.6,
+      "fields": {
+        "Timeframe": "Week",
+        "Area": "Work",
+        "Notes": "Draft done, needs Priya's review"
+      }
+    },
+    {
+      "title": "Three runs this week",
+      "date": "2026-10-04",
+      "status": "At risk",
+      "amount": 0.33,
+      "fields": {
+        "Timeframe": "Week",
+        "Area": "Health"
+      }
+    },
+    {
+      "title": "Spend under $2,000 in October",
+      "date": "2026-10-31",
+      "status": "On track",
+      "amount": 0.45,
+      "fields": {
+        "Timeframe": "Month",
+        "Area": "Money"
+      }
+    },
+    {
+      "title": "Finish te reo Māori level 1",
+      "date": "2026-10-30",
+      "status": "On track",
+      "amount": 0.4,
+      "fields": {
+        "Timeframe": "Month",
+        "Area": "Learning"
+      }
+    },
+    {
+      "title": "Catch up with Aunty Lani",
+      "date": "2026-10-18",
+      "status": "Not started",
+      "amount": 0,
+      "fields": {
+        "Timeframe": "Month",
+        "Area": "People"
+      }
+    },
+    {
+      "title": "Launch Bula Collective's first range",
+      "date": "2026-12-15",
+      "status": "On track",
+      "amount": 0.25,
+      "fields": {
+        "Timeframe": "Quarter",
+        "Area": "Personal"
+      }
+    },
+    {
+      "title": "Run a half marathon",
+      "date": "2027-05-01",
+      "status": "Not started",
+      "amount": 0.1,
+      "fields": {
+        "Timeframe": "Year",
+        "Area": "Health"
+      }
+    },
+    {
+      "title": "Read 12 books",
+      "date": "2026-12-31",
+      "status": "Done",
+      "amount": 1,
+      "fields": {
+        "Timeframe": "Year",
+        "Area": "Learning"
+      }
+    }
   ]
 }

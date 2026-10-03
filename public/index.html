@@ -17,6 +17,9 @@
         <div class="case-head">
           <span class="wordmark">Hanua</span>
           <span class="case-sub">LIBRARY</span>
+          <button class="lib-open" id="library-open" type="button" aria-label="Open the library view" title="Library view">
+            <svg width="18" height="14" viewBox="0 0 18 14" aria-hidden="true"><path d="M1 1.5h16M1 7h16M1 12.5h16" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+          </button>
         </div>
         <nav class="books" id="books"></nav>
         <div class="case-fill"></div>
@@ -32,11 +35,30 @@
 
     <main class="room">
       <!-- The wall: your overview -->
-      <section class="wall" aria-label="Overview">
+      <section class="wall" id="wall" aria-label="Overview">
         <div class="window-light" aria-hidden="true"></div>
+
+        <!-- Swipe right (or the Goals tab) to slide the wall aside and show the pin board -->
+        <div class="board-pane" id="board-pane" aria-label="Goals" inert>
+          <div class="board-head">
+            <div>
+              <span class="eyebrow">Pin board</span>
+              <h2>Goals</h2>
+              <p class="board-sub" id="board-sub"></p>
+            </div>
+            <div class="board-actions">
+              <button type="button" class="b-btn" id="goal-add">+ Add a goal</button>
+              <a class="b-link" id="goals-notion" target="_blank" rel="noopener" hidden>Open in Notion ↗</a>
+            </div>
+          </div>
+          <div class="cork" id="cork"></div>
+          <button type="button" class="edge-tab right" id="to-wall"><span>WALL</span><span aria-hidden="true">‹</span></button>
+        </div>
+
         <div class="wall-dim" aria-hidden="true"></div>
 
-        <div class="wall-in">
+        <div class="wall-in" id="wall-in">
+          <button type="button" class="edge-tab left" id="to-board" title="Swipe right, or click, for your goals"><span>GOALS</span><span aria-hidden="true">›</span></button>
           <div class="status" id="status"></div>
 
           <div class="wall-row">
@@ -90,6 +112,23 @@
                     </button>
                   </div>
                 </div>
+
+                <!-- the remote: power hides every money view; CH steps through channels -->
+                <div class="remote-holder">
+                  <div class="remote" role="group" aria-label="TV remote">
+                    <span class="ir" id="remote-ir" aria-hidden="true"></span>
+                    <button class="r-power" id="remote-power" type="button" aria-pressed="false" title="Hide all money views">
+                      <svg width="12" height="12" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v8M6.3 6.6a8 8 0 1 0 11.4 0" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg>
+                    </button>
+                    <div class="r-ch">
+                      <button type="button" id="ch-up" aria-label="Next channel">▲</button>
+                      <span aria-hidden="true">CH</span>
+                      <button type="button" id="ch-down" aria-label="Previous channel">▼</button>
+                    </div>
+                    <div class="r-keys" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></div>
+                  </div>
+                  <div class="pocket" aria-hidden="true"></div>
+                </div>
               </div>
             </div>
 
@@ -106,12 +145,13 @@
                 </div>
               </figure>
 
-              <div class="deco-shelf" aria-hidden="true">
+              <div class="deco-shelf">
                 <div class="deco-row">
                   <img src="assets/obj/books.png" alt="" class="deco-books">
+                  <button type="button" class="record-player" id="record-player" aria-label="Open the record player"></button>
                   <img src="assets/obj/plant.png" alt="" class="deco-plant">
                 </div>
-                <div class="float-shelf">
+                <div class="float-shelf" aria-hidden="true">
                   <img src="assets/shelf/bookend.png" alt="" class="bracket left">
                   <img src="assets/shelf/bookend.png" alt="" class="bracket right">
                   <img src="assets/shelf/plank.png" alt="" class="plank">
@@ -165,6 +205,74 @@
       <div class="page right" id="page-right"></div>
     </div>
   </div>
+
+  <!-- Library view: the bookcase laid out across the middle of the screen -->
+  <div class="library" id="library" hidden>
+    <div class="lib-stage" role="dialog" aria-modal="true" aria-label="Library">
+      <button class="lib-close" id="library-close" type="button" aria-label="Close the library">×</button>
+      <span class="eyebrow lib-hint">Pick a book</span>
+      <div class="lib-caption" id="lib-caption" aria-live="polite"></div>
+      <div class="lib-case">
+        <div class="lib-books" id="lib-books"></div>
+        <img src="assets/shelf/plank.png" alt="" class="plank">
+      </div>
+    </div>
+  </div>
+
+  <!-- Record player, seen from above -->
+  <div class="turntable" id="turntable" aria-hidden="true">
+    <div class="tt-stage" role="dialog" aria-modal="true" aria-label="Record player">
+      <button class="lib-close" id="turntable-close" type="button" aria-label="Close the record player">×</button>
+      <div class="deck" id="deck">
+        <div class="platter"><div class="vinyl" id="vinyl"><span class="vinyl-label" id="vinyl-label"></span></div></div>
+        <div class="tonearm" aria-hidden="true"><i></i></div>
+        <div class="deck-knobs" aria-hidden="true"><i></i><i></i></div>
+      </div>
+      <div class="crate">
+        <span class="eyebrow">The crate</span>
+        <h3 id="tt-now">Choose a record</h3>
+        <div class="sleeves" id="sleeves"></div>
+        <div class="am-player" id="am-player"></div>
+        <p class="tt-note">Press play on the Apple Music player. Signed in to Apple Music in Safari, you get full songs; otherwise 30-second previews.</p>
+        <button type="button" class="b-btn ghost" id="lift-needle" hidden>Lift the needle</button>
+      </div>
+    </div>
+  </div>
+
+  <dialog id="day-dialog" class="day-dialog">
+    <div class="day-nav">
+      <button type="button" id="day-prev" aria-label="Previous day">‹</button>
+      <div><span class="eyebrow" id="day-eyebrow"></span><h3 id="day-title"></h3></div>
+      <button type="button" id="day-next" aria-label="Next day">›</button>
+    </div>
+    <div id="day-body"></div>
+    <div class="dialog-actions">
+      <a class="b-link" id="day-notion" target="_blank" rel="noopener" hidden>Calendar in Notion ↗</a>
+      <button type="button" class="ghost" id="day-add">Add to this day</button>
+      <button type="button" id="day-close">Close</button>
+    </div>
+  </dialog>
+
+  <dialog id="goal-dialog">
+    <form method="dialog" id="goal-form">
+      <h3 id="goal-heading">Edit goal</h3>
+      <p class="draft-note" id="goal-note">Nothing changes in Notion until you press Save.</p>
+      <div class="goal-fields">
+        <label class="wide">Goal<input name="title" required autocomplete="off"></label>
+        <label>Timeframe<select name="timeframe"></select></label>
+        <label>Status<select name="status"></select></label>
+        <label class="wide">Progress <output name="progressOut"></output><input name="progress" type="range" min="0" max="100" step="5"></label>
+        <label>Due<input name="due" type="date"></label>
+        <label>Area<select name="area"></select></label>
+        <label class="wide">Notes<textarea name="notes" rows="2"></textarea></label>
+      </div>
+      <div class="dialog-actions">
+        <a class="b-link" id="goal-open" target="_blank" rel="noopener" hidden>Open in Notion ↗</a>
+        <button value="cancel" type="submit" class="ghost" formnovalidate>Cancel</button>
+        <button value="save" type="submit">Save to Notion</button>
+      </div>
+    </form>
+  </dialog>
 
   <dialog id="draft-dialog">
     <form method="dialog" id="draft-form">

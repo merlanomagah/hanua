@@ -141,32 +141,67 @@ function renderClock() {
   $("clock").ariaLabel = `Clock showing ${t.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}`;
 }
 
-// ---------- wall: money monitor ----------
+// ---------- wall: money monitor and its remote ----------
+
+// The remote's power hides every money view (screen, desk receipt, Money book); the screen's own button only the screen.
+let moneyHidden = store("room-money") === "hidden";
+const CHANNELS = ["Overview", "Expenses", "Income"];
+let channel = Math.min(CHANNELS.length - 1, Math.max(0, Number(store("room-channel")) || 0));
+
+const row = (name, mid, amt, cls = "") =>
+  h("span", { className: `cat ${cls}` }, h("span", { className: "name", textContent: name }), mid, h("span", { className: "amt", textContent: amt }));
 
 function renderMoneyScreen() {
   const m = state.money;
   const el = $("screen");
   if (!m) return el.replaceChildren(h("span", { className: "screen-title", textContent: "Loading Pūtea…" }));
   const month = parseDay(`${m.month.ym}-01`).toLocaleDateString(undefined, { month: "long" });
-  const change = m.month.prevExpenses ? (m.month.expenses - m.month.prevExpenses) / m.month.prevExpenses : 0;
-  const max = Math.max(...m.month.categories.map((c) => c.total), 1);
-  el.replaceChildren(
-    h("span", { className: "screen-top" },
-      h("span", { className: "screen-title", textContent: `${month} spending` }),
-      m.month.prevExpenses
-        ? h("span", { className: `delta${change > 0 ? " up" : ""}`, textContent: `${change <= 0 ? "↓" : "↑"} ${Math.abs(change * 100).toFixed(0)}% vs last month` })
-        : null),
-    h("span", { className: "total" },
-      h("span", { className: "cur", textContent: "$" }),
-      h("span", { className: "num", textContent: num(m.month.expenses) })),
-    h("span", { className: "cats" }, m.month.categories.map((c) =>
-      h("span", { className: "cat" },
-        h("span", { className: "name", textContent: c.name }),
-        h("span", { className: "track" }, Object.assign(h("span", { className: "fill" }), { style: `width:${(c.total / max) * 100}%` })),
-        h("span", { className: "amt", textContent: money(c.total) })))),
+  const total = (n) => h("span", { className: "total" }, h("span", { className: "cur", textContent: "$" }), h("span", { className: "num", textContent: num(n) }));
+  let body;
+  if (channel === 1) {
+    const list = m.month.recentExpenses || [];
+    body = [
+      h("span", { className: "screen-top" },
+        h("span", { className: "screen-title", textContent: `${month} expenses` }),
+        m.month.expenseCount ? h("span", { className: "delta", textContent: `${m.month.expenseCount} payments` }) : null),
+      total(m.month.expenses),
+      h("span", { className: "cats tx" }, list.length
+        ? list.map((t) => row(t.name, h("span", { className: "when", textContent: `${fmtDay(t.date, { day: "numeric", month: "short" })} · ${t.category}` }), money(t.amount, 2)))
+        : h("span", { className: "screen-title", textContent: "No payments yet this month" })),
+    ];
+  } else if (channel === 2) {
+    const income = m.month.income ?? 0;
+    const kept = income - m.month.expenses;
+    const ratio = income ? Math.min(1, m.month.expenses / income) : 1;
+    body = [
+      h("span", { className: "screen-top" },
+        h("span", { className: "screen-title", textContent: `${month} income` }),
+        income ? h("span", { className: `delta${kept < 0 ? " up" : ""}`, textContent: kept >= 0 ? `${money(kept)} kept so far` : `${money(-kept)} more out than in` }) : null),
+      total(income),
+      h("span", { className: "cats" },
+        row("Spent", h("span", { className: "track" }, Object.assign(h("span", { className: `fill${kept < 0 ? " over" : ""}` }), { style: `width:${ratio * 100}%` })), money(m.month.expenses)),
+        (m.month.incomes || []).map((t) => row(t.name, h("span", { className: "when", textContent: fmtDay(t.date, { day: "numeric", month: "short" }) }), money(t.amount, 2), "in")),
+        (m.month.incomes || []).length ? null : h("span", { className: "screen-title", textContent: "No income in yet this month" })),
+    ];
+  } else {
+    const change = m.month.prevExpenses ? (m.month.expenses - m.month.prevExpenses) / m.month.prevExpenses : 0;
+    const max = Math.max(...m.month.categories.map((c) => c.total), 1);
+    body = [
+      h("span", { className: "screen-top" },
+        h("span", { className: "screen-title", textContent: `${month} spending` }),
+        m.month.prevExpenses
+          ? h("span", { className: `delta${change > 0 ? " up" : ""}`, textContent: `${change <= 0 ? "↓" : "↑"} ${Math.abs(change * 100).toFixed(0)}% vs last month` })
+          : null),
+      total(m.month.expenses),
+      h("span", { className: "cats" }, m.month.categories.map((c) =>
+        row(c.name, h("span", { className: "track" }, Object.assign(h("span", { className: "fill" }), { style: `width:${(c.total / max) * 100}%` })), money(c.total)))),
+    ];
+  }
+  el.replaceChildren(...body,
     h("span", { className: "screen-foot" },
-      h("span", { textContent: m.live ? "Pūtea · live" : "Sample · Pūtea isn't running" }),
-      h("span", { textContent: `Last month ${money(m.month.prevExpenses)}` })),
+      h("span", { textContent: `CH ${channel + 1} · ${CHANNELS[channel]}` }),
+      h("span", { textContent: m.live ? "Pūtea · live" : "Sample · Pūtea isn't running" })),
+    h("span", { className: "osd", id: "osd", textContent: `CH ${channel + 1}`, ariaHidden: "true" }),
   );
 }
 
@@ -189,12 +224,55 @@ function applyScreen(animate) {
   $("money-screen").ariaLabel = screenOn ? "Open the Money book" : "Spending screen is off";
   $("screen").setAttribute("aria-hidden", String(!screenOn));
 }
-$("screen-power").addEventListener("click", () => {
-  screenOn = !screenOn;
+function setScreen(on, animate = true) {
+  if (on === screenOn) return;
+  screenOn = on;
   store("room-screen", screenOn ? "on" : "off");
-  applyScreen(true);
+  applyScreen(animate);
+}
+$("screen-power").addEventListener("click", () => setScreen(!screenOn));
+
+function blinkRemote() {
+  const ir = $("remote-ir");
+  ir.classList.remove("blink");
+  void ir.offsetWidth;
+  ir.classList.add("blink");
+}
+
+function applyRemote() {
+  const p = $("remote-power");
+  p.setAttribute("aria-pressed", String(moneyHidden));
+  p.title = moneyHidden ? "Show money views again" : "Hide all money views";
+  p.ariaLabel = moneyHidden ? "Show all money views" : "Hide all money views";
+  $("app").classList.toggle("money-hidden", moneyHidden);
+}
+
+$("remote-power").addEventListener("click", () => {
+  blinkRemote();
+  moneyHidden = !moneyHidden;
+  store("room-money", moneyHidden ? "hidden" : "shown");
+  setScreen(!moneyHidden);
+  applyRemote();
+  renderWeek();
+  if (activeBook === "money") closeBook();
 });
+
+function changeChannel(step) {
+  blinkRemote();
+  if (!screenOn) return; // like a real set: channels need the screen on
+  channel = (channel + step + CHANNELS.length) % CHANNELS.length;
+  store("room-channel", String(channel));
+  renderMoneyScreen();
+  const glass = $("money-screen");
+  glass.classList.remove("tuning");
+  void glass.offsetWidth;
+  glass.classList.add("tuning");
+}
+$("ch-up").addEventListener("click", () => changeChannel(1));
+$("ch-down").addEventListener("click", () => changeChannel(-1));
+
 applyScreen(false);
+applyRemote();
 
 // ---------- wall: calendar ----------
 
@@ -385,6 +463,14 @@ function renderAgenda() {
 function renderWeek() {
   const m = state.money;
   if (!m) return;
+  if (moneyHidden) {
+    return $("week").replaceChildren(
+      h("div", { className: "paper hidden-paper" },
+        h("div", { className: "r-head", textContent: "THIS WEEK" }),
+        h("div", { className: "r-hidden", textContent: "Hidden with the remote" }),
+        h("div", { className: "r-foot", textContent: "PRESS ⏻ ON THE REMOTE TO SHOW" })),
+      h("div", { className: "tear", ariaHidden: "true" }));
+  }
   const w = m.week;
   const scale = Math.max(w.usual / 0.86, w.spent * 1.05, 1);
   const maxDay = Math.max(...w.days.map((d) => d.spent), 1);
@@ -449,6 +535,13 @@ function bookPages(id) {
 
 function moneyPages() {
   const m = state.money;
+  if (moneyHidden) {
+    return {
+      left: [h("p", { className: "eyebrow", textContent: "Hidden" }), h("h2", { id: "book-title", textContent: "Money" }),
+        h("p", { className: "sub", textContent: "Money is hidden with the remote. Press its power button to show it again." })],
+      right: [h("p", { className: "empty", textContent: "These pages are face down for now." })],
+    };
+  }
   const left = [
     h("p", { className: "eyebrow", textContent: m.live ? "Live from Pūtea" : "Sample data" }),
     h("h2", { id: "book-title", textContent: "Money" }),

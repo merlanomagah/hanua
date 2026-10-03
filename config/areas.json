@@ -66,5 +66,18 @@
         "status": "Circle"
       }
     }
-  ]
+  ],
+  "goals": {
+    "label": "Goals",
+    "notionDatabaseId": "d93d20081c814cd4aa9d67a13272b269",
+    "fields": {
+      "title": "Goal",
+      "date": "Due",
+      "status": "Status",
+      "amount": "Progress",
+      "timeframe": "Timeframe",
+      "area": "Area",
+      "notes": "Notes"
+    }
+  }
 }
