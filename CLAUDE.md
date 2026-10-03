@@ -26,7 +26,7 @@ The reasoning behind Hanua lives in [Hanua OS](https://app.notion.com/p/3ee16603
 
 ## Running and checking
 
-- `npm start`, or `scripts/start.sh` (it backgrounds the server, then opens a new Safari window). `scripts/restart.sh` ("Restart Hanua.command") stops it and starts it fresh, for after an update. Port comes from `.env` (`PORT`), default 3000.
+- `npm start`, or `scripts/start.sh` (it backgrounds the server, then opens a new Safari window). `scripts/restart.sh` ("Restart Hanua.command") stops it and starts it fresh, for after an update. The owner also has a macOS Shortcuts shortcut, "Restart Hanua", with a keyboard shortcut, that runs `scripts/restart.sh`: after a change, tell them to use that. Port comes from `.env` (`PORT`), default 3000.
 - Without keys, everything runs on sample data (`data/sample.json`, dates shifted to today) and sample money. Use that to check changes in a browser at desktop and phone widths before pushing.
 
 ## Layout
