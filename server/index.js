@@ -16,6 +16,7 @@ const sample = JSON.parse(await readFile(path.join(root, "data/sample.json"), "u
 const recordCrate = JSON.parse(await readFile(path.join(root, "config/records.json"), "utf8")).records;
 const goalsArea = config.goals ? { id: "goals", ...config.goals } : null;
 const reviewsArea = config.reviews ? { id: "reviews", ...config.reviews } : null;
+const shopArea = config.shop ? { id: "shop", ...config.shop } : null;
 
 const isLive = (area) => notionEnabled() && Boolean(area.notionDatabaseId);
 const notionUrl = (area) => (area.notionDatabaseId ? `https://www.notion.so/${area.notionDatabaseId}` : null);
@@ -48,7 +49,7 @@ async function recordsFor(area, { fresh = false } = {}) {
   }
   const hit = cache.get(area.id);
   if (!fresh && hit && Date.now() - hit.at < CACHE_MS) return hit.records;
-  const records = await queryArea(area);
+  const records = await queryArea(area, area.limit || 50);
   cache.set(area.id, { at: Date.now(), records });
   return records;
 }
@@ -262,6 +263,42 @@ app.post("/api/reviews", async (req, res, next) => {
     const record = await createPage(reviewsArea, toNotionProperties(schema, props));
     cache.delete(reviewsArea.id);
     res.json({ ok: true, live: true, review: toReview(record) });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ---------- the treat shop: rewards, purchases and money moved. Coins are worked out from goals, never stored ----------
+
+app.get("/api/shop", async (_req, res) => {
+  if (!shopArea) return res.json({ items: [], live: false });
+  const base = { live: isLive(shopArea), notionUrl: notionUrl(shopArea), coinsPerDollar: shopArea.coinsPerDollar, coinsPerLevel: shopArea.coinsPerLevel };
+  const f = shopArea.fields;
+  try {
+    const items = (await recordsFor(shopArea)).map((r) => ({
+      id: r.id, url: r.url, item: r.title, type: r.status, coins: r.amount, date: r.date,
+      dollars: r.fields?.[f.dollars] ?? null, notes: r.fields?.[f.notes] ?? "",
+    }));
+    res.json({ ...base, items });
+  } catch (err) {
+    res.json({ ...base, items: [], error: err.message });
+  }
+});
+
+// A purchase or a money-moved note, from an explicit Buy / "I've moved it" in the shop.
+app.post("/api/shop", async (req, res, next) => {
+  if (!shopArea || !isLive(shopArea)) return res.json({ ok: true, live: false });
+  const { item, type, coins, dollars } = req.body?.values || {};
+  if (!item || !["Bought", "Moved"].includes(type)) return res.status(400).json({ error: "Missing item or type." });
+  try {
+    const schema = await getSchema(shopArea);
+    const f = shopArea.fields;
+    const props = [{ name: f.title, value: item }, { name: f.status, value: type }, { name: f.date, value: new Date().toISOString().slice(0, 10) }];
+    if (coins != null) props.push({ name: f.amount, value: String(coins) });
+    if (dollars != null) props.push({ name: f.dollars, value: String(dollars) });
+    await createPage(shopArea, toNotionProperties(schema, props));
+    cache.delete(shopArea.id);
+    res.json({ ok: true, live: true });
   } catch (err) {
     next(err);
   }

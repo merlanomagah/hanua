@@ -88,7 +88,8 @@
       "doneWhen": "Done when",
       "felt": "Felt"
     },
-    "guideUrl": "https://www.notion.so/3ee16603f0bd818bbe32c6cf887853b2"
+    "guideUrl": "https://www.notion.so/3ee16603f0bd818bbe32c6cf887853b2",
+    "limit": 1000
   },
   "reviews": {
     "label": "Weekly reviews",
@@ -106,6 +107,27 @@
       "atRisk": "At risk",
       "energy": "Energy",
       "points": "Points"
+    },
+    "limit": 60
+  },
+  "shop": {
+    "label": "Treat shop",
+    "notionDatabaseId": "4b60a1605954400698f5b0babc2beb26",
+    "limit": 500,
+    "fields": {
+      "title": "Item",
+      "date": "Date",
+      "status": "Type",
+      "amount": "Coins",
+      "dollars": "Dollars",
+      "notes": "Notes"
+    },
+    "coinsPerDollar": 10,
+    "coinsPerLevel": {
+      "Epic": 1000,
+      "Feature": 250,
+      "PBI": 50,
+      "Task": 10
     }
   }
 }

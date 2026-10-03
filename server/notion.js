@@ -87,19 +87,30 @@ function normalisePage(page, fields = {}) {
   };
 }
 
+// Reads up to `limit` rows, a page of 100 at a time (Notion's maximum per request).
 export async function queryArea(area, limit = 50) {
-  const body = { page_size: limit };
-  if (area.fields?.date) body.sorts = [{ property: area.fields.date, direction: "descending" }];
-  let json;
-  try {
-    json = await call(`/databases/${area.notionDatabaseId}/query`, { method: "POST", body });
-  } catch (err) {
-    // Configured date column missing or renamed: fall back to newest-edited first.
-    if (err.status !== 400 || !body.sorts) throw err;
-    body.sorts = [{ timestamp: "last_edited_time", direction: "descending" }];
-    json = await call(`/databases/${area.notionDatabaseId}/query`, { method: "POST", body });
-  }
-  return json.results.map((p) => normalisePage(p, area.fields));
+  const sorts = area.fields?.date ? [{ property: area.fields.date, direction: "descending" }] : undefined;
+  const fetchPage = async (cursor, sortBy) => call(`/databases/${area.notionDatabaseId}/query`, {
+    method: "POST",
+    body: { page_size: Math.min(100, limit), ...(sortBy ? { sorts: sortBy } : {}), ...(cursor ? { start_cursor: cursor } : {}) },
+  });
+  let sortBy = sorts;
+  const rows = [];
+  let cursor;
+  do {
+    let json;
+    try {
+      json = await fetchPage(cursor, sortBy);
+    } catch (err) {
+      // Configured date column missing or renamed: fall back to newest-edited first.
+      if (err.status !== 400 || !sortBy || cursor) throw err;
+      sortBy = [{ timestamp: "last_edited_time", direction: "descending" }];
+      json = await fetchPage(cursor, sortBy);
+    }
+    rows.push(...json.results);
+    cursor = json.has_more ? json.next_cursor : null;
+  } while (cursor && rows.length < limit);
+  return rows.slice(0, limit).map((p) => normalisePage(p, area.fields));
 }
 
 // Property name -> type, so Claude knows what it can fill in.

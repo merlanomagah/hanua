@@ -11,7 +11,7 @@ const MONEY_BOOK = { id: "money", label: "Money", icon: "$", color: "#2e5e4e", m
 const SPINES = { work: "work", calendar: "calendar", money: "money", health: "health", learning: "learning", relationships: "people" };
 const ROMAN = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"];
 
-let state = { areas: [], money: null, status: {}, goals: { goals: [], live: false, notionUrl: null }, records: [], reviews: { reviews: [], live: false } };
+let state = { areas: [], money: null, status: {}, goals: { goals: [], live: false, notionUrl: null }, records: [], reviews: { reviews: [], live: false }, shop: { items: [], live: false, coinsPerDollar: 10, coinsPerLevel: { Epic: 1000, Feature: 250, PBI: 50, Task: 10 } } };
 
 // ---------- helpers ----------
 
@@ -939,6 +939,7 @@ function renderBoard() {
       });
   $("cork-cols").replaceChildren(...cols);
   $("cork-cols").querySelectorAll(".pin-list").forEach((l) => l.addEventListener("scroll", drawThreads, { passive: true }));
+  renderJars();
   // the wall stretches to fit a long board (phones stack the columns)
   $("wall").style.minHeight = onBoard ? `${$("board-pane").offsetHeight}px` : "";
   requestAnimationFrame(drawThreads);
@@ -1056,7 +1057,8 @@ async function moveGoal(g, status, undoing = false) {
     if (status === "Done" && !undoing) askFelt(goalById(g.id) || g);
     const active = state.goals.goals.filter((x) => x.level === g.level && x.status === "Active").length;
     const wip = status === "Active" && active > WIP_LIMIT ? ` That's ${active} active, over your limit of ${WIP_LIMIT}.` : "";
-    if (!undoing) toast(`“${g.title}” moved to ${status}${res.live ? "" : " (sample, not saved to Notion)"}.${wip}`, Boolean(wip), { label: "Undo", run: () => moveGoal(goalById(g.id) || g, before, true) });
+    const earned = status === "Done" ? coinText(g) : "";
+    if (!undoing) toast(`“${g.title}” moved to ${status}${res.live ? "" : " (sample, not saved to Notion)"}.${earned}${wip}`, Boolean(wip), { label: "Undo", run: () => moveGoal(goalById(g.id) || g, before, true) });
   } catch (err) {
     g.status = before;
     renderBoard();
@@ -1403,7 +1405,7 @@ $("goal-dialog").addEventListener("close", async () => {
       toast("Saved here only (sample goals, so Notion isn't changed)");
     }
     renderBoard();
-    if (g && values.status === "Done" && !wasDone) askFelt(goalById(g.id));
+    if (g && values.status === "Done" && !wasDone) { askFelt(goalById(g.id)); toast(`Done ✓${coinText(g)}`); }
   } catch (err) {
     toast(err.message, true);
   }
@@ -1580,6 +1582,130 @@ $("rv-next").addEventListener("click", async () => {
   }
 });
 $("review-open").addEventListener("click", openReview);
+
+// ---------- coins, goal jars and the treat shop ----------
+// Coins are worked out from finished goals (by level, never by guessed size) minus what you've bought.
+
+const coinsFor = (g) => state.shop.coinsPerLevel?.[g.level] || 0;
+const toDollars = (coins) => coins / (state.shop.coinsPerDollar || 10);
+const dollars = (coins) => money(toDollars(coins), toDollars(coins) % 1 ? 2 : 0);
+const coinText = (g) => (coinsFor(g) ? ` +${coinsFor(g)} coins (${dollars(coinsFor(g))}) in the treat fund.` : "");
+
+function coinTotals() {
+  const now = new Date();
+  const starts = {
+    today: todayStr(),
+    week: ymd(mondayOf(now)),
+    quarter: ymd(new Date(now.getFullYear(), Math.floor(now.getMonth() / 3) * 3, 1)),
+    year: `${now.getFullYear()}-01-01`,
+  };
+  const done = state.goals.goals.filter((g) => isGoalDone(g) && g.completed);
+  const since = (d) => done.filter((g) => dayOf(g.completed) >= d).reduce((n, g) => n + coinsFor(g), 0);
+  const all = done.reduce((n, g) => n + coinsFor(g), 0);
+  const items = state.shop.items || [];
+  const spent = items.filter((i) => i.type === "Bought").reduce((n, i) => n + (Number(i.coins) || 0), 0);
+  const moved = items.filter((i) => i.type === "Moved").reduce((n, i) => n + (Number(i.dollars) || 0), 0);
+  return {
+    today: since(starts.today), week: since(starts.week), quarter: since(starts.quarter), year: since(starts.year),
+    all, spent, balance: all - spent, owed: Math.max(0, Math.round((toDollars(all) - moved) * 100) / 100),
+  };
+}
+
+// The Epic a goal belongs to, by walking up its parents.
+function epicOf(g) {
+  const seen = new Set();
+  while (g && g.level !== "Epic" && g.parent && !seen.has(g.id)) { seen.add(g.id); g = goalById(g.parent); }
+  return g?.level === "Epic" ? g : null;
+}
+
+function renderJars() {
+  const row = $("jar-row");
+  if (!row) return;
+  const epics = state.goals.goals.filter((g) => g.level === "Epic" && !isGoalDone(g))
+    .sort((a, b) => (a.priority ?? 9) - (b.priority ?? 9) || (b.progress ?? 0) - (a.progress ?? 0)).slice(0, 4);
+  const jar = (title, pct, sub, onClick) => {
+    const el = h("button", { type: "button", className: "jar", ariaLabel: `${title}: ${pct}% done` },
+      h("img", { src: "assets/obj/jar.png", alt: "" }),
+      h("span", { className: "jar-coins", ariaHidden: "true" }),
+      h("span", { className: "jar-tag" }, h("span", { className: "jar-name", textContent: title }), h("b", { textContent: sub })));
+    el.style.setProperty("--fill", `${Math.max(0, Math.min(100, pct))}%`);
+    el.addEventListener("click", onClick);
+    return el;
+  };
+  const t = coinTotals();
+  const tin = h("button", { type: "button", className: "tin", ariaLabel: `Treat fund: ${dollars(t.balance)} to spend. Open the shop` },
+    h("img", { src: "assets/obj/tin.png", alt: "" }),
+    h("span", { className: "jar-tag tin-tag" }, h("span", { className: "jar-name", textContent: `${dollars(t.week)} this week` }), h("b", { textContent: `${dollars(t.balance)} to spend` })));
+  tin.addEventListener("click", openShop);
+  row.replaceChildren(
+    ...(epics.length
+      ? epics.map((e) => jar(e.title, e.progress ?? 0, `${e.progress ?? 0}%${e.children?.length ? ` · ${e.childDone}/${e.children.length}` : ""}`, () => {
+          showBoard(true);
+          focusGoal = e.id;
+          renderBoard();
+        }))
+      : [jar("Your first Epic", 0, "start here", () => { showBoard(true); openGoal(null, { level: "Epic" }); })]),
+    tin);
+}
+
+// ---- the shop ----
+let confirmBuy = null;
+function openShop() {
+  confirmBuy = null;
+  renderShop();
+  $("shop-dialog").showModal();
+}
+function renderShop() {
+  const t = coinTotals();
+  const shop = state.shop;
+  $("shop-title").textContent = `${dollars(t.balance)} to spend`;
+  $("shop-sub").textContent = `${t.balance.toLocaleString()} coins · earned by finishing goals${shop.live ? "" : " (sample data)"}`;
+  $("shop-periods").replaceChildren(...[["Today", t.today], ["This week", t.week], ["This quarter", t.quarter], ["This year", t.year]].map(([l, c]) =>
+    h("div", { className: "shop-period" }, h("b", { textContent: dollars(c) }), h("span", { textContent: l }), h("i", { textContent: `${c.toLocaleString()} coins` }))));
+  // real money: what to move into the treat account, by hand (Hanua never moves money)
+  const top = $("shop-topup");
+  if (t.owed > 0) {
+    const moved = h("button", { type: "button", className: "g-act", textContent: `I've moved ${money(t.owed, t.owed % 1 ? 2 : 0)}` });
+    moved.addEventListener("click", () => shopWrite({ item: `Moved ${money(t.owed, 2)} to the treat account`, type: "Moved", dollars: t.owed }, `Recorded: ${money(t.owed, 2)} moved ✓`));
+    top.replaceChildren(h("span", {}, "Treat account top-up: ", h("b", { textContent: money(t.owed, t.owed % 1 ? 2 : 0) }), ". Move it yourself, then mark it here."), moved);
+  } else top.replaceChildren(h("span", { textContent: "Treat account is up to date." }));
+  const rewards = (shop.items || []).filter((i) => i.type === "Reward").sort((a, b) => (a.coins || 0) - (b.coins || 0));
+  $("shop-list").replaceChildren(...(rewards.length ? rewards.map((r) => {
+    const coins = Number(r.coins) || 0;
+    const short = coins - t.balance;
+    const btn = h("button", { type: "button", className: `g-act${confirmBuy === r.id ? " confirm" : ""}`, textContent: confirmBuy === r.id ? "Confirm" : short > 0 ? `${short.toLocaleString()} to go` : "Buy" });
+    btn.disabled = short > 0;
+    btn.addEventListener("click", () => {
+      if (confirmBuy !== r.id) { confirmBuy = r.id; return renderShop(); }
+      confirmBuy = null;
+      shopWrite({ item: r.item, type: "Bought", coins }, `Enjoy: ${r.item} ✓`);
+    });
+    return h("li", { className: "shop-item" },
+      h("span", { className: "si-name", textContent: r.item }),
+      h("span", { className: "si-price", textContent: `${coins.toLocaleString()} coins · ${dollars(coins)}` }),
+      h("span", { className: "si-bar" }, Object.assign(h("i"), { style: `width:${Math.min(100, coins ? (t.balance / coins) * 100 : 0)}%` })),
+      btn);
+  }) : [h("li", { className: "shop-empty", textContent: "No rewards yet. Add a few in Notion: a name and a coin price (10 coins = $1)." })]));
+  const recent = (shop.items || []).filter((i) => i.type !== "Reward").sort((a, b) => (b.date || "").localeCompare(a.date || "")).slice(0, 5);
+  $("shop-recent-h").hidden = !recent.length;
+  $("shop-recent").replaceChildren(...recent.map((i) => h("li", {},
+    h("span", { textContent: i.item }), h("span", { textContent: [i.type === "Bought" ? `−${(i.coins || 0).toLocaleString()} coins` : money(i.dollars || 0, 2), fmtDay(i.date, { day: "numeric", month: "short" })].join(" · ") }))));
+  const per = shop.coinsPerLevel || {};
+  $("shop-rules").textContent = `Earn: Task ${per.Task} · PBI ${per.PBI} · Feature ${per.Feature} · Epic ${(per.Epic || 0).toLocaleString()} coins when it's done. ${shop.coinsPerDollar} coins = $1.`;
+  $("shop-notion").hidden = !shop.notionUrl;
+  if (shop.notionUrl) $("shop-notion").href = shop.notionUrl;
+}
+async function shopWrite(values, okText) {
+  try {
+    const res = await api("/api/shop", { values });
+    if (res.live) state.shop = { ...state.shop, ...(await api("/api/shop")) };
+    else state.shop.items = [...state.shop.items, { id: `local-${Date.now()}`, date: todayStr(), ...values }];
+    toast(res.live ? okText : `${okText} (sample data, not saved)`);
+    renderShop();
+    renderJars();
+  } catch (err) { toast(err.message, true); }
+}
+$("shop-close").addEventListener("click", () => $("shop-dialog").close());
 
 // ---------- record player and music controls (the Music app on this Mac) ----------
 
@@ -1809,17 +1935,19 @@ function renderAll() {
   renderTodo();
   renderAgenda();
   renderWeek();
+  renderJars();
   if (onBoard) renderBoard();
 }
 
 async function load() {
-  const [areas, moneyData, goals, crate, reviews] = await Promise.allSettled([api("/api/areas"), api("/api/money"), api("/api/goals"), api("/api/records"), api("/api/reviews")]);
+  const [areas, moneyData, goals, crate, reviews, shop] = await Promise.allSettled([api("/api/areas"), api("/api/money"), api("/api/goals"), api("/api/records"), api("/api/reviews"), api("/api/shop")]);
   if (areas.status === "fulfilled") Object.assign(state, { areas: areas.value.areas, status: areas.value.status });
   else toast(areas.reason.message, true);
   if (moneyData.status === "fulfilled") state.money = moneyData.value;
   if (goals.status === "fulfilled") state.goals = goals.value;
   if (crate.status === "fulfilled") state.records = crate.value.records;
   if (reviews.status === "fulfilled") state.reviews = reviews.value;
+  if (shop.status === "fulfilled") state.shop = { ...state.shop, ...shop.value };
   renderAll();
 }
 

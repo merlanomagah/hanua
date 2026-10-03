@@ -194,7 +194,17 @@
             <div class="wall-left">
               <div class="notes" id="notes" aria-label="Pinned notes"></div>
             </div>
-            <div class="wall-right"></div>
+            <div class="wall-right">
+              <!-- goal jars: one per active Epic, filling as it's done; the money tin opens the treat shop -->
+              <div class="jar-shelf">
+                <div class="jar-row" id="jar-row"></div>
+                <div class="float-shelf" aria-hidden="true">
+                  <img src="assets/shelf/bookend.png" alt="" class="bracket left">
+                  <img src="assets/shelf/bookend.png" alt="" class="bracket right">
+                  <img src="assets/shelf/plank.png" alt="" class="plank">
+                </div>
+              </div>
+            </div>
           </div>
 
           <div class="to-desk">
@@ -369,6 +379,29 @@
       <button type="button" data-felt="Bigger">Bigger</button>
     </div>
     <button type="button" class="felt-skip" id="felt-skip">Skip</button>
+  </dialog>
+
+  <!-- the treat shop: coins earned by finishing goals, spent on rewards you list in Notion -->
+  <dialog id="shop-dialog" class="shop-dialog" aria-labelledby="shop-title">
+    <div class="shop-head">
+      <div>
+        <span class="eyebrow">Treat fund</span>
+        <h3 id="shop-title"></h3>
+        <p class="draft-note" id="shop-sub"></p>
+      </div>
+      <img src="assets/obj/tin.png" alt="" class="shop-tin">
+    </div>
+    <div class="shop-periods" id="shop-periods"></div>
+    <div class="shop-topup" id="shop-topup"></div>
+    <h4 class="shop-h">Rewards</h4>
+    <ul class="shop-list" id="shop-list"></ul>
+    <h4 class="shop-h" id="shop-recent-h">Recently</h4>
+    <ul class="shop-recent" id="shop-recent"></ul>
+    <p class="shop-rules" id="shop-rules"></p>
+    <div class="dialog-actions">
+      <a class="b-link" id="shop-notion" target="_blank" rel="noopener" hidden>Add rewards in Notion ↗</a>
+      <button type="button" id="shop-close">Close</button>
+    </div>
   </dialog>
 
   <dialog id="draft-dialog">

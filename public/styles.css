@@ -409,6 +409,36 @@ button:disabled { opacity: 0.5; cursor: progress; }
 .wall-right.has-list .deco-books { margin-top: -22px; }
 .deco-plant { flex: none; width: clamp(100px, 30%, 180px); height: auto; margin-bottom: -44px; filter: var(--object-shadow); }
 
+/* goal jars and the money tin, on their own shelf beside the notes */
+.notes-row .wall-right { justify-content: flex-start; }
+.jar-shelf { position: relative; z-index: 4; margin-top: 30px; }
+.jar-row { display: flex; align-items: flex-end; justify-content: center; gap: clamp(14px, 4%, 28px); padding: 0 6%; margin-bottom: -6px; position: relative; z-index: 1; }
+.jar-shelf { padding-bottom: 46px; }
+.jar, .tin { position: relative; flex: 0 1 auto; padding: 0; border: 0; background: none; cursor: pointer; filter: var(--object-shadow); transition: transform 250ms; }
+.jar { width: clamp(78px, 21%, 108px); margin-bottom: 0; }
+.tin { width: clamp(80px, 22%, 112px); margin-left: 4px; }
+.jar:hover, .tin:hover { transform: translateY(-4px); }
+.jar img, .tin img { width: 100%; height: auto; }
+/* coins inside the glass: drawn over the jar and multiplied, so the glass's own shine stays on top */
+.jar-coins {
+  position: absolute; left: 19.5%; right: 19.5%; bottom: 13.6%; height: calc(var(--fill, 0%) * 0.585); max-height: 58.5%;
+  border-radius: 40% 40% 10% 10% / 9px 9px 6% 6%; mix-blend-mode: multiply; pointer-events: none;
+  background:
+    radial-gradient(ellipse 48% 40% at 50% 50%, #F2D27A 0 52%, #C9962F 56% 70%, transparent 73%) 0 0 / 16px 8px,
+    radial-gradient(ellipse 48% 40% at 50% 50%, #E8C25C 0 52%, #B5832A 56% 70%, transparent 73%) 8px 4px / 16px 8px,
+    linear-gradient(180deg, #E9C871, #C29236);
+  transition: height 900ms cubic-bezier(.3,.7,.3,1);
+}
+.jar-tag {
+  position: absolute; left: 50%; top: calc(100% - 6px); transform: translateX(-50%) rotate(-2deg); width: 118%; max-width: 132px; z-index: 2;
+  display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 4px 5px 5px;
+  background: var(--cream); box-shadow: 0 1px 1px rgb(28 24 20 / 0.12), 2px 4px 6px -3px rgb(28 24 20 / 0.35); border-radius: 2px;
+}
+.jar-name { font: italic 13px/1.1 var(--display); color: var(--ink); text-align: center; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.jar-tag b { font: 500 9px var(--mono); letter-spacing: 0.08em; color: var(--green); }
+.tin-tag { transform: translateX(-50%) rotate(2deg); }
+.tin-tag b { color: var(--terra-hover); }
+
 /* pinned notes */
 .notes-row { margin-top: 56px; }
 .notes-row .wall-left { padding-top: 0; }
@@ -1020,6 +1050,33 @@ button:disabled { opacity: 0.5; cursor: progress; }
   .rv-add { grid-template-columns: 1fr; }
   .rv-wip-row { grid-template-columns: 64px 1fr 90px; }
 }
+
+/* ---------- the treat shop ---------- */
+.shop-dialog { width: min(560px, calc(100% - 32px)); }
+.shop-head { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
+.shop-head .eyebrow { font-size: 10px; color: var(--terra); }
+.shop-head h3 { margin: 4px 0 2px; font-size: 40px; }
+.shop-tin { width: 84px; height: auto; filter: var(--object-shadow); }
+.shop-periods { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; margin: 14px 0; background: var(--hair); border: 1px solid var(--hair); }
+.shop-period { display: grid; gap: 2px; padding: 10px; background: var(--cream); }
+.shop-period b { font: 400 24px/1 var(--display); }
+.shop-period span { font: 9px var(--mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+.shop-period i { font: 10px var(--mono); color: var(--faint); font-style: normal; }
+.shop-topup { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 12px; border-left: 3px solid var(--green-mid); background: var(--page); font: 13px/1.4 var(--ui); color: var(--ink-3); }
+.shop-h { margin: 18px 0 6px; font: 10px var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
+.shop-list, .shop-recent { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.shop-item { display: grid; grid-template-columns: 1fr auto; grid-template-rows: auto auto auto; gap: 3px 12px; align-items: center; padding: 10px 12px; background: var(--page); border-radius: 2px; }
+.si-name { font: 18px/1.2 var(--display); }
+.si-price { grid-column: 1; font: 10px var(--mono); color: var(--muted); }
+.si-bar { grid-column: 1; height: 3px; background: var(--hair); }
+.si-bar i { display: block; height: 100%; background: #C9962F; }
+.shop-item .g-act { grid-column: 2; grid-row: 1 / 4; }
+.shop-item .g-act.confirm { background: var(--terra); border-color: var(--terra); color: var(--cream); }
+.shop-empty { font: italic 17px var(--display); color: var(--muted); }
+.shop-recent li { display: flex; justify-content: space-between; gap: 12px; font: 13px var(--ui); color: var(--ink-3); }
+.shop-recent li span:last-child { font: 10px var(--mono); color: var(--muted); white-space: nowrap; }
+.shop-rules { margin: 16px 0 0; font: 11px/1.4 var(--ui); color: var(--faint); }
+@media (max-width: 600px) { .shop-periods { grid-template-columns: repeat(2, 1fr); } }
 
 /* ---------- dialog / toast ---------- */
 dialog { background: var(--cream); color: var(--ink); border: 1px solid var(--border); border-radius: 3px; width: min(440px, calc(100% - 32px)); padding: 26px; box-shadow: 0 30px 60px -30px rgb(28 24 20 / 0.6); }

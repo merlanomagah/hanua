@@ -448,5 +448,38 @@
         "Energy": "Good"
       }
     }
+  ],
+  "shop": [
+    {
+      "id": "sample-shop-0",
+      "title": "Fancy coffee and a pastry",
+      "status": "Reward",
+      "amount": 80
+    },
+    {
+      "id": "sample-shop-1",
+      "title": "New book",
+      "status": "Reward",
+      "amount": 300
+    },
+    {
+      "id": "sample-shop-2",
+      "title": "Massage",
+      "status": "Reward",
+      "amount": 1000
+    },
+    {
+      "id": "sample-shop-3",
+      "title": "Weekend away",
+      "status": "Reward",
+      "amount": 5000
+    },
+    {
+      "id": "sample-shop-4",
+      "title": "Fancy coffee and a pastry",
+      "status": "Bought",
+      "amount": 80,
+      "date": "2026-09-27"
+    }
   ]
 }
