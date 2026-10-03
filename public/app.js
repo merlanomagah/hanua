@@ -1692,6 +1692,10 @@ function epicOf(g) {
   return g?.level === "Epic" ? g : null;
 }
 
+// Flip-clock style digits for dollar amounts (the shelf and the earnings panel share them).
+const flipDigits = (text, size = "ep") => h("span", { className: `${size}-flaps`, ariaHidden: "true" },
+  [...text].map((ch) => h("span", { className: /\d/.test(ch) ? `${size}-flap` : `${size}-sym`, textContent: ch })));
+
 // The top shelf: what you've earned today, this week and this month, with what you planned for.
 function renderTopShelf() {
   const box = $("ts-periods");
@@ -1700,7 +1704,7 @@ function renderTopShelf() {
   box.replaceChildren(...[["Today", "today"], ["This week", "week"], ["This month", "month"]].map(([label, k]) =>
     h("span", { className: "ts-period" },
       h("span", { className: "ts-label", textContent: label }),
-      h("b", { className: "ts-value", textContent: dollars(t[k]) }),
+      h("b", { className: "ts-value", ariaLabel: dollars(t[k]) }, flipDigits(dollars(t[k]), "ts")),
       h("span", { className: "ts-target", textContent: t[`${k}Target`] ? `of ${dollars(t[`${k}Target`])}` : "nothing planned" }))));
   $("ts-earn").title = `${dollars(t.balance)} to spend · open the treat shop`;
   $("ts-goals").classList.toggle("on", onBoard);
@@ -1736,7 +1740,7 @@ function renderEarnings() {
     return { start, coins };
   });
   const max = Math.max(1, ...weeks.map((w) => w.coins));
-  const flaps = (text) => h("span", { className: "ep-flaps" }, [...text].map((ch) => h("span", { className: /\d/.test(ch) ? "ep-flap" : "ep-sym", textContent: ch })));
+  const flaps = (text) => flipDigits(text, "ep");
   const epics = goals.filter((g) => g.level === "Epic" && !isGoalDone(g));
   const open = h("button", { type: "button", className: "ep-btn", textContent: "Open the treat shop" });
   open.addEventListener("click", () => { toggleEarnings(false); openShop(); });
