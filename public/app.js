@@ -1,3 +1,5 @@
+import { GUIDE, WIP_LIMIT, coachChecks } from "./coach.js";
+
 const $ = (id) => document.getElementById(id);
 const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
 const isNarrow = () => matchMedia("(max-width: 900px)").matches;
@@ -903,6 +905,8 @@ function renderBoard() {
     : `${open.length} open · ${count("active")} active · ${count("at risk")} at risk · ${count("done")} done · ${soon} due this week${live ? "" : " · sample goals"}`;
   $("goals-notion").hidden = !notionUrl;
   if (notionUrl) $("goals-notion").href = notionUrl;
+  $("goals-guide").hidden = !state.goals.guideUrl;
+  if (state.goals.guideUrl) $("goals-guide").href = state.goals.guideUrl;
   document.querySelectorAll("[data-view]").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.view === boardView)));
   document.querySelectorAll("[data-level]").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.level === boardLevel)));
   $("level-seg").hidden = boardView !== "kanban";
@@ -914,8 +918,12 @@ function renderBoard() {
   const cols = boardView === "kanban"
     ? GOAL_STATUS.map((st) => {
         const list = goals.filter((g) => g.level === boardLevel && (g.status || "New") === st).sort(treeOrder(goals));
-        const col = h("section", { className: `pin-col state-${STATE_CLASS[st.toLowerCase()]}` },
-          h("h3", { className: "pin-tag" }, st, h("span", { className: "pin-count", textContent: list.length })),
+        // Personal Kanban: cap what's in progress, so things get finished
+        const over = st === "Active" && list.length > WIP_LIMIT;
+        const col = h("section", { className: `pin-col state-${STATE_CLASS[st.toLowerCase()]}${over ? " over-limit" : ""}` },
+          h("h3", { className: "pin-tag", title: st === "Active" ? `Work-in-progress limit: ${WIP_LIMIT}. Finish one before starting another.` : "" }, st,
+            h("span", { className: "pin-count", textContent: st === "Active" ? `${list.length}/${WIP_LIMIT}` : list.length })),
+          over ? h("p", { className: "wip-note", textContent: `Over your limit of ${WIP_LIMIT}. Finish or park one before starting more.` }) : null,
           h("div", { className: "pin-list" }, list.length ? list.map((g) => goalCard(g, n++, thread)) : h("p", { className: "pin-empty", textContent: "Drop a card here" })));
         dropZone(col, st);
         return col;
@@ -923,7 +931,7 @@ function renderBoard() {
     : LEVELS.map((lvl) => {
         const list = goals.filter((g) => (g.level || "Task") === lvl.name).sort(treeOrder(goals));
         return h("section", { className: `pin-col lvl-${lvl.name.toLowerCase()}` },
-          h("h3", { className: "pin-tag" }, lvl.name, h("span", { className: "pin-when", textContent: ` · ${lvl.when}` }), h("span", { className: "pin-count", textContent: list.length })),
+          h("h3", { className: "pin-tag", title: GUIDE[lvl.name].what }, lvl.name, h("span", { className: "pin-when", textContent: ` · ${lvl.when}` }), h("span", { className: "pin-count", textContent: list.length })),
           h("div", { className: "pin-list" }, list.length ? list.map((g) => goalCard(g, n++, thread)) : h("p", { className: "pin-empty", textContent: lvl.name === "Epic" ? "Start with a big goal for the year" : "Nothing pinned" })));
       });
   $("cork-cols").replaceChildren(...cols);
@@ -1039,7 +1047,9 @@ async function moveGoal(g, status, undoing = false) {
     if (res.live) state.goals = await api("/api/goals");
     else recalcSample();
     renderBoard();
-    if (!undoing) toast(`“${g.title}” moved to ${status}${res.live ? "" : " (sample, not saved to Notion)"}`, false, { label: "Undo", run: () => moveGoal(goalById(g.id) || g, before, true) });
+    const active = state.goals.goals.filter((x) => x.level === g.level && x.status === "Active").length;
+    const wip = status === "Active" && active > WIP_LIMIT ? ` That's ${active} active, over your limit of ${WIP_LIMIT}.` : "";
+    if (!undoing) toast(`“${g.title}” moved to ${status}${res.live ? "" : " (sample, not saved to Notion)"}.${wip}`, Boolean(wip), { label: "Undo", run: () => moveGoal(goalById(g.id) || g, before, true) });
   } catch (err) {
     g.status = before;
     renderBoard();
@@ -1119,9 +1129,72 @@ function openGoal(g, preset = {}) {
   f.progressOut.value = `${f.progress.value}%`;
   $("goal-open").hidden = !g?.url;
   if (g?.url) $("goal-open").href = g.url;
+  $("coach-reply").hidden = true;
+  $("coach-ask").hidden = !state.goals.coach;
+  $("coach-guide").hidden = !state.goals.guideUrl;
+  if (state.goals.guideUrl) $("coach-guide").href = state.goals.guideUrl;
+  updateCoach();
   $("goal-dialog").showModal();
 }
 $("goal-form").elements.level.addEventListener("change", (e) => fillParents(e.target.value, ""));
+
+// ---- the coach beside the form ----
+function formValues() {
+  const f = $("goal-form").elements;
+  return { id: editingGoal?.id, title: f.title.value, level: f.level.value, parent: f.parent.disabled ? "" : f.parent.value, status: f.status.value,
+    priority: f.priority.value, effort: f.effort.value, area: f.area.value, start: f.start.value, due: f.due.value, description: f.description.value };
+}
+function updateCoach() {
+  const v = formValues();
+  const guide = GUIDE[v.level] || GUIDE.Task;
+  const parentLevel = LEVELS[levelIndex(v.level) - 1]?.name;
+  const siblings = state.goals.goals.filter((g) => g.level === v.level && !isGoalDone(g) && g.id !== v.id && (v.level === "Epic" || (v.parent && g.parent === v.parent)));
+  $("coach-level").textContent = `${v.level} · ${guide.when}`;
+  $("coach-what").textContent = guide.what;
+  $("coach-eg").textContent = `e.g. ${guide.example}`;
+  const checks = coachChecks(v, { parentLevel, openSiblings: v.level === "Epic" || v.parent ? siblings.length : 0, today: todayStr() });
+  $("coach-checks").replaceChildren(...(checks.length ? checks : [{ ok: false, text: "Start with a title" }]).map((c) =>
+    h("li", { className: c.ok ? "ok" : "nudge" }, h("span", { className: "mark", ariaHidden: "true", textContent: c.ok ? "✓" : "·" }), c.text)));
+}
+$("goal-form").addEventListener("input", updateCoach);
+$("goal-form").addEventListener("change", updateCoach);
+
+$("coach-template").addEventListener("click", () => {
+  const f = $("goal-form").elements;
+  const t = (GUIDE[f.level.value] || GUIDE.Task).template;
+  f.description.value = f.description.value.trim() ? `${f.description.value.trimEnd()}\n\n${t}` : t;
+  f.description.focus();
+  updateCoach();
+});
+
+$("coach-ask").addEventListener("click", async () => {
+  const v = formValues();
+  const box = $("coach-reply");
+  if (!v.title.trim()) return toast("Give the goal a title first.", true);
+  const parent = goalById(v.parent);
+  box.hidden = false;
+  box.className = "coach-reply loading";
+  box.textContent = "Claude is reading your goal…";
+  $("coach-ask").disabled = true;
+  try {
+    const r = await api("/api/goals/coach", { goal: v, parent: parent ? { level: parent.level, title: parent.title } : null });
+    const use = (label, fn) => { const b = h("button", { type: "button", className: "g-act", textContent: label }); b.addEventListener("click", () => { fn(); updateCoach(); b.textContent = "Used ✓"; b.disabled = true; }); return b; };
+    const f = $("goal-form").elements;
+    box.className = "coach-reply";
+    box.replaceChildren(
+      h("b", { textContent: r.verdict === "good" ? "Looks good" : "A few tweaks" }),
+      h("ul", {}, r.feedback.map((t) => h("li", { textContent: t }))),
+      r.title && r.title.trim() !== v.title.trim() ? h("div", { className: "coach-suggest" }, h("span", { textContent: `Title: “${r.title}”` }), use("Use title", () => { f.title.value = r.title; })) : null,
+      r.description && r.description.trim() !== v.description.trim() ? h("div", { className: "coach-suggest" },
+        h("pre", { textContent: r.description }), use("Use description", () => { f.description.value = r.description; })) : null,
+      h("p", { className: "coach-small", textContent: "Suggestions only. Nothing is saved until you press Save." }));
+  } catch (err) {
+    box.className = "coach-reply error";
+    box.textContent = err.message;
+  } finally {
+    $("coach-ask").disabled = false;
+  }
+});
 $("goal-form").elements.progress.addEventListener("input", (e) => { $("goal-form").elements.progressOut.value = `${e.target.value}%`; });
 $("goal-add").addEventListener("click", () => openGoal(null, { level: boardView === "kanban" ? boardLevel : "Epic" }));
 $("goal-dialog").addEventListener("close", async () => {

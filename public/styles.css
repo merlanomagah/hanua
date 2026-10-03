@@ -708,16 +708,33 @@ button:disabled { opacity: 0.5; cursor: progress; }
 }
 .cork-cols { position: relative; height: 100%; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 18px; }
 @media (max-width: 1200px) and (min-width: 901px) { .cork-cols { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: repeat(2, minmax(0, 1fr)); } .cork { height: calc(100vh - 190px); min-height: 600px; } }
-.pin-col { display: flex; flex-direction: column; gap: 12px; min-width: 0; min-height: 0; border-radius: 4px; transition: background 150ms; }
-.pin-col.over { background: rgb(250 247 242 / 0.18); box-shadow: inset 0 0 0 2px rgb(250 247 242 / 0.5); }
-.pin-tag {
-  align-self: flex-start; display: flex; align-items: baseline; gap: 2px; margin: 0; padding: 6px 10px; background: var(--ink-2); color: var(--page); transform: rotate(-1deg);
-  font: 400 10px var(--mono); letter-spacing: 0.18em; text-transform: uppercase; box-shadow: 2px 4px 6px -2px rgb(0 0 0 / 0.4);
+/* each column is a clear lane: a lighter strip of cork with a coloured header band */
+.pin-col {
+  --lane: var(--ink-2);
+  display: flex; flex-direction: column; gap: 0; min-width: 0; min-height: 0; border-radius: 4px;
+  background: linear-gradient(180deg, rgb(250 247 242 / 0.22), rgb(250 247 242 / 0.1));
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.28), inset 0 10px 18px -12px rgb(0 0 0 / 0.25);
+  transition: background 150ms, box-shadow 150ms;
 }
+.pin-col.lvl-epic { --lane: var(--terra); }
+.pin-col.lvl-feature { --lane: #5a4372; }
+.pin-col.lvl-pbi { --lane: #2b3f6b; }
+.pin-col.lvl-task { --lane: #C9962F; }
+.pin-col.state-active { --lane: var(--green-dark); }
+.pin-col.state-risk { --lane: var(--terra-hover); }
+.pin-col.state-done { --lane: var(--muted); }
+.pin-col.over { background: rgb(250 247 242 / 0.32); box-shadow: inset 0 0 0 2px rgb(250 247 242 / 0.7); }
+.pin-col.over-limit { box-shadow: inset 0 0 0 2px var(--terra-hover), inset 0 10px 18px -12px rgb(0 0 0 / 0.25); }
+.pin-tag {
+  display: flex; align-items: baseline; gap: 2px; margin: 0; padding: 9px 12px; border-radius: 4px 4px 0 0;
+  background: var(--lane); color: var(--page); cursor: default;
+  font: 400 10px var(--mono); letter-spacing: 0.18em; text-transform: uppercase; box-shadow: 0 3px 6px -3px rgb(0 0 0 / 0.45);
+}
+.wip-note { margin: 8px 10px 0; padding: 6px 8px; border-radius: 3px; background: rgb(184 78 30 / 0.85); color: var(--cream); font: 12px/1.35 var(--ui); }
 .pin-when { color: var(--border-2); letter-spacing: 0.1em; }
-.pin-count { margin-left: 8px; color: var(--terra-soft); }
-.pin-list { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 16px; padding: 10px 6px 30px; scrollbar-width: thin; scrollbar-color: rgb(0 0 0 / 0.25) transparent; }
-.pin-empty { margin: 0; font: italic 18px var(--display); color: rgb(250 247 242 / 0.8); }
+.pin-count { margin-left: auto; padding-left: 8px; color: rgb(250 247 242 / 0.75); }
+.pin-list { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 16px; padding: 18px 10px 30px; scrollbar-width: thin; scrollbar-color: rgb(0 0 0 / 0.25) transparent; }
+.pin-empty { margin: 0; padding: 18px 10px; border: 1px dashed rgb(255 255 255 / 0.45); border-radius: 3px; text-align: center; font: italic 17px var(--display); color: rgb(250 247 242 / 0.85); }
 
 /* goal cards: a coloured strip says the level, like ADO's work item colours */
 .goal-card {
@@ -768,15 +785,14 @@ button:disabled { opacity: 0.5; cursor: progress; }
 }
 .g-act:hover { background: var(--ink); color: var(--page); border-color: var(--ink); }
 .g-stamp {
-  position: absolute; right: 10px; top: 12px; padding: 2px 8px; border: 2px solid var(--green); color: var(--green); transform: rotate(-8deg);
+  position: absolute; right: 10px; top: 40%; padding: 2px 8px; border: 2px solid var(--green); color: var(--green); transform: rotate(-8deg);
   font: 500 11px var(--mono); letter-spacing: 0.2em; text-transform: uppercase; opacity: 0.7;
 }
 /* red string between pins */
 .threads { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 3; pointer-events: none; overflow: visible; }
 .threads path { fill: none; stroke: #A3261C; stroke-width: 2; stroke-linecap: round; filter: drop-shadow(1px 3px 2px rgb(0 0 0 / 0.35)); }
 /* Kanban columns tinted by state */
-.cork.kanban .state-risk .pin-tag { background: var(--terra-hover); }
-.cork.kanban .state-done .pin-tag { background: var(--green-dark); }
+
 .toast.has-action { pointer-events: auto; display: flex; align-items: center; gap: 14px; }
 .toast-act { border: 0; background: transparent; color: var(--terra-soft); font: 500 11px var(--mono); letter-spacing: 0.16em; text-transform: uppercase; cursor: pointer; padding: 4px 0; }
 .toast-act:hover { color: var(--cream); text-decoration: underline; }
@@ -807,7 +823,29 @@ button:disabled { opacity: 0.5; cursor: progress; }
 .goal-fields output { color: var(--ink); }
 .goal-fields select:disabled { color: var(--faint); cursor: default; }
 .goal-fields .rolled { margin: 0; font: italic 17px var(--display); color: var(--muted); }
-#goal-dialog { width: min(560px, calc(100% - 32px)); }
+#goal-dialog { width: min(920px, calc(100% - 32px)); }
+.goal-layout { display: grid; grid-template-columns: minmax(0, 1fr) 280px; gap: 24px; align-items: start; }
+.coach { position: sticky; top: 0; display: flex; flex-direction: column; gap: 8px; padding: 16px; border-radius: 4px; background: var(--page); border: 1px solid var(--hair); }
+.coach .eyebrow { font-size: 10px; color: var(--terra); }
+.coach-what { margin: 0; font: italic 17px/1.3 var(--display); color: var(--ink-2); }
+.coach-eg { margin: 0; font: 12px/1.4 var(--ui); color: var(--muted); }
+.coach-checks { list-style: none; margin: 6px 0 0; padding: 10px 0 0; border-top: 1px solid var(--hair); display: grid; gap: 7px; }
+.coach-checks li { display: grid; grid-template-columns: 16px 1fr; gap: 6px; font: 13px/1.35 var(--ui); color: var(--ink-3); }
+.coach-checks .mark { font-weight: 500; text-align: center; }
+.coach-checks .ok { color: var(--green); }
+.coach-checks .nudge .mark { color: var(--terra); }
+.coach-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 6px; }
+.coach-actions .b-link { margin: 0 0 0 auto; }
+.coach-reply { margin-top: 4px; padding: 10px 12px; border-left: 3px solid var(--terra); background: var(--cream); font: 13px/1.4 var(--ui); color: var(--ink-2); }
+.coach-reply.loading { font: italic 16px var(--display); color: var(--muted); }
+.coach-reply.error { color: var(--terra-hover); }
+.coach-reply ul { margin: 6px 0; padding-left: 18px; }
+.coach-reply li { margin-bottom: 4px; }
+.coach-suggest { display: grid; gap: 6px; margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--border); }
+.coach-suggest pre { margin: 0; white-space: pre-wrap; font: 12px/1.45 var(--ui); color: var(--ink-3); }
+.coach-suggest .g-act { justify-self: start; }
+.coach-small { margin: 8px 0 0; font: 11px var(--ui); color: var(--faint); }
+@media (max-width: 760px) { .goal-layout { grid-template-columns: 1fr; } .coach { position: static; } }
 
 /* ---------- record player on the shelf (drawn until the Canva image arrives) ---------- */
 .deco-row { align-items: flex-end; }

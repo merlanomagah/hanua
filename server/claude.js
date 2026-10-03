@@ -89,3 +89,30 @@ In "note", say in one short sentence what you assumed, or "" if nothing.`,
   }
   return response.parsed_output;
 }
+
+// The goal coach: reviews one goal (Epic / Feature / PBI / Task) against Agile habits and suggests a
+// better title and description. Suggestions only: the user decides what to keep, and nothing is saved here.
+export async function coachGoal(goal, parent) {
+  const Review = z.object({
+    verdict: z.enum(["good", "tweak"]),
+    feedback: z.array(z.string()).max(3),
+    title: z.string(),
+    description: z.string(),
+  });
+  const response = await getClient().messages.parse({
+    model: MODEL,
+    max_tokens: 4000,
+    output_config: { effort: "low", format: zodOutputFormat(Review) },
+    system: `You coach one person who is learning to plan their own life with Agile habits, in an ADO-style hierarchy:
+Epic = an outcome for this year; Feature = a milestone this quarter; PBI = a slice of value this month; Task = a next action this week.
+Good habits: name the outcome, not the topic ("Move to Sydney", not "Sydney move"); Tasks start with a verb; Epics and Features have a why ("So that ...") and 2-4 measurable "we'll know it's done when" points about what changes, not activities; PBIs are INVEST-shaped (small, valuable on their own, testable) with "Done when" acceptance criteria (Given/When/Then is fine); work fits its level's timeframe; anything too big is split into vertical slices.
+Review the goal. "feedback": up to 3 short, warm, specific suggestions in plain New Zealand English, each teaching the principle behind it in a few words. If it's already good, say what makes it good in one item and use verdict "good".
+"title": your suggested title (or the same title if it's fine). "description": an improved description in the right shape for its level, keeping the person's own facts and words; never invent facts, leave blanks like "..." where only they know. Plain text, "- " bullets.`,
+    messages: [{
+      role: "user",
+      content: `Today: ${new Date().toISOString().slice(0, 10)} (a quarter is about 3 months from today)\nLevel: ${goal.level}\nTitle: ${goal.title}\nDescription: ${goal.description || "(none)"}\nDue: ${goal.due || "(none)"}\nEffort: ${goal.effort || "(none)"}\nParent ${parent ? `(${parent.level}): ${parent.title}` : ": (none)"}`,
+    }],
+  });
+  if (response.stop_reason === "refusal" || !response.parsed_output) throw new Error("Claude couldn't review this one. Try adding a little more detail.");
+  return response.parsed_output;
+}

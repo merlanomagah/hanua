@@ -5,7 +5,7 @@ import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { notionEnabled, queryArea, getSchema, toNotionProperties, clearedProperties, createPage, updatePage, NotionError } from "./notion.js";
-import { claudeEnabled, ask, draftEntry } from "./claude.js";
+import { claudeEnabled, ask, draftEntry, coachGoal } from "./claude.js";
 import { getMoney } from "./money.js";
 import { musicStatus, musicAction, playPlaylist } from "./music.js";
 
@@ -167,7 +167,7 @@ function goalProperties(schema, values = {}) {
 
 app.get("/api/goals", async (_req, res) => {
   if (!goalsArea) return res.json({ goals: [], live: false, notionUrl: null });
-  const base = { live: isLive(goalsArea), notionUrl: notionUrl(goalsArea) };
+  const base = { live: isLive(goalsArea), notionUrl: notionUrl(goalsArea), guideUrl: goalsArea.guideUrl || null, coach: claudeEnabled() };
   try {
     res.json({ ...base, goals: rollUp((await recordsFor(goalsArea)).map(toGoal)) });
   } catch (err) {
@@ -183,6 +183,18 @@ app.post("/api/goals", async (req, res, next) => {
     const record = await createPage(goalsArea, goalProperties(schema, req.body.values));
     cache.delete(goalsArea.id);
     res.json({ ok: true, live: true, goal: toGoal(record) });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Ask Claude to review a goal before saving. Returns suggestions only; nothing is written.
+app.post("/api/goals/coach", async (req, res, next) => {
+  const { goal, parent } = req.body ?? {};
+  if (!goal?.title?.trim()) return res.status(400).json({ error: "Give the goal a title first." });
+  if (!claudeEnabled()) return res.status(503).json({ error: "Add ANTHROPIC_API_KEY to .env to use the coach." });
+  try {
+    res.json(await coachGoal(goal, parent));
   } catch (err) {
     next(err);
   }
