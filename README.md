@@ -22,6 +22,25 @@ It runs with sample data straight away, so you can try it before connecting anyt
 | 2 | Install dependencies | `npm install` |
 | 3 | Start it (sample data) | `npm start`, then open http://localhost:3000 |
 
+## Start it with a double-click (Mac)
+
+| # | Step |
+|---|------|
+| 1 | Double-click **Start Hanua** in the folder. It installs packages if needed, starts Hanua in the background and opens it in your browser. |
+| 2 | Run it again any time: if Hanua is already running it just opens the page. |
+| 3 | **Stop Hanua** shuts it down. Logs are in `logs/hanua.log`. |
+
+The first time, macOS may say it can't verify the file: right-click it, choose **Open**, then **Open** again.
+
+### Keyboard shortcut
+
+| # | Step |
+|---|------|
+| 1 | Open the **Shortcuts** app → **Settings → Advanced** → turn on **Allow Running Scripts** |
+| 2 | **File → New Shortcut**, name it "Hanua" |
+| 3 | Add the action **Run Shell Script** and replace its text with the full path to the script, e.g. `"$HOME/Documents/GitHub/hanua/scripts/start.sh"` |
+| 4 | Click the **ⓘ** (Shortcut details) → **Add Keyboard Shortcut** → press your keys, e.g. ⌃⌥H |
+
 ## Connect Notion
 
 | # | Step | Details |
