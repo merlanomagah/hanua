@@ -29,11 +29,12 @@ The reasoning behind Hanua lives in [Hanua OS](https://app.notion.com/p/3ee16603
 
 ## Layout
 
-- `server/index.js`: Express API. `/api/areas` (Notion records per book), `/api/money` (Pūtea), `/api/areas/:id/records/:recordId/done` (tick a task), `/api/ask`, `/api/feed/draft` + `/api/feed/commit` (Claude drafts a Notion row; the user confirms before it's written).
+- `server/index.js`: Express API. `/api/areas` (Notion records per book), `/api/money` (Pūtea), `/api/areas/:id/records/:recordId/done` (tick a task), `/api/ask`, `/api/feed/draft` + `/api/feed/commit` (Claude drafts a Notion row; the user confirms before it's written), `/api/goals` (read, create, update rows in the Goals database; the pin board's dialog is the confirm step), `/api/records` (the record player's playlists).
 - `server/notion.js`: Notion REST calls (API version 2022-06-28).
 - `server/claude.js`: Claude calls (Anthropic SDK).
 - `server/money.js`: reads Pūtea's read-only local API (`PUTEA_URL`, default `http://127.0.0.1:3456`). Pūtea lives in the separate `merlanomagah/putea` repo and syncs Akahu bank data.
-- `config/areas.json`: one entry per book (Notion database ID and column names). The page uses `work` for tasks, `calendar` for events, `learning` for notes and `relationships` for people.
+- `config/areas.json`: one entry per book (Notion database ID and column names). The page uses `work` for tasks, `calendar` for events, `learning` for notes and `relationships` for people. A separate `goals` entry points at the Goals database (pin board); its select options are mirrored in `public/app.js` (`TIMEFRAMES`, `GOAL_STATUS`, `GOAL_AREAS`).
+- `config/records.json`: the record player's crate, one Apple Music playlist link per record.
 - `public/`: the page (plain HTML, CSS and JS, no build step). It follows the Claude Design "Room Dashboard" handoff (Bula Collective palette).
 - `public/assets/`: the room images (wall, desk, bookcase, objects), resized from the originals in `prototypes/room-dashboard/assets/` (same names). They were generated with Canva AI, so check licensing before making anything public.
 - `prototypes/`: the product blueprint, an earlier 3D room prototype, and `room-dashboard/` (the Claude Design handoff for the current page, with full-size original images). For reference only; the page never loads from here.

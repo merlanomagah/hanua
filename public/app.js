@@ -9,7 +9,7 @@ const MONEY_BOOK = { id: "money", label: "Money", icon: "$", color: "#2e5e4e", m
 const SPINES = { work: "work", calendar: "calendar", money: "money", health: "health", learning: "learning", relationships: "people" };
 const ROMAN = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"];
 
-let state = { areas: [], money: null, status: {} };
+let state = { areas: [], money: null, status: {}, goals: { goals: [], live: false, notionUrl: null }, records: [] };
 
 // ---------- helpers ----------
 
@@ -305,17 +305,23 @@ function renderCalendar() {
     const key = ymd(d);
     const inMonth = d.getMonth() === now.getMonth();
     const dayItems = byDay.get(key) || [];
+    const col = i % 7;
     const cell = h("button", {
       type: "button",
-      className: `day${inMonth ? "" : " other"}${key === today ? " today" : ""}${inMonth && key === selectedDay && key !== today ? " sel" : ""}`,
-      title: dayItems.map((x) => `${timeOf(x.date) ? timeOf(x.date) + " " : ""}${x.title}`).join("\n"),
+      className: `day${inMonth ? "" : " other"}${key === today ? " today" : ""}${inMonth && key === selectedDay && key !== today ? " sel" : ""}${col >= 5 ? " edge" : ""}`,
       tabIndex: inMonth ? 0 : -1,
       ariaLabel: `${longDate(d, false)}${dayItems.length ? `, ${dayItems.length} item${dayItems.length > 1 ? "s" : ""}` : ""}`,
     },
       h("span", { className: "n", textContent: d.getDate() }),
       dayItems.length ? h("span", { className: "dots" }, dayItems.slice(0, 3).map((x) => Object.assign(h("i"), { style: `--dot:${x.color}` }))) : null,
+      inMonth ? h("span", { className: "peek", ariaHidden: "true" },
+        h("b", { textContent: fmtDay(key, { weekday: "short", day: "numeric", month: "short" }) }),
+        dayItems.length
+          ? sortByTime(dayItems).slice(0, 4).map((x) => h("span", {}, h("em", { textContent: timeOf(x.date) || (x.kind === "Due" ? "Due" : "All day") }), x.title))
+          : h("span", { className: "quiet", textContent: "Nothing scheduled" }),
+        dayItems.length > 4 ? h("span", { className: "quiet", textContent: `+ ${dayItems.length - 4} more` }) : null) : null,
     );
-    if (inMonth) cell.addEventListener("click", () => { selectedDay = key; renderCalendar(); });
+    if (inMonth) cell.addEventListener("click", () => { selectedDay = key; renderCalendar(); openDay(key); });
     grid.append(cell);
   }
 
@@ -342,6 +348,46 @@ function renderCalendar() {
       : "",
   );
 }
+
+const sortByTime = (list) => [...list].sort((a, b) => (timeOf(a.date) || "00:00").localeCompare(timeOf(b.date) || "00:00"));
+
+// The day window: everything on one day, each linking back to its Notion page.
+let dialogDay = null;
+function openDay(key) {
+  dialogDay = key;
+  const items = calendarItems().filter((x) => dayOf(x.date) === key);
+  const events = sortByTime(items.filter((x) => x.kind !== "Due"));
+  const due = items.filter((x) => x.kind === "Due");
+  const d = parseDay(key);
+  const rel = daysBetween(todayStr(), key);
+  $("day-eyebrow").textContent = rel === 0 ? "Today" : rel === 1 ? "Tomorrow" : rel === -1 ? "Yesterday" : rel > 0 ? `In ${rel} days` : `${-rel} days ago`;
+  $("day-title").textContent = longDate(d, false);
+  const line = (x, label) => h("li", { className: "entry" },
+    h("span", { className: "t", textContent: x.title }),
+    h("span", { className: "v", textContent: label }),
+    h("span", { className: "m" }, x.kind, x.url ? h("span", {}, " · ", h("a", { href: x.url, target: "_blank", rel: "noopener", textContent: "Open in Notion ↗" })) : null));
+  $("day-body").replaceChildren(...[
+    events.length ? h("div", {}, h("h4", { textContent: `${events.length} event${events.length > 1 ? "s" : ""}` }),
+      h("ul", { className: "entries" }, events.map((x) => line(x, timeOf(x.date) || "All day")))) : null,
+    due.length ? h("div", {}, h("h4", { textContent: `${due.length} task${due.length > 1 ? "s" : ""} due` }),
+      h("ul", { className: "entries" }, due.map((x) => line({ ...x, kind: "Work" }, x.status || "To do")))) : null,
+    items.length ? null : h("p", { className: "empty", textContent: "Nothing scheduled. “Add to this day” drafts something with the Feed bar." }),
+  ].filter(Boolean));
+  const cal = area(ROLE.events);
+  $("day-notion").hidden = !cal?.notionUrl;
+  if (cal?.notionUrl) $("day-notion").href = cal.notionUrl;
+  if (!$("day-dialog").open) $("day-dialog").showModal();
+}
+const shiftDay = (key, n) => { const d = parseDay(key); return ymd(new Date(d.getFullYear(), d.getMonth(), d.getDate() + n)); };
+$("day-prev").addEventListener("click", () => openDay(shiftDay(dialogDay, -1)));
+$("day-next").addEventListener("click", () => openDay(shiftDay(dialogDay, 1)));
+$("day-close").addEventListener("click", () => $("day-dialog").close());
+$("day-dialog").addEventListener("click", (e) => { if (e.target === $("day-dialog")) $("day-dialog").close(); });
+$("day-add").addEventListener("click", () => {
+  $("day-dialog").close();
+  $("feed-input").value = `${fmtDay(dialogDay, { weekday: "short", day: "numeric", month: "short" })}: `;
+  $("feed-input").focus();
+});
 
 // ---------- wall: pinned notes ----------
 
@@ -629,16 +675,321 @@ async function closeBook() {
     ], { duration: 320, easing: "cubic-bezier(.5,0,.75,0)" }).finished;
   }
   $("reader").hidden = true;
-  document.body.style.overflow = "";
+  document.body.style.overflow = $("library").hidden ? "" : "hidden";
   openEl = null;
   setActive(null);
+  fromEl?.dispatchEvent(new Event("bookclosed"));
   fromEl?.focus({ preventScroll: true });
 }
 
 $("reader-close").addEventListener("click", closeBook);
 $("reader").addEventListener("click", (e) => { if (e.target === $("reader")) closeBook(); });
 $("money-screen").addEventListener("click", () => { if (screenOn) openBook("money", bookEl("money")); });
-document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("reader").hidden && !$("draft-dialog").open) closeBook(); });
+document.addEventListener("keydown", (e) => {
+  if (e.key !== "Escape" || document.querySelector("dialog[open]")) return;
+  if (!$("reader").hidden) closeBook();
+  else if (!$("library").hidden) closeLibrary();
+  else if ($("turntable").classList.contains("open")) closeTurntable();
+  else if (onBoard) showBoard(false);
+});
+
+// ---------- library view: the bookcase across the middle of the screen ----------
+
+const LIB_HEIGHTS = [100, 92, 97, 88, 95, 90, 98, 86];
+
+function bookSummary(b) {
+  if (b.id === "money") {
+    if (moneyHidden) return "Hidden with the remote";
+    return state.money ? `${money(state.money.month.expenses)} spent this month · ${state.money.live ? "live from Pūtea" : "sample"}` : "Loading";
+  }
+  const a = area(b.id);
+  if (!a) return "";
+  if (a.error) return "Couldn't reach Notion";
+  const n = a.records.length;
+  return `${n ? `${n} entr${n === 1 ? "y" : "ies"}` : "No entries yet"} · ${a.live ? "live from Notion" : "sample"}`;
+}
+
+function renderLibrary() {
+  const books = shelfBooks();
+  const caption = $("lib-caption");
+  const show = (b, i) => caption.replaceChildren(
+    h("span", { className: "lc-vol", textContent: `Vol. ${ROMAN[i] ?? i + 1}` }),
+    h("span", { className: "lc-title", textContent: b.label }),
+    h("span", { className: "lc-sum", textContent: bookSummary(b) }));
+  caption.replaceChildren(h("span", { className: "lc-sum", textContent: `${books.length} books · choose one to take it down` }));
+  $("lib-books").replaceChildren(...books.map((b, i) => {
+    const spine = SPINES[b.id];
+    const el = h("button", { type: "button", className: `lib-book${spine ? "" : " plain"}`, ariaLabel: `Take down ${b.label}` },
+      h("span", { className: "lib-spine" },
+        h("span", { className: "b-title", textContent: b.label }),
+        h("span", { className: "b-vol", textContent: ROMAN[i] ?? "" })));
+    el.style.setProperty("--hgt", `${LIB_HEIGHTS[i % LIB_HEIGHTS.length]}%`);
+    if (spine) el.style.setProperty("--spine", `url("assets/shelf/book-${spine}.png")`);
+    else el.style.setProperty("--c", b.color);
+    el.addEventListener("mouseenter", () => show(b, i));
+    el.addEventListener("focus", () => show(b, i));
+    el.addEventListener("click", () => takeDown(b, el));
+    el.addEventListener("bookclosed", () => putBack(el));
+    return el;
+  }));
+}
+
+async function takeDown(b, el) {
+  if (openEl || el.classList.contains("out")) return;
+  el.classList.add("out");
+  $("lib-books").classList.add("picking");
+  if (!reducedMotion) {
+    // tip it forward off the shelf, then lift it toward you
+    await el.animate([
+      { transform: "none" },
+      { transform: "translateY(-46%)", offset: 0.55 },
+      { transform: "translateY(-46%) scale(1.12) rotate(-3deg)" },
+    ], { duration: 520, easing: "cubic-bezier(.3,.7,.3,1)", fill: "forwards" }).finished;
+  }
+  await openBook(b.id, el);
+}
+
+async function putBack(el) {
+  const lifted = el.getAnimations();
+  if (lifted.length && !reducedMotion) {
+    await el.animate([{ transform: "translateY(-46%) scale(1.12) rotate(-3deg)" }, { transform: "none" }], { duration: 360, easing: "cubic-bezier(.4,0,.2,1)" }).finished;
+  }
+  lifted.forEach((a) => a.cancel());
+  el.classList.remove("out");
+  $("lib-books").classList.remove("picking");
+}
+
+let libraryFrom = null;
+function openLibrary() {
+  renderLibrary();
+  libraryFrom = document.activeElement;
+  $("library").hidden = false;
+  document.body.style.overflow = "hidden";
+  requestAnimationFrame(() => $("library").classList.add("in"));
+  $("library-close").focus({ preventScroll: true });
+}
+function closeLibrary() {
+  $("library").classList.remove("in");
+  setTimeout(() => { $("library").hidden = true; }, reducedMotion ? 0 : 280);
+  document.body.style.overflow = "";
+  libraryFrom?.focus?.({ preventScroll: true });
+}
+$("library-open").addEventListener("click", openLibrary);
+$("library-close").addEventListener("click", closeLibrary);
+$("library").addEventListener("click", (e) => { if (e.target === $("library")) closeLibrary(); });
+
+// ---------- goals pin board: swipe right to slide the wall aside ----------
+
+// Options match the columns of the Goals database in Notion (config/areas.json "goals")
+const TIMEFRAMES = ["Week", "Month", "Quarter", "Year"];
+const GOAL_STATUS = ["Not started", "On track", "At risk", "Done"];
+const GOAL_AREAS = ["Work", "Health", "Learning", "People", "Money", "Personal"];
+const STATUS_CLASS = { "on track": "good", "at risk": "risk", done: "done" };
+const CARD_TILTS = ["-1.6deg", "1.2deg", "-0.6deg", "2deg", "-2.2deg", "0.8deg"];
+
+let onBoard = false;
+function showBoard(on) {
+  if (on === onBoard) return;
+  onBoard = on;
+  if (on) renderBoard();
+  $("wall").classList.toggle("on-board", on);
+  $("board-pane").inert = !on;
+  $("wall-in").inert = on;
+  const top = $("wall").getBoundingClientRect().top + window.scrollY;
+  if (window.scrollY > top + 40) window.scrollTo({ top, behavior: reducedMotion ? "auto" : "smooth" });
+  (on ? $("goal-add") : $("to-board")).focus({ preventScroll: true });
+}
+$("to-board").addEventListener("click", () => showBoard(true));
+$("to-wall").addEventListener("click", () => showBoard(false));
+
+// Trackpad: two fingers moving right shows the board, left brings the wall back.
+let swipeX = 0, swipeTimer = 0, swipeLock = 0;
+$("wall").addEventListener("wheel", (e) => {
+  if (Math.abs(e.deltaX) <= Math.abs(e.deltaY) || document.querySelector("dialog[open]")) return;
+  e.preventDefault();
+  if (Date.now() < swipeLock) return;
+  swipeX += e.deltaX;
+  clearTimeout(swipeTimer);
+  swipeTimer = setTimeout(() => { swipeX = 0; }, 250);
+  if (Math.abs(swipeX) < 70) return;
+  showBoard(swipeX < 0);
+  swipeX = 0;
+  swipeLock = Date.now() + 700;
+}, { passive: false });
+
+// Touch: a finger dragged sideways across the wall.
+let touch0 = null;
+$("wall").addEventListener("touchstart", (e) => { touch0 = e.touches.length === 1 ? { x: e.touches[0].clientX, y: e.touches[0].clientY } : null; }, { passive: true });
+$("wall").addEventListener("touchend", (e) => {
+  if (!touch0) return;
+  const dx = e.changedTouches[0].clientX - touch0.x, dy = e.changedTouches[0].clientY - touch0.y;
+  touch0 = null;
+  if (Math.abs(dx) > 70 && Math.abs(dx) > Math.abs(dy) * 1.5) showBoard(dx > 0);
+});
+
+function renderBoard() {
+  const { goals, live, notionUrl, error } = state.goals;
+  const active = goals.filter((g) => !/^done/i.test(g.status || ""));
+  const count = (st) => goals.filter((g) => (g.status || "").toLowerCase() === st).length;
+  const soon = active.filter((g) => g.due && daysBetween(todayStr(), g.due) >= 0 && daysBetween(todayStr(), g.due) <= 14).length;
+  $("board-sub").textContent = error
+    ? `Couldn't reach Notion: ${error}`
+    : `${active.length} active · ${count("on track")} on track · ${count("at risk")} at risk · ${count("done")} done · ${soon} due in the next fortnight${live ? "" : " · sample goals"}`;
+  $("goals-notion").hidden = !notionUrl;
+  if (notionUrl) $("goals-notion").href = notionUrl;
+  let n = 0;
+  $("cork").replaceChildren(...TIMEFRAMES.map((tf) => {
+    const list = goals.filter((g) => (g.timeframe || "Month") === tf)
+      .sort((a, b) => Number(/^done/i.test(a.status || "")) - Number(/^done/i.test(b.status || "")) || (a.due || "9").localeCompare(b.due || "9"));
+    return h("section", { className: "pin-col" },
+      h("h3", { className: "pin-tag", textContent: `This ${tf.toLowerCase()}` }),
+      list.length ? list.map((g) => goalCard(g, n++)) : h("p", { className: "pin-empty", textContent: "Nothing pinned" }));
+  }));
+}
+
+function goalCard(g, i) {
+  const st = STATUS_CLASS[(g.status || "").toLowerCase()] || "";
+  const late = g.due && st !== "done" && g.due < todayStr();
+  const el = h("button", { type: "button", className: `goal-card ${st}` },
+    h("span", { className: "g-area", textContent: g.area || "Goal" }),
+    h("span", { className: "g-title", textContent: g.title }),
+    typeof g.progress === "number" ? h("span", { className: "g-bar" }, Object.assign(h("i"), { style: `width:${g.progress}%` })) : null,
+    h("span", { className: "g-meta" },
+      h("span", { className: "g-status", textContent: g.status || "No status" }),
+      h("span", { className: late ? "late" : "", textContent: [typeof g.progress === "number" ? `${g.progress}%` : null, g.due ? `${late ? "Was due" : "Due"} ${fmtDay(g.due, { day: "numeric", month: "short" })}` : null].filter(Boolean).join(" · ") })),
+    st === "done" ? h("span", { className: "g-stamp", textContent: "Done" }) : null);
+  el.style.setProperty("--r", CARD_TILTS[i % CARD_TILTS.length]);
+  el.addEventListener("click", () => openGoal(g));
+  return el;
+}
+
+let editingGoal = null;
+function fillSelect(sel, options, value) {
+  sel.replaceChildren(h("option", { value: "", textContent: "—" }), ...options.map((o) => h("option", { value: o, textContent: o })));
+  if (value && !options.includes(value)) sel.append(h("option", { value, textContent: value }));
+  sel.value = value || "";
+}
+function openGoal(g) {
+  editingGoal = g || null;
+  const f = $("goal-form").elements;
+  $("goal-heading").textContent = g ? "Review goal" : "New goal";
+  $("goal-note").textContent = state.goals.live
+    ? "Nothing changes in Notion until you press Save."
+    : "Sample goals: saving changes them here only, not in Notion.";
+  f.title.value = g?.title || "";
+  fillSelect(f.timeframe, TIMEFRAMES, g?.timeframe || (g ? "" : "Week"));
+  fillSelect(f.status, GOAL_STATUS, g?.status || (g ? "" : "Not started"));
+  fillSelect(f.area, GOAL_AREAS, g?.area || "");
+  f.progress.value = g?.progress ?? 0;
+  f.progressOut.value = `${f.progress.value}%`;
+  f.due.value = dayOf(g?.due || "");
+  f.notes.value = g?.notes || "";
+  $("goal-open").hidden = !g?.url;
+  if (g?.url) $("goal-open").href = g.url;
+  $("goal-dialog").showModal();
+}
+$("goal-form").elements.progress.addEventListener("input", (e) => { $("goal-form").elements.progressOut.value = `${e.target.value}%`; });
+$("goal-add").addEventListener("click", () => openGoal(null));
+$("goal-dialog").addEventListener("close", async () => {
+  if ($("goal-dialog").returnValue !== "save") return;
+  const f = $("goal-form").elements;
+  const values = { title: f.title.value.trim(), timeframe: f.timeframe.value, status: f.status.value, area: f.area.value, progress: Number(f.progress.value), due: f.due.value, notes: f.notes.value.trim() };
+  if (!values.title) return toast("Give the goal a name.", true);
+  const g = editingGoal;
+  try {
+    const res = await api(g ? `/api/goals/${g.id}` : "/api/goals", { values });
+    if (res.live) {
+      toast(g ? "Goal updated in Notion ✓" : "Goal added to Notion ✓");
+      state.goals = await api("/api/goals");
+    } else {
+      // sample data: change it on this page only
+      if (g) Object.assign(g, values);
+      else state.goals.goals.push({ id: `local-${Date.now()}`, url: null, ...values });
+      toast("Saved here only (sample goals, so Notion isn't changed)");
+    }
+    renderBoard();
+  } catch (err) {
+    toast(err.message, true);
+  }
+});
+
+// ---------- record player ----------
+
+// Swap these for the Canva images once they're in public/assets/obj/ (e.g. "assets/obj/record-player.png")
+const RECORD_ART = { shelf: null, top: null };
+let playing = null;
+
+function renderRecordPlayer() {
+  const btn = $("record-player");
+  btn.classList.toggle("playing", Boolean(playing));
+  btn.title = playing ? `Playing ${playing.name}` : "Play some music";
+  btn.replaceChildren(RECORD_ART.shelf
+    ? h("img", { src: RECORD_ART.shelf, alt: "" })
+    : h("span", { className: "rp-draw", ariaHidden: "true" }, h("span", { className: "rp-lid" }), h("span", { className: "rp-top" }, h("i")), h("span", { className: "rp-box" }, h("b"), h("b"))));
+  if (RECORD_ART.top) $("deck").style.setProperty("--deck-art", `url("${RECORD_ART.top}")`);
+}
+
+function renderCrate() {
+  $("sleeves").replaceChildren(...state.records.map((r) => {
+    const el = h("button", { type: "button", className: `sleeve${playing?.url === r.url ? " on" : ""}` },
+      h("span", { className: "sl-art" }, h("i")),
+      h("span", { className: "sl-name", textContent: r.name }),
+      h("span", { className: "sl-note", textContent: r.note || "" }));
+    el.style.setProperty("--lc", r.color || "#C4602A");
+    el.addEventListener("click", () => playRecord(r));
+    return el;
+  }));
+}
+
+const embedUrl = (url) => url.replace("://music.apple.com/", "://embed.music.apple.com/");
+
+function playRecord(r) {
+  playing = r;
+  $("vinyl").style.setProperty("--lc", r.color || "#C4602A");
+  $("vinyl-label").textContent = r.name;
+  $("deck").classList.remove("spinning", "drop");
+  void $("deck").offsetWidth;
+  $("deck").classList.add("drop", "spinning");
+  $("tt-now").textContent = r.name;
+  $("am-player").replaceChildren(h("iframe", {
+    src: embedUrl(r.url), title: `${r.name} on Apple Music`, height: 175, loading: "lazy",
+    allow: "autoplay *; encrypted-media *; clipboard-write",
+    sandbox: "allow-forms allow-popups allow-same-origin allow-scripts allow-storage-access-by-user-activation allow-top-navigation-by-user-activation",
+  }));
+  $("lift-needle").hidden = false;
+  renderCrate();
+  renderRecordPlayer();
+}
+
+$("lift-needle").addEventListener("click", () => {
+  playing = null;
+  $("deck").classList.remove("spinning", "drop");
+  $("vinyl-label").textContent = "";
+  $("tt-now").textContent = "Choose a record";
+  $("am-player").replaceChildren();
+  $("lift-needle").hidden = true;
+  renderCrate();
+  renderRecordPlayer();
+});
+
+// Closing only hides the player, so the music keeps going while you work.
+function openTurntable() {
+  renderCrate();
+  $("turntable").classList.add("open");
+  $("turntable").setAttribute("aria-hidden", "false");
+  $("turntable").inert = false;
+  $("turntable-close").focus({ preventScroll: true });
+}
+function closeTurntable() {
+  $("turntable").classList.remove("open");
+  $("turntable").setAttribute("aria-hidden", "true");
+  $("turntable").inert = true;
+  $("record-player").focus({ preventScroll: true });
+}
+$("turntable").inert = true;
+$("record-player").addEventListener("click", openTurntable);
+$("turntable-close").addEventListener("click", closeTurntable);
+$("turntable").addEventListener("click", (e) => { if (e.target === $("turntable")) closeTurntable(); });
 
 // ---------- ask across everything ----------
 
@@ -731,18 +1082,22 @@ function renderAll() {
   renderTodo();
   renderAgenda();
   renderWeek();
+  if (onBoard) renderBoard();
 }
 
 async function load() {
-  const [areas, moneyData] = await Promise.allSettled([api("/api/areas"), api("/api/money")]);
+  const [areas, moneyData, goals, crate] = await Promise.allSettled([api("/api/areas"), api("/api/money"), api("/api/goals"), api("/api/records")]);
   if (areas.status === "fulfilled") Object.assign(state, { areas: areas.value.areas, status: areas.value.status });
   else toast(areas.reason.message, true);
   if (moneyData.status === "fulfilled") state.money = moneyData.value;
+  if (goals.status === "fulfilled") state.goals = goals.value;
+  if (crate.status === "fulfilled") state.records = crate.value.records;
   renderAll();
 }
 
 renderLamp();
 renderClock();
+renderRecordPlayer();
 renderMoneyScreen();
 load();
 setInterval(renderClock, 1000);
