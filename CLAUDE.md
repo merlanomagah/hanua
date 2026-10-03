@@ -20,5 +20,6 @@ A personal daily dashboard drawn as a room: a bookcase menu (Notion databases), 
 - `server/claude.js`: Claude calls (Anthropic SDK).
 - `server/money.js`: reads Pūtea's read-only local API (`PUTEA_URL`, default `http://127.0.0.1:3456`). Pūtea lives in the separate `merlanomagah/putea` repo and syncs Akahu bank data.
 - `config/areas.json`: one entry per book (Notion database ID and column names). The page uses `work` for tasks, `calendar` for events, `learning` for notes and `relationships` for people.
-- `public/`: the page (plain HTML, CSS and JS, no build step).
+- `public/`: the page (plain HTML, CSS and JS, no build step). It follows the Claude Design "Room Dashboard" handoff (Bula Collective palette).
+- `public/assets/`: the room images (wall, desk, bookcase, objects), resized from the design handoff. They were generated with Canva AI, so check licensing before making anything public.
 - `prototypes/`: the product blueprint and an earlier 3D room prototype. For reference only.

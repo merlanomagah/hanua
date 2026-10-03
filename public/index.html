@@ -6,76 +6,144 @@
   <title>Hanua</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,400;1,500&family=IBM+Plex+Mono:wght@400;500&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400;1,500&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500&family=DM+Mono:wght@400;500&display=swap">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <div class="app">
+  <div class="app" id="app">
     <!-- Bookcase: the menu. Each book is one area of life. -->
     <aside class="shelf" aria-label="Your books">
       <div class="case">
-        <div class="case-crown" aria-hidden="true">
+        <div class="case-head">
           <span class="wordmark">Hanua</span>
-          <svg class="pot-plant" viewBox="0 0 90 80" aria-hidden="true"></svg>
+          <span class="case-sub">LIBRARY</span>
         </div>
         <nav class="books" id="books"></nav>
-        <div class="case-foot" aria-hidden="true"></div>
+        <div class="case-fill"></div>
+        <div class="case-foot" aria-hidden="true">
+          <div class="case-foot-row">
+            <img src="assets/shelf/bookend.png" alt="" class="bookend">
+            <span class="tagline">Plan with purpose.<br>Live with others in mind.</span>
+          </div>
+          <img src="assets/shelf/plank.png" alt="" class="plank">
+        </div>
       </div>
     </aside>
 
     <main class="room">
       <!-- The wall: your overview -->
       <section class="wall" aria-label="Overview">
-        <svg class="hanging left" viewBox="0 0 140 300" aria-hidden="true"></svg>
-        <svg class="hanging right" viewBox="0 0 140 300" aria-hidden="true"></svg>
+        <div class="window-light" aria-hidden="true"></div>
+        <div class="wall-dim" aria-hidden="true"></div>
 
-        <header class="greeting">
-          <div>
-            <p class="eyebrow" id="today-label"></p>
-            <h1 id="greet">Good morning.</h1>
-          </div>
+        <div class="wall-in">
           <div class="status" id="status"></div>
-        </header>
 
-        <form class="ask" id="ask-form">
-          <input id="ask-input" type="text" autocomplete="off" placeholder="Ask Claude about anything on your wall…">
-          <button type="submit">Ask</button>
-        </form>
-        <div class="answer" id="ask-answer" hidden></div>
+          <div class="wall-row">
+            <div class="wall-left">
+              <div class="greet-shelf">
+                <div class="greet-row">
+                  <button class="lamp" id="lamp" type="button">
+                    <span class="lamp-glow" aria-hidden="true"></span>
+                    <img src="assets/obj/lamp-off.png" alt="Lamp" class="lamp-img">
+                    <img src="assets/obj/lamp-on.png" alt="" class="lamp-img lamp-lit">
+                  </button>
+                  <div class="greet-text">
+                    <span class="eyebrow" id="today-label"></span>
+                    <h1 id="greet">Good morning.</h1>
+                  </div>
+                  <div class="clock" role="img" aria-label="Clock" id="clock">
+                    <img src="assets/obj/clock.png" alt="">
+                    <span class="hand hour" id="hand-h"></span>
+                    <span class="hand minute" id="hand-m"></span>
+                    <span class="hand second" id="hand-s"></span>
+                    <span class="hand-cap"></span>
+                  </div>
+                </div>
+                <div class="float-shelf" aria-hidden="true">
+                  <img src="assets/shelf/bookend.png" alt="" class="bracket left">
+                  <img src="assets/shelf/bookend.png" alt="" class="bracket right">
+                  <img src="assets/shelf/plank.png" alt="" class="plank">
+                </div>
+              </div>
 
-        <div class="wall-grid">
-          <button class="screen" id="money-screen" type="button" aria-label="Open the Money book"></button>
-          <figure class="calendar" id="calendar"></figure>
-          <div class="notes" id="notes" aria-label="Sticky notes"></div>
+              <div class="ask-wrap">
+                <form class="ask" id="ask-form">
+                  <span class="ask-label">CLAUDE</span>
+                  <span class="divider" aria-hidden="true"></span>
+                  <input id="ask-input" type="text" autocomplete="off" aria-label="Ask Claude" placeholder="Ask about anything on your wall…">
+                  <button type="submit">ASK</button>
+                </form>
+                <div class="answer" id="ask-answer" hidden></div>
+              </div>
+
+              <div class="monitor-wrap">
+                <button class="monitor" id="money-screen" type="button" aria-label="Open the Money book">
+                  <span class="screen" id="screen"></span>
+                </button>
+              </div>
+            </div>
+
+            <div class="wall-right">
+              <figure class="calendar">
+                <svg class="hanger" width="120" height="40" viewBox="0 0 120 40" aria-hidden="true">
+                  <line x1="60" y1="4" x2="14" y2="38" stroke="#7A6B55" stroke-width="1"/>
+                  <line x1="60" y1="4" x2="106" y2="38" stroke="#7A6B55" stroke-width="1"/>
+                  <circle cx="60" cy="4" r="3.5" fill="#42382C"/>
+                </svg>
+                <div class="cal-card">
+                  <div class="binding" aria-hidden="true"><i></i><i></i></div>
+                  <div class="cal-body" id="calendar"></div>
+                </div>
+              </figure>
+
+              <div class="deco-shelf" aria-hidden="true">
+                <div class="deco-row">
+                  <img src="assets/obj/books.png" alt="" class="deco-books">
+                  <img src="assets/obj/plant.png" alt="" class="deco-plant">
+                </div>
+                <div class="float-shelf">
+                  <img src="assets/shelf/bookend.png" alt="" class="bracket left">
+                  <img src="assets/shelf/bookend.png" alt="" class="bracket right">
+                  <img src="assets/shelf/plank.png" alt="" class="plank">
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="wall-row notes-row">
+            <div class="wall-left">
+              <div class="notes" id="notes" aria-label="Pinned notes"></div>
+            </div>
+            <div class="wall-right"></div>
+          </div>
+
+          <div class="to-desk">
+            <button type="button" id="to-desk"><span>TO THE DESK</span><span class="arrow">↓</span></button>
+          </div>
         </div>
       </section>
 
-      <!-- Looking down at the table: today -->
-      <div class="table-edge" aria-hidden="true"></div>
-      <section class="table" aria-label="Today">
-        <div class="table-grid">
-          <article class="notepad" id="todo"></article>
-          <article class="agenda" id="agenda"></article>
-          <article class="receipt" id="week"></article>
+      <!-- Looking down at the desk: today -->
+      <div class="desk-edge" id="desk-edge" aria-hidden="true"></div>
+      <section class="desk" aria-label="Today">
+        <article class="notepad" id="todo"></article>
+        <article class="agenda" id="agenda"></article>
+        <article class="receipt" id="week"></article>
+
+        <div class="scatter" aria-hidden="true">
+          <img src="assets/obj/sticky-pad.png" alt="" class="sticky-pad">
+          <img src="assets/obj/pencil.png" alt="" class="pencil">
+          <img src="assets/obj/clips.png" alt="" class="clips">
         </div>
-        <svg class="mug" viewBox="0 0 120 120" aria-hidden="true">
-          <ellipse cx="60" cy="64" rx="44" ry="44" fill="rgb(0 0 0 / 0.18)"/>
-          <circle cx="58" cy="58" r="42" fill="#efe9df"/>
-          <circle cx="58" cy="58" r="33" fill="#6b4a32"/>
-          <circle cx="50" cy="50" r="9" fill="#8a6446" opacity="0.6"/>
-          <path d="M98 50 q20 8 0 20" fill="none" stroke="#efe9df" stroke-width="8" stroke-linecap="round"/>
-        </svg>
-        <svg class="pen" viewBox="0 0 200 20" aria-hidden="true">
-          <rect x="4" y="6" width="170" height="9" rx="4" fill="#24364f"/>
-          <path d="M174 6 L196 10.5 L174 15 Z" fill="#c9b07a"/>
-          <rect x="20" y="4" width="40" height="3" rx="1.5" fill="#c9b07a"/>
-        </svg>
+        <img src="assets/obj/cup.png" alt="" class="cup" aria-hidden="true">
       </section>
 
       <form class="feed" id="feed-form">
-        <span class="feed-label">Feed</span>
-        <input id="feed-input" type="text" autocomplete="off" placeholder="“Paid $64 for groceries” · “Dentist next Tuesday” · “Learned: …”">
-        <button type="submit">Add</button>
+        <span class="feed-label">FEED</span>
+        <span class="divider" aria-hidden="true"></span>
+        <input id="feed-input" type="text" autocomplete="off" aria-label="Feed" placeholder="“Paid $64 for groceries” · “Dentist next Tuesday” · “Learned: …”">
+        <button type="submit">ADD</button>
       </form>
     </main>
   </div>
