@@ -1,0 +1,423 @@
+<title>Hanua Blueprint</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;1,400;1,500&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a single reading column; the hero is a working mockup of the Today screen. */
+:root {
+  --bg: #f5f4f1;
+  --surface: #ffffff;
+  --surface-2: #efede8;
+  --fg: #1c1c1e;
+  --muted: #6e6c68;
+  --line: #e0ddd6;
+  --accent: #2e5e4e;
+  --accent-soft: #e3ece8;
+  --warn: #b5711f;
+  --bad: #b4434b;
+  --good: #2f7d57;
+  --shadow: 0 1px 2px rgb(20 20 20 / 0.05), 0 12px 32px -16px rgb(20 20 20 / 0.18);
+  --display: "Cormorant Garamond", Georgia, serif;
+  --body: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #121212; --surface: #1c1c1e; --surface-2: #232325; --fg: #f2f2f2; --muted: #9c9a96;
+    --line: #333335; --accent: #7fbfa6; --accent-soft: #1f2e29; --warn: #e0a458; --bad: #e57c83; --good: #6fc497;
+    --shadow: 0 1px 2px rgb(0 0 0 / 0.4), 0 12px 32px -16px rgb(0 0 0 / 0.6);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #121212; --surface: #1c1c1e; --surface-2: #232325; --fg: #f2f2f2; --muted: #9c9a96;
+  --line: #333335; --accent: #7fbfa6; --accent-soft: #1f2e29; --warn: #e0a458; --bad: #e57c83; --good: #6fc497;
+  --shadow: 0 1px 2px rgb(0 0 0 / 0.4), 0 12px 32px -16px rgb(0 0 0 / 0.6);
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 16px; line-height: 1.55; -webkit-font-smoothing: antialiased; }
+.wrap { max-width: 1040px; margin: 0 auto; padding-inline: 20px; padding-block: 56px 96px; }
+.col { max-width: 720px; }
+
+/* ---------- type ---------- */
+.eyebrow { font-family: var(--mono); font-size: 0.72rem; letter-spacing: 0.22em; text-transform: uppercase; color: var(--muted); margin: 0; }
+h1 { font-family: var(--display); font-style: italic; font-weight: 400; font-size: clamp(2.6rem, 7vw, 4.4rem); line-height: 1.02; margin: 10px 0 14px; text-wrap: balance; }
+h2 { font-family: var(--display); font-weight: 500; font-size: 2rem; line-height: 1.15; margin: 0 0 6px; text-wrap: balance; }
+h3 { font-size: 1.02rem; margin: 0 0 4px; }
+p { margin: 0 0 12px; }
+.lede { font-size: 1.2rem; color: var(--muted); max-width: 60ch; }
+section { margin-top: 72px; display: grid; gap: 18px; }
+section > header { display: grid; gap: 4px; }
+.note { font-size: 0.85rem; color: var(--muted); }
+strong { font-weight: 600; }
+a { color: var(--accent); }
+
+/* ---------- mockup ---------- */
+.mock {
+  margin-top: 36px; background: var(--surface); border-radius: 22px; box-shadow: var(--shadow);
+  border: 1px solid var(--line); overflow: hidden;
+}
+.mock-bar { display: flex; align-items: center; gap: 8px; padding: 12px 16px; border-bottom: 1px solid var(--line); background: var(--surface-2); }
+.dot { width: 11px; height: 11px; border-radius: 50%; background: var(--line); }
+.mock-bar span.lbl { margin-left: auto; font-family: var(--mono); font-size: 0.68rem; color: var(--muted); letter-spacing: 0.1em; }
+.mock-body { padding: 28px clamp(16px, 3vw, 32px) 24px; display: grid; gap: 22px; }
+.mock-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: end; gap: 16px; }
+.mock-head .greet { font-family: var(--display); font-style: italic; font-size: clamp(2rem, 5vw, 2.8rem); line-height: 1; margin: 6px 0 0; }
+.cmd {
+  display: flex; align-items: center; gap: 10px; flex: 1 1 280px; max-width: 420px;
+  background: var(--surface-2); border-radius: 12px; padding: 10px 14px; color: var(--muted); font-size: 0.95rem;
+}
+.cmd kbd { margin-left: auto; font-family: var(--mono); font-size: 0.7rem; border: 1px solid var(--line); border-radius: 6px; padding: 1px 6px; }
+.grid3 { display: grid; grid-template-columns: 1.1fr 1fr 1fr; gap: 16px; }
+.pane { background: var(--bg); border-radius: 16px; padding: 16px; min-width: 0; display: grid; gap: 10px; align-content: start; }
+.pane h4 { margin: 0; font-size: 0.75rem; font-family: var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); font-weight: 500; display: flex; justify-content: space-between; }
+.pane h4 em { font-style: normal; color: var(--accent); }
+
+.tl { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }
+.tl li { display: grid; grid-template-columns: 46px 1fr; gap: 10px; align-items: start; font-size: 0.92rem; }
+.tl time { font-family: var(--mono); font-size: 0.75rem; color: var(--muted); padding-top: 2px; font-variant-numeric: tabular-nums; }
+.ev { border-left: 3px solid var(--line); padding: 4px 10px; border-radius: 4px; background: var(--surface); }
+.ev small { display: block; color: var(--muted); font-size: 0.75rem; }
+.ev.work { border-left-color: #5b6f9a; }
+.ev.me { border-left-color: var(--accent); }
+.ev.now { outline: 1.5px solid var(--accent); }
+
+.tasks { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; font-size: 0.92rem; }
+.tasks li { display: flex; gap: 10px; align-items: start; }
+.chk { flex: none; width: 18px; height: 18px; border-radius: 50%; border: 1.5px solid var(--muted); margin-top: 2px; }
+.chk.done { background: var(--accent); border-color: var(--accent); }
+.tasks li.done span { text-decoration: line-through; color: var(--muted); }
+.tasks small { color: var(--muted); font-size: 0.75rem; display: block; }
+.pill { font-family: var(--mono); font-size: 0.65rem; padding: 1px 7px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); white-space: nowrap; }
+.pill.warn { background: color-mix(in srgb, var(--warn) 16%, transparent); color: var(--warn); }
+
+.big { font-size: 1.9rem; font-weight: 600; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; line-height: 1; }
+.big small { font-size: 0.85rem; font-weight: 400; color: var(--muted); letter-spacing: 0; }
+.spark { width: 100%; height: 44px; display: block; }
+.rows { display: grid; gap: 6px; font-size: 0.88rem; }
+.rows div { display: flex; justify-content: space-between; gap: 10px; }
+.rows span:last-child { font-variant-numeric: tabular-nums; }
+.bar { height: 6px; border-radius: 3px; background: var(--line); overflow: hidden; }
+.bar i { display: block; height: 100%; background: var(--accent); border-radius: 3px; }
+
+.nudge { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; background: var(--accent-soft); border-radius: 14px; padding: 12px 16px; font-size: 0.93rem; }
+.nudge b { color: var(--accent); }
+.nudge .acts { margin-left: auto; display: flex; gap: 8px; }
+.btn { font: inherit; font-size: 0.82rem; border: 0; border-radius: 999px; padding: 6px 14px; background: var(--accent); color: var(--surface); cursor: default; }
+.btn.ghost { background: transparent; color: var(--fg); border: 1px solid var(--line); }
+
+.dock { display: flex; justify-content: center; gap: 6px; padding-top: 4px; }
+.dock span { font-size: 0.8rem; padding: 6px 14px; border-radius: 999px; color: var(--muted); }
+.dock span.on { background: var(--fg); color: var(--surface); }
+.example { text-align: center; margin-top: 10px; }
+
+/* ---------- content blocks ---------- */
+.table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); }
+table { border-collapse: collapse; width: 100%; font-size: 0.93rem; }
+th, td { text-align: left; padding: 11px 14px; vertical-align: top; border-bottom: 1px solid var(--line); }
+th { font-family: var(--mono); font-weight: 500; font-size: 0.7rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); background: var(--surface-2); }
+tr:last-child td { border-bottom: 0; }
+td:first-child { font-weight: 600; white-space: nowrap; }
+td.rec { color: var(--accent); font-weight: 600; }
+
+.callout { border-radius: 14px; padding: 16px 18px; background: var(--surface); border: 1px solid var(--line); display: grid; gap: 6px; }
+.callout.key { border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); background: var(--accent-soft); }
+.callout.warn { border-color: color-mix(in srgb, var(--warn) 45%, var(--line)); }
+.callout h3 { display: flex; gap: 8px; align-items: center; }
+
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 14px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 16px; display: grid; gap: 6px; align-content: start; min-width: 0; }
+.card p { font-size: 0.92rem; color: var(--muted); margin: 0; }
+.tag { font-family: var(--mono); font-size: 0.66rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent); }
+
+/* ownership diagram */
+.flow { display: grid; grid-template-columns: 1fr auto 1fr auto 1fr; align-items: center; gap: 10px; }
+.node { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 14px; text-align: center; display: grid; gap: 4px; min-width: 0; }
+.node.hub { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.node b { font-size: 1rem; }
+.node span { font-size: 0.8rem; color: var(--muted); }
+.arrow { color: var(--muted); font-family: var(--mono); font-size: 0.8rem; text-align: center; }
+.stack { display: grid; gap: 10px; }
+
+ol.steps { list-style: none; padding: 0; margin: 0; display: grid; gap: 12px; counter-reset: s; }
+ol.steps > li { counter-increment: s; display: grid; grid-template-columns: 44px 1fr; gap: 14px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 16px; }
+ol.steps > li::before { content: counter(s); font-family: var(--display); font-size: 2rem; line-height: 1; color: var(--accent); }
+ol.steps h3 { margin-bottom: 2px; }
+ol.steps p, ol.steps ul { margin: 0; font-size: 0.93rem; color: var(--muted); }
+ol.steps ul { padding-left: 18px; margin-top: 6px; }
+
+ul.plain { margin: 0; padding-left: 20px; display: grid; gap: 6px; }
+
+@media (max-width: 820px) {
+  .grid3 { grid-template-columns: 1fr; }
+  .flow { grid-template-columns: 1fr; }
+  .arrow { transform: rotate(90deg); }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+</style>
+
+<div class="wrap">
+  <p class="eyebrow">Product blueprint · v0.1 · October 2026</p>
+  <h1>Hanua</h1>
+  <p class="lede">One calm place that shows your day, your money and your life at a glance. You capture anything in a single line, and it all lands in Notion, so it builds up over time.</p>
+
+  <!-- ===== Hero: the Today screen ===== -->
+  <div class="mock" role="img" aria-label="Mockup of the Hanua Today screen">
+    <div class="mock-bar"><i class="dot"></i><i class="dot"></i><i class="dot"></i><span class="lbl">HANUA · TODAY</span></div>
+    <div class="mock-body">
+      <div class="mock-head">
+        <div>
+          <p class="eyebrow">Monday 5 October</p>
+          <p class="greet">Good morning.</p>
+        </div>
+        <div class="cmd">Capture, ask or plan anything… <kbd>⌘K</kbd></div>
+      </div>
+
+      <div class="nudge">
+        <span><b>Heads up:</b> three meetings back to back after lunch, and the Q4 roadmap draft is due Wednesday. Block 9:30–11:00 for it?</span>
+        <span class="acts"><button class="btn" type="button" tabindex="-1">Block it</button><button class="btn ghost" type="button" tabindex="-1">Not today</button></span>
+      </div>
+
+      <div class="grid3">
+        <div class="pane">
+          <h4>Your day <em>5 events</em></h4>
+          <ul class="tl">
+            <li><time>08:30</time><div class="ev work">Stand-up<small>Work · captured from screenshot</small></div></li>
+            <li><time>09:30</time><div class="ev me now">Roadmap focus block<small>Suggested · not yet accepted</small></div></li>
+            <li><time>13:00</time><div class="ev work">Client review<small>Work · 1 hr</small></div></li>
+            <li><time>14:00</time><div class="ev work">Budget sign-off<small>Work · 30 min</small></div></li>
+            <li><time>17:30</time><div class="ev me">Run with Sam<small>Personal · Google Calendar</small></div></li>
+          </ul>
+        </div>
+
+        <div class="pane">
+          <h4>Tasks <em>3 today</em></h4>
+          <ul class="tasks">
+            <li><i class="chk"></i><span>Q4 roadmap draft<small>Work · due Wed</small></span><span class="pill warn">Priority</span></li>
+            <li><i class="chk"></i><span>Send client deck v2<small>Work · due today</small></span></li>
+            <li><i class="chk"></i><span>Book dentist<small>Personal</small></span></li>
+            <li class="done"><i class="chk done"></i><span>Hiring loop feedback<small>Done 08:12</small></span></li>
+          </ul>
+          <h4 style="margin-top:6px">Learned lately</h4>
+          <ul class="tasks">
+            <li><span>“Lead with the decision, then the context.” <small>Work lesson · Fri</small></span></li>
+          </ul>
+        </div>
+
+        <div class="pane">
+          <h4>Money <em>from Pūtea</em></h4>
+          <div class="big">$412 <small>spent this week · usual $480</small></div>
+          <svg class="spark" viewBox="0 0 200 44" preserveAspectRatio="none" aria-hidden="true">
+            <path d="M0 30 L28 26 L57 31 L85 20 L114 24 L142 15 L171 19 L200 12 L200 44 L0 44 Z" fill="var(--accent-soft)"/>
+            <path d="M0 30 L28 26 L57 31 L85 20 L114 24 L142 15 L171 19 L200 12" fill="none" stroke="var(--accent)" stroke-width="2"/>
+            <circle cx="200" cy="12" r="3" fill="var(--accent)"/>
+          </svg>
+          <div class="rows">
+            <div><span>Spotify renews Tue</span><span>$15.99</span></div>
+            <div><span>Contact Energy due Thu</span><span>$112.40</span></div>
+          </div>
+          <div class="rows"><div><span>Belgium fund</span><span>62%</span></div></div>
+          <div class="bar"><i style="width:62%"></i></div>
+        </div>
+      </div>
+
+      <div class="dock"><span class="on">Today</span><span>Library</span><span>Money</span><span>⌘K</span></div>
+    </div>
+  </div>
+  <p class="note example">Example figures and events. The real screen fills from your Notion, Pūtea and calendar.</p>
+
+  <!-- ===== What I found ===== -->
+  <section class="col">
+    <header><p class="eyebrow">What I found</p><h2>Pūtea already does the hard money work</h2></header>
+    <p>I read your Pūtea repo before planning. It's an 11,500-line Mac app that already:</p>
+    <ul class="plain">
+      <li>syncs 18 bank accounts from Akahu, and reads utility bills from three Gmail accounts</li>
+      <li>categorises transactions, spots subscriptions on its own, and tracks savings goals (your Belgium fund included)</li>
+      <li>runs a <strong>read-only local API</strong> on port 3456, and already reaches your iPhone through Tailscale</li>
+    </ul>
+    <div class="callout key">
+      <h3>Recommendation: Hanua reads from Pūtea instead of rebuilding Akahu</h3>
+      <p>Pūtea stays the money engine running in the background. Hanua becomes the place you look. That saves weeks of work and keeps one source of truth for your money.</p>
+    </div>
+    <div class="callout">
+      <h3>Done: the duplicate money databases are archived</h3>
+      <p>Budget, Subscriptions and Savings duplicated Pūtea, so they've moved into an Archive page inside Hanua in Notion. Nothing was deleted. A single <strong>Money</strong> book backed by Pūtea replaces them in phase 3.</p>
+    </div>
+  </section>
+
+  <!-- ===== Ownership ===== -->
+  <section>
+    <header class="col"><p class="eyebrow">Architecture</p><h2>Who owns what</h2>
+      <p>Each kind of information lives in the tool best at it. Hanua reads from all of them and only writes to Notion, after you confirm.</p></header>
+    <div class="flow">
+      <div class="stack">
+        <div class="node"><b>Pūtea</b><span>Bank transactions, bills, subscriptions, goals</span></div>
+        <div class="node"><b>Calendars</b><span>Google Calendar, plus work meetings you capture</span></div>
+      </div>
+      <div class="arrow">read →</div>
+      <div class="node hub"><b>Hanua</b><span>Today · Library · Money · ⌘K</span><span>Asks Claude when it needs to think</span></div>
+      <div class="arrow">← read &amp; write →</div>
+      <div class="stack">
+        <div class="node"><b>Notion</b><span>Tasks, learnings, people, health, notes</span></div>
+        <div class="node"><b>Claude API</b><span>Understands what you typed, answers, drafts entries</span></div>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Information</th><th>Lives in</th><th>Why there</th></tr></thead>
+        <tbody>
+          <tr><td>Transactions, bills</td><td>Pūtea</td><td>Thousands of rows that update automatically. Notion allows about 3 requests a second, which is too slow for this.</td></tr>
+          <tr><td>Subscriptions, goals</td><td>Pūtea</td><td>Already worked out from your real transactions.</td></tr>
+          <tr><td>Tasks</td><td>Notion</td><td>You want to edit them anywhere, including the Notion app on your phone.</td></tr>
+          <tr><td>Learnings, notes</td><td>Notion</td><td>The long-term memory. Searchable, linkable, and you own it.</td></tr>
+          <tr><td>People, health</td><td>Notion</td><td>Written by you, small enough for Notion.</td></tr>
+          <tr><td>Personal calendar</td><td>Google Calendar</td><td>Read only. Pūtea already has Google sign-in set up, so adding calendar access is a small step.</td></tr>
+          <tr><td>Work meetings</td><td>Captured in Hanua</td><td>Your work calendar won't sync, so you capture the day instead (see Calendar below).</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ===== Screens ===== -->
+  <section>
+    <header class="col"><p class="eyebrow">Screens</p><h2>Four places, one input</h2>
+      <p>The shelf becomes one room, and Today becomes home. You open Hanua to plan your day, so the day should greet you first.</p></header>
+    <div class="cards">
+      <div class="card"><span class="tag">Home</span><h3>Today</h3><p>Your timeline, top tasks, a money pulse and one suggestion from Claude. Everything you need before 9am, on one screen.</p></div>
+      <div class="card"><span class="tag">Deep dives</span><h3>Library</h3><p>The bookshelf. Each Notion database is a book that opens with the animation you liked. Work, Learning, People, Health, Journal.</p></div>
+      <div class="card"><span class="tag">From Pūtea</span><h3>Money</h3><p>Spending by category, upcoming bills, subscriptions and goals, in Hanua's style. Read only; edits stay in Pūtea.</p></div>
+      <div class="card"><span class="tag">Everywhere</span><h3>⌘K command bar</h3><p>One box on every screen. Type a task, a question, a note or a command, and Hanua works out which it is.</p></div>
+    </div>
+  </section>
+
+  <!-- ===== One box ===== -->
+  <section>
+    <header class="col"><p class="eyebrow">The one box</p><h2>What happens when you type</h2>
+      <p>Claude gets your message plus a short list of actions it's allowed to take. It picks one, and anything that changes your data waits for your tap.</p></header>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>You type</th><th>Hanua does</th><th>Needs your OK?</th><th>Rough cost</th></tr></thead>
+        <tbody>
+          <tr><td>“Call mum Sunday”</td><td>Drafts a task in Notion with Sunday's date</td><td>Yes, one tap</td><td>~3¢</td></tr>
+          <tr><td>“Learned: lead with the decision”</td><td>Adds it to Learnings, tagged Work</td><td>Yes, one tap</td><td>~3¢</td></tr>
+          <tr><td>“How much on takeaways this month?”</td><td>Asks Pūtea, then answers with a number and a trend</td><td>No, it only reads</td><td>~5¢</td></tr>
+          <tr><td>“Mark the roadmap done”</td><td>Finds the task and ticks it off</td><td>Yes, one tap</td><td>~4¢</td></tr>
+          <tr><td>“Plan my afternoon”</td><td>Reads today's events and tasks, then proposes time blocks</td><td>Yes, before anything is added</td><td>~8¢</td></tr>
+          <tr><td>“Gym $45”</td><td>Asks: a payment, or a subscription?</td><td>Asks first, because it's ambiguous</td><td>~2¢</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="note">Costs are estimates at current Claude Opus 5.5 prices. Hanua never deletes anything, and never writes without showing you first.</p>
+  </section>
+
+  <!-- ===== Calendar ===== -->
+  <section>
+    <header class="col"><p class="eyebrow">Calendar</p><h2>Getting your work day in without a sync</h2>
+      <p>Your work calendar is Outlook. Notion Calendar has no API Hanua could read from, and Outlook won't sync. These are the realistic options, best first.</p></header>
+    <div class="callout key">
+      <h3>First thing to try: does your Outlook allow publishing?</h3>
+      <p>In Outlook on the web: <strong>Settings → Calendar → Shared calendars → Publish a calendar</strong>. Choose your calendar and <strong>Can view titles and locations</strong>, then copy the <strong>ICS</strong> link. If the option is missing or greyed out, your employer has switched it off, and the screenshot option is the fallback.</p>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Option</th><th>How it works</th><th>Good</th><th>Watch out</th></tr></thead>
+        <tbody>
+          <tr><td>Published calendar link</td><td>Outlook can publish a calendar as a private web link. Hanua reads it every 15 minutes.</td><td>Automatic, zero effort each day</td><td>Many employers switch this off. Worth checking first.</td></tr>
+          <tr><td>Morning screenshot</td><td>Screenshot your Outlook day and paste it into ⌘K. Claude reads the meetings onto your timeline.</td><td>Works anywhere, takes 10 seconds</td><td>Sends meeting titles to the Claude API. Check this is OK under your work's data policy.</td></tr>
+          <tr><td>Type it</td><td>“Meetings: 8:30 stand-up, 1pm client review”</td><td>Simple, nothing leaves your control</td><td>Easy to skip on a busy morning</td></tr>
+          <tr><td>Personal calendar</td><td>Google Calendar, read only, through the sign-in Pūtea already uses.</td><td>Fully automatic</td><td>Needs one extra permission in Google Cloud</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="note">Work meetings would stay on your computer for the day and wouldn't be saved to Notion unless you ask.</p>
+  </section>
+
+  <!-- ===== Design language ===== -->
+  <section class="col">
+    <header><p class="eyebrow">Design language</p><h2>Real objects that come alive</h2></header>
+    <div class="callout key">
+      <h3>Your taste, in one line</h3>
+      <p>Take something physical (a book, a shelf, a page, a ledger), make it feel real, then let it react to you as you scroll, hover and click. That's the style of Apple's product pages rather than its apps, and it's the direction for Hanua.</p>
+    </div>
+    <div class="callout warn">
+      <h3>The rule that keeps it from getting tiring</h3>
+      <p>You'll open Hanua twenty times a day, and motion that's thrilling on visit one is tiring by visit fifty. So moments of <strong>arrival and transition</strong> get the theatre (opening a book, the shelf filling in, the morning greeting). Moments of <strong>work</strong> (ticking a task, typing in ⌘K, reading numbers) are quick and quiet. No scroll-hijacking, ever. Reduced-motion settings are respected.</p>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Where</th><th>What moves</th><th>Why it earns its place</th></tr></thead>
+        <tbody>
+          <tr><td>Shelf</td><td>Books tilt toward your cursor and lean as a neighbour is pulled out. On first load the shelf fills in book by book.</td><td>It makes the shelf feel like a real object you're standing in front of.</td></tr>
+          <tr><td>Open book</td><td>Drag a page corner to turn it, with a real page curl. Soft paper sound, off by default.</td><td>Turning pages is how you move between months or sections.</td></tr>
+          <tr><td>Today</td><td>A "now" line slides down your timeline through the day. Cards catch light that follows your cursor.</td><td>You can see where you are in the day without reading anything.</td></tr>
+          <tr><td>Tasks</td><td>The tick draws itself and the row settles away.</td><td>A small reward for finishing something.</td></tr>
+          <tr><td>Money</td><td>Charts draw in from left to right, and numbers count up to their value once.</td><td>Your eye goes to the trend first.</td></tr>
+          <tr><td>Scrolling</td><td>Sections drift in with slight depth (parallax), never pinned or hijacked.</td><td>The page feels alive and you stay in control.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <ul class="plain">
+      <li><strong>Type:</strong> Apple's own system font for everything you read and tap, and your library serif for headings and moments that should feel personal.</li>
+      <li><strong>Motion:</strong> spring physics everywhere (things overshoot slightly and settle, like real objects). Quick for work, slow and theatrical for arrivals.</li>
+      <li><strong>Tools:</strong> CSS 3D for the objects, plus one small animation library for springs and scroll effects. No heavy 3D engine unless a prototype proves it's needed.</li>
+      <li><strong>Colour:</strong> calm neutrals, with each life area keeping its bookbinding colour as an accent. Dark mode is designed properly, not inverted.</li>
+      <li><strong>Feel:</strong> keyboard first on Mac (⌘K, arrow keys, Esc), and thumb friendly on iPhone, installed to your home screen.</li>
+      <li><strong>Glance, then depth:</strong> each tile on Today answers one question at a glance. Tap it for the full book.</li>
+    </ul>
+  </section>
+
+  <!-- ===== Roadmap ===== -->
+  <section>
+    <header class="col"><p class="eyebrow">Roadmap</p><h2>Build it in this order</h2>
+      <p>Each phase is usable on its own. Use each one for a week or two before starting the next. Using it will teach you more than planning will.</p></header>
+    <ol class="steps">
+      <li><div><h3>Foundations</h3><p>About one evening. Finish setup: Notion and Claude keys, connect the Hanua page. Turn Work into a Tasks database (with Work and Personal areas) and add a Learnings database. The money databases are already archived.</p></div></li>
+      <li><div><h3>Today + the one box</h3><p>The core. The Today screen with your tasks, learnings and Google Calendar. Ask and Feed merge into ⌘K, with confirm cards and a running cost note.</p></div></li>
+      <li><div><h3>Money</h3><p>The bridge to Pūtea. The money pulse on Today, a Money book that opens like the others, and Claude able to answer money questions from Pūtea's data.</p></div></li>
+      <li><div><h3>The work day</h3><p>Planning. Work meeting capture (link or screenshot), "plan my day" time blocks, and a two-minute end-of-day review that saves learnings to Notion.</p></div></li>
+      <li><div><h3>Everywhere, polished</h3><p>Phone and finish. Install to your iPhone home screen through Tailscale, the same way Pūtea works. Then motion, sound and haptics, and anything the first weeks of use showed was missing.</p></div></li>
+    </ol>
+  </section>
+
+  <!-- ===== Measures + cost ===== -->
+  <section>
+    <header class="col"><p class="eyebrow">Is it working?</p><h2>How you'll know</h2></header>
+    <div class="cards">
+      <div class="card"><span class="tag">Habit</span><h3>Opened 5+ mornings a week</h3><p>If you're not opening it, Today isn't showing the right things.</p></div>
+      <div class="card"><span class="tag">Speed</span><h3>Capture in under 10 seconds</h3><p>From thought to saved. Slower than that and you'll go back to notes apps.</p></div>
+      <div class="card"><span class="tag">Fewer apps</span><h3>Outlook, Notion and Pūtea, down to one</h3><p>For morning planning, Hanua should replace opening three apps.</p></div>
+      <div class="card"><span class="tag">Cost</span><h3>Under $20 a month on Claude</h3><p>Medium daily use should land around $10–25 a month. Set a hard cap in the Anthropic Console.</p></div>
+    </div>
+  </section>
+
+  <!-- ===== Risks ===== -->
+  <section class="col">
+    <header><p class="eyebrow">Risks</p><h2>What could go wrong</h2></header>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Risk</th><th>What I'd do</th></tr></thead>
+        <tbody>
+          <tr><td>Building instead of using</td><td>Ship Today first and live with it. Most personal dashboards die from scope, not from bugs.</td></tr>
+          <tr><td>Work data rules</td><td>Check before sending meeting details to Claude or Notion. Default to keeping them local for the day.</td></tr>
+          <tr><td>Two apps to run</td><td>Set Pūtea to open at login. Hanua shows "Pūtea offline, last synced 8:02" instead of breaking.</td></tr>
+          <tr><td>Bank data leaving your Mac</td><td>Claude only sees money data when you ask a money question, and only the summary it needs.</td></tr>
+          <tr><td>Cost creep</td><td>Show the cost under each answer, send only relevant data, and keep a monthly cap.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ===== Decisions ===== -->
+  <section class="col">
+    <header><p class="eyebrow">Your call</p><h2>Decisions I need from you</h2></header>
+    <ol class="steps">
+      <li><div><h3>Can Outlook publish your calendar?</h3><p>Check Settings → Calendar → Shared calendars → Publish a calendar (see Calendar above). And are you allowed to copy meeting titles outside work?</p></div></li>
+      <li><div><h3>Which personal calendar?</h3><p>Google (which of your three accounts?), or iCloud?</p></div></li>
+      <li><div><h3>Where do your to-dos live today?</h3><p>Apple Reminders, Notion, paper? If not Notion, how much do you want moved over?</p></div></li>
+      <li><div><h3>What counts as a learning?</h3><p>Work lessons, book notes, ideas, quotes? This decides the Learnings columns.</p></div></li>
+      <li><div><h3>Send me the sites you've seen</h3><p>Links to two or three of the interactive sites you like. The specific moves you like (tilt, page turns, scroll depth) decide what goes in the motion prototype.</p></div></li>
+    </ol>
+  </section>
+</div>

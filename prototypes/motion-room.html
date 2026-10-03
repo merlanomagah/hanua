@@ -1,0 +1,941 @@
+<title>Hanua Motion Prototype</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,400;1,500&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a fixed 3D room behind a tall scroll track; scroll moves the camera from shelf to desk. HTML floats on top for anything you read. */
+:root {
+  --ink: #1f1b16;
+  --paper: #f6efe1;
+  --muted: #7a7062;
+  --glass: rgb(255 252 246 / 0.62);
+  --glass-line: rgb(255 255 255 / 0.55);
+  --accent: #2e5e4e;
+  --display: "Cormorant Garamond", Georgia, serif;
+  --ui: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: #1a1612; color: var(--ink); font-family: var(--ui); }
+body.locked { overflow: hidden; }
+body.reading .top-right, body.reading .dots, body.reading .hint, body.reading .player { opacity: 0 !important; pointer-events: none; }
+.top-right, .dots, .hint { transition: opacity 0.3s; }
+#stage { position: fixed; inset: 0; display: block; width: 100%; height: 100%; touch-action: pan-y; }
+.track { height: 240vh; }
+
+/* ---------- glass UI ---------- */
+.ui { position: fixed; z-index: 5; display: flex; gap: 8px; align-items: center; }
+.top-left { top: calc(14px + env(safe-area-inset-top, 0px)); left: 16px; }
+.top-right { top: calc(14px + env(safe-area-inset-top, 0px)); right: 16px; flex-wrap: wrap; justify-content: flex-end; max-width: calc(100% - 140px); }
+.wordmark { font-family: var(--display); font-style: italic; font-size: 1.9rem; line-height: 1; color: #fff8ec; text-shadow: 0 1px 12px rgb(0 0 0 / 0.35); }
+.chip {
+  font: 500 0.72rem/1 var(--mono); letter-spacing: 0.08em; text-transform: uppercase;
+  background: var(--glass); border: 1px solid var(--glass-line); color: var(--ink);
+  backdrop-filter: blur(14px) saturate(1.4); -webkit-backdrop-filter: blur(14px) saturate(1.4);
+  border-radius: 999px; padding: 9px 13px; cursor: pointer; white-space: nowrap;
+  transition: transform 0.2s cubic-bezier(.3,1.6,.5,1), background 0.2s;
+}
+.chip:hover { transform: translateY(-1px) scale(1.03); }
+.chip:active { transform: scale(0.96); }
+.chip[aria-pressed="true"] { background: var(--ink); color: var(--paper); border-color: transparent; }
+.chip:focus-visible, button:focus-visible, input:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+
+.dots { position: fixed; z-index: 5; right: 16px; top: 50%; transform: translateY(-50%); display: grid; gap: 10px; }
+.dot { display: flex; align-items: center; gap: 8px; justify-content: flex-end; background: none; border: 0; cursor: pointer; padding: 4px; color: #fff8ec; font: 500 0.66rem var(--mono); letter-spacing: 0.14em; text-transform: uppercase; }
+.dot i { width: 8px; height: 8px; border-radius: 50%; background: rgb(255 248 236 / 0.4); transition: all 0.3s; }
+.dot.on i { background: #fff8ec; transform: scale(1.4); }
+.dot span { opacity: 0; transition: opacity 0.2s; text-shadow: 0 1px 8px rgb(0 0 0 / 0.5); }
+.dot:hover span, .dot.on span { opacity: 1; }
+
+.hint {
+  position: fixed; z-index: 5; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%);
+  font: 400 0.8rem var(--ui); color: #fff8ec; text-shadow: 0 1px 10px rgb(0 0 0 / 0.6); text-align: center;
+  transition: opacity 0.4s; pointer-events: none; width: max-content; max-width: calc(100% - 32px);
+}
+.tip {
+  position: fixed; z-index: 6; pointer-events: none; transform: translate(-50%, -120%);
+  background: var(--glass); border: 1px solid var(--glass-line);
+  backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+  border-radius: 12px; padding: 8px 12px; font-size: 0.8rem; white-space: nowrap; transition: opacity 0.15s;
+}
+.tip b { font-family: var(--display); font-size: 1.15rem; font-weight: 600; display: block; line-height: 1.1; }
+.tip span { color: var(--muted); font-family: var(--mono); font-size: 0.66rem; letter-spacing: 0.06em; }
+
+/* now playing */
+.player {
+  position: fixed; z-index: 5; left: 16px; bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  display: flex; align-items: center; gap: 10px; padding: 8px 10px 8px 8px;
+  background: var(--glass); border: 1px solid var(--glass-line); border-radius: 16px;
+  backdrop-filter: blur(16px) saturate(1.4); -webkit-backdrop-filter: blur(16px) saturate(1.4);
+  max-width: calc(100% - 32px); transition: transform 0.35s cubic-bezier(.3,1.4,.5,1), opacity 0.3s;
+}
+.player.hide { transform: translateY(140%); opacity: 0; pointer-events: none; }
+.vinyl { width: 36px; height: 36px; border-radius: 50%; background: radial-gradient(circle, #c9a227 0 22%, #111 23% 100%); animation: spin 2.2s linear infinite; flex: none; }
+.player.paused .vinyl { animation-play-state: paused; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.player .meta { min-width: 0; }
+.player .meta b { display: block; font-size: 0.82rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 180px; }
+.player .meta span { font: 0.62rem var(--mono); color: var(--muted); letter-spacing: 0.06em; text-transform: uppercase; }
+.player button, .player label { font: 500 0.66rem var(--mono); letter-spacing: 0.06em; text-transform: uppercase; background: rgb(0 0 0 / 0.06); border: 0; border-radius: 999px; padding: 7px 10px; cursor: pointer; white-space: nowrap; }
+.player input[type=file] { position: absolute; width: 1px; height: 1px; opacity: 0; }
+
+/* ---------- pages laid over the open book ---------- */
+.page {
+  position: fixed; z-index: 4; overflow-y: auto; padding: clamp(14px, 3.2vmin, 34px);
+  font-family: var(--display); color: var(--ink); opacity: 0; pointer-events: none; transition: opacity 0.35s;
+  scrollbar-width: thin;
+}
+.page.show { opacity: 1; pointer-events: auto; }
+.page .eyebrow { font: 500 0.62rem var(--mono); letter-spacing: 0.22em; text-transform: uppercase; color: var(--muted); margin: 0; }
+.page h2 { font-style: italic; font-weight: 400; font-size: clamp(1.8rem, 4.6vmin, 3rem); line-height: 1; margin: 6px 0 4px; }
+.page h3 { font-weight: 600; font-size: 1.15rem; margin: 0 0 6px; border-bottom: 1px solid rgb(31 27 22 / 0.15); padding-bottom: 6px; }
+.page .sub { font-style: italic; color: var(--muted); margin: 0 0 14px; font-size: 1.02rem; }
+.stats { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: rgb(31 27 22 / 0.14); border: 1px solid rgb(31 27 22 / 0.14); margin-bottom: 14px; }
+.stats div { background: var(--paper); padding: 9px 11px; }
+.stats b { display: block; font-size: 1.5rem; font-weight: 500; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.stats span { font: 0.58rem var(--mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+.ask { display: flex; gap: 8px; align-items: center; border-bottom: 1px solid rgb(31 27 22 / 0.25); padding: 6px 0; font-style: italic; color: var(--muted); font-size: 1.05rem; }
+.ask small { margin-left: auto; font: 0.58rem var(--mono); font-style: normal; letter-spacing: 0.08em; text-transform: uppercase; }
+.entries { list-style: none; padding: 0; margin: 0; }
+.entries li { display: grid; grid-template-columns: 1fr auto; gap: 0 10px; padding: 9px 0; border-bottom: 1px dotted rgb(31 27 22 / 0.22); opacity: 0; transform: translateY(6px); }
+.page.show .entries li { animation: rise 0.45s cubic-bezier(.2,.9,.3,1) forwards; }
+@keyframes rise { to { opacity: 1; transform: none; } }
+.entries .t { font-size: 1.12rem; }
+.entries .v { font: 0.8rem var(--mono); text-align: right; font-variant-numeric: tabular-nums; }
+.entries .v.neg { color: #a8414a; }
+.entries .v.pos { color: #2f7d57; }
+.entries .m { font: 0.62rem var(--mono); color: var(--muted); letter-spacing: 0.04em; grid-column: 1 / -1; }
+.bars { display: grid; gap: 8px; margin: 4px 0 14px; }
+.bars div { display: grid; grid-template-columns: 90px 1fr 52px; gap: 8px; align-items: center; font-size: 0.98rem; }
+.bars i { height: 6px; border-radius: 3px; background: rgb(31 27 22 / 0.1); overflow: hidden; display: block; }
+.bars i::after { content: ""; display: block; height: 100%; width: var(--w); background: var(--c, var(--accent)); border-radius: 3px; transform-origin: left; transform: scaleX(0); }
+.page.show .bars i::after { animation: grow 0.9s 0.2s cubic-bezier(.2,.9,.3,1) forwards; }
+@keyframes grow { to { transform: scaleX(1); } }
+.bars span:last-child { font: 0.72rem var(--mono); text-align: right; }
+.close {
+  position: fixed; z-index: 6; top: calc(14px + env(safe-area-inset-top, 0px)); right: 16px; width: 42px; height: 42px; border-radius: 50%;
+  border: 1px solid var(--glass-line); background: var(--glass); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+  font-size: 1.4rem; cursor: pointer; opacity: 0; pointer-events: none; transition: opacity 0.3s, transform 0.2s;
+}
+.close.show { opacity: 1; pointer-events: auto; }
+.close:hover { transform: scale(1.06); }
+
+/* planner on the desk */
+.planner { font-family: var(--display); }
+.planner .greet { font-style: italic; font-size: clamp(1.6rem, 4.4vmin, 2.6rem); line-height: 1; margin: 2px 0 10px; }
+.slot { display: grid; grid-template-columns: 46px 1fr; gap: 8px; padding: 6px 0; border-bottom: 1px dotted rgb(31 27 22 / 0.2); font-size: 1.05rem; }
+.slot time { font: 0.7rem var(--mono); color: var(--muted); padding-top: 3px; }
+.slot.now { color: var(--accent); font-weight: 600; }
+.todo { display: flex; gap: 8px; align-items: baseline; padding: 4px 0; font-size: 1.05rem; }
+.todo i { flex: none; width: 12px; height: 12px; border-radius: 50%; border: 1.5px solid var(--muted); transform: translateY(1px); }
+
+.loading { position: fixed; inset: 0; z-index: 9; display: grid; place-items: center; background: #1a1612; color: #fff8ec; font-family: var(--display); font-style: italic; font-size: 1.6rem; transition: opacity 0.6s; }
+.loading.gone { opacity: 0; pointer-events: none; }
+.loading small { display: block; font: 0.7rem var(--mono); font-style: normal; letter-spacing: 0.2em; text-transform: uppercase; opacity: 0.6; margin-top: 8px; text-align: center; }
+
+@media (max-width: 640px) {
+  .dots { display: none; }
+  .wordmark { font-size: 1.5rem; }
+  .top-right .chip { padding: 8px 10px; font-size: 0.64rem; }
+}
+</style>
+
+<div class="loading" id="loading"><div>Hanua<small>Arranging the shelf</small></div></div>
+<canvas id="stage" aria-label="A 3D room with a bookshelf and a desk"></canvas>
+<div class="track" aria-hidden="true"></div>
+
+<div class="ui top-left"><span class="wordmark">Hanua</span></div>
+<div class="ui top-right">
+  <button class="chip" id="light-btn" type="button" title="Change the time of day">Light · Auto</button>
+  <button class="chip" id="sound-btn" type="button" aria-pressed="false">Sound off</button>
+  <button class="chip" id="intro-btn" type="button">Replay intro</button>
+</div>
+<nav class="dots" aria-label="Places">
+  <button class="dot on" type="button" data-stop="0"><span>Shelf</span><i></i></button>
+  <button class="dot" type="button" data-stop="1"><span>Desk</span><i></i></button>
+</nav>
+<div class="hint" id="hint">Tap a book to open it · Scroll down to your desk · Tap the record player</div>
+<div class="tip" id="tip" hidden></div>
+
+<div class="player hide paused" id="player">
+  <div class="vinyl"></div>
+  <div class="meta"><b id="track-name">Shelf Sessions</b><span id="track-sub">Generated loop</span></div>
+  <button type="button" id="play-btn">Pause</button>
+  <label for="song-file">Your song</label>
+  <input type="file" id="song-file" accept="audio/*">
+</div>
+
+<div class="page" id="page-left"></div>
+<div class="page" id="page-right"></div>
+<div class="page planner" id="planner"></div>
+<button class="close" id="close-btn" type="button" aria-label="Put the book back">×</button>
+
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+<script type="module">
+import * as THREE from "three";
+import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.js";
+
+const $ = (id) => document.getElementById(id);
+const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const store = {
+  get(k) { try { return localStorage.getItem(k); } catch { return null; } },
+  set(k, v) { try { localStorage.setItem(k, v); } catch {} },
+};
+
+// ---------- sample content (examples, not real data) ----------
+const BOOKS = [
+  { id: "work", label: "Work", color: "#2b3f6b", h: 1.08, t: 0.17, vol: "I",
+    sub: "Tasks from your Notion", stats: [["4", "open"], ["1", "blocked"], ["Wed", "next due"], ["Lv 3", "activity"]],
+    entries: [["Q4 roadmap draft", "", "Due Wed · In progress"], ["Client review deck", "", "Due Thu · Not started"], ["Budget sign-off", "", "Due Fri · Blocked"], ["Hiring loop feedback", "", "Done today"]] },
+  { id: "calendar", label: "Calendar", color: "#9a5530", h: 1.16, t: 0.14, vol: "II",
+    sub: "What's coming up", stats: [["3", "this fortnight"], ["Mon", "next"], ["2", "family"], ["Lv 2", "activity"]],
+    entries: [["Dentist", "", "Mon 5 Oct · Personal"], ["Team offsite", "", "Fri 9 Oct · Work"], ["Mum's birthday", "", "Wed 14 Oct · Family"]] },
+  { id: "money", label: "Money", color: "#2e5e4e", h: 1.02, t: 0.22, vol: "III", money: true,
+    sub: "Read from Pūtea", stats: [["$412", "this week"], ["$480", "usual week"], ["2", "bills due"], ["62%", "Belgium fund"]],
+    bars: [["Food", 38, "$156"], ["Transport", 22, "$91"], ["Bills", 30, "$124"], ["Fun", 10, "$41"]],
+    entries: [["Spotify", "-15.99", "Renews Tue · Subscription"], ["Contact Energy", "-112.40", "Due Thu · Bill"], ["Salary", "4,200.00", "Received 28 Sep"]] },
+  { id: "health", label: "Health", color: "#8c2f3a", h: 0.98, t: 0.13, vol: "IV",
+    sub: "Movement and rest", stats: [["130", "minutes"], ["3", "sessions"], ["Run", "latest"], ["Lv 2", "activity"]],
+    entries: [["Run", "35 min", "Fri 2 Oct · Cardio"], ["Yoga", "50 min", "Wed 30 Sep · Mobility"], ["Strength", "45 min", "Mon 28 Sep · Strength"]] },
+  { id: "learning", label: "Learning", color: "#5a4372", h: 1.12, t: 0.15, vol: "V",
+    sub: "Things worth keeping", stats: [["2", "this month"], ["1", "in progress"], ["Notion API", "current"], ["Lv 2", "activity"]],
+    entries: [["Lead with the decision, then the context", "", "Work lesson · Fri"], ["Notion API", "", "In progress"], ["Te reo Māori lesson 4", "", "Done · 29 Sep"]] },
+  { id: "people", label: "People", color: "#2f6a6e", h: 1.04, t: 0.14, vol: "VI",
+    sub: "Your circle", stats: [["3", "people"], ["Aunty Lani", "longest gap"], ["34", "days since"], ["Lv 2", "activity"]],
+    entries: [["Priya", "", "Last contact 25 Sep · Work"], ["Sam", "", "Last contact 12 Sep · Close friends"], ["Aunty Lani", "", "Last contact 30 Aug · Family"]] },
+];
+const BOOK_D = 0.74; // depth (front to back) of every book
+
+// ---------- renderer, scene, camera ----------
+const canvas = $("stage");
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: "high-performance" });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFShadowMap;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(38, 1, 0.05, 60);
+
+// ---------- textures drawn on canvas ----------
+function canvasTex(w, h, draw) {
+  const c = document.createElement("canvas");
+  c.width = w; c.height = h;
+  draw(c.getContext("2d"), w, h);
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.anisotropy = renderer.capabilities.getMaxAnisotropy();
+  return t;
+}
+function shade(hex, amt) {
+  const c = new THREE.Color(hex);
+  c.offsetHSL(0, 0, amt);
+  return "#" + c.getHexString();
+}
+function spineTex(b) {
+  return canvasTex(256, 1024, (g, w, h) => {
+    const grad = g.createLinearGradient(0, 0, w, 0);
+    grad.addColorStop(0, shade(b.color, -0.08)); grad.addColorStop(0.5, shade(b.color, 0.03)); grad.addColorStop(1, shade(b.color, -0.09));
+    g.fillStyle = grad; g.fillRect(0, 0, w, h);
+    g.strokeStyle = "rgba(240,222,170,0.75)"; g.lineWidth = 3;
+    for (const y of [90, 104, h - 104, h - 90]) { g.beginPath(); g.moveTo(22, y); g.lineTo(w - 22, y); g.stroke(); }
+    g.save(); g.translate(w / 2 + 22, h / 2); g.rotate(-Math.PI / 2);
+    g.fillStyle = "#f3e3b5"; g.font = 'italic 500 120px "Cormorant Garamond", Georgia, serif';
+    g.textAlign = "center"; g.fillText(b.label, 0, 0); g.restore();
+    g.fillStyle = "rgba(243,227,181,0.85)"; g.font = '500 34px "IBM Plex Mono", monospace'; g.textAlign = "center";
+    g.fillText(b.vol, w / 2, h - 40);
+  });
+}
+function coverTex(b) {
+  return canvasTex(768, 1024, (g, w, h) => {
+    g.fillStyle = b.color; g.fillRect(0, 0, w, h);
+    const r = g.createRadialGradient(w * 0.3, h * 0.2, 10, w * 0.3, h * 0.2, w);
+    r.addColorStop(0, "rgba(255,255,255,0.14)"); r.addColorStop(1, "rgba(0,0,0,0.12)");
+    g.fillStyle = r; g.fillRect(0, 0, w, h);
+    g.strokeStyle = "rgba(243,227,181,0.6)"; g.lineWidth = 3; g.strokeRect(46, 46, w - 92, h - 92);
+    g.lineWidth = 1.5; g.strokeRect(60, 60, w - 120, h - 120);
+    g.fillStyle = "#f3e3b5"; g.textAlign = "center";
+    g.font = 'italic 400 128px "Cormorant Garamond", Georgia, serif'; g.fillText(b.label, w / 2, h / 2 + 30);
+    g.font = '500 30px "IBM Plex Mono", monospace'; g.fillText("VOL. " + b.vol, w / 2, h / 2 + 100);
+  });
+}
+const paperTex = canvasTex(256, 256, (g, w, h) => {
+  g.fillStyle = "#f6efe1"; g.fillRect(0, 0, w, h);
+  for (let i = 0; i < 1600; i++) { g.fillStyle = `rgba(120,96,60,${Math.random() * 0.035})`; g.fillRect(Math.random() * w, Math.random() * h, 1, 1); }
+});
+const woodTex = canvasTex(512, 64, (g, w, h) => {
+  g.fillStyle = "#8a6141"; g.fillRect(0, 0, w, h);
+  for (let i = 0; i < 40; i++) {
+    g.strokeStyle = `rgba(${60 + Math.random() * 40},${36 + Math.random() * 20},20,${0.15 + Math.random() * 0.2})`;
+    g.lineWidth = 1 + Math.random() * 2; g.beginPath();
+    const y = Math.random() * h; g.moveTo(0, y);
+    for (let x = 0; x <= w; x += 32) g.lineTo(x, y + Math.sin(x / 60 + i) * 3);
+    g.stroke();
+  }
+});
+woodTex.wrapS = woodTex.wrapT = THREE.RepeatWrapping;
+
+// ---------- the room ----------
+const M = {
+  wall: new THREE.MeshStandardMaterial({ color: "#e9dcc6", roughness: 0.95 }),
+  wood: new THREE.MeshStandardMaterial({ map: woodTex, roughness: 0.7 }),
+  darkWood: new THREE.MeshStandardMaterial({ color: "#5b3e2a", roughness: 0.75 }),
+  paper: new THREE.MeshStandardMaterial({ map: paperTex, roughness: 0.9, emissive: "#ffffff", emissiveMap: paperTex, emissiveIntensity: 0.82 }),
+  pageEdge: new THREE.MeshStandardMaterial({ color: "#efe5cf", roughness: 0.95 }),
+};
+
+const wall = new THREE.Mesh(new THREE.PlaneGeometry(14, 9), M.wall);
+wall.position.set(0, 0.2, -1.05); wall.receiveShadow = true; scene.add(wall);
+const floor = new THREE.Mesh(new THREE.PlaneGeometry(14, 8), new THREE.MeshStandardMaterial({ color: "#6e4f38", roughness: 0.85 }));
+floor.rotation.x = -Math.PI / 2; floor.position.set(0, -2.45, 1.5); floor.receiveShadow = true; scene.add(floor);
+
+// window on the left with its glow
+const windowGlow = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 2.1), new THREE.MeshBasicMaterial({ color: "#ffd9ac" }));
+windowGlow.position.set(-3.1, 0.9, -1.04); scene.add(windowGlow);
+const frameMat = new THREE.MeshStandardMaterial({ color: "#f4ede2", roughness: 0.6 });
+for (const [w, h, x, y] of [[1.62, 0.07, -3.1, 1.95], [1.62, 0.07, -3.1, -0.15], [0.07, 2.1, -3.88, 0.9], [0.07, 2.1, -2.32, 0.9], [0.05, 2.1, -3.1, 0.9], [1.5, 0.05, -3.1, 0.9]]) {
+  const f = new THREE.Mesh(new THREE.BoxGeometry(w, h, 0.05), frameMat);
+  f.position.set(x, y, -1.02); scene.add(f);
+}
+
+// shelf
+const SHELF_Y = 0;
+const plank = new THREE.Mesh(new RoundedBoxGeometry(3.7, 0.09, 0.62, 3, 0.02), M.wood);
+plank.position.set(0.15, SHELF_Y - 0.045, -0.72); plank.castShadow = plank.receiveShadow = true; scene.add(plank);
+for (const x of [-1.5, 1.8]) {
+  const br = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.22, 0.4), M.darkWood);
+  br.position.set(x, SHELF_Y - 0.2, -0.85); br.castShadow = true; scene.add(br);
+}
+
+// plant
+const pot = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.1, 0.22, 24), new THREE.MeshStandardMaterial({ color: "#c9774f", roughness: 0.8 }));
+pot.position.set(-1.45, SHELF_Y + 0.11, -0.72); pot.castShadow = true; scene.add(pot);
+const leaves = new THREE.Group(); leaves.position.set(-1.45, SHELF_Y + 0.22, -0.72); scene.add(leaves);
+const leafMat = new THREE.MeshStandardMaterial({ color: "#4f7a4a", roughness: 0.7, side: THREE.DoubleSide });
+for (let i = 0; i < 9; i++) {
+  const leaf = new THREE.Mesh(new THREE.SphereGeometry(0.11, 12, 8), leafMat);
+  leaf.scale.set(0.45, 1.6, 0.2);
+  const a = (i / 9) * Math.PI * 2;
+  leaf.position.set(Math.cos(a) * 0.07, 0.16 + (i % 3) * 0.04, Math.sin(a) * 0.07);
+  leaf.rotation.set(Math.sin(a) * 0.6, a, Math.cos(a) * 0.6);
+  leaf.castShadow = true; leaves.add(leaf);
+}
+
+// record player
+const deck = new THREE.Group(); deck.position.set(1.32, SHELF_Y, -0.7); scene.add(deck);
+const deckBase = new THREE.Mesh(new RoundedBoxGeometry(0.78, 0.12, 0.56, 3, 0.03), new THREE.MeshStandardMaterial({ color: "#3a2a20", roughness: 0.5 }));
+deckBase.position.y = 0.06; deckBase.castShadow = true; deck.add(deckBase);
+const platter = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 0.02, 48), new THREE.MeshStandardMaterial({ color: "#9a9a9a", metalness: 0.7, roughness: 0.35 }));
+platter.position.set(-0.08, 0.13, 0); deck.add(platter);
+const record = new THREE.Group(); record.position.set(-0.08, 0.145, 0); deck.add(record);
+const disc = new THREE.Mesh(new THREE.CylinderGeometry(0.21, 0.21, 0.008, 64), new THREE.MeshStandardMaterial({ color: "#121212", roughness: 0.25, metalness: 0.3 }));
+record.add(disc);
+const labelDisc = new THREE.Mesh(new THREE.CylinderGeometry(0.065, 0.065, 0.01, 32), new THREE.MeshStandardMaterial({ color: "#c9a227", roughness: 0.5 }));
+record.add(labelDisc);
+const notch = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.012, 0.012), new THREE.MeshStandardMaterial({ color: "#7a5e12" }));
+notch.position.x = 0.035; record.add(notch);
+const armPivot = new THREE.Group(); armPivot.position.set(0.27, 0.16, -0.18); deck.add(armPivot);
+const arm = new THREE.Mesh(new THREE.BoxGeometry(0.012, 0.012, 0.3), new THREE.MeshStandardMaterial({ color: "#d8d8d8", metalness: 0.8, roughness: 0.3 }));
+arm.position.set(0, 0, 0.15); armPivot.add(arm);
+armPivot.rotation.y = 0.15;
+const deckHit = new THREE.Mesh(new THREE.BoxGeometry(0.85, 0.35, 0.62), new THREE.MeshBasicMaterial({ visible: false }));
+deckHit.position.y = 0.12; deck.add(deckHit);
+
+// desk below
+const DESK_Y = -1.55;
+const desk = new THREE.Mesh(new RoundedBoxGeometry(4.2, 0.08, 1.5, 3, 0.02), M.wood);
+desk.position.set(0, DESK_Y, -0.3); desk.castShadow = desk.receiveShadow = true; scene.add(desk);
+for (const x of [-1.95, 1.95]) {
+  const leg = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.9, 0.07), M.darkWood);
+  leg.position.set(x, DESK_Y - 0.48, 0.3); leg.castShadow = true; scene.add(leg);
+}
+// planner on a small stand, tilted toward the desk camera
+const planner = new THREE.Group(); planner.position.set(0, DESK_Y + 0.05, 0.05); planner.rotation.x = -1.05; scene.add(planner);
+const plannerPage = new THREE.Mesh(new THREE.BoxGeometry(1.5, 1.0, 0.02), [M.pageEdge, M.pageEdge, M.pageEdge, M.pageEdge, M.paper, M.pageEdge]);
+plannerPage.position.y = 0.5; plannerPage.castShadow = plannerPage.receiveShadow = true; planner.add(plannerPage);
+const plannerCover = new THREE.Mesh(new THREE.BoxGeometry(1.58, 1.06, 0.015), new THREE.MeshStandardMaterial({ color: "#2e5e4e", roughness: 0.6 }));
+plannerCover.position.set(0, 0.5, -0.02); planner.add(plannerCover);
+// lamp
+const lamp = new THREE.Group(); lamp.position.set(1.45, DESK_Y + 0.04, -0.6); scene.add(lamp);
+const brass = new THREE.MeshStandardMaterial({ color: "#b8913f", metalness: 0.8, roughness: 0.35 });
+const lampBase = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.17, 0.04, 32), brass); lamp.add(lampBase);
+const lampStem = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.7, 12), brass); lampStem.position.y = 0.37; lamp.add(lampStem);
+const shadeMat = new THREE.MeshStandardMaterial({ color: "#efe2c4", emissive: "#ffcf8a", emissiveIntensity: 0.2, side: THREE.DoubleSide, roughness: 0.9 });
+const lampShade = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.22, 0.22, 32, 1, true), shadeMat); lampShade.position.y = 0.78; lamp.add(lampShade);
+// mug
+const mug = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.065, 0.16, 24), new THREE.MeshStandardMaterial({ color: "#d9d2c5", roughness: 0.4 }));
+mug.position.set(-1.3, DESK_Y + 0.12, 0.05); mug.castShadow = true; scene.add(mug);
+
+// ---------- light ----------
+const hemi = new THREE.HemisphereLight("#fff4e0", "#4a3a2c", 0.7); scene.add(hemi);
+const sun = new THREE.DirectionalLight("#ffd9ac", 2.2);
+sun.position.set(-6, 4, 3); sun.castShadow = true;
+sun.shadow.mapSize.set(1024, 1024); sun.shadow.camera.left = -4; sun.shadow.camera.right = 4; sun.shadow.camera.top = 3; sun.shadow.camera.bottom = -3.5;
+sun.shadow.bias = -0.0006; sun.shadow.radius = 6; sun.shadow.blurSamples = 12; scene.add(sun);
+const fill = new THREE.DirectionalLight("#fff6ea", 0.55); fill.position.set(1, 1.5, 6); scene.add(fill);
+const lampLight = new THREE.PointLight("#ffb36b", 0, 6, 1.6);
+lampLight.position.set(1.45, DESK_Y + 0.78, -0.6); lampLight.castShadow = true; lampLight.shadow.mapSize.set(512, 512); scene.add(lampLight);
+const shelfLight = new THREE.PointLight("#ffc88a", 0, 4, 1.8); shelfLight.position.set(0.2, 1.05, 0.1); scene.add(shelfLight);
+
+// the book you're holding lives on layer 1 and is drawn last, on top of the room
+const READ_LAYER = 1;
+for (const l of [hemi, sun, fill, lampLight, shelfLight]) l.layers.enable(READ_LAYER);
+function setBookLayer(book, onTop) {
+  book.group.traverse((o) => { if (o.isMesh) onTop ? o.layers.set(READ_LAYER) : o.layers.set(0); });
+}
+
+// dust drifting in the window light
+const DUST = 260;
+const dustGeo = new THREE.BufferGeometry();
+const dustPos = new Float32Array(DUST * 3);
+const dustSeed = new Float32Array(DUST);
+for (let i = 0; i < DUST; i++) {
+  dustPos[i * 3] = -3 + Math.random() * 4.5; dustPos[i * 3 + 1] = -1.8 + Math.random() * 3.6; dustPos[i * 3 + 2] = -0.9 + Math.random() * 1.8;
+  dustSeed[i] = Math.random() * 100;
+}
+dustGeo.setAttribute("position", new THREE.BufferAttribute(dustPos, 3));
+const dustMat = new THREE.PointsMaterial({ color: "#fff1d6", size: 0.012, transparent: true, opacity: 0.55, depthWrite: false });
+const dust = new THREE.Points(dustGeo, dustMat); scene.add(dust);
+
+// time-of-day presets: everything that changes between morning and night
+const LIGHTS = {
+  Morning: { win: "#ffe2c2", sun: ["#ffe0bd", 1.9], sunPos: [-3.5, 4.5, 5], hemi: ["#fff6ea", "#6b5a48", 1.0], lamp: 0, shelf: 0, wall: "#e9e1d3", exposure: 1.08, dust: 0.6, bg: "#2a2119" },
+  Day:     { win: "#fbfbf6", sun: ["#fffaf0", 2.2], sunPos: [-2.5, 6, 5], hemi: ["#ffffff", "#7a6a58", 1.2], lamp: 0, shelf: 0, wall: "#ece8e0", exposure: 1.1, dust: 0.4, bg: "#2a2119" },
+  Evening: { win: "#ffab7a", sun: ["#ffa874", 1.0], sunPos: [-5, 2.2, 4], hemi: ["#ffe1c6", "#3a2c20", 0.5], lamp: 9, shelf: 2.2, wall: "#dccbb2", exposure: 1.0, dust: 0.35, bg: "#1d1712" },
+  Night:   { win: "#24304f", sun: ["#7d8fc2", 0.3], sunPos: [-4, 4, 4], hemi: ["#8a92b8", "#1a140f", 0.22], lamp: 12, shelf: 2.6, wall: "#d0bea2", exposure: 0.95, dust: 0.15, bg: "#120f0c" },
+};
+const ORDER = ["Auto", "Morning", "Day", "Evening", "Night"];
+let lightMode = store.get("hanua-light") || "Auto";
+const autoPreset = () => { const hr = new Date().getHours(); return hr >= 5 && hr < 11 ? "Morning" : hr < 17 ? "Day" : hr < 21 ? "Evening" : "Night"; };
+const L = { win: new THREE.Color(), sunC: new THREE.Color(), sunI: 0, sunPos: new THREE.Vector3(), hemiS: new THREE.Color(), hemiG: new THREE.Color(), hemiI: 0, lamp: 0, shelf: 0, wall: new THREE.Color(), exposure: 1, dust: 0.5, bg: new THREE.Color() };
+let LT = null; // target preset
+function setLight(mode, instant) {
+  lightMode = mode; store.set("hanua-light", mode);
+  const name = mode === "Auto" ? autoPreset() : mode;
+  $("light-btn").textContent = mode === "Auto" ? `Light · Auto (${name})` : `Light · ${name}`;
+  const p = LIGHTS[name];
+  const greet = document.getElementById("planner-greet");
+  if (greet) greet.textContent = { Morning: "Good morning.", Day: "Good afternoon.", Evening: "Good evening.", Night: "Good evening." }[name];
+  LT = { win: new THREE.Color(p.win), sunC: new THREE.Color(p.sun[0]), sunI: p.sun[1], sunPos: new THREE.Vector3(...p.sunPos), hemiS: new THREE.Color(p.hemi[0]), hemiG: new THREE.Color(p.hemi[1]), hemiI: p.hemi[2], lamp: p.lamp, shelf: p.shelf, wall: new THREE.Color(p.wall), exposure: p.exposure, dust: p.dust, bg: new THREE.Color(p.bg) };
+  if (instant) blendLight(1);
+}
+function blendLight(k) {
+  if (!LT) return;
+  L.win.lerp(LT.win, k); L.sunC.lerp(LT.sunC, k); L.sunI += (LT.sunI - L.sunI) * k; L.sunPos.lerp(LT.sunPos, k);
+  L.hemiS.lerp(LT.hemiS, k); L.hemiG.lerp(LT.hemiG, k); L.hemiI += (LT.hemiI - L.hemiI) * k;
+  L.lamp += (LT.lamp - L.lamp) * k; L.shelf += (LT.shelf - L.shelf) * k; L.wall.lerp(LT.wall, k);
+  L.exposure += (LT.exposure - L.exposure) * k; L.dust += (LT.dust - L.dust) * k; L.bg.lerp(LT.bg, k);
+  windowGlow.material.color.copy(L.win);
+  sun.color.copy(L.sunC); sun.intensity = L.sunI; sun.position.copy(L.sunPos);
+  hemi.color.copy(L.hemiS); hemi.groundColor.copy(L.hemiG); hemi.intensity = L.hemiI;
+  fill.intensity = 0.25 + L.hemiI * 0.35;
+  lampLight.intensity = L.lamp; shelfLight.intensity = L.shelf; shadeMat.emissiveIntensity = 0.15 + L.lamp / 10;
+  M.wall.color.copy(L.wall); renderer.toneMappingExposure = L.exposure; dustMat.opacity = L.dust; scene.background = L.bg;
+}
+
+// ---------- books ----------
+const C = 0.014; // cover board thickness
+const books = [];
+function makeBook(b, x) {
+  const t = b.t, h = b.h, d = BOOK_D;
+  const color = new THREE.MeshStandardMaterial({ color: b.color, roughness: 0.62 });
+  const spineMat = new THREE.MeshStandardMaterial({ map: spineTex(b), roughness: 0.55 });
+  const coverOut = new THREE.MeshStandardMaterial({ map: coverTex(b), roughness: 0.6 });
+  const g = new THREE.Group();
+
+  const back = new THREE.Mesh(new THREE.BoxGeometry(C, h, d), color);
+  back.position.x = -t / 2 + C / 2;
+  const spine = new THREE.Mesh(new THREE.BoxGeometry(t, h, C), [color, color, color, color, spineMat, color]);
+  spine.position.z = d / 2 - C / 2;
+  const block = new THREE.Mesh(new THREE.BoxGeometry(t - 2 * C - 0.004, h - 0.03, d - C - 0.012), [M.paper, M.pageEdge, M.pageEdge, M.pageEdge, M.pageEdge, M.pageEdge]);
+  block.position.z = -C / 2 - 0.006;
+  const pivot = new THREE.Group(); pivot.position.set(t / 2 - C / 2, 0, d / 2);
+  const cover = new THREE.Mesh(new THREE.BoxGeometry(C, h, d), [coverOut, M.paper, color, color, color, color]);
+  cover.position.z = -d / 2; pivot.add(cover);
+  for (const m of [back, spine, block, cover]) { m.castShadow = true; m.receiveShadow = true; m.userData.book = g; }
+  g.add(back, spine, block, pivot);
+
+  const home = new THREE.Vector3(x, SHELF_Y + h / 2 + 0.001, -0.72);
+  g.position.copy(home);
+  scene.add(g);
+  const book = { data: b, group: g, pivot, cover, block, home, t, h, d, hover: 0, lean: 0, drop: 0, state: "shelf" };
+  g.userData.bookRef = book;
+  books.push(book);
+}
+{
+  let x = -1.1;
+  for (const b of BOOKS) { makeBook(b, x + b.t / 2); x += b.t + 0.012; }
+}
+const bookMeshes = [];
+for (const bk of books) bk.group.traverse((o) => { if (o.isMesh) bookMeshes.push(o); });
+
+// ---------- tweens ----------
+const tweens = new Set();
+const ease = {
+  out: (t) => 1 - Math.pow(1 - t, 3),
+  inOut: (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2),
+  back: (t) => { const c = 1.5; return 1 + (c + 1) * Math.pow(t - 1, 3) + c * Math.pow(t - 1, 2); },
+};
+function tween(dur, fn, e = ease.inOut) {
+  if (reduced) dur = Math.min(dur, 1);
+  return new Promise((resolve) => { tweens.add({ t: 0, dur: Math.max(dur, 1), fn, e, resolve }); });
+}
+const wait = (ms) => tween(ms, () => {});
+
+// ---------- sound (Web Audio, created on first interaction) ----------
+let audio = null;
+function getAudio() {
+  if (audio) return audio;
+  const ctx = new (window.AudioContext || window.webkitAudioContext)();
+  const master = ctx.createGain(); master.gain.value = 0.9; master.connect(ctx.destination);
+  const musicBus = ctx.createGain(); musicBus.gain.value = 0; musicBus.connect(master);
+  const fxBus = ctx.createGain(); fxBus.gain.value = 0.6; fxBus.connect(master);
+  audio = { ctx, master, musicBus, fxBus, loopTimer: null, fileEl: null, fileSrc: null };
+  return audio;
+}
+let soundOn = false;
+function noiseBurst(dur, freq, gain) {
+  if (!soundOn) return;
+  const a = getAudio(); const ctx = a.ctx;
+  const buf = ctx.createBuffer(1, Math.floor(ctx.sampleRate * dur), ctx.sampleRate);
+  const data = buf.getChannelData(0);
+  for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / data.length, 2);
+  const src = ctx.createBufferSource(); src.buffer = buf;
+  const f = ctx.createBiquadFilter(); f.type = "lowpass"; f.frequency.value = freq;
+  const g = ctx.createGain(); g.gain.value = gain;
+  src.connect(f).connect(g).connect(a.fxBus); src.start();
+}
+const sfx = { slide: () => noiseBurst(0.35, 1400, 0.25), thump: () => noiseBurst(0.18, 380, 0.7), page: () => noiseBurst(0.22, 2600, 0.18) };
+
+// a gentle generated loop: soft chords, a little melody, vinyl crackle
+const CHORDS = [[53, 57, 60, 64], [52, 55, 59, 62], [50, 53, 57, 60], [48, 52, 55, 59]];
+const mtof = (m) => 440 * Math.pow(2, (m - 69) / 12);
+function scheduleLoop() {
+  const a = getAudio(); const ctx = a.ctx;
+  const delay = ctx.createDelay(); delay.delayTime.value = 0.38;
+  const fb = ctx.createGain(); fb.gain.value = 0.28; delay.connect(fb).connect(delay);
+  const lp = ctx.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = 1800;
+  lp.connect(a.musicBus); delay.connect(lp);
+  const bar = 2.4;
+  let start = ctx.currentTime + 0.1, n = 0;
+  function voice(freq, t, len, type, vol, toDelay) {
+    const o = ctx.createOscillator(); o.type = type; o.frequency.value = freq; o.detune.value = (Math.random() - 0.5) * 8;
+    const g = ctx.createGain(); g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol, t + 0.25); g.gain.exponentialRampToValueAtTime(0.0001, t + len);
+    o.connect(g); g.connect(lp); if (toDelay) g.connect(delay);
+    o.start(t); o.stop(t + len + 0.1);
+  }
+  function crackle(t) {
+    const len = bar; const buf = ctx.createBuffer(1, Math.floor(ctx.sampleRate * len), ctx.sampleRate); const d = buf.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = Math.random() < 0.0009 ? (Math.random() * 2 - 1) * 0.5 : (Math.random() * 2 - 1) * 0.006;
+    const s = ctx.createBufferSource(); s.buffer = buf; const g = ctx.createGain(); g.gain.value = 0.5; s.connect(g).connect(a.musicBus); s.start(t);
+  }
+  const melody = [72, 74, 76, 79, 76, 74, 72, 71];
+  function tick() {
+    while (start < ctx.currentTime + 1.2) {
+      const ch = CHORDS[n % CHORDS.length];
+      ch.forEach((m) => voice(mtof(m), start, bar * 1.1, "triangle", 0.045, false));
+      voice(mtof(ch[0] - 12), start, bar, "sine", 0.09, false);
+      for (let k = 0; k < 2; k++) {
+        if (Math.random() < 0.7) voice(mtof(melody[(n * 2 + k) % melody.length]), start + k * bar / 2 + 0.3, 0.9, "sine", 0.035, true);
+      }
+      crackle(start);
+      start += bar; n++;
+    }
+  }
+  tick();
+  a.loopTimer = setInterval(tick, 400);
+}
+let playing = false;
+function setMusic(on) {
+  const a = getAudio(); a.ctx.resume();
+  playing = on;
+  if (on && !a.loopTimer && !a.fileEl) scheduleLoop();
+  if (a.fileEl) { on ? a.fileEl.play() : a.fileEl.pause(); }
+  a.musicBus.gain.cancelScheduledValues(a.ctx.currentTime);
+  a.musicBus.gain.linearRampToValueAtTime(on ? 0.8 : 0, a.ctx.currentTime + 0.6);
+  $("player").classList.remove("hide");
+  $("player").classList.toggle("paused", !on);
+  $("play-btn").textContent = on ? "Pause" : "Play";
+  if (on && !soundOn) setSound(true);
+}
+function setSound(on) {
+  soundOn = on;
+  const btn = $("sound-btn");
+  btn.setAttribute("aria-pressed", String(on)); btn.textContent = on ? "Sound on" : "Sound off";
+  if (audio) audio.master.gain.linearRampToValueAtTime(on ? 0.9 : 0, audio.ctx.currentTime + 0.3);
+  if (on) getAudio().ctx.resume();
+}
+$("sound-btn").addEventListener("click", () => { setSound(!soundOn); if (soundOn) { getAudio(); audio.master.gain.value = 0.9; } });
+$("play-btn").addEventListener("click", () => setMusic(!playing));
+$("song-file").addEventListener("change", (e) => {
+  const file = e.target.files?.[0]; if (!file) return;
+  const a = getAudio();
+  if (a.loopTimer) { clearInterval(a.loopTimer); a.loopTimer = null; }
+  if (!a.fileEl) {
+    a.fileEl = new Audio(); a.fileEl.loop = true; a.fileEl.crossOrigin = "anonymous";
+    a.fileSrc = a.ctx.createMediaElementSource(a.fileEl); a.fileSrc.connect(a.musicBus);
+  }
+  a.fileEl.src = URL.createObjectURL(file);
+  $("track-name").textContent = file.name.replace(/\.[^.]+$/, "");
+  $("track-sub").textContent = "Your song · on loop";
+  setMusic(true);
+});
+
+// ---------- camera rig: scroll moves between the shelf and the desk ----------
+const STOPS = [
+  { pos: new THREE.Vector3(0.05, 0.55, 3.6), look: new THREE.Vector3(0.05, 0.45, -0.7) },
+  { pos: new THREE.Vector3(0, DESK_Y + 1.9, 1.75), look: new THREE.Vector3(0, DESK_Y + 0.25, -0.15) },
+];
+let scrollP = 0, scrollSmooth = 0;
+const mouse = new THREE.Vector2(0, 0), mouseSmooth = new THREE.Vector2(0, 0);
+const camPos = new THREE.Vector3(), camLook = new THREE.Vector3();
+let introDolly = 0; // extra distance during the intro
+function fitDistance() {
+  // pull the camera back on narrow screens so the whole shelf stays in view
+  const aspect = innerWidth / innerHeight;
+  return aspect < 1 ? (1 / aspect - 1) * 2.6 : 0;
+}
+function updateCamera(dt) {
+  scrollSmooth += (scrollP - scrollSmooth) * Math.min(1, dt * 6);
+  mouseSmooth.lerp(mouse, Math.min(1, dt * 3));
+  const k = ease.inOut(Math.min(1, Math.max(0, scrollSmooth)));
+  camPos.lerpVectors(STOPS[0].pos, STOPS[1].pos, k);
+  camLook.lerpVectors(STOPS[0].look, STOPS[1].look, k);
+  const back = fitDistance() * (1 - k * 0.5) + introDolly;
+  const dir = camPos.clone().sub(camLook).normalize();
+  camPos.addScaledVector(dir, back);
+  if (!reduced && !openBook) { camPos.x += mouseSmooth.x * 0.18; camPos.y += mouseSmooth.y * 0.1; }
+  camera.position.copy(camPos);
+  camera.lookAt(camLook);
+  document.querySelectorAll(".dot").forEach((d, i) => d.classList.toggle("on", Math.round(scrollSmooth) === i));
+}
+function onScroll() {
+  const max = document.documentElement.scrollHeight - innerHeight;
+  scrollP = max > 0 ? scrollY / max : 0;
+  $("hint").style.opacity = scrollP > 0.05 && scrollP < 0.95 ? 0 : 1;
+}
+addEventListener("scroll", onScroll, { passive: true });
+document.querySelectorAll(".dot").forEach((d) => d.addEventListener("click", () => {
+  const max = document.documentElement.scrollHeight - innerHeight;
+  scrollTo({ top: Number(d.dataset.stop) * max, behavior: reduced ? "auto" : "smooth" });
+}));
+
+// ---------- picking ----------
+const ray = new THREE.Raycaster();
+const ndc = new THREE.Vector2();
+let hovered = null, downAt = null;
+function pick(cx, cy) {
+  ndc.set((cx / innerWidth) * 2 - 1, -(cy / innerHeight) * 2 + 1);
+  ray.setFromCamera(ndc, camera);
+  const hits = ray.intersectObjects([...bookMeshes, deckHit], false);
+  if (!hits.length) return null;
+  const o = hits[0].object;
+  if (o === deckHit) return "deck";
+  return o.userData.book?.userData.bookRef || null;
+}
+canvas.addEventListener("pointermove", (e) => {
+  mouse.set((e.clientX / innerWidth) * 2 - 1, -(e.clientY / innerHeight) * 2 + 1);
+  if (openBook || busy) return;
+  const hit = pick(e.clientX, e.clientY);
+  const book = hit && hit !== "deck" ? hit : null;
+  if (book !== hovered) {
+    if (book && soundOn) sfx.page();
+    hovered = book;
+  }
+  canvas.style.cursor = hit ? "pointer" : "default";
+  const tip = $("tip");
+  if (hit) {
+    tip.hidden = false;
+    tip.innerHTML = hit === "deck"
+      ? `<b>Record player</b><span>${playing ? "TAP TO PAUSE" : "TAP TO PLAY"}</span>`
+      : `<b>${hit.data.label}</b><span>${hit.data.entries.length} ENTRIES · VOL. ${hit.data.vol}</span>`;
+    tip.style.left = e.clientX + "px"; tip.style.top = e.clientY + "px";
+  } else tip.hidden = true;
+});
+canvas.addEventListener("pointerleave", () => { hovered = null; $("tip").hidden = true; });
+canvas.addEventListener("pointerdown", (e) => { downAt = [e.clientX, e.clientY]; });
+canvas.addEventListener("pointerup", (e) => {
+  if (!downAt) return;
+  const moved = Math.hypot(e.clientX - downAt[0], e.clientY - downAt[1]);
+  downAt = null;
+  if (moved > 8) return;
+  if (openBook) { busy ? (closeAsked = true) : closeBook(); return; }
+  if (busy) return;
+  const hit = pick(e.clientX, e.clientY);
+  if (hit === "deck") setMusic(!playing);
+  else if (hit) openBookFn(hit);
+});
+
+// ---------- opening a book ----------
+let openBook = null, busy = false, closeAsked = false;
+const Q_TURN = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), -Math.PI / 2);
+function readingPose(book) {
+  const aspect = innerWidth / innerHeight;
+  const narrow = aspect < 0.85;
+  const tan = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
+  const needW = narrow ? book.d * 1.08 : book.d * 2 * 1.12;
+  const dist = Math.max((book.h * 1.18) / (2 * tan), needW / (2 * tan * aspect));
+  const fwd = new THREE.Vector3(); camera.getWorldDirection(fwd);
+  const right = new THREE.Vector3().crossVectors(fwd, camera.up).normalize();
+  const center = camera.position.clone().addScaledVector(fwd, dist);
+  const quat = camera.quaternion.clone().multiply(Q_TURN);
+  const shift = narrow ? 0 : book.d / 2;
+  return { center, quat, right, shift, narrow };
+}
+async function openBookFn(book) {
+  busy = true; openBook = book; hovered = null; $("tip").hidden = true;
+  document.body.classList.add("locked", "reading");
+  book.state = "out";
+  setBookLayer(book, true);
+  sfx.slide();
+  // 1. slide off the shelf toward you
+  const g = book.group;
+  const startZ = g.position.z;
+  await tween(320, (k) => { g.position.z = startZ + 0.32 * k; g.rotation.z = -0.04 * Math.sin(k * Math.PI); }, ease.out);
+  // 2. fly to the reader, turning to show the cover
+  const pose = readingPose(book);
+  const p0 = g.position.clone(), q0 = g.quaternion.clone();
+  const arc = new THREE.Vector3(0, 0.25, 0);
+  await tween(900, (k) => {
+    g.position.lerpVectors(p0, pose.center, k).addScaledVector(arc, Math.sin(k * Math.PI));
+    g.quaternion.slerpQuaternions(q0, pose.quat, k);
+  });
+  sfx.thump();
+  // 3. swing the cover open and centre the spread
+  const c0 = pose.center.clone();
+  sfx.page();
+  await tween(950, (k) => {
+    book.pivot.rotation.y = -Math.PI * k;
+    g.position.copy(c0).addScaledVector(pose.right, pose.shift * k);
+  });
+  book.state = "open";
+  fillPages(book, pose.narrow);
+  placePages();
+  $("page-left").classList.toggle("show", !pose.narrow);
+  $("page-right").classList.add("show");
+  $("close-btn").classList.add("show");
+  busy = false;
+  if (closeAsked) { closeAsked = false; closeBook(); }
+}
+async function closeBook() {
+  const book = openBook; if (!book) return;
+  busy = true;
+  $("page-left").classList.remove("show"); $("page-right").classList.remove("show"); $("close-btn").classList.remove("show");
+  const g = book.group;
+  const pose = readingPose(book);
+  const pA = g.position.clone();
+  sfx.page();
+  await tween(700, (k) => {
+    book.pivot.rotation.y = -Math.PI * (1 - k);
+    g.position.copy(pA).addScaledVector(pose.right, -pose.shift * k);
+  });
+  sfx.thump();
+  const p0 = g.position.clone(), q0 = g.quaternion.clone();
+  const target = book.home.clone(); target.z += 0.32;
+  const qHome = new THREE.Quaternion();
+  await tween(850, (k) => {
+    g.position.lerpVectors(p0, target, k).add(new THREE.Vector3(0, 0.2 * Math.sin(k * Math.PI), 0));
+    g.quaternion.slerpQuaternions(q0, qHome, k);
+  });
+  sfx.slide();
+  await tween(300, (k) => { g.position.z = target.z - 0.32 * k; }, ease.out);
+  setBookLayer(book, false);
+  book.state = "shelf"; openBook = null; busy = false;
+  document.body.classList.remove("locked", "reading");
+}
+$("close-btn").addEventListener("click", () => { if (!busy) closeBook(); });
+addEventListener("keydown", (e) => {
+  if (e.key !== "Escape" || !openBook) return;
+  if (busy) closeAsked = true; else closeBook();
+});
+
+// HTML pages sit exactly over the 3D pages, so text stays sharp
+function screenRect(mesh, xLocal, hw, hh) {
+  const pts = [[xLocal, -hh, -hw], [xLocal, hh, -hw], [xLocal, -hh, hw], [xLocal, hh, hw]];
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  const v = new THREE.Vector3();
+  mesh.updateWorldMatrix(true, false);
+  for (const [x, y, z] of pts) {
+    v.set(x, y, z).applyMatrix4(mesh.matrixWorld).project(camera);
+    const sx = (v.x + 1) / 2 * innerWidth, sy = (1 - v.y) / 2 * innerHeight;
+    minX = Math.min(minX, sx); maxX = Math.max(maxX, sx); minY = Math.min(minY, sy); maxY = Math.max(maxY, sy);
+  }
+  return { left: minX, top: minY, width: maxX - minX, height: maxY - minY };
+}
+function applyRect(el, r) {
+  el.style.left = r.left + "px"; el.style.top = r.top + "px"; el.style.width = r.width + "px"; el.style.height = r.height + "px";
+}
+function placePages() {
+  const b = openBook; if (!b || b.state !== "open") return;
+  const bw = b.d - C - 0.012, bh = b.h - 0.03;
+  applyRect($("page-right"), screenRect(b.block, (b.t - 2 * C) / 2, bw / 2, bh / 2));
+  applyRect($("page-left"), screenRect(b.cover, -C / 2, b.d / 2, b.h / 2));
+}
+function esc(s) { return String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
+function fillPages(book, narrow) {
+  const b = book.data;
+  const left = `
+    <p class="eyebrow">Vol. ${b.vol} · Sample data</p>
+    <h2>${esc(b.label)}</h2>
+    <p class="sub">${esc(b.sub)}</p>
+    <div class="stats">${b.stats.map(([v, l]) => `<div><b>${esc(v)}</b><span>${esc(l)}</span></div>`).join("")}</div>
+    ${b.bars ? `<div class="bars">${b.bars.map(([n, w, v]) => `<div><span>${esc(n)}</span><i style="--w:${w * 2.4}%"></i><span>${esc(v)}</span></div>`).join("")}</div>` : ""}
+    <div class="ask">Ask this book…<small>⌘K</small></div>`;
+  const right = `
+    <h3>${b.money ? "Coming up & recent" : "Entries"}</h3>
+    <ul class="entries">${b.entries.map(([t, v, m], i) => {
+      const cls = v.startsWith("-") ? "neg" : /^\d/.test(v) && b.money ? "pos" : "";
+      return `<li style="animation-delay:${0.08 * i + 0.1}s"><span class="t">${esc(t)}</span><span class="v ${cls}">${esc(v)}</span><span class="m">${esc(m)}</span></li>`;
+    }).join("")}</ul>`;
+  $("page-left").innerHTML = left;
+  $("page-right").innerHTML = narrow ? left + `<div style="height:16px"></div>` + right : right;
+}
+
+// planner content on the desk
+$("planner").innerHTML = `
+  <p class="eyebrow" id="planner-date"></p>
+  <p class="greet" id="planner-greet"></p>
+  <div class="slot"><time>08:30</time><span>Stand-up</span></div>
+  <div class="slot now"><time>09:30</time><span>Roadmap focus block</span></div>
+  <div class="slot"><time>13:00</time><span>Client review</span></div>
+  <div class="slot"><time>17:30</time><span>Run with Sam</span></div>
+  <div style="height:8px"></div>
+  <div class="todo"><i></i><span>Q4 roadmap draft</span></div>
+  <div class="todo"><i></i><span>Send client deck v2</span></div>`;
+{
+  const now = new Date();
+  $("planner-date").textContent = now.toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" }) + " · example day";
+  setLight(lightMode, true);
+}
+function placePlanner() {
+  const show = scrollSmooth > 0.93 && !openBook;
+  const el = $("planner");
+  el.classList.toggle("show", show);
+  if (show) applyRect(el, plannerRect());
+}
+function plannerRect() {
+  // planner page is a box lying in local x/y; project its front face
+  const v = new THREE.Vector3();
+  plannerPage.updateWorldMatrix(true, false);
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  for (const [x, y] of [[-0.75, -0.5], [0.75, -0.5], [-0.75, 0.5], [0.75, 0.5]]) {
+    v.set(x * 0.92, y * 0.9, 0.011).applyMatrix4(plannerPage.matrixWorld).project(camera);
+    const sx = (v.x + 1) / 2 * innerWidth, sy = (1 - v.y) / 2 * innerHeight;
+    minX = Math.min(minX, sx); maxX = Math.max(maxX, sx); minY = Math.min(minY, sy); maxY = Math.max(maxY, sy);
+  }
+  return { left: minX, top: minY, width: maxX - minX, height: maxY - minY };
+}
+
+// ---------- intro: books drop onto the shelf, camera settles in ----------
+async function intro(force) {
+  const today = new Date().toDateString();
+  const first = store.get("hanua-intro") !== today;
+  if (reduced || (!first && !force)) { books.forEach((b) => (b.drop = 0)); introDolly = 0; return; }
+  store.set("hanua-intro", today);
+  busy = true;
+  books.forEach((b) => (b.drop = 1));
+  introDolly = 2.2;
+  tween(2400, (k) => { introDolly = 2.2 * (1 - k); });
+  await wait(350);
+  await Promise.all(books.map((b, i) => wait(i * 130).then(() => {
+    if (soundOn) setTimeout(sfx.thump, 420);
+    return tween(650, (k) => { b.drop = 1 - k; }, ease.back);
+  })));
+  busy = false;
+}
+$("intro-btn").addEventListener("click", () => { if (!busy && !openBook) { scrollTo({ top: 0 }); intro(true); } });
+$("light-btn").addEventListener("click", () => setLight(ORDER[(ORDER.indexOf(lightMode) + 1) % ORDER.length]));
+
+// ---------- loop ----------
+function resize() {
+  const w = innerWidth, h = innerHeight;
+  renderer.setSize(w, h, false);
+  camera.aspect = w / h; camera.updateProjectionMatrix();
+}
+addEventListener("resize", resize);
+resize();
+
+const clock = new THREE.Clock();
+function frame() {
+  const dt = Math.min(clock.getDelta(), 0.05);
+  const time = clock.elapsedTime;
+  for (const tw of [...tweens]) {
+    tw.t += dt * 1000;
+    const k = Math.min(1, tw.t / tw.dur);
+    tw.fn(tw.e(k));
+    if (k >= 1) { tweens.delete(tw); tw.resolve(); }
+  }
+  blendLight(Math.min(1, dt * 2.5));
+  updateCamera(dt);
+
+  // books on the shelf lean toward the cursor and lift on hover
+  const idx = hovered ? books.indexOf(hovered) : -1;
+  books.forEach((b, i) => {
+    if (b.state !== "shelf") return;
+    const target = i === idx ? 1 : 0;
+    b.hover += (target - b.hover) * Math.min(1, dt * 10);
+    let leanT = 0;
+    if (idx >= 0 && i !== idx) leanT = (i < idx ? -1 : 1) * 0.035 / Math.abs(i - idx);
+    if (!reduced) leanT += mouseSmooth.x * 0.015;
+    b.lean += (leanT - b.lean) * Math.min(1, dt * 8);
+    const g = b.group;
+    g.position.set(b.home.x + b.lean * b.h * 0.5, b.home.y + b.hover * 0.07 + b.drop * 1.6, b.home.z + b.hover * 0.06);
+    g.rotation.set(-b.hover * 0.05, 0, -b.lean);
+  });
+
+  // record spins while music plays; tonearm swings in
+  if (playing) record.rotation.y -= dt * 3.5;
+  armPivot.rotation.y += ((playing ? -0.42 : 0.15) - armPivot.rotation.y) * Math.min(1, dt * 3);
+  // plant breathes a little
+  if (!reduced) leaves.rotation.z = Math.sin(time * 0.7) * 0.02;
+
+  // dust drifts
+  if (!reduced) {
+    const pos = dustGeo.attributes.position.array;
+    for (let i = 0; i < DUST; i++) {
+      pos[i * 3 + 1] += Math.sin(time * 0.3 + dustSeed[i]) * 0.0006 + 0.0002;
+      pos[i * 3] += Math.cos(time * 0.2 + dustSeed[i]) * 0.0004;
+      if (pos[i * 3 + 1] > 1.9) pos[i * 3 + 1] = -1.8;
+    }
+    dustGeo.attributes.position.needsUpdate = true;
+  }
+
+  if (openBook) {
+    camera.layers.set(0); renderer.render(scene, camera);
+    renderer.autoClear = false; renderer.clearDepth();
+    const bg = scene.background; scene.background = null; // a colour background would wipe the first pass
+    camera.layers.set(READ_LAYER); renderer.render(scene, camera);
+    scene.background = bg; renderer.autoClear = true; camera.layers.set(0);
+  } else renderer.render(scene, camera);
+  placePages();
+  placePlanner();
+  requestAnimationFrame(frame);
+}
+
+// wait for fonts so the spines are lettered properly, then start
+setLight(lightMode, true);
+const fontsReady = Promise.race([
+  Promise.all([document.fonts.load('italic 500 120px "Cormorant Garamond"'), document.fonts.load('500 30px "IBM Plex Mono"')]),
+  new Promise((r) => setTimeout(r, 2500)),
+]);
+fontsReady.then(() => {
+  // redraw textures now that the fonts have arrived
+  books.forEach((bk) => {
+    const spineMesh = bk.group.children[1];
+    spineMesh.material[4].map = spineTex(bk.data); spineMesh.material[4].needsUpdate = true;
+    bk.cover.material[0].map = coverTex(bk.data); bk.cover.material[0].needsUpdate = true;
+  });
+}).finally(() => {
+  onScroll();
+  intro(false); // sets the books' starting height before the first frame
+  requestAnimationFrame(frame);
+  $("loading").classList.add("gone");
+});
+</script>
