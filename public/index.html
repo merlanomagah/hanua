@@ -60,7 +60,13 @@
         <div class="wall-in" id="wall-in">
           <button type="button" class="edge-tab left" id="to-board" title="Swipe right, or click, for your goals"><span>GOALS</span><span aria-hidden="true">›</span></button>
           <div class="wall-top">
-            <!-- The Music app on this Mac: what's playing, with play / previous / next -->
+            <div class="status" id="status"></div>
+          </div>
+
+          <div class="wall-row">
+            <div class="wall-left">
+              <div class="greet-shelf">
+                <!-- The Music app on this Mac: what's playing, with play / previous / next -->
             <div class="now-playing" id="now-playing" role="group" aria-label="Music" hidden>
               <span class="np-disc" aria-hidden="true"></span>
               <span class="np-text"><b id="np-track">Music</b><span id="np-artist">Not playing</span></span>
@@ -68,28 +74,28 @@
               <button type="button" class="np-btn main" id="np-play" aria-label="Play"><svg viewBox="0 0 24 24" aria-hidden="true"><path id="np-icon" d="M7 4l13 8-13 8z"/></svg></button>
               <button type="button" class="np-btn" id="np-next" aria-label="Next song"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 5v14M5 5l10 7-10 7z"/></svg></button>
             </div>
-            <div class="status" id="status"></div>
-          </div>
-
-          <div class="wall-row">
-            <div class="wall-left">
-              <div class="greet-shelf">
                 <div class="greet-row">
                   <button class="lamp" id="lamp" type="button">
                     <span class="lamp-glow" aria-hidden="true"></span>
                     <img src="assets/obj/lamp-off.png" alt="Lamp" class="lamp-img">
                     <img src="assets/obj/lamp-on.png" alt="" class="lamp-img lamp-lit">
+                    <!-- today's date, curved over the dome of the shade (viewBox matches the lamp image) -->
+                    <svg class="lamp-date" viewBox="0 0 484 640" aria-hidden="true">
+                      <path id="dome-arc" d="M -40 236 A 282 270 0 0 1 524 236" fill="none"/>
+                      <text><textPath href="#dome-arc" startOffset="50%" text-anchor="middle" id="arc-date"></textPath></text>
+                    </svg>
                   </button>
                   <div class="greet-text">
-                    <span class="eyebrow" id="today-label"></span>
+                    <span class="sr-only" id="today-label"></span>
                     <h1 id="greet">Good morning.</h1>
                   </div>
-                  <div class="clock" role="img" aria-label="Clock" id="clock">
-                    <img src="assets/obj/clock.png" alt="">
-                    <span class="hand hour" id="hand-h"></span>
-                    <span class="hand minute" id="hand-m"></span>
-                    <span class="hand second" id="hand-s"></span>
-                    <span class="hand-cap"></span>
+                  <!-- retro flip clock -->
+                  <div class="flip-clock" role="img" aria-label="Clock" id="clock">
+                    <div class="flip-face">
+                      <span class="flip-pair"><span class="flip" id="fd0"></span><span class="flip" id="fd1"></span></span>
+                      <span class="flip-pair"><span class="flip" id="fd2"></span><span class="flip" id="fd3"></span></span>
+                    </div>
+                    <span class="flip-ampm" id="flip-ampm"></span>
                   </div>
                 </div>
                 <div class="float-shelf" aria-hidden="true">

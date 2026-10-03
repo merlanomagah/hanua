@@ -132,12 +132,37 @@ $("lamp").addEventListener("click", () => {
   renderLamp();
 });
 
+// Retro flip clock: each digit is a card; when it changes, the top half flips down to show the new one.
+const clockShown = [];
+function flipTo(card, digit, animate) {
+  if (!card.firstChild) {
+    card.innerHTML = '<span class="half top"><b></b></span><span class="half bottom"><b></b></span><span class="leaf front"><b></b></span><span class="leaf back"><b></b></span>';
+  }
+  const [top, bottom, front, back] = card.children;
+  const old = top.firstChild.textContent;
+  if (!animate || reducedMotion || old === "") {
+    for (const el of card.children) el.firstChild.textContent = digit;
+    return;
+  }
+  // new digit waits underneath on top; the old top folds down, then the new bottom lands
+  top.firstChild.textContent = digit;
+  front.firstChild.textContent = old;
+  back.firstChild.textContent = digit;
+  card.classList.remove("flipping");
+  void card.offsetWidth;
+  card.classList.add("flipping");
+  setTimeout(() => { bottom.firstChild.textContent = digit; card.classList.remove("flipping"); }, 620);
+}
+
 function renderClock() {
   const t = new Date();
-  const s = t.getSeconds(), m = t.getMinutes() + s / 60, hr = (t.getHours() % 12) + m / 60;
-  $("hand-h").style.transform = `rotate(${hr * 30}deg)`;
-  $("hand-m").style.transform = `rotate(${m * 6}deg)`;
-  $("hand-s").style.transform = `rotate(${s * 6}deg)`;
+  const hr12 = t.getHours() % 12 || 12;
+  const digits = `${pad(hr12)}${pad(t.getMinutes())}`;
+  for (let i = 0; i < 4; i++) {
+    if (clockShown[i] !== digits[i]) flipTo($(`fd${i}`), i === 0 && digits[0] === "0" ? "" : digits[i], clockShown[i] !== undefined);
+    clockShown[i] = digits[i];
+  }
+  $("flip-ampm").textContent = t.getHours() < 12 ? "AM" : "PM";
   $("clock").ariaLabel = `Clock showing ${t.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}`;
 }
 
@@ -1122,6 +1147,7 @@ function renderHeader() {
   const hr = now.getHours();
   $("greet").textContent = hr < 12 ? "Good morning." : hr < 18 ? "Good afternoon." : "Good evening.";
   $("today-label").textContent = longDate(now);
+  $("arc-date").textContent = longDate(now).toUpperCase().replace(",", " ·");
   const { notion, claude } = state.status;
   const live = state.areas.filter((a) => a.live).length;
   $("status").replaceChildren(
