@@ -5,6 +5,8 @@ A personal daily dashboard drawn as a room: a bookcase menu (Notion databases), 
 ## Workflow
 
 - Do the work on a working branch. When a change is finished and tested, **also update `main`** (fast-forward it to the finished work and push). The owner has given standing permission for this. They pull `main` with GitHub Desktop.
+- **Push it yourself.** The owner logged in GitHub's `gh` tool (4 Oct 2026) so Claude can push; they shouldn't need GitHub Desktop for it. Use it per command, without changing git config:
+  `git -c credential.helper= -c "credential.helper=!$HOME/.local/gh/gh_2.102.0_macOS_arm64/bin/gh auth git-credential" push origin main` (and the working branch). If that fails, `gh auth status` says why.
 - The owner isn't a developer. Explain steps in plain language, using numbered tables. If a change needs `npm install` or a new `.env` value, say so explicitly.
 - Never commit `.env` (it holds the Notion and Claude keys).
 
