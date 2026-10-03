@@ -12,8 +12,8 @@ export const GUIDE = {
   },
   Feature: {
     when: "This quarter",
-    what: "A milestone that makes a real difference towards its Epic, finished within about three months.",
-    example: "Land a job in Sydney · Run 10 km without stopping",
+    what: "One of the mini-projects that together achieve the Epic, each finished within about a quarter.",
+    example: "Under “Move to Sydney”: Rent out the apartment · Land a job in Sydney · Declutter the flat · Close down power and broadband",
     horizonDays: 120,
     template: "So that: \n\nDone when:\n- \n- ",
   },
@@ -51,8 +51,8 @@ study submit swim teach test text tidy track train travel update upgrade visit w
 const firstWord = (title) => (title.trim().split(/\s+/)[0] || "").toLowerCase().replace(/[^a-z']/g, "");
 const actionLed = (title) => { const w = firstWord(title); return VERBS.has(w) || /ed$/.test(w); };
 
-// values: the form's fields. ctx: { parentLevel, openSiblings, today }.
-// Returns [{ ok, text }]: ok true shows a tick, false a gentle nudge.
+// values: the form's fields. ctx: { parentLevel, openSiblings, childCount, today }.
+// Returns [{ ok, text }]: ok true shows a tick, false a gentle nudge, null a question to ask yourself.
 export function coachChecks(values, ctx = {}) {
   const g = GUIDE[values.level] || GUIDE.Task;
   const out = [];
@@ -102,6 +102,12 @@ export function coachChecks(values, ctx = {}) {
 
   if (g.maxEffort && Number(values.effort) > g.maxEffort) {
     out.push({ ok: false, text: `${values.effort} points is big for a ${values.level}. Split it into smaller pieces that each work on their own` });
+  }
+
+  // the completeness test: the children should add up to the whole
+  if (ctx.childCount && values.level !== "Task") {
+    const kids = { Epic: "Feature", Feature: "PBI", PBI: "Task" }[values.level];
+    out.push({ ok: null, text: `Ask yourself: if every ${kids} below were done, would this be done? If not, a ${kids} is missing` });
   }
 
   if (ctx.openSiblings >= 5 && !values.id) {

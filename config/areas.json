@@ -82,8 +82,26 @@
       "children": "Children",
       "priority": "Priority",
       "effort": "Effort",
-      "start": "Start"
+      "start": "Start",
+      "completed": "Completed"
     },
     "guideUrl": "https://www.notion.so/3ee16603f0bd818bbe32c6cf887853b2"
+  },
+  "reviews": {
+    "label": "Weekly reviews",
+    "notionDatabaseId": "95f46208cfd846df925aceeed9324c23",
+    "fields": {
+      "title": "Week",
+      "date": "Date",
+      "wins": "Wins",
+      "stuck": "Stuck",
+      "wip": "WIP",
+      "weekGoal": "Week goal",
+      "tryNext": "Try next",
+      "done": "Done",
+      "active": "Active",
+      "atRisk": "At risk",
+      "energy": "Energy"
+    }
   }
 }

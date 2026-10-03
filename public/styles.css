@@ -919,6 +919,54 @@ button:disabled { opacity: 0.5; cursor: progress; }
 .crate .b-btn.ghost { align-self: flex-start; color: var(--page); border-color: rgb(250 247 242 / 0.3); }
 .crate .b-btn.ghost:hover { background: rgb(250 247 242 / 0.1); }
 
+/* ---------- weekly review ---------- */
+.review-btn { position: relative; }
+.review-btn.due::after { content: ""; position: absolute; top: -4px; right: -4px; width: 10px; height: 10px; border-radius: 50%; background: var(--terra); box-shadow: 0 0 0 2px var(--page); }
+.coach-checks .ask .mark { color: var(--ink-4); }
+.coach-checks .ask { color: var(--ink-4); font-style: italic; }
+.review-dialog { width: min(640px, calc(100% - 32px)); }
+.rv-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 12px; }
+.rv-head .eyebrow { font-size: 10px; color: var(--terra); }
+.rv-steps { list-style: none; display: flex; gap: 4px; margin: 0; padding: 0; }
+.rv-steps li { display: flex; align-items: center; gap: 5px; padding: 5px 8px; border-radius: 3px; font: 9px var(--mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--faint); }
+.rv-steps li span { display: grid; place-items: center; width: 16px; height: 16px; border-radius: 50%; border: 1px solid currentColor; font-size: 8px; }
+.rv-steps li.past { color: var(--green); }
+.rv-steps li.on { background: var(--ink); color: var(--page); }
+.rv-last { margin: 14px 0 0; padding: 10px 12px; border-left: 3px solid var(--green-mid); background: var(--page); font: italic 17px/1.35 var(--display); color: var(--ink-3); }
+.rv-body { display: flex; flex-direction: column; gap: 12px; margin-top: 16px; min-height: 260px; }
+.rv-title { margin: 0; font: italic 400 26px var(--display); }
+.rv-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; max-height: 220px; overflow-y: auto; }
+.rv-goal { --lvl: var(--muted); display: grid; grid-template-columns: 62px 1fr auto; gap: 10px; align-items: baseline; padding: 8px 10px; background: var(--page); border-left: 3px solid var(--lvl); border-radius: 2px; }
+.rv-goal.lvl-epic { --lvl: var(--terra); }
+.rv-goal.lvl-feature { --lvl: #5a4372; }
+.rv-goal.lvl-pbi { --lvl: #2b3f6b; }
+.rv-goal.lvl-task { --lvl: #C9962F; }
+.rv-type { font: 9px var(--mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--lvl); }
+.rv-t { font: 17px/1.2 var(--display); }
+.rv-tag { font: 10px var(--mono); color: var(--muted); }
+.rv-empty, .rv-hint { margin: 0; font: italic 17px/1.35 var(--display); color: var(--muted); }
+.rv-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; }
+.rv-label { display: grid; gap: 6px; font: 10px var(--mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+.rv-label textarea, .rv-add input, .rv-add select {
+  font: 16px/1.4 var(--ui); text-transform: none; letter-spacing: 0; color: var(--ink); background: transparent;
+  border: 0; border-bottom: 1px solid var(--border); border-radius: 0; padding: 6px 2px; resize: vertical;
+}
+.rv-label textarea:focus, .rv-add input:focus, .rv-add select:focus { outline: none; border-bottom-color: var(--ink); }
+.rv-add { display: grid; grid-template-columns: 1fr 200px auto; gap: 10px; align-items: end; }
+.rv-wip { display: grid; gap: 10px; }
+.rv-wip-row { display: grid; grid-template-columns: 80px 1fr 110px; gap: 12px; align-items: center; font: 11px var(--mono); color: var(--ink-3); }
+.rv-meter { height: 6px; background: var(--hair); border-radius: 3px; overflow: hidden; }
+.rv-meter i { display: block; height: 100%; background: var(--green-mid); }
+.rv-wip-row.over { color: var(--terra-hover); }
+.rv-wip-row.over .rv-meter i { background: var(--terra); }
+.rv-summary { margin: 0; font: italic 22px var(--display); color: var(--ink-2); }
+@media (max-width: 600px) {
+  .rv-steps li { padding: 4px 5px; font-size: 0; gap: 0; }
+  .rv-steps li span { font-size: 8px; }
+  .rv-add { grid-template-columns: 1fr; }
+  .rv-wip-row { grid-template-columns: 64px 1fr 90px; }
+}
+
 /* ---------- dialog / toast ---------- */
 dialog { background: var(--cream); color: var(--ink); border: 1px solid var(--border); border-radius: 3px; width: min(440px, calc(100% - 32px)); padding: 26px; box-shadow: 0 30px 60px -30px rgb(28 24 20 / 0.6); }
 dialog::backdrop { background: rgb(28 24 20 / 0.5); }

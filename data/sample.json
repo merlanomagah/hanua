@@ -243,7 +243,8 @@
         "Parent": [
           "sample-goal-3"
         ],
-        "Effort": 2
+        "Effort": 2,
+        "Completed": "2026-10-10"
       }
     },
     {
@@ -288,7 +289,8 @@
         "Parent": [
           "sample-goal-5"
         ],
-        "Effort": 1
+        "Effort": 1,
+        "Completed": "2026-10-03"
       }
     },
     {
@@ -319,7 +321,8 @@
         "Parent": [
           "sample-goal-8"
         ],
-        "Effort": 1
+        "Effort": 1,
+        "Completed": "2026-10-06"
       }
     },
     {
@@ -347,6 +350,18 @@
         "Level": "Task",
         "Area": "Personal",
         "Priority": 1
+      }
+    }
+  ],
+  "reviews": [
+    {
+      "id": "sample-review-0",
+      "title": "Week of 21 Sep 2026",
+      "date": "2026-09-25",
+      "fields": {
+        "Try next": "Plan Monday's tasks on Sunday night",
+        "Week goal": "Get the designs to a point I can show someone",
+        "Energy": "Good"
       }
     }
   ]

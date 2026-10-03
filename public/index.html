@@ -56,6 +56,7 @@
                 <button type="button" role="tab" data-level="PBI">PBIs</button>
                 <button type="button" role="tab" data-level="Task">Tasks</button>
               </div>
+              <button type="button" class="b-btn ghost review-btn" id="review-open">Weekly review</button>
               <button type="button" class="b-btn" id="goal-add">+ New Epic</button>
               <a class="b-link" id="goals-guide" target="_blank" rel="noopener" hidden>Guide ↗</a>
               <a class="b-link" id="goals-notion" target="_blank" rel="noopener" hidden>Notion ↗</a>
@@ -321,6 +322,24 @@
         <button value="save" type="submit">Save to Notion</button>
       </div>
     </form>
+  </dialog>
+
+  <!-- Weekly review: the Scrum retrospective scaled to one person, five short steps -->
+  <dialog id="review-dialog" class="review-dialog" aria-labelledby="review-title">
+    <div class="rv-head">
+      <div>
+        <span class="eyebrow" id="review-week"></span>
+        <h3 id="review-title">Weekly review</h3>
+      </div>
+      <ol class="rv-steps" id="rv-steps" aria-label="Steps"></ol>
+    </div>
+    <p class="rv-last" id="rv-last" hidden></p>
+    <div class="rv-body" id="rv-body"></div>
+    <div class="dialog-actions">
+      <a class="b-link" id="rv-notion" target="_blank" rel="noopener" hidden>Past reviews ↗</a>
+      <button type="button" class="ghost" id="rv-back">Back</button>
+      <button type="button" id="rv-next">Next</button>
+    </div>
   </dialog>
 
   <dialog id="draft-dialog">

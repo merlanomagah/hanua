@@ -11,7 +11,7 @@ const MONEY_BOOK = { id: "money", label: "Money", icon: "$", color: "#2e5e4e", m
 const SPINES = { work: "work", calendar: "calendar", money: "money", health: "health", learning: "learning", relationships: "people" };
 const ROMAN = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"];
 
-let state = { areas: [], money: null, status: {}, goals: { goals: [], live: false, notionUrl: null }, records: [] };
+let state = { areas: [], money: null, status: {}, goals: { goals: [], live: false, notionUrl: null }, records: [], reviews: { reviews: [], live: false } };
 
 // ---------- helpers ----------
 
@@ -441,6 +441,7 @@ function renderNotes() {
   for (const r of records(ROLE.tasks)) {
     if (/blocked/i.test(r.status || "")) notes.push({ text: `${r.title} is blocked`, meta: "Work · needs a nudge", book: ROLE.tasks });
   }
+  if (reviewDue()) notes.unshift({ text: "Weekly review due", meta: "Goals · ten minutes", run: () => { showBoard(true); openReview(); } });
   const box = $("notes");
   if (!notes.length) {
     return box.replaceChildren(h("div", { className: "notes-empty" },
@@ -452,7 +453,7 @@ function renderNotes() {
       h("span", { className: "meta", textContent: n.meta }),
       h("span", { className: "text", textContent: n.text }));
     el.style.cssText = `--nc:${NOTE_COLORS[i % NOTE_COLORS.length]};--r:${NOTE_TILTS[i % NOTE_TILTS.length]}`;
-    el.addEventListener("click", () => openBook(n.book, bookEl(n.book)));
+    el.addEventListener("click", () => (n.run ? n.run() : openBook(n.book, bookEl(n.book))));
     return el;
   }));
 }
@@ -910,6 +911,8 @@ function renderBoard() {
   document.querySelectorAll("[data-view]").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.view === boardView)));
   document.querySelectorAll("[data-level]").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.level === boardLevel)));
   $("level-seg").hidden = boardView !== "kanban";
+  $("review-open").classList.toggle("due", reviewDue());
+  $("review-open").title = reviewDue() ? "Your weekly review is due" : `Last review ${fmtDay(state.reviews.reviews[0]?.date)}`;
   $("goal-add").textContent = boardView === "kanban" ? `+ New ${boardLevel}` : "+ New Epic";
   $("cork").classList.toggle("kanban", boardView === "kanban");
   if (focusGoal && !goalById(focusGoal)) focusGoal = null;
@@ -1040,12 +1043,14 @@ function dropZone(col, status) {
 
 async function moveGoal(g, status, undoing = false) {
   const before = g.status || "New";
+  // the Completed date feeds the weekly review: set on Done, cleared if it moves back
+  const completed = status === "Done" ? todayStr() : before === "Done" ? "" : undefined;
   g.status = status;
   renderBoard();
   try {
-    const res = await api(`/api/goals/${g.id}`, { values: { status } });
+    const res = await api(`/api/goals/${g.id}`, { values: { status, completed } });
     if (res.live) state.goals = await api("/api/goals");
-    else recalcSample();
+    else { if (completed !== undefined) g.completed = completed || null; recalcSample(); }
     renderBoard();
     const active = state.goals.goals.filter((x) => x.level === g.level && x.status === "Active").length;
     const wip = status === "Active" && active > WIP_LIMIT ? ` That's ${active} active, over your limit of ${WIP_LIMIT}.` : "";
@@ -1152,9 +1157,10 @@ function updateCoach() {
   $("coach-level").textContent = `${v.level} · ${guide.when}`;
   $("coach-what").textContent = guide.what;
   $("coach-eg").textContent = `e.g. ${guide.example}`;
-  const checks = coachChecks(v, { parentLevel, openSiblings: v.level === "Epic" || v.parent ? siblings.length : 0, today: todayStr() });
+  const childCount = editingGoal?.children?.length || 0;
+  const checks = coachChecks(v, { parentLevel, childCount, openSiblings: v.level === "Epic" || v.parent ? siblings.length : 0, today: todayStr() });
   $("coach-checks").replaceChildren(...(checks.length ? checks : [{ ok: false, text: "Start with a title" }]).map((c) =>
-    h("li", { className: c.ok ? "ok" : "nudge" }, h("span", { className: "mark", ariaHidden: "true", textContent: c.ok ? "✓" : "·" }), c.text)));
+    h("li", { className: c.ok ? "ok" : c.ok === null ? "ask" : "nudge" }, h("span", { className: "mark", ariaHidden: "true", textContent: c.ok ? "✓" : c.ok === null ? "?" : "·" }), c.text)));
 }
 $("goal-form").addEventListener("input", updateCoach);
 $("goal-form").addEventListener("change", updateCoach);
@@ -1206,6 +1212,9 @@ $("goal-dialog").addEventListener("close", async () => {
   };
   const g = editingGoal;
   if (!(g?.children?.length)) values.progress = f.progress.value;
+  const wasDone = /^done/i.test(g?.status || "");
+  if (values.status === "Done" && !wasDone) values.completed = todayStr();
+  else if (wasDone && values.status !== "Done") values.completed = "";
   if (!values.title) return toast("Give the goal a name.", true);
   try {
     const res = await api(g ? `/api/goals/${g.id}` : "/api/goals", { values });
@@ -1215,7 +1224,7 @@ $("goal-dialog").addEventListener("close", async () => {
       if (!g && res.goal) focusGoal = res.goal.id;
     } else {
       // sample data: change it on this page only
-      const local = { ...values, priority: values.priority ? Number(values.priority) : null, effort: values.effort ? Number(values.effort) : null, progressSet: values.progress ? Number(values.progress) : null };
+      const local = { ...values, completed: values.completed ?? g?.completed ?? null, priority: values.priority ? Number(values.priority) : null, effort: values.effort ? Number(values.effort) : null, progressSet: values.progress ? Number(values.progress) : null };
       if (g) Object.assign(g, local);
       else state.goals.goals.push({ id: `local-${Date.now()}`, url: null, ...local });
       recalcSample();
@@ -1226,6 +1235,142 @@ $("goal-dialog").addEventListener("close", async () => {
     toast(err.message, true);
   }
 });
+
+// ---------- weekly review: the Scrum retrospective scaled to one person ----------
+
+const ENERGY = ["Low", "Okay", "Good", "Great"];
+const lastReview = () => state.reviews.reviews[0] || null;
+// due a week after the last one (or straight away if there's never been one)
+function reviewDue() {
+  const last = lastReview();
+  return !last?.date || daysBetween(last.date, todayStr()) >= 7;
+}
+const mondayOf = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate() - ((d.getDay() + 6) % 7));
+const sundayOf = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + ((7 - d.getDay()) % 7));
+
+let rv = null;
+const RV_STEPS = [
+  { key: "wins", name: "Wins", title: "What got done?", prompt: "Anything else worth celebrating? Small wins count." },
+  { key: "stuck", name: "Stuck", title: "What's stuck or at risk?", prompt: "What's stuck, why, and what would unstick it?" },
+  { key: "wip", name: "WIP", title: "Is the limit holding?", prompt: "What will you finish, or park, so less is in progress?" },
+  { key: "weekGoal", name: "Plan", title: "Plan this week", prompt: "If I only finish these, the week was worth it because…" },
+  { key: "tryNext", name: "Try", title: "One small change", prompt: "One thing to do differently next week." },
+];
+
+function openReview() {
+  const last = lastReview();
+  rv = { step: 0, since: last?.date ? dayOf(last.date) : ymd(new Date(Date.now() - 7 * 86_400_000)), energy: "", wins: "", stuck: "", wip: "", weekGoal: "", tryNext: "" };
+  $("review-week").textContent = `Week of ${longDate(mondayOf(new Date()), false)}`;
+  $("rv-last").hidden = !last?.tryNext;
+  if (last?.tryNext) $("rv-last").textContent = `Last time you said you'd try: “${last.tryNext}”. Did it help?`;
+  $("rv-notion").hidden = !state.reviews.notionUrl;
+  if (state.reviews.notionUrl) $("rv-notion").href = state.reviews.notionUrl;
+  renderReview();
+  $("review-dialog").showModal();
+}
+
+const goalLine = (g, tag) => h("li", { className: `rv-goal lvl-${(g.level || "task").toLowerCase()}` },
+  h("span", { className: "rv-type", textContent: g.level || "Task" }), h("span", { className: "rv-t", textContent: g.title }), tag ? h("span", { className: "rv-tag", textContent: tag }) : null);
+
+function renderReview() {
+  const step = RV_STEPS[rv.step];
+  const goals = state.goals.goals;
+  const today = todayStr();
+  const open = goals.filter((g) => !isGoalDone(g));
+  const doneSince = goals.filter((g) => isGoalDone(g) && g.completed && dayOf(g.completed) >= rv.since);
+  $("rv-steps").replaceChildren(...RV_STEPS.map((s, i) => h("li", { className: i === rv.step ? "on" : i < rv.step ? "past" : "" }, h("span", { textContent: i + 1 }), s.name)));
+  let top = [];
+  if (step.key === "wins") {
+    const pick = h("div", { className: "seg energy", role: "radiogroup", ariaLabel: "Energy this week" }, ENERGY.map((e) => {
+      const b = h("button", { type: "button", textContent: e, ariaPressed: String(rv.energy === e) });
+      b.setAttribute("aria-selected", String(rv.energy === e));
+      b.addEventListener("click", () => { rv.energy = rv.energy === e ? "" : e; renderReview(); });
+      return b;
+    }));
+    top = [
+      doneSince.length
+        ? h("ul", { className: "rv-list" }, doneSince.map((g) => goalLine(g, fmtDay(g.completed, { weekday: "short" }))))
+        : h("p", { className: "rv-empty", textContent: `Nothing marked Done since ${fmtDay(rv.since, { weekday: "long", day: "numeric", month: "short" })}. That's okay: note what moved, even a little.` }),
+      h("div", { className: "rv-row" }, h("span", { className: "rv-label", textContent: "Energy this week" }), pick),
+    ];
+  } else if (step.key === "stuck") {
+    const risk = open.filter((g) => /at risk/i.test(g.status || ""));
+    const late = open.filter((g) => g.due && dayOf(g.due) < today && !risk.includes(g));
+    top = [risk.length || late.length
+      ? h("ul", { className: "rv-list" }, risk.map((g) => goalLine(g, "At risk")), late.map((g) => goalLine(g, `${daysBetween(g.due, today)} days late`)))
+      : h("p", { className: "rv-empty", textContent: "Nothing at risk or overdue. Nice." })];
+  } else if (step.key === "wip") {
+    top = [h("div", { className: "rv-wip" }, LEVELS.map((l) => {
+      const n = goals.filter((g) => g.level === l.name && g.status === "Active").length;
+      return h("div", { className: `rv-wip-row${n > WIP_LIMIT ? " over" : ""}` },
+        h("span", { textContent: l.plural }),
+        h("span", { className: "rv-meter" }, Object.assign(h("i"), { style: `width:${Math.min(100, (n / WIP_LIMIT) * 100)}%` })),
+        h("span", { textContent: `${n} active / ${WIP_LIMIT}` }));
+    })), h("p", { className: "rv-hint", textContent: "Half-done work costs twice: it takes headspace and goes stale. Finish before you start." })];
+  } else if (step.key === "weekGoal") {
+    const tasks = open.filter((g) => g.level === "Task").sort((a, b) => (a.due || "9").localeCompare(b.due || "9"));
+    const pbis = open.filter((g) => g.level === "PBI");
+    const title = h("input", { type: "text", placeholder: "Add a task for this week, e.g. “Email the agent”", autocomplete: "off" });
+    const parent = h("select", {}, h("option", { value: "", textContent: "Which PBI is it for?" }), pbis.map((p) => h("option", { value: p.id, textContent: p.title })));
+    const add = h("button", { type: "button", className: "g-act", textContent: "Add task" });
+    add.addEventListener("click", async () => {
+      if (!title.value.trim()) return title.focus();
+      add.disabled = true;
+      const values = { title: title.value.trim(), level: "Task", parent: parent.value, status: "New", due: ymd(sundayOf(new Date())) };
+      try {
+        const res = await api("/api/goals", { values });
+        if (res.live) state.goals = await api("/api/goals");
+        else { state.goals.goals.push({ id: `local-${Date.now()}`, url: null, ...values }); recalcSample(); }
+        toast(res.live ? "Task added to Notion ✓" : "Task added here only (sample goals)");
+        if (onBoard) renderBoard();
+        renderReview();
+      } catch (err) { toast(err.message, true); add.disabled = false; }
+    });
+    top = [
+      tasks.length ? h("ul", { className: "rv-list" }, tasks.map((g) => goalLine(g, g.due ? fmtDay(g.due, { weekday: "short", day: "numeric" }) : g.status))) : h("p", { className: "rv-empty", textContent: "No open tasks yet. Pick a few from this month's PBIs." }),
+      h("div", { className: "rv-add" }, title, parent, add),
+    ];
+  } else {
+    const active = goals.filter((g) => g.status === "Active").length;
+    top = [h("p", { className: "rv-summary", textContent: `${doneSince.length} done · ${active} active · ${open.filter((g) => /at risk/i.test(g.status || "")).length} at risk${rv.energy ? ` · energy ${rv.energy.toLowerCase()}` : ""}` })];
+  }
+  const area = h("textarea", { rows: 3, placeholder: "A line or two is plenty", value: rv[step.key] });
+  area.addEventListener("input", () => { rv[step.key] = area.value; });
+  $("rv-body").replaceChildren(h("h4", { className: "rv-title", textContent: step.title }), ...top, h("label", { className: "rv-label" }, step.prompt, area));
+  $("rv-back").hidden = rv.step === 0;
+  $("rv-next").textContent = rv.step === RV_STEPS.length - 1 ? (state.reviews.live ? "Save review to Notion" : "Save review") : "Next";
+}
+
+$("rv-back").addEventListener("click", () => { rv.step--; renderReview(); });
+$("rv-next").addEventListener("click", async () => {
+  if (rv.step < RV_STEPS.length - 1) { rv.step++; return renderReview(); }
+  const goals = state.goals.goals;
+  const doneSince = goals.filter((g) => isGoalDone(g) && g.completed && dayOf(g.completed) >= rv.since);
+  const clip = (t) => (t.length > 1900 ? `${t.slice(0, 1900)}…` : t);
+  const values = {
+    title: `Week of ${mondayOf(new Date()).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" })}`,
+    date: todayStr(),
+    wins: clip([doneSince.map((g) => `- ${g.level}: ${g.title}`).join("\n"), rv.wins.trim()].filter(Boolean).join("\n\n")),
+    stuck: clip(rv.stuck.trim()), wip: clip(rv.wip.trim()), weekGoal: clip(rv.weekGoal.trim()), tryNext: clip(rv.tryNext.trim()),
+    done: doneSince.length, active: goals.filter((g) => g.status === "Active").length,
+    atRisk: goals.filter((g) => !isGoalDone(g) && /at risk/i.test(g.status || "")).length, energy: rv.energy,
+  };
+  $("rv-next").disabled = true;
+  try {
+    const res = await api("/api/reviews", { values });
+    if (res.live) state.reviews = await api("/api/reviews");
+    else state.reviews.reviews.unshift({ id: `local-${Date.now()}`, week: values.title, date: values.date, tryNext: values.tryNext, weekGoal: values.weekGoal });
+    $("review-dialog").close();
+    toast(res.live ? "Review saved to Notion ✓ See you next week." : "Review saved here only (sample data)");
+    renderNotes();
+    if (onBoard) renderBoard();
+  } catch (err) {
+    toast(err.message, true);
+  } finally {
+    $("rv-next").disabled = false;
+  }
+});
+$("review-open").addEventListener("click", openReview);
 
 // ---------- record player and music controls (the Music app on this Mac) ----------
 
@@ -1459,12 +1604,13 @@ function renderAll() {
 }
 
 async function load() {
-  const [areas, moneyData, goals, crate] = await Promise.allSettled([api("/api/areas"), api("/api/money"), api("/api/goals"), api("/api/records")]);
+  const [areas, moneyData, goals, crate, reviews] = await Promise.allSettled([api("/api/areas"), api("/api/money"), api("/api/goals"), api("/api/records"), api("/api/reviews")]);
   if (areas.status === "fulfilled") Object.assign(state, { areas: areas.value.areas, status: areas.value.status });
   else toast(areas.reason.message, true);
   if (moneyData.status === "fulfilled") state.money = moneyData.value;
   if (goals.status === "fulfilled") state.goals = goals.value;
   if (crate.status === "fulfilled") state.records = crate.value.records;
+  if (reviews.status === "fulfilled") state.reviews = reviews.value;
   renderAll();
 }
 

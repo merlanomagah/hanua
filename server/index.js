@@ -15,6 +15,7 @@ const sample = JSON.parse(await readFile(path.join(root, "data/sample.json"), "u
 
 const recordCrate = JSON.parse(await readFile(path.join(root, "config/records.json"), "utf8")).records;
 const goalsArea = config.goals ? { id: "goals", ...config.goals } : null;
+const reviewsArea = config.reviews ? { id: "reviews", ...config.reviews } : null;
 
 const isLive = (area) => notionEnabled() && Boolean(area.notionDatabaseId);
 const notionUrl = (area) => (area.notionDatabaseId ? `https://www.notion.so/${area.notionDatabaseId}` : null);
@@ -39,7 +40,11 @@ function shiftDate(value) {
 
 async function recordsFor(area, { fresh = false } = {}) {
   if (!isLive(area)) {
-    return (sample[area.id] || []).map((r, i) => ({ id: `sample-${area.id}-${i}`, url: null, fields: {}, ...r, date: shiftDate(r.date) }));
+    const shiftField = (v) => (typeof v === "string" && /^\d{4}-\d{2}-\d{2}/.test(v) ? shiftDate(v) : v);
+    return (sample[area.id] || []).map((r, i) => ({
+      id: `sample-${area.id}-${i}`, url: null, ...r, date: shiftDate(r.date),
+      fields: Object.fromEntries(Object.entries(r.fields || {}).map(([k, v]) => [k, shiftField(v)])),
+    }));
   }
   const hit = cache.get(area.id);
   if (!fresh && hit && Date.now() - hit.at < CACHE_MS) return hit.records;
@@ -113,8 +118,8 @@ app.post("/api/areas/:id/records/:recordId/done", async (req, res, next) => {
 // ---------- goals (the pin board): an ADO-style hierarchy, Epic > Feature > PBI > Task ----------
 // Notion is their home. Each goal links to its Parent; progress rolls up from children here, never stored.
 
-const GOAL_FORM = ["title", "level", "status", "area", "due", "start", "description", "parent", "priority", "effort", "progress"];
-const goalColumn = { title: "title", level: "level", status: "status", area: "area", due: "date", start: "start", description: "description", parent: "parent", priority: "priority", effort: "effort", progress: "amount" };
+const GOAL_FORM = ["title", "level", "status", "area", "due", "start", "description", "parent", "priority", "effort", "progress", "completed"];
+const goalColumn = { title: "title", level: "level", status: "status", area: "area", due: "date", start: "start", description: "description", parent: "parent", priority: "priority", effort: "effort", progress: "amount", completed: "completed" };
 
 function toGoal(r) {
   const f = goalsArea.fields, v = r.fields || {};
@@ -122,7 +127,7 @@ function toGoal(r) {
   return {
     id: r.id, url: r.url, title: r.title, due: r.date, status: r.status,
     level: v[f.level] ?? null, area: v[f.area] ?? null, description: v[f.description] ?? "",
-    parent: first(v[f.parent]), priority: v[f.priority] ?? null, effort: v[f.effort] ?? null, start: v[f.start] ?? null,
+    parent: first(v[f.parent]), priority: v[f.priority] ?? null, effort: v[f.effort] ?? null, start: v[f.start] ?? null, completed: v[f.completed] ?? null,
     progressSet: typeof r.amount === "number" ? Math.round(r.amount * 100) : null,
   };
 }
@@ -207,6 +212,44 @@ app.post("/api/goals/:id", async (req, res, next) => {
     await updatePage(req.params.id, goalProperties(schema, req.body?.values));
     cache.delete(goalsArea.id);
     res.json({ ok: true, live: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ---------- weekly reviews: one Notion row per review, written from the goals board ----------
+
+const REVIEW_FORM = ["title", "date", "wins", "stuck", "wip", "weekGoal", "tryNext", "done", "active", "atRisk", "energy"];
+
+function toReview(r) {
+  const f = reviewsArea.fields, v = r.fields || {};
+  const out = { id: r.id, url: r.url, week: r.title, date: r.date };
+  for (const key of REVIEW_FORM.slice(2)) out[key] = v[f[key]] ?? null;
+  return out;
+}
+
+app.get("/api/reviews", async (_req, res) => {
+  if (!reviewsArea) return res.json({ reviews: [], live: false });
+  const base = { live: isLive(reviewsArea), notionUrl: notionUrl(reviewsArea) };
+  try {
+    res.json({ ...base, reviews: (await recordsFor(reviewsArea)).map(toReview) });
+  } catch (err) {
+    res.json({ ...base, reviews: [], error: err.message });
+  }
+});
+
+// Saving a review is the user's explicit "Save review" at the end of the walkthrough.
+app.post("/api/reviews", async (req, res, next) => {
+  if (!reviewsArea || !isLive(reviewsArea)) return res.json({ ok: true, live: false });
+  const values = req.body?.values || {};
+  try {
+    const schema = await getSchema(reviewsArea);
+    const f = reviewsArea.fields;
+    const props = REVIEW_FORM.filter((k) => values[k] !== undefined && values[k] !== "" && values[k] !== null)
+      .map((k) => ({ name: f[k], value: String(values[k]) }));
+    const record = await createPage(reviewsArea, toNotionProperties(schema, props));
+    cache.delete(reviewsArea.id);
+    res.json({ ok: true, live: true, review: toReview(record) });
   } catch (err) {
     next(err);
   }
