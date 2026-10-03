@@ -1,44 +1,41 @@
-const SVG_NS = "http://www.w3.org/2000/svg";
 const $ = (id) => document.getElementById(id);
 const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
-const isPhone = () => innerWidth <= 720;
+const isNarrow = () => matchMedia("(max-width: 900px)").matches;
 
-let state = { centre: null, areas: [], status: {}, view: "shelf", open: null };
+// Which Notion area plays which part on the page (ids from config/areas.json)
+const ROLE = { tasks: "work", events: "calendar", notes: "learning", people: "relationships" };
+const MONEY_BOOK = { id: "money", label: "Money", icon: "$", color: "#2e5e4e", money: true };
+
+let state = { areas: [], money: null, status: {} };
 
 // ---------- helpers ----------
 
 function h(tag, props = {}, ...children) {
   const node = Object.assign(document.createElement(tag), props);
-  node.append(...children.flat().filter((c) => c != null));
+  node.append(...children.flat().filter((c) => c != null && c !== false));
   return node;
 }
 
-function svg(tag, attrs = {}, parent) {
-  const node = document.createElementNS(SVG_NS, tag);
-  for (const [k, v] of Object.entries(attrs)) node.setAttribute(k, v);
-  if (parent) parent.appendChild(node);
-  return node;
+const pad = (n) => String(n).padStart(2, "0");
+const ymd = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const todayStr = () => ymd(new Date());
+const dayOf = (iso) => (iso || "").slice(0, 10);
+const timeOf = (iso) => (iso && iso.includes("T") ? iso.slice(11, 16) : "");
+const parseDay = (iso) => { const [y, m, d] = dayOf(iso).split("-").map(Number); return new Date(y, m - 1, d); };
+const daysBetween = (a, b) => Math.round((parseDay(b) - parseDay(a)) / 86_400_000);
+const money = (n, dp = 0) => "$" + Number(n).toLocaleString(undefined, { minimumFractionDigits: dp, maximumFractionDigits: dp });
+
+function fmtDay(iso, opts = { weekday: "short", day: "numeric", month: "short" }) {
+  return iso ? parseDay(iso).toLocaleDateString(undefined, opts) : "";
 }
-
-const DAY = 86_400_000;
-const daysAgo = (iso) => (Date.now() - new Date(iso).getTime()) / DAY;
-const money = new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 });
-const truncate = (s, n) => (s.length > n ? s.slice(0, n - 1) + "…" : s);
-const ROMAN = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X", "XI", "XII"];
-
-function fmtDate(iso) {
-  if (!iso) return "";
-  const d = new Date(iso.length === 10 ? iso + "T00:00:00" : iso);
-  const sameYear = d.getFullYear() === new Date().getFullYear();
-  return d.toLocaleDateString(undefined, { day: "numeric", month: "short", year: sameYear ? undefined : "numeric" });
-}
-
-// Stable pseudo-random number per string, so spine heights don't jump between reloads.
 function hash(str) {
   let x = 0;
   for (const ch of str) x = (x * 31 + ch.charCodeAt(0)) >>> 0;
   return (x % 1000) / 1000;
 }
+const area = (id) => state.areas.find((a) => a.id === id);
+const records = (id) => area(id)?.records ?? [];
+const isDone = (r) => /^(done|complete|reached)/i.test(r.status || "");
 
 async function api(path, body) {
   const res = await fetch(path, body
@@ -58,401 +55,461 @@ function toast(msg, bad = false) {
   toast.timer = setTimeout(() => t.classList.remove("show"), 3500);
 }
 
-// "Level" = how active an area has been in the 30 days either side of today.
-function activity(records) {
-  const recent = records.filter((r) => r.date && Math.abs(daysAgo(r.date)) <= 30).length;
-  return { recent, level: Math.floor(Math.sqrt(recent)) + 1, progress: Math.sqrt(recent) % 1 };
+// ---------- plants ----------
+
+function vine(len, sway, seed) {
+  // a trailing stem with leaves on alternating sides
+  let d = "M0 0", leaves = "";
+  for (let i = 1; i <= len; i++) {
+    const y = i * 22, x = Math.sin(i * 0.9 + seed) * sway;
+    d += ` L${x.toFixed(1)} ${y}`;
+    const side = i % 2 ? 1 : -1;
+    const fill = i % 3 ? "var(--leaf)" : "var(--leaf-2)";
+    leaves += `<ellipse cx="${(x + side * 9).toFixed(1)}" cy="${y - 4}" rx="9" ry="5.5" fill="${fill}" transform="rotate(${side * 35} ${(x + side * 9).toFixed(1)} ${y - 4})"/>`;
+  }
+  return `<path d="${d}" fill="none" stroke="#3f6338" stroke-width="1.6"/>${leaves}`;
+}
+function drawPlants() {
+  const hanging = (seed) => `
+    <line x1="70" y1="0" x2="40" y2="92" stroke="#8d8273" stroke-width="1.2"/>
+    <line x1="70" y1="0" x2="100" y2="92" stroke="#8d8273" stroke-width="1.2"/>
+    <circle cx="70" cy="4" r="4" fill="#8d8273"/>
+    <g transform="translate(52 104)">${vine(6, 6, seed)}</g>
+    <g transform="translate(88 104)">${vine(8, 8, seed + 2)}</g>
+    <g transform="translate(70 106)">${vine(4, 5, seed + 4)}</g>
+    <path d="M34 90 h72 l-8 26 q-28 8 -56 0 z" fill="#d9c7aa"/>
+    <path d="M34 90 h72" stroke="#b9a684" stroke-width="3"/>
+    ${[...Array(7)].map((_, i) => `<ellipse cx="${44 + i * 9}" cy="${86 - (i % 2) * 6}" rx="8" ry="12" fill="${i % 2 ? "var(--leaf)" : "var(--leaf-2)"}" transform="rotate(${(i - 3) * 14} ${44 + i * 9} ${92})"/>`).join("")}`;
+  document.querySelector(".hanging.left").innerHTML = hanging(0);
+  document.querySelector(".hanging.right").innerHTML = hanging(3);
+  document.querySelector(".pot-plant").innerHTML = `
+    ${[...Array(9)].map((_, i) => `<ellipse cx="${45 + (i - 4) * 5}" cy="${30 - Math.abs(i - 4) * -2}" rx="5" ry="20" fill="${i % 2 ? "var(--leaf)" : "var(--leaf-2)"}" transform="rotate(${(i - 4) * 16} 45 50)"/>`).join("")}
+    <path d="M26 48 h38 l-5 30 h-28 z" fill="#c9774f"/><rect x="24" y="46" width="42" height="7" rx="2" fill="#b5653f"/>`;
 }
 
-// ---------- shelf view ----------
+// ---------- bookcase ----------
+
+function shelfBooks() {
+  const list = state.areas.map((a) => ({ ...a }));
+  const at = Math.max(0, list.findIndex((a) => a.id === ROLE.events) + 1);
+  list.splice(at, 0, { ...MONEY_BOOK, live: state.money?.live });
+  return list;
+}
 
 function renderShelf() {
-  const shelf = $("shelf");
-  shelf.replaceChildren(...state.areas.map((area) => {
-    // Thicker spine = more entries. Height varies a little so the shelf looks real.
-    const width = Math.round(46 + Math.min(area.records.length, 40) * 1.2);
-    const height = Math.round(230 + hash(area.id) * 70);
-    const { level } = activity(area.records);
-    const spine = h("button", {
-      className: `spine${area.live ? "" : " sample"}${area.error ? " err" : ""}`,
-      ariaLabel: `Open ${area.label}`,
+  const nav = $("books");
+  const books = shelfBooks();
+  const groups = [books.slice(0, 3), books.slice(3)];
+  nav.replaceChildren();
+  groups.forEach((group, gi) => {
+    group.forEach((b, i) => {
+      const r = hash(b.id);
+      const badge = badgeFor(b);
+      const el = h("button", { className: "book", type: "button", ariaLabel: `Open ${b.label}` },
+        h("span", { className: "b-icon", textContent: b.icon }),
+        h("span", { className: "b-title", textContent: b.label }),
+        h("span", { className: "b-vol", textContent: `VOL. ${["I", "II", "III", "IV", "V", "VI", "VII", "VIII"][books.indexOf(b)] ?? ""}` }),
+        badge ? h("span", { className: "b-badge", textContent: badge }) : null,
+      );
+      el.dataset.id = b.id;
+      el.style.cssText = `--c:${b.color};--w:${Math.round(80 + r * 16)}%;--h:${Math.round(46 + r * 12)}px;--x:${Math.round(((i + gi) % 2) * r * 6)}%`;
+      el.addEventListener("click", () => openBook(b.id, el));
+      nav.append(el);
+    });
+    nav.append(h("div", { className: "shelf-plank" }));
+  });
+  // bottom shelf: a trailing plant and a stone bookend, to make it feel lived in
+  const deco = h("div", { className: "case-deco", ariaHidden: "true" });
+  deco.innerHTML = `
+    <svg viewBox="0 0 92 84"><g transform="translate(30 40)">${vine(2, 3, 1)}</g><g transform="translate(58 40)">${vine(2, 3, 4)}</g>
+      ${[...Array(8)].map((_, i) => `<ellipse cx="${30 + i * 5}" cy="${36 - (i % 2) * 5}" rx="7" ry="10" fill="${i % 2 ? "var(--leaf)" : "var(--leaf-2)"}" transform="rotate(${(i - 3.5) * 16} ${30 + i * 5} 44)"/>`).join("")}
+      <path d="M22 40 h48 l-6 30 h-36 z" fill="#e8dcc6"/><rect x="20" y="38" width="52" height="6" rx="2" fill="#d6c7ab"/></svg>
+    <svg class="bookend" viewBox="0 0 46 64"><path d="M4 64 V22 q0 -18 19 -18 q19 0 19 18 V64 z" fill="#b9b0a2"/><path d="M10 64 V26 q0 -12 13 -12" fill="none" stroke="#a39a8c" stroke-width="2"/></svg>`;
+  nav.append(deco);
+}
+
+function badgeFor(b) {
+  const today = todayStr();
+  if (b.id === ROLE.tasks) {
+    const n = records(ROLE.tasks).filter((r) => !isDone(r) && r.date && dayOf(r.date) <= today).length;
+    return n ? String(n) : "";
+  }
+  if (b.id === ROLE.events) {
+    const n = records(ROLE.events).filter((r) => dayOf(r.date) === today).length;
+    return n ? String(n) : "";
+  }
+  return "";
+}
+
+// ---------- wall: money screen ----------
+
+function renderMoneyScreen() {
+  const m = state.money;
+  const el = $("money-screen");
+  if (!m) return el.replaceChildren(h("div", { className: "screen-in" }, h("p", { className: "eyebrow", textContent: "Loading Pūtea…" })));
+  const month = parseDay(`${m.month.ym}-01`).toLocaleDateString(undefined, { month: "long" });
+  const change = m.month.prevExpenses ? (m.month.expenses - m.month.prevExpenses) / m.month.prevExpenses : 0;
+  const max = Math.max(...m.month.categories.map((c) => c.total), 1);
+  el.replaceChildren(h("div", { className: "screen-in" },
+    h("div", { className: "screen-top" },
+      h("p", { className: "eyebrow", textContent: `${month} spending` }),
+      m.month.prevExpenses
+        ? h("span", { className: `delta ${change <= 0 ? "down" : "up"}`, textContent: `${change <= 0 ? "↓" : "↑"} ${Math.abs(change * 100).toFixed(0)}% vs last month` })
+        : null,
+    ),
+    h("div", { className: "big", textContent: money(m.month.expenses) }),
+    h("div", { className: "cats" }, m.month.categories.map((c) =>
+      h("div", { className: "cat" },
+        h("span", { textContent: c.name }),
+        h("i", {}, Object.assign(h("b"), { style: `width:${(c.total / max) * 100}%` })),
+        h("span", { textContent: money(c.total) }),
+      ))),
+    h("div", { className: "screen-foot" },
+      h("span", { textContent: m.live ? "Pūtea · live" : "Sample · Pūtea isn't running" }),
+      h("span", { textContent: `Last month ${money(m.month.prevExpenses)}` }),
+    ),
+  ));
+}
+
+// ---------- wall: calendar ----------
+
+const TYPE_COLORS = { work: "#2b3f6b", personal: "#2e5e4e", family: "#b04a4f", social: "#9a5530" };
+let selectedDay = null;
+
+function calendarItems() {
+  const ev = records(ROLE.events).filter((r) => r.date).map((r) => ({ ...r, kind: r.status || "Event", color: TYPE_COLORS[(r.status || "").toLowerCase()] || "#2e5e4e" }));
+  const due = records(ROLE.tasks).filter((r) => r.date && !isDone(r)).map((r) => ({ ...r, kind: "Due", color: area(ROLE.tasks)?.color || "#2b3f6b" }));
+  return [...ev, ...due];
+}
+
+function renderCalendar() {
+  const now = new Date();
+  const first = new Date(now.getFullYear(), now.getMonth(), 1);
+  const startOffset = (first.getDay() + 6) % 7; // Monday first
+  const gridStart = new Date(first.getFullYear(), first.getMonth(), 1 - startOffset);
+  const items = calendarItems();
+  const byDay = new Map();
+  for (const it of items) {
+    const k = dayOf(it.date);
+    byDay.set(k, [...(byDay.get(k) || []), it]);
+  }
+  const today = todayStr();
+
+  const grid = h("div", { className: "cal-grid" },
+    ["M", "T", "W", "T", "F", "S", "S"].map((d) => h("div", { className: "dow", textContent: d })));
+  for (let i = 0; i < 42; i++) {
+    const d = new Date(gridStart.getFullYear(), gridStart.getMonth(), gridStart.getDate() + i);
+    if (i >= 35 && d.getMonth() !== now.getMonth()) break;
+    const key = ymd(d);
+    const dayItems = byDay.get(key) || [];
+    const cell = h("button", {
+      type: "button",
+      className: `day${d.getMonth() !== now.getMonth() ? " other" : ""}${key === today ? " today" : ""}${dayItems.length ? " has" : ""}${key === selectedDay ? " sel" : ""}`,
+      title: dayItems.map((x) => `${timeOf(x.date) ? timeOf(x.date) + " " : ""}${x.title}`).join("\n"),
+      tabIndex: dayItems.length ? 0 : -1,
     },
-      h("span", { className: "spine-icon", textContent: area.icon }),
-      h("span", { className: "spine-title", textContent: area.label }),
-      h("span", { className: "spine-meta", textContent: `LV${level}` }),
+      h("span", { textContent: d.getDate() }),
+      h("span", { className: "dots" }, dayItems.slice(0, 3).map((x) => Object.assign(h("i"), { style: `--dot:${x.color}` }))),
     );
-    spine.dataset.id = area.id;
-    spine.style.cssText = `--c:${area.color};--w:${width}px;--h:${height}px`;
-    spine.addEventListener("click", () => openBook(area.id, spine));
-    spine.addEventListener("mouseenter", () => showSpineCard(area, spine));
-    spine.addEventListener("focus", () => showSpineCard(area, spine));
-    spine.addEventListener("mouseleave", hideSpineCard);
-    spine.addEventListener("blur", hideSpineCard);
-    return spine;
+    if (dayItems.length) cell.addEventListener("click", () => { selectedDay = selectedDay === key ? null : key; renderCalendar(); });
+    grid.append(cell);
+  }
+
+  const list = selectedDay
+    ? (byDay.get(selectedDay) || [])
+    : items.filter((x) => dayOf(x.date) >= today).sort((a, b) => a.date.localeCompare(b.date)).slice(0, 5);
+  const upcoming = h("ul", { className: "upcoming" },
+    list.length
+      ? list.map((x) => h("li", {},
+          h("time", { textContent: dayOf(x.date) === today ? (timeOf(x.date) || "Today") : fmtDay(x.date, { weekday: "short", day: "numeric" }) }),
+          h("span", { textContent: x.kind === "Due" ? `Due: ${x.title}` : x.title }),
+          h("span", { className: "tag", textContent: x.kind })))
+      : h("li", { className: "empty", textContent: "Nothing coming up." }));
+
+  $("calendar").replaceChildren(
+    h("div", { className: "rings", ariaHidden: "true" }, h("i"), h("i")),
+    h("div", { className: "cal-head" },
+      h("h2", { textContent: now.toLocaleDateString(undefined, { month: "long" }) }),
+      h("p", { className: "eyebrow", textContent: selectedDay ? fmtDay(selectedDay) : String(now.getFullYear()) })),
+    grid,
+    upcoming,
+  );
+}
+
+// ---------- wall: sticky notes ----------
+
+const NOTE_COLORS = ["#f8e58c", "#f6c6c0", "#c9e6c7", "#c6dcf2", "#f3d7a4"];
+
+function renderNotes() {
+  const today = todayStr();
+  const notes = [];
+  for (const r of records(ROLE.notes).slice(0, 4)) {
+    notes.push({ text: r.title, meta: `Learning · ${fmtDay(r.date, { day: "numeric", month: "short" })}`, book: ROLE.notes });
+  }
+  for (const r of records(ROLE.people)) {
+    const gap = r.date ? daysBetween(r.date, today) : null;
+    if (gap !== null && gap >= 21) notes.push({ text: `Catch up with ${r.title}`, meta: `${gap} days since you spoke`, book: ROLE.people });
+  }
+  for (const r of records(ROLE.tasks)) {
+    if (/blocked/i.test(r.status || "")) notes.push({ text: `${r.title} is blocked`, meta: "Work · needs a nudge", book: ROLE.tasks });
+  }
+  const box = $("notes");
+  if (!notes.length) return box.replaceChildren(h("p", { className: "eyebrow", textContent: "Your notes will pin here" }));
+  box.replaceChildren(...notes.slice(0, 8).map((n, i) => {
+    const r = hash(n.text);
+    const el = h("button", { type: "button", className: "note" },
+      h("span", { textContent: n.text }), h("small", { textContent: n.meta }));
+    el.style.cssText = `--nc:${NOTE_COLORS[i % NOTE_COLORS.length]};--r:${(r * 6 - 3).toFixed(1)}deg`;
+    el.addEventListener("click", () => openBook(n.book, document.querySelector(`.book[data-id="${n.book}"]`)));
+    return el;
   }));
 }
 
-function showSpineCard(area, spine) {
-  const card = $("spine-card");
-  const latest = area.records.find((r) => r.date);
-  card.replaceChildren(
-    h("h4", { textContent: area.label }),
-    h("p", { textContent: `${area.records.length} entries · Lv ${activity(area.records).level}` }),
-    latest ? h("p", { textContent: `Latest: ${truncate(latest.title, 24)} · ${fmtDate(latest.date)}` }) : null,
-    h("p", { textContent: area.error ? "⚠ Couldn't load from Notion" : area.live ? "Live from Notion" : "Sample data" }),
+// ---------- table: checklist ----------
+
+function renderTodo() {
+  const today = todayStr();
+  const tasks = records(ROLE.tasks)
+    .filter((r) => (!isDone(r) && (!r.date || dayOf(r.date) <= today)) || (isDone(r) && dayOf(r.date) === today))
+    .sort((a, b) => Number(isDone(a)) - Number(isDone(b)) || (a.date || "9").localeCompare(b.date || "9"));
+  const list = h("ul", { className: "todo" });
+  if (!tasks.length) list.append(h("li", {}, h("span", { className: "empty", textContent: "Nothing due today. Enjoy it." })));
+  for (const r of tasks) {
+    const late = r.date && dayOf(r.date) < today && !isDone(r);
+    const li = h("li", { className: isDone(r) ? "done" : "" },
+      h("button", { type: "button", className: "check", ariaLabel: `Mark ${r.title} ${isDone(r) ? "not done" : "done"}`, innerHTML: '<svg viewBox="0 0 16 16"><path d="M3 8.5l3 3 7-7"/></svg>' }),
+      h("span", {},
+        h("span", { className: "t", textContent: r.title }),
+        h("span", { className: `m${late ? " late" : ""}`, textContent: late ? `Overdue · ${fmtDay(r.date)}` : r.status || "To do" })),
+    );
+    li.querySelector(".check").addEventListener("click", () => toggleTask(r, li));
+    list.append(li);
+  }
+  const open = tasks.filter((r) => !isDone(r)).length;
+  $("todo").replaceChildren(
+    h("h2", { className: "paper-title", textContent: "Today's list" }),
+    h("p", { className: "paper-sub", textContent: `${open} to do · from your Work book` }),
+    list,
   );
-  card.hidden = false;
-  const view = $("shelf-view").getBoundingClientRect();
-  const r = spine.getBoundingClientRect();
-  const left = Math.min(r.right - view.left + 10, view.width - card.offsetWidth - 8);
-  card.style.left = `${Math.max(8, left)}px`;
-  card.style.top = `${r.top - view.top - 10}px`;
 }
 
-const hideSpineCard = () => ($("spine-card").hidden = true);
-
-// ---------- tree view ----------
-
-function renderTree() {
-  const tree = $("tree");
-  const R_AREA = 220, R_LEAF = 380, LEAVES = 5;
-  const polar = (r, deg) => [r * Math.cos((deg * Math.PI) / 180), r * Math.sin((deg * Math.PI) / 180)];
-  tree.replaceChildren();
-  const links = svg("g", {}, tree);
-  const nodes = svg("g", {}, tree);
-  const sector = 360 / state.areas.length;
-
-  state.areas.forEach((area, i) => {
-    const angle = -90 + i * sector;
-    const [ax, ay] = polar(R_AREA, angle);
-    const [qx, qy] = polar(R_AREA * 0.5, angle - sector * 0.15);
-    svg("path", { d: `M0 0 Q${qx} ${qy} ${ax} ${ay}`, class: "link trunk", stroke: area.color }, links);
-
-    const leaves = area.records.slice(0, LEAVES);
-    const spread = sector * 0.7;
-    leaves.forEach((rec, j) => {
-      const t = leaves.length === 1 ? 0.5 : j / (leaves.length - 1);
-      const la = angle - spread / 2 + t * spread;
-      const [lx, ly] = polar(R_LEAF, la);
-      const [mx, my] = polar((R_AREA + R_LEAF) / 2, (angle + la) / 2);
-      svg("path", { d: `M${ax} ${ay} Q${mx} ${my} ${lx} ${ly}`, class: "link branch", stroke: area.color }, links);
-      const leaf = svg("g", { class: "node leaf", tabindex: 0, role: "button", "aria-label": `${area.label}: ${rec.title}` }, nodes);
-      svg("circle", { cx: lx, cy: ly, r: 6, stroke: area.color }, leaf);
-      const right = Math.cos((la * Math.PI) / 180) >= 0;
-      svg("text", { x: lx + (right ? 14 : -14), y: ly, "text-anchor": right ? "start" : "end" }, leaf).textContent = truncate(rec.title, 18);
-      svg("title", {}, leaf).textContent = [rec.title, fmtDate(rec.date), rec.status].filter(Boolean).join(" · ");
-      onActivate(leaf, () => openBook(area.id, leaf, rec.id));
-    });
-
-    const { level, progress } = activity(area.records);
-    const node = svg("g", { class: `node area${area.error ? " err" : ""}`, tabindex: 0, role: "button", "aria-label": `Open ${area.label}`, style: `--glow:${area.color}` }, nodes);
-    const ringR = 52, circ = 2 * Math.PI * ringR;
-    svg("circle", { cx: ax, cy: ay, r: ringR, class: "ring-bg", "stroke-width": 4 }, node);
-    svg("circle", {
-      cx: ax, cy: ay, r: ringR, class: "ring", stroke: area.color, "stroke-width": 4,
-      "stroke-dasharray": circ, "stroke-dashoffset": circ * (1 - Math.max(progress, 0.04)),
-      transform: `rotate(-90 ${ax} ${ay})`,
-    }, node);
-    svg("circle", { cx: ax, cy: ay, r: 42, class: "core", stroke: area.color }, node);
-    svg("text", { x: ax, y: ay, class: "icon", fill: area.color }, node).textContent = area.icon;
-    svg("text", { x: ax, y: ay + 78, class: "label" }, node).textContent = area.label;
-    svg("text", { x: ax, y: ay + 98, class: "meta" }, node).textContent = area.error ? "⚠ couldn't load" : `LV ${level} · ${area.records.length} ITEMS`;
-    onActivate(node, () => openBook(area.id, node));
-  });
-
-  const centre = svg("g", { class: "node centre", tabindex: 0, role: "button", "aria-label": "Ask across everything", style: "--glow:var(--accent)" }, nodes);
-  svg("circle", { cx: 0, cy: 0, r: 64, class: "core" }, centre);
-  svg("text", { x: 0, y: -6, class: "icon" }, centre).textContent = state.centre?.icon ?? "✦";
-  svg("text", { x: 0, y: 36, class: "meta" }, centre).textContent = (state.centre?.label ?? "Me").toUpperCase();
-  onActivate(centre, () => $("ask-all-input").focus());
+async function toggleTask(r, li) {
+  const done = !isDone(r);
+  const before = r.status;
+  r.status = done ? "Done" : "Not started";
+  li.classList.toggle("done", done);
+  try {
+    const res = await api(`/api/areas/${ROLE.tasks}/records/${r.id}/done`, { done });
+    if (!res.live) toast(done ? "Ticked off (sample data, so Notion isn't changed)" : "Back on the list");
+    setTimeout(() => { renderTodo(); renderShelf(); renderCalendar(); }, 450);
+  } catch (err) {
+    r.status = before;
+    li.classList.toggle("done", !done);
+    toast(err.message, true);
+  }
 }
 
-function onActivate(node, fn) {
-  node.addEventListener("click", fn);
-  node.addEventListener("keydown", (e) => {
-    if (e.key === "Enter" || e.key === " ") { e.preventDefault(); fn(); }
-  });
+// ---------- table: agenda ----------
+
+function renderAgenda() {
+  const today = todayStr();
+  const now = new Date();
+  const nowHM = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
+  const items = records(ROLE.events).filter((r) => dayOf(r.date) === today)
+    .sort((a, b) => (timeOf(a.date) || "00:00").localeCompare(timeOf(b.date) || "00:00"));
+  const list = h("ol", { className: "slots" });
+  let nowPlaced = false;
+  for (const r of items) {
+    const t = timeOf(r.date);
+    if (!nowPlaced && t && t > nowHM) { list.append(h("li", { className: "now-line" }, h("span", { textContent: `NOW ${nowHM}` }))); nowPlaced = true; }
+    list.append(h("li", { className: `slot${t && t < nowHM ? " past" : ""}` },
+      h("time", { textContent: t || "All day" }),
+      h("span", {}, h("span", { className: "t", textContent: r.title }), h("span", { className: "k", textContent: r.status || "" }))));
+  }
+  if (items.length && !nowPlaced) list.append(h("li", { className: "now-line" }, h("span", { textContent: `NOW ${nowHM}` })));
+  $("agenda").replaceChildren(
+    h("h2", { className: "paper-title", textContent: "Agenda" }),
+    h("p", { className: "paper-sub", textContent: now.toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" }) }),
+    items.length ? list : h("p", { className: "empty", textContent: "No meetings today." }),
+  );
 }
 
-function setView(view) {
-  state.view = view;
-  try { localStorage.setItem("hanua-view", view); } catch {}
-  $("shelf-view").hidden = view !== "shelf";
-  $("tree-view").hidden = view !== "tree";
-  document.querySelectorAll(".view-toggle button").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.view === view)));
+// ---------- table: week receipt ----------
+
+function renderWeek() {
+  const m = state.money;
+  if (!m) return;
+  const w = m.week;
+  const scale = Math.max(w.usual * 1.25, w.spent, 1);
+  const maxDay = Math.max(...w.days.map((d) => d.spent), 1);
+  const today = todayStr();
+  const avg = w.spent / 7;
+  const top = w.days.reduce((a, b) => (b.spent > a.spent ? b : a), w.days[0]);
+  $("week").replaceChildren(
+    h("h3", { textContent: "This week" }),
+    h("p", { className: "r-sub", textContent: `${fmtDay(w.days[0].date, { day: "numeric", month: "short" })} – ${fmtDay(w.days[6].date, { day: "numeric", month: "short" })}` }),
+    h("div", { className: "r-big", textContent: money(w.spent) }),
+    h("div", { className: "week-bar" },
+      Object.assign(h("b", { className: w.spent > w.usual ? "over" : "" }), { style: `width:${(w.spent / scale) * 100}%` }),
+      Object.assign(h("i", { title: `Usual week ${money(w.usual)}` }), { style: `left:${(w.usual / scale) * 100}%` })),
+    h("div", { className: "week-legend" },
+      h("span", { textContent: w.spent <= w.usual ? `${money(w.usual - w.spent)} under usual` : `${money(w.spent - w.usual)} over usual` }),
+      h("span", { textContent: `Usual ${money(w.usual)}` })),
+    h("div", { className: "days" }, w.days.map((d) => {
+      const col = h("div", { className: d.date === today ? "today" : "", title: `${fmtDay(d.date)} · ${money(d.spent, 2)}` });
+      col.append(Object.assign(h("i"), { style: `height:${Math.max(4, (d.spent / maxDay) * 100)}%` }));
+      return col;
+    })),
+    h("div", { className: "dl" }, w.days.map((d) => h("span", { textContent: parseDay(d.date).toLocaleDateString(undefined, { weekday: "narrow" }) }))),
+    h("hr", { className: "r-rule" }),
+    h("div", { className: "r-row" }, h("span", { textContent: "Daily average" }), h("span", { textContent: money(avg, 2) })),
+    h("div", { className: "r-row" }, h("span", { textContent: `Biggest day (${fmtDay(top.date, { weekday: "short" })})` }), h("span", { textContent: money(top.spent, 2) })),
+    h("hr", { className: "r-rule" }),
+    h("p", { className: "r-sub", textContent: m.live ? "PŪTEA · AKAHU · LIVE" : "SAMPLE · START PŪTEA FOR LIVE" }),
+  );
 }
 
-document.querySelectorAll(".view-toggle button").forEach((b) => b.addEventListener("click", () => setView(b.dataset.view)));
+// ---------- the open book ----------
 
-// ---------- the book ----------
-//
-// The book is a CSS 3D box: front cover, spine, fore-edge and back cover.
-// Closed on the shelf it is turned 90° so only the spine faces you.
-// Opening = slide up off the shelf, fly to the centre while turning to face
-// you, then swing the cover open on its hinge.
+let openEl = null;
 
-function bookSize() {
-  const vw = innerWidth, vh = innerHeight;
-  if (isPhone()) return { W: vw - 24, H: vh - 72 };
-  return { W: Math.min(460, (vw - 96) / 2), H: Math.min(640, vh - 96) };
-}
-
-function buildBook(area, highlightId, size, depth) {
-  const index = state.areas.indexOf(area);
-  const vol = `Vol. ${ROMAN[index] ?? index + 1}`;
-  const book = h("div", { className: "book3d" });
-  book.style.cssText = `--W:${size.W}px;--H:${size.H}px;--D:${depth}px;--c:${area.color}`;
-
-  const askPage = [
-    h("p", { className: "eyebrow", textContent: `${vol} · ${area.live ? "Live from Notion" : "Sample data"}` }),
-    h("h2", { textContent: area.label }),
-    h("p", { className: "sub", textContent: area.error || (area.live ? "Kept in your Notion workspace." : "Add a Notion database ID in config/areas.json to make this real.") }),
-    h("div", { className: "stats" }),
-    askForm(area),
+function bookPages(id) {
+  if (id === "money") return moneyPages();
+  const a = area(id);
+  const today = todayStr();
+  const recent = a.records.filter((r) => r.date && Math.abs(daysBetween(r.date, today)) <= 30).length;
+  const open = a.records.filter((r) => r.status && !isDone(r)).length;
+  const left = [
+    h("p", { className: "eyebrow", textContent: a.live ? "Live from Notion" : "Sample data" }),
+    h("h2", { id: "book-title", textContent: a.label }),
+    h("p", { className: "sub", textContent: a.error || `${a.records.length} entries` }),
+    h("div", { className: "stats" },
+      [[a.records.length, "entries"], [recent, "within 30 days"], [open, "still open"], [a.records[0]?.date ? fmtDay(a.records[0].date, { day: "numeric", month: "short" }) : "—", "latest"]]
+        .map(([v, l]) => h("div", { className: "stat" }, h("b", { textContent: v }), h("span", { textContent: l })))),
+    askForm(id, a.label),
   ];
-
-  const right = h("div", { className: "face right-page" },
-    h("div", { className: "ribbon" }),
-    h("div", { className: "page" },
-      h("div", { className: "mobile-only" }, askPage.map((n) => n.cloneNode(true))),
-      h("h3", { textContent: "Entries" }),
-      h("ul", { className: "records" }),
-    ),
-  );
-
-  const cover = h("div", { className: "cover" },
-    h("div", { className: "cover-front" },
-      h("div", { className: "cover-icon", textContent: area.icon }),
-      h("h2", { textContent: area.label }),
-      h("p", { className: "eyebrow", textContent: vol }),
-    ),
-    h("div", { className: "cover-back" },
-      isPhone() ? h("div", { className: "endpaper" }) : h("div", { className: "page" }, askPage),
-    ),
-  );
-
-  book.append(
-    h("div", { className: "face back-cover" }),
-    h("div", { className: "face page-block" }),
-    h("div", { className: "face spine-face" },
-      h("span", { className: "spine-icon", textContent: area.icon }),
-      h("span", { className: "spine-title", textContent: area.label }),
-    ),
-    right,
-    cover,
-  );
-
-  // The phone layout clones the ask form, so wire up every copy.
-  book.querySelectorAll("form.page-ask").forEach((f) => wireAsk(f, area));
-  fillBook(book, area, highlightId);
-  return { book, cover };
+  const right = [
+    h("h3", { textContent: "Entries" }),
+    a.records.length
+      ? h("ul", { className: "entries" }, a.records.map((r) => h("li", { className: "entry" },
+          h("span", { className: "t", textContent: r.title }),
+          typeof r.amount === "number" ? h("span", { className: `v ${r.amount < 0 ? "neg" : ""}`, textContent: r.amount.toLocaleString() }) : h("span"),
+          h("span", { className: "m" }, [r.date ? fmtDay(r.date) + (timeOf(r.date) ? " " + timeOf(r.date) : "") : null, r.status].filter(Boolean).join(" · "),
+            r.url ? h("span", {}, " · ", h("a", { href: r.url, target: "_blank", rel: "noopener", textContent: "Open in Notion ↗" })) : null))))
+      : h("p", { className: "empty", textContent: "Blank pages. Use the Feed bar to write the first entry." }),
+  ];
+  return { left, right };
 }
 
-function askForm(area) {
-  return h("div", {},
-    h("form", { className: "page-ask" },
-      h("input", { type: "text", autocomplete: "off", placeholder: `Ask this book about ${area.label.toLowerCase()}…` }),
-      h("button", { type: "submit", textContent: "Ask" }),
-    ),
-    h("div", { className: "answer", hidden: true }),
-  );
+function moneyPages() {
+  const m = state.money;
+  const left = [
+    h("p", { className: "eyebrow", textContent: m.live ? "Live from Pūtea" : "Sample data" }),
+    h("h2", { id: "book-title", textContent: "Money" }),
+    h("p", { className: "sub", textContent: "Read from your Akahu accounts through Pūtea" }),
+    h("div", { className: "stats" },
+      [[money(m.month.expenses), "this month"], [money(m.month.prevExpenses), "last month"], [money(m.week.spent), "this week"], [money(m.week.usual), "usual week"]]
+        .map(([v, l]) => h("div", { className: "stat" }, h("b", { textContent: v }), h("span", { textContent: l })))),
+    askForm(null, "money"),
+  ];
+  const right = [
+    h("h3", { textContent: "Where it went this month" }),
+    h("ul", { className: "entries" }, m.month.categories.map((c) => h("li", { className: "entry" },
+      h("span", { className: "t", textContent: c.name }), h("span", { className: "v neg", textContent: money(c.total, 2) })))),
+    h("h3", { textContent: "The last seven days", style: "margin-top:22px" }),
+    h("ul", { className: "entries" }, [...m.week.days].reverse().map((d) => h("li", { className: "entry" },
+      h("span", { className: "t", textContent: fmtDay(d.date, { weekday: "long", day: "numeric", month: "short" }) }),
+      h("span", { className: "v", textContent: money(d.spent, 2) })))),
+  ];
+  return { left, right };
 }
 
-function wireAsk(form, area) {
+function askForm(areaId, label) {
+  const input = h("input", { type: "text", autocomplete: "off", placeholder: `Ask this book about ${label.toLowerCase()}…` });
+  const answer = h("div", { className: "answer", hidden: true });
+  const button = h("button", { type: "submit", textContent: "Ask" });
+  const form = h("form", { className: "page-ask" }, input, button);
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
-    const input = form.querySelector("input");
     const question = input.value.trim();
     if (!question) return;
-    const answer = form.nextElementSibling;
-    const button = form.querySelector("button");
-    answer.hidden = false;
-    answer.className = "answer loading";
-    answer.textContent = "Claude is reading this volume…";
+    answer.hidden = false; answer.className = "answer loading"; answer.textContent = "Claude is reading this book…";
     button.disabled = true;
     try {
-      const res = await api("/api/ask", { question, areaId: area.id });
-      answer.className = "answer";
-      answer.textContent = res.answer;
+      const res = await api("/api/ask", { question, areaId: areaId || undefined });
+      answer.className = "answer"; answer.textContent = res.answer;
     } catch (err) {
-      answer.className = "answer error";
-      answer.textContent = err.message;
-    } finally {
-      button.disabled = false;
-    }
+      answer.className = "answer error"; answer.textContent = err.message;
+    } finally { button.disabled = false; }
   });
+  return h("div", {}, form, answer);
 }
 
-function fillBook(book, area, highlightId) {
-  const { recent, level } = activity(area.records);
-  const stats = [[area.records.length, "entries"], [recent, "within 30 days"], [`Lv ${level}`, "activity"]];
-  stats.push(summaryStat(area));
-  const statEls = () => stats.map(([v, l]) => h("div", { className: "stat" }, h("b", { textContent: v }), h("span", { textContent: l })));
-  book.querySelectorAll(".stats").forEach((s) => s.replaceChildren(...statEls()));
+async function openBook(id, fromEl) {
+  if (openEl || !(id === "money" ? state.money : area(id))) return;
+  const book = shelfBooks().find((b) => b.id === id);
+  const { left, right } = bookPages(id);
+  $("page-left").replaceChildren(...left);
+  $("page-right").replaceChildren(...(isNarrow() ? [...left, h("div", { style: "height:18px" }), ...right] : right));
+  const ob = $("open-book");
+  ob.style.setProperty("--c", book.color);
+  $("reader").hidden = false;
+  openEl = fromEl;
+  document.body.style.overflow = "hidden";
+  requestAnimationFrame(() => $("reader").classList.add("dim"));
+  fromEl?.classList.add("out");
 
-  const list = book.querySelector(".records");
-  if (area.error) return list.replaceChildren(h("li", { className: "error", textContent: area.error }));
-  if (!area.records.length) return list.replaceChildren(h("li", { className: "empty", textContent: "Blank pages. Use the Feed bar to write the first entry." }));
-  list.replaceChildren(...area.records.map((r) => recordItem(r, r.id === highlightId)));
-}
-
-// The fourth stat on the left page. Set per book with "summary" in config/areas.json.
-function summaryStat(area) {
-  const priced = area.records.filter((r) => typeof r.amount === "number");
-  const sum = (rows, fn = (r) => r.amount) => rows.reduce((s, r) => s + fn(r), 0);
-  if (area.summary === "total" && priced.length) {
-    return [money.format(sum(priced)), "total"];
+  if (fromEl && !reducedMotion) {
+    // grow the open book out of the spine you clicked
+    const from = fromEl.getBoundingClientRect();
+    const to = ob.getBoundingClientRect();
+    await ob.animate([
+      { transform: `translate(${from.left - to.left}px, ${from.top - to.top}px) scale(${from.width / to.width}, ${from.height / to.height})`, opacity: 0.6 },
+      { transform: "none", opacity: 1 },
+    ], { duration: 420, easing: "cubic-bezier(.2,.8,.2,1)" }).finished;
   }
-  if (area.summary === "per-month" && priced.length) {
-    // Yearly / annual / weekly plans are normalised to a monthly cost via the status column.
-    const perMonth = (r) => {
-      const s = (r.status || "").toLowerCase();
-      if (/year|annual/.test(s)) return r.amount / 12;
-      if (/week/.test(s)) return (r.amount * 52) / 12;
-      return r.amount;
-    };
-    return [money.format(Math.abs(sum(priced, perMonth))), "per month"];
-  }
-  const recent = priced.filter((r) => r.date && daysAgo(r.date) >= 0 && daysAgo(r.date) <= 30);
-  if (recent.length) return [money.format(sum(recent)), "net · 30 days"];
-  return [area.records[0]?.date ? fmtDate(area.records[0].date) : "—", "latest"];
-}
-
-function recordItem(r, highlight) {
-  return h("li", { className: `record${highlight ? " highlight" : ""}` },
-    h("span", { className: "record-title", textContent: r.title }),
-    typeof r.amount === "number"
-      ? h("span", { className: `record-amount ${r.amount < 0 ? "neg" : "pos"}`, textContent: money.format(r.amount) })
-      : h("span"),
-    h("div", { className: "record-meta" },
-      r.date ? h("span", { textContent: fmtDate(r.date) }) : null,
-      r.status ? h("span", { textContent: `· ${r.status}` }) : null,
-    ),
-    r.url ? h("a", { href: r.url, target: "_blank", rel: "noopener", textContent: "Open ↗" }) : h("span"),
-  );
-}
-
-// Transform that puts the closed book (spine forward) exactly over `rect`.
-function spinePose(rect, size) {
-  const s = rect.height / size.H;
-  const dx = rect.left + rect.width / 2 - innerWidth / 2;
-  const dy = rect.top + rect.height / 2 - innerHeight / 2;
-  return { s, dx, dy };
-}
-
-const T = (dx, dy, s, turn) => `translate3d(${dx}px, ${dy}px, 0) scale(${s}) rotateY(${turn}deg)`;
-
-async function openBook(areaId, fromEl, highlightId) {
-  if (state.open) return;
-  const area = state.areas.find((a) => a.id === areaId);
-  hideSpineCard();
-  const size = bookSize();
-  const rect = fromEl.getBoundingClientRect();
-  const pose = spinePose(rect, size);
-  const depth = Math.max(28, Math.min(110, rect.width / pose.s));
-  const { book, cover } = buildBook(area, highlightId, size, depth);
-
-  book.style.transform = T(pose.dx, pose.dy, pose.s, 90); // avoid a one-frame flash at the centre
-  const reader = $("reader");
-  reader.hidden = false;
-  reader.append(book);
-  state.open = { area, book, cover, fromEl, size, depth };
-  if (fromEl.classList.contains("spine")) fromEl.classList.add("out");
-  requestAnimationFrame(() => reader.classList.add("dim"));
-
-  const shift = isPhone() ? 0 : size.W / 2; // centre the open two-page spread
-  const ms = reducedMotion ? 0 : 1;
-
-  // 1. Slide up off the shelf, then fly to the centre while turning to face us.
-  await book.animate([
-    { transform: T(pose.dx, pose.dy, pose.s, 90) },
-    { transform: T(pose.dx, pose.dy - 70 * pose.s - 20, pose.s, 90), offset: 0.3 },
-    { transform: T(0, 0, 1, 0) },
-  ], { duration: 900 * ms, easing: "cubic-bezier(.6,.05,.3,1)", fill: "forwards" }).finished;
-
-  // 2. Swing the cover open (and slide right so the spread is centred).
-  const coverOpen = cover.animate([
-    { transform: `translateZ(${depth / 2}px) rotateY(0deg)` },
-    { transform: `translateZ(${depth / 2}px) rotateY(-180deg)` },
-  ], { duration: 850 * ms, easing: "cubic-bezier(.45,.05,.25,1)", fill: "forwards" });
-  const slide = book.animate([
-    { transform: T(0, 0, 1, 0) },
-    { transform: T(shift, 0, 1, 0) },
-  ], { duration: 850 * ms, easing: "cubic-bezier(.45,.05,.25,1)", fill: "forwards" });
-  await Promise.all([coverOpen.finished, slide.finished]);
-  book.classList.add("is-open");
-  book.querySelector(".record.highlight")?.scrollIntoView({ block: "center" });
-  (book.querySelector(".cover-back .page-ask input") || book.querySelector(".page-ask input"))?.focus({ preventScroll: true });
-
-  // Pull fresh rows from Notion while the user reads.
-  if (area.live) {
-    api(`/api/areas/${area.id}`).then(({ records }) => {
-      area.records = records;
-      if (state.open?.book === book) fillBook(book, area, highlightId);
-    }).catch((err) => toast(err.message, true));
-  }
+  $("reader-close").focus({ preventScroll: true });
 }
 
 async function closeBook() {
-  const open = state.open;
-  if (!open || open.closing) return;
-  open.closing = true;
-  const { book, cover, fromEl, size, depth } = open;
-  const reader = $("reader");
-  const shift = isPhone() ? 0 : size.W / 2;
-  const ms = reducedMotion ? 0 : 1;
-  book.classList.remove("is-open");
-
-  await Promise.all([
-    cover.animate([
-      { transform: `translateZ(${depth / 2}px) rotateY(-180deg)` },
-      { transform: `translateZ(${depth / 2}px) rotateY(0deg)` },
-    ], { duration: 650 * ms, easing: "cubic-bezier(.45,.05,.25,1)", fill: "forwards" }).finished,
-    book.animate([{ transform: T(shift, 0, 1, 0) }, { transform: T(0, 0, 1, 0) }],
-      { duration: 650 * ms, easing: "cubic-bezier(.45,.05,.25,1)", fill: "forwards" }).finished,
-  ]);
-
-  reader.classList.remove("dim");
-  // Fly back to wherever the spine is now (the page may have scrolled).
-  const target = fromEl.isConnected ? fromEl.getBoundingClientRect() : null;
-  if (target) {
-    const pose = spinePose(target, size);
-    await book.animate([
-      { transform: T(0, 0, 1, 0) },
-      { transform: T(pose.dx, pose.dy - 70 * pose.s - 20, pose.s, 90), offset: 0.7 },
-      { transform: T(pose.dx, pose.dy, pose.s, 90) },
-    ], { duration: 800 * ms, easing: "cubic-bezier(.6,.05,.3,1)", fill: "forwards" }).finished;
+  if (!openEl && $("reader").hidden) return;
+  const ob = $("open-book");
+  const fromEl = openEl;
+  $("reader").classList.remove("dim");
+  if (fromEl && !reducedMotion && fromEl.isConnected) {
+    fromEl.classList.remove("out");
+    const to = fromEl.getBoundingClientRect();
+    const from = ob.getBoundingClientRect();
+    await ob.animate([
+      { transform: "none", opacity: 1 },
+      { transform: `translate(${to.left - from.left}px, ${to.top - from.top}px) scale(${to.width / from.width}, ${to.height / from.height})`, opacity: 0.4 },
+    ], { duration: 320, easing: "cubic-bezier(.5,0,.75,0)" }).finished;
   }
-  fromEl.classList?.remove("out");
-  book.remove();
-  reader.hidden = true;
-  state.open = null;
-  if (fromEl.isConnected) fromEl.focus({ preventScroll: true });
+  fromEl?.classList.remove("out");
+  $("reader").hidden = true;
+  document.body.style.overflow = "";
+  openEl = null;
+  fromEl?.focus({ preventScroll: true });
 }
 
 $("reader-close").addEventListener("click", closeBook);
 $("reader").addEventListener("click", (e) => { if (e.target === $("reader")) closeBook(); });
-document.addEventListener("keydown", (e) => {
-  if (e.key === "Escape" && state.open && !$("draft-dialog").open) closeBook();
-});
+$("money-screen").addEventListener("click", () => openBook("money", document.querySelector('.book[data-id="money"]')));
+document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("reader").hidden && !$("draft-dialog").open) closeBook(); });
 
 // ---------- ask across everything ----------
 
-$("ask-all-form").addEventListener("submit", async (e) => {
+$("ask-form").addEventListener("submit", async (e) => {
   e.preventDefault();
-  const question = $("ask-all-input").value.trim();
+  const question = $("ask-input").value.trim();
   if (!question) return;
-  const answer = $("ask-all-answer");
-  answer.hidden = false;
-  answer.className = "answer loading";
-  answer.textContent = "Claude is reading the whole library…";
+  const answer = $("ask-answer");
+  answer.hidden = false; answer.className = "answer loading"; answer.textContent = "Claude is reading your wall…";
   try {
     const res = await api("/api/ask", { question });
-    answer.className = "answer";
-    answer.textContent = res.answer;
+    answer.className = "answer"; answer.textContent = res.answer;
   } catch (err) {
-    answer.className = "answer error";
-    answer.textContent = err.message;
+    answer.className = "answer error"; answer.textContent = err.message;
   }
 });
 
@@ -465,8 +522,7 @@ $("feed-form").addEventListener("submit", async (e) => {
   const text = $("feed-input").value.trim();
   if (!text) return;
   const button = e.submitter;
-  button.disabled = true;
-  button.textContent = "Thinking…";
+  button.disabled = true; button.textContent = "Thinking…";
   try {
     const { draft, areaLabel } = await api("/api/feed/draft", { text });
     pendingDraft = draft;
@@ -481,8 +537,7 @@ $("feed-form").addEventListener("submit", async (e) => {
   } catch (err) {
     toast(err.message, true);
   } finally {
-    button.disabled = false;
-    button.textContent = "Add";
+    button.disabled = false; button.textContent = "Add";
   }
 });
 
@@ -490,17 +545,12 @@ $("draft-dialog").addEventListener("close", async () => {
   if ($("draft-dialog").returnValue !== "save" || !pendingDraft) return;
   const draft = pendingDraft;
   pendingDraft = null;
-  $("draft-fields").querySelectorAll("input").forEach((input) => {
-    draft.properties[input.dataset.index].value = input.value;
-  });
+  $("draft-fields").querySelectorAll("input").forEach((input) => { draft.properties[input.dataset.index].value = input.value; });
   try {
     await api("/api/feed/commit", { areaId: draft.areaId, properties: draft.properties });
     $("feed-input").value = "";
     toast("Written into Notion ✓");
-    if (state.open) await closeBook();
     await load();
-    const spine = document.querySelector(`.spine[data-id="${draft.areaId}"]`);
-    if (spine && state.view === "shelf") openBook(draft.areaId, spine);
   } catch (err) {
     toast(err.message, true);
   }
@@ -509,30 +559,39 @@ $("draft-dialog").addEventListener("close", async () => {
 // ---------- boot ----------
 
 function renderHeader() {
+  const now = new Date();
+  const hr = now.getHours();
+  $("greet").textContent = hr < 12 ? "Good morning." : hr < 17 ? "Good afternoon." : "Good evening.";
+  $("today-label").textContent = now.toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" });
   const { notion, claude } = state.status;
   const live = state.areas.filter((a) => a.live).length;
-  const entries = state.areas.reduce((n, a) => n + a.records.length, 0);
-  if (state.centre?.title) $("hero-title").textContent = state.centre.title;
-  $("hero-count").textContent = `${state.areas.length} volumes · ${entries} entries`;
   $("status").replaceChildren(
-    h("span", { className: `pill ${notion && live ? "on" : "warn"}`, textContent: notion ? `Notion ${live}/${state.areas.length}` : "Notion · sample" }),
-    h("span", { className: `pill ${claude ? "on" : "warn"}`, textContent: claude ? "Claude on" : "Claude off" }),
+    h("span", { className: `pill ${notion && live ? "on" : ""}`, textContent: notion ? `Notion ${live}/${state.areas.length}` : "Notion · sample" }),
+    h("span", { className: `pill ${state.money?.live ? "on" : ""}`, textContent: state.money?.live ? "Pūtea live" : "Pūtea · sample" }),
+    h("span", { className: `pill ${claude ? "on" : ""}`, textContent: claude ? "Claude on" : "Claude off" }),
   );
 }
 
-async function load() {
-  try {
-    const data = await api("/api/areas");
-    Object.assign(state, { centre: data.centre, areas: data.areas, status: data.status });
-    renderHeader();
-    renderShelf();
-    renderTree();
-  } catch (err) {
-    toast(err.message, true);
-  }
+function renderAll() {
+  renderHeader();
+  renderShelf();
+  renderMoneyScreen();
+  renderCalendar();
+  renderNotes();
+  renderTodo();
+  renderAgenda();
+  renderWeek();
 }
 
-let saved = "shelf";
-try { saved = localStorage.getItem("hanua-view") || "shelf"; } catch {}
-setView(saved);
+async function load() {
+  const [areas, moneyData] = await Promise.allSettled([api("/api/areas"), api("/api/money")]);
+  if (areas.status === "fulfilled") Object.assign(state, { areas: areas.value.areas, status: areas.value.status });
+  else toast(areas.reason.message, true);
+  if (moneyData.status === "fulfilled") state.money = moneyData.value;
+  renderAll();
+}
+
+drawPlants();
 load();
+// keep the "now" line and greeting current
+setInterval(() => { renderHeader(); renderAgenda(); }, 60_000);

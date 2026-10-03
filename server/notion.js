@@ -157,6 +157,10 @@ export function toNotionProperties(schema, values) {
   return out;
 }
 
+export async function updatePage(pageId, properties) {
+  await call(`/pages/${pageId}`, { method: "PATCH", body: { properties } });
+}
+
 export async function createPage(area, properties) {
   const page = await call("/pages", {
     method: "POST",

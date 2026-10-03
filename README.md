@@ -1,15 +1,16 @@
 # Hanua
 
-A personal "library" dashboard. Each area of your life (Finances, Work, Calendar, …) is a book on a shelf.
-Click a spine and the book slides off the shelf, turns to face you and opens. The left page has stats and an
-"Ask this book" box. The right page lists your entries.
+A personal daily dashboard that looks like a room.
 
-- **Data** comes from your Notion databases, one database per book.
-- **Claude** answers questions about a book (or the whole library) and files quick notes into the right database ("Feed").
-- A **Tree** view shows the same areas as a radial skill tree. Its nodes open the same books.
+- **Bookcase (left):** your menu. Each book is a Notion database you can open to read and ask about. Money opens your Pūtea spending.
+- **The wall:** this month's spending from Pūtea on a wall-mounted screen, a real wall calendar with upcoming events, and sticky notes (recent learnings, people you haven't caught up with, blocked work).
+- **The table (scroll down):** today's checklist (tick tasks off and they're marked Done in Notion), today's agenda with a "now" line, and this week's spending against your usual week.
+- **Claude** answers questions from the wall or inside any book, and the Feed bar files a quick note into the right Notion database after you confirm it.
 
-![Shelf](docs/shelf.png)
-![Open book](docs/open-book.png)
+Money comes from [Pūtea](https://github.com/merlanomagah/putea), which syncs your bank accounts through Akahu. Keep Pūtea running and Hanua reads its local API; without it, Hanua shows sample spending.
+
+![The wall](docs/wall.png)
+![The table](docs/table.png)
 
 It runs with sample data straight away, so you can try it before connecting anything.
 

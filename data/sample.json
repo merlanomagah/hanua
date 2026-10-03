@@ -1,6 +1,16 @@
 {
   "work": [
     {
+      "title": "Send client deck v2",
+      "date": "2026-10-03",
+      "status": "In progress"
+    },
+    {
+      "title": "Reply to Priya's budget email",
+      "date": "2026-10-03",
+      "status": "Not started"
+    },
+    {
       "title": "Q4 roadmap draft",
       "date": "2026-10-06",
       "status": "In progress"
@@ -11,20 +21,35 @@
       "status": "Not started"
     },
     {
+      "title": "Budget sign-off",
+      "date": "2026-10-02",
+      "status": "Blocked"
+    },
+    {
       "title": "Hiring loop feedback",
       "date": "2026-10-03",
       "status": "Done"
-    },
-    {
-      "title": "Budget sign-off",
-      "date": "2026-10-10",
-      "status": "Blocked"
     }
   ],
   "calendar": [
     {
+      "title": "Stand-up",
+      "date": "2026-10-03T08:30",
+      "status": "Work"
+    },
+    {
+      "title": "Client review",
+      "date": "2026-10-03T13:00",
+      "status": "Work"
+    },
+    {
+      "title": "Run with Sam",
+      "date": "2026-10-03T17:30",
+      "status": "Personal"
+    },
+    {
       "title": "Dentist",
-      "date": "2026-10-05",
+      "date": "2026-10-05T10:00",
       "status": "Personal"
     },
     {
@@ -36,6 +61,11 @@
       "title": "Mum's birthday",
       "date": "2026-10-14",
       "status": "Family"
+    },
+    {
+      "title": "Flights to Brussels",
+      "date": "2026-10-27",
+      "status": "Personal"
     }
   ],
   "health": [
@@ -60,13 +90,23 @@
   ],
   "learning": [
     {
-      "title": "Notion API",
+      "title": "Lead with the decision, then the context",
+      "date": "2026-10-02",
+      "status": "Done"
+    },
+    {
+      "title": "Notion API: databases vs data sources",
       "date": "2026-10-01",
       "status": "In progress"
     },
     {
       "title": "Te reo Māori lesson 4",
       "date": "2026-09-29",
+      "status": "Done"
+    },
+    {
+      "title": "Ask 'what would make this easy?' before planning",
+      "date": "2026-09-26",
       "status": "Done"
     }
   ],

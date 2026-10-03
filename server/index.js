@@ -4,8 +4,9 @@ import Anthropic from "@anthropic-ai/sdk";
 import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
-import { notionEnabled, queryArea, getSchema, toNotionProperties, createPage, NotionError } from "./notion.js";
+import { notionEnabled, queryArea, getSchema, toNotionProperties, createPage, updatePage, NotionError } from "./notion.js";
 import { claudeEnabled, ask, draftEntry } from "./claude.js";
+import { getMoney } from "./money.js";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const config = JSON.parse(await readFile(path.join(root, "config/areas.json"), "utf8"));
@@ -18,9 +19,22 @@ const findArea = (id) => config.areas.find((a) => a.id === id);
 const cache = new Map();
 const CACHE_MS = 60_000;
 
+// Sample data is written around 3 Oct 2026; shift it so the daily view always looks like today.
+const SAMPLE_ANCHOR = new Date(2026, 9, 3);
+function shiftDate(value) {
+  if (!value) return value;
+  const today = new Date();
+  const offset = Math.round((new Date(today.getFullYear(), today.getMonth(), today.getDate()) - SAMPLE_ANCHOR) / 86_400_000);
+  const [day, time] = value.split("T");
+  const [y, m, d] = day.split("-").map(Number);
+  const shifted = new Date(y, m - 1, d + offset);
+  const out = `${shifted.getFullYear()}-${String(shifted.getMonth() + 1).padStart(2, "0")}-${String(shifted.getDate()).padStart(2, "0")}`;
+  return time ? `${out}T${time}` : out;
+}
+
 async function recordsFor(area, { fresh = false } = {}) {
   if (!isLive(area)) {
-    return (sample[area.id] || []).map((r, i) => ({ id: `sample-${area.id}-${i}`, url: null, fields: {}, ...r }));
+    return (sample[area.id] || []).map((r, i) => ({ id: `sample-${area.id}-${i}`, url: null, fields: {}, ...r, date: shiftDate(r.date) }));
   }
   const hit = cache.get(area.id);
   if (!fresh && hit && Date.now() - hit.at < CACHE_MS) return hit.records;
@@ -61,6 +75,31 @@ app.get("/api/areas/:id", async (req, res, next) => {
   if (!area) return res.status(404).json({ error: "Unknown area" });
   try {
     res.json({ records: await recordsFor(area, { fresh: true }), live: isLive(area) });
+  } catch (err) {
+    next(err);
+  }
+});
+
+app.get("/api/money", async (_req, res, next) => {
+  try {
+    res.json(await getMoney());
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Tick a task off: sets the area's status column to "Done" in Notion.
+app.post("/api/areas/:id/records/:recordId/done", async (req, res, next) => {
+  const area = findArea(req.params.id);
+  if (!area || !isLive(area)) return res.json({ ok: true, live: false }); // sample data: ticked in the browser only
+  const statusField = area.fields?.status;
+  if (!statusField) return res.status(400).json({ error: `${area.label} has no status column set in config/areas.json.` });
+  try {
+    const schema = await getSchema(area);
+    const value = req.body?.done === false ? "Not started" : "Done";
+    await updatePage(req.params.recordId, toNotionProperties(schema, [{ name: statusField, value }]));
+    cache.delete(area.id);
+    res.json({ ok: true, live: true });
   } catch (err) {
     next(err);
   }
