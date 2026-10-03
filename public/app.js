@@ -1,4 +1,4 @@
-import { GUIDE, WIP_LIMIT, coachChecks } from "./coach.js";
+import { GUIDE, WIP_LIMIT, SIZES, SIZE_QUESTIONS, coachChecks, suggestSize } from "./coach.js";
 
 const $ = (id) => document.getElementById(id);
 const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -1053,6 +1053,7 @@ async function moveGoal(g, status, undoing = false) {
     if (res.live) state.goals = await api("/api/goals");
     else { if (completed !== undefined) g.completed = completed || null; recalcSample(); }
     renderBoard();
+    if (status === "Done" && !undoing) askFelt(goalById(g.id) || g);
     const active = state.goals.goals.filter((x) => x.level === g.level && x.status === "Active").length;
     const wip = status === "Active" && active > WIP_LIMIT ? ` That's ${active} active, over your limit of ${WIP_LIMIT}.` : "";
     if (!undoing) toast(`“${g.title}” moved to ${status}${res.live ? "" : " (sample, not saved to Notion)"}.${wip}`, Boolean(wip), { label: "Undo", run: () => moveGoal(goalById(g.id) || g, before, true) });
@@ -1130,6 +1131,7 @@ function openGoal(g, preset = {}) {
   f.doneWhen.value = v.doneWhen || "";
   ideasFor = null;
   $("coach-parent").dataset.for = "";
+  sz = { work: null, unknown: 0, waiting: 0 };
   // a goal with children has its progress worked out from them
   const kids = g?.children?.length || 0;
   $("progress-field").hidden = kids > 0;
@@ -1167,6 +1169,8 @@ function updateCoach() {
   $("done-label").textContent = guide.doneLabel;
   f.doneWhen.placeholder = guide.done;
   renderCoachParent(v);
+  renderSizePick(v);
+  renderSizer(v);
   $("coach-level").textContent = `${v.level} · ${guide.when}`;
   $("coach-what").textContent = guide.what;
   $("coach-eg").textContent = `e.g. ${guide.example}`;
@@ -1186,6 +1190,96 @@ $("coach-template").addEventListener("click", () => {
   (f.level.value !== "Task" && f.why.value === "So that " ? f.why : f.doneWhen).focus();
   updateCoach();
 });
+
+// ---- effort points: a size picker, three questions, and your own finished goals as the reference ----
+const sized = (level) => level === "Task" || level === "PBI";
+const leafGoals = () => state.goals.goals.filter((g) => !(g.children?.length));
+let sz = { work: null, unknown: 0, waiting: 0 };
+
+function renderSizePick(v) {
+  const f = $("goal-form").elements;
+  const pick = $("size-pick");
+  const kids = editingGoal?.children?.length || 0;
+  const direct = sized(v.level) && !kids;
+  pick.hidden = !direct;
+  $("size-total").hidden = direct;
+  if (!direct) {
+    const total = editingGoal?.effortTotal;
+    $("size-total").textContent = total
+      ? `${total} points, added up from what's underneath. Epics and Features aren't sized directly.`
+      : `Worked out from its ${LEVELS[levelIndex(v.level) + 1]?.plural || "children"} once you size those. Bigger goals are too uncertain to size well, so they add up from the pieces.`;
+    $("size-feel").textContent = "";
+    return;
+  }
+  const current = Number(f.effort.value) || null;
+  $("size-feel").textContent = current ? `· ${SIZES.find((x) => x.pts === current)?.feel || ""}` : "";
+  pick.replaceChildren(...SIZES.map((x) => {
+    const b = h("button", { type: "button", className: `size-btn${current === x.pts ? " on" : ""}${x.pts === 13 ? " warn" : ""}`, textContent: x.pts, title: x.feel });
+    b.setAttribute("role", "radio");
+    b.setAttribute("aria-checked", String(current === x.pts));
+    b.addEventListener("click", () => { f.effort.value = current === x.pts ? "" : x.pts; updateCoach(); });
+    return b;
+  }));
+}
+
+function renderSizer(v) {
+  const box = $("sizer");
+  box.hidden = !sized(v.level) || (editingGoal?.children?.length || 0) > 0;
+  if (box.hidden) return;
+  const f = $("goal-form").elements;
+  $("sizer-qs").replaceChildren(...Object.entries(SIZE_QUESTIONS).map(([key, q]) =>
+    h("div", { className: "sizer-q" }, h("span", { textContent: q.label }),
+      h("div", { className: "seg mini" }, q.options.map((o, i) => {
+        const b = h("button", { type: "button", textContent: o });
+        b.setAttribute("aria-selected", String(sz[key] === i && (key !== "work" || sz.work !== null)));
+        b.addEventListener("click", () => { sz[key] = i; updateCoach(); });
+        return b;
+      })))));
+  const s = suggestSize(sz);
+  const out = $("sizer-out");
+  if (s) {
+    const use = h("button", { type: "button", className: "g-act", textContent: `Use ${s.pts}` });
+    use.addEventListener("click", () => { f.effort.value = s.pts; updateCoach(); });
+    out.replaceChildren(...[h("b", { textContent: `Suggested: ${s.pts}` }), ` (${s.why})`, s.pts === 13 ? h("span", { className: "late", textContent: ". Too big: split it." }) : null, " ", s.pts < 13 ? use : null].filter((x) => x != null));
+  } else out.textContent = "Answer the first question for a suggestion.";
+  // the reference point: what you've actually finished at this size, and how it felt
+  const size = Number(f.effort.value) || s?.pts;
+  const mine = size ? leafGoals().filter((g) => isGoalDone(g) && Number(g.effort) === size).sort((a, b) => (b.completed || "").localeCompare(a.completed || "")) : [];
+  const felt = mine.filter((g) => g.felt);
+  const bigger = felt.filter((g) => g.felt === "Bigger").length, smaller = felt.filter((g) => g.felt === "Smaller").length;
+  const starter = SIZES.find((x) => x.pts === size);
+  $("sizer-refs").replaceChildren(...(size ? [
+    h("span", { className: "cp-label", textContent: mine.length ? `Your ${size}s so far` : `A ${size} looks like` }),
+    mine.length
+      ? h("ul", { className: "cp-points" }, mine.slice(0, 3).map((g) => h("li", {}, g.title, g.felt && g.felt !== "About right" ? h("em", { textContent: ` (felt ${g.felt.toLowerCase()})` }) : null)))
+      : h("p", { className: "cp-hint", textContent: starter?.eg ? `${starter.feel}: ${starter.eg}` : starter?.feel || "" }),
+    felt.length >= 3 && bigger > felt.length / 2 ? h("p", { className: "sizer-cal", textContent: `${bigger} of your ${felt.length} finished ${size}s felt bigger. You may be sizing low: try the next size up.` }) : null,
+    felt.length >= 3 && smaller > felt.length / 2 ? h("p", { className: "sizer-cal", textContent: `${smaller} of your ${felt.length} finished ${size}s felt smaller. You may be sizing high.` }) : null,
+  ] : []).filter(Boolean));
+}
+
+// After a sized Task or PBI is done: how big did it really feel? That answer is the reference point.
+let feltGoal = null;
+function askFelt(g) {
+  if (!g || !sized(g.level) || !g.effort || g.children?.length) return;
+  feltGoal = g;
+  $("felt-title").textContent = `How big did “${g.title}” really feel?`;
+  $("felt-note").textContent = `You sized it at ${g.effort} point${g.effort > 1 ? "s" : ""} (${SIZES.find((x) => x.pts === Number(g.effort))?.feel.toLowerCase() || "your guess"}). Your answer teaches your future guesses.`;
+  $("felt-dialog").showModal();
+}
+document.querySelectorAll("[data-felt]").forEach((b) => b.addEventListener("click", async () => {
+  const g = feltGoal;
+  const felt = b.dataset.felt;
+  $("felt-dialog").close();
+  if (!g) return;
+  try {
+    const res = await api(`/api/goals/${g.id}`, { values: { felt } });
+    if (res.live) state.goals = await api("/api/goals");
+    else g.felt = felt;
+    toast(felt === "About right" ? "Nice estimate ✓" : `Noted: felt ${felt.toLowerCase()}. Next time you'll know.`);
+  } catch (err) { toast(err.message, true); }
+}));
+$("felt-skip").addEventListener("click", () => $("felt-dialog").close());
 
 // "From the Epic": the parent's why and done-when beside the form, plus the children it already has,
 // so each child is planned against what the parent needs. Ideas from Claude fill gaps.
@@ -1309,6 +1403,7 @@ $("goal-dialog").addEventListener("close", async () => {
       toast("Saved here only (sample goals, so Notion isn't changed)");
     }
     renderBoard();
+    if (g && values.status === "Done" && !wasDone) askFelt(goalById(g.id));
   } catch (err) {
     toast(err.message, true);
   }
@@ -1327,6 +1422,27 @@ const mondayOf = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate() - ((
 const sundayOf = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + ((7 - d.getDay()) % 7));
 
 let rv = null;
+
+// Pace (velocity) and calibration, from finished goals without children (so nothing counts twice).
+const pointsOf = (list) => list.reduce((n, g) => n + (Number(g.effort) || 0), 0);
+function pace() {
+  const today = todayStr();
+  const done = leafGoals().filter((g) => isGoalDone(g) && g.completed && Number(g.effort));
+  const recent = done.filter((g) => daysBetween(g.completed, today) <= 28);
+  const oldest = recent.reduce((m, g) => Math.max(m, daysBetween(g.completed, today)), 0);
+  if (oldest < 14) return null; // a couple of weeks before an average means anything
+  return Math.round((pointsOf(recent) / Math.max(2, Math.ceil(oldest / 7))) * 10) / 10;
+}
+function calibration() {
+  const felt = leafGoals().filter((g) => g.felt).sort((a, b) => (b.completed || "").localeCompare(a.completed || "")).slice(0, 20);
+  if (felt.length < 3) return null;
+  const n = (k) => felt.filter((g) => g.felt === k).length;
+  const bigger = n("Bigger"), smaller = n("Smaller"), right = n("About right");
+  if (bigger - smaller >= 2 && bigger >= right) return `${bigger} of your last ${felt.length} sized goals felt bigger than you guessed. Try sizing up a step.`;
+  if (smaller - bigger >= 2 && smaller >= right) return `${smaller} of your last ${felt.length} felt smaller than you guessed. You can size a little lower.`;
+  if (right >= felt.length / 2) return `${right} of your last ${felt.length} felt about right. Your sense of size is settling in.`;
+  return `Mixed so far (${right} about right, ${bigger} bigger, ${smaller} smaller). Keep noting how they feel: the pattern shows after a few weeks.`;
+}
 const RV_STEPS = [
   { key: "wins", name: "Wins", title: "What got done?", prompt: "Anything else worth celebrating? Small wins count." },
   { key: "stuck", name: "Stuck", title: "What's stuck or at risk?", prompt: "What's stuck, why, and what would unstick it?" },
@@ -1365,12 +1481,16 @@ function renderReview() {
       b.addEventListener("click", () => { rv.energy = rv.energy === e ? "" : e; renderReview(); });
       return b;
     }));
+    const pts = pointsOf(doneSince.filter((g) => !(g.children?.length)));
+    const cal = calibration();
     top = [
       doneSince.length
-        ? h("ul", { className: "rv-list" }, doneSince.map((g) => goalLine(g, fmtDay(g.completed, { weekday: "short" }))))
+        ? h("ul", { className: "rv-list" }, doneSince.map((g) => goalLine(g, [g.effort && !(g.children?.length) ? `${g.effort} pts` : null, fmtDay(g.completed, { weekday: "short" })].filter(Boolean).join(" · "))))
         : h("p", { className: "rv-empty", textContent: `Nothing marked Done since ${fmtDay(rv.since, { weekday: "long", day: "numeric", month: "short" })}. That's okay: note what moved, even a little.` }),
+      pts ? h("p", { className: "rv-pace", textContent: `That's ${pts} point${pts > 1 ? "s" : ""} finished.${pace() ? ` Your usual is about ${pace()} a week.` : ""}` }) : null,
+      cal ? h("p", { className: "rv-hint", textContent: cal }) : null,
       h("div", { className: "rv-row" }, h("span", { className: "rv-label", textContent: "Energy this week" }), pick),
-    ];
+    ].filter(Boolean);
   } else if (step.key === "stuck") {
     const risk = open.filter((g) => /at risk/i.test(g.status || ""));
     const late = open.filter((g) => g.due && dayOf(g.due) < today && !risk.includes(g));
@@ -1404,8 +1524,18 @@ function renderReview() {
         renderReview();
       } catch (err) { toast(err.message, true); add.disabled = false; }
     });
+    // planned this week vs your usual pace: the check that stops overcommitting
+    const weekEnd = ymd(new Date(Date.now() + 7 * 86_400_000));
+    const planned = tasks.filter((g) => !(g.children?.length) && (g.status === "Active" || (g.due && dayOf(g.due) <= weekEnd)));
+    const plannedPts = pointsOf(planned), unsized = planned.filter((g) => !Number(g.effort)).length, usual = pace();
+    const heavy = usual && plannedPts > usual * 1.25;
     top = [
-      tasks.length ? h("ul", { className: "rv-list" }, tasks.map((g) => goalLine(g, g.due ? fmtDay(g.due, { weekday: "short", day: "numeric" }) : g.status))) : h("p", { className: "rv-empty", textContent: "No open tasks yet. Pick a few from this month's PBIs." }),
+      tasks.length ? h("ul", { className: "rv-list" }, tasks.map((g) => goalLine(g, [g.effort ? `${g.effort} pts` : null, g.due ? fmtDay(g.due, { weekday: "short", day: "numeric" }) : g.status].filter(Boolean).join(" · ")))) : h("p", { className: "rv-empty", textContent: "No open tasks yet. Pick a few from this month's PBIs." }),
+      h("p", { className: `rv-pace${heavy ? " heavy" : ""}`, textContent: [
+        `Planned for the next 7 days: ${plannedPts} point${plannedPts === 1 ? "" : "s"}${unsized ? ` (${unsized} not sized yet)` : ""}.`,
+        usual ? ` Your usual is about ${usual} a week.` : " Your usual pace will show after a couple of weeks of sized, finished tasks.",
+        heavy ? " That's more than usual: consider moving something out." : "",
+      ].join("") }),
       h("div", { className: "rv-add" }, title, parent, add),
     ];
   } else {
@@ -1432,6 +1562,7 @@ $("rv-next").addEventListener("click", async () => {
     stuck: clip(rv.stuck.trim()), wip: clip(rv.wip.trim()), weekGoal: clip(rv.weekGoal.trim()), tryNext: clip(rv.tryNext.trim()),
     done: doneSince.length, active: goals.filter((g) => g.status === "Active").length,
     atRisk: goals.filter((g) => !isGoalDone(g) && /at risk/i.test(g.status || "")).length, energy: rv.energy,
+    points: pointsOf(doneSince.filter((g) => !(g.children?.length))),
   };
   $("rv-next").disabled = true;
   try {

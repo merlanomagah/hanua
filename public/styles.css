@@ -845,6 +845,42 @@ button:disabled { opacity: 0.5; cursor: progress; }
 .coach-suggest pre { margin: 0; white-space: pre-wrap; font: 12px/1.45 var(--ui); color: var(--ink-3); }
 .coach-suggest .g-act { justify-self: start; }
 .coach-small { margin: 8px 0 0; font: 11px var(--ui); color: var(--faint); }
+/* effort points: size picker and the three-question sizer */
+.size-field { display: grid; gap: 6px; }
+.field-label { font: 10px var(--mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+.field-label span { text-transform: none; letter-spacing: 0; font: italic 15px var(--display); color: var(--ink-3); }
+.size-pick { display: flex; flex-wrap: wrap; gap: 6px; }
+.size-btn {
+  min-width: 44px; height: 40px; padding: 0 10px; border: 1px solid var(--border); border-radius: 3px; background: transparent; cursor: pointer;
+  font: 500 15px var(--mono); color: var(--ink-3); transition: background 150ms, color 150ms, border-color 150ms;
+}
+.size-btn:hover { border-color: var(--ink); color: var(--ink); }
+.size-btn.on { background: var(--ink); border-color: var(--ink); color: var(--page); }
+.size-btn.warn { color: var(--terra-hover); }
+.size-btn.warn.on { background: var(--terra-hover); border-color: var(--terra-hover); color: var(--cream); }
+.size-total { margin: 0; font: italic 16px/1.35 var(--display); color: var(--muted); }
+.sizer { display: flex; flex-direction: column; gap: 8px; margin-top: 6px; padding-top: 10px; border-top: 1px solid var(--hair); }
+.sizer-q { display: grid; gap: 4px; }
+.sizer-q > span { font: 12px var(--ui); color: var(--ink-3); }
+.seg.mini { flex-wrap: wrap; background: var(--cream); }
+.seg.mini button { height: 28px; padding: 0 8px; font-size: 9px; letter-spacing: 0.08em; }
+.sizer-out { margin: 2px 0 0; font: 13px/1.5 var(--ui); color: var(--ink-3); }
+.sizer-out b { color: var(--ink); }
+.sizer-out .g-act { margin-left: 4px; }
+.sizer-cal { margin: 4px 0 0; padding: 6px 8px; border-left: 3px solid var(--terra-soft); background: var(--cream); font: 12px/1.4 var(--ui); color: var(--ink-3); }
+.cp-points em { color: var(--muted); }
+.rv-pace { margin: 0; padding: 8px 10px; border-left: 3px solid var(--green-mid); background: var(--page); font: 13px/1.45 var(--ui); color: var(--ink-3); }
+.rv-pace.heavy { border-left-color: var(--terra); }
+/* how big did it feel? */
+.felt-dialog { width: min(420px, calc(100% - 32px)); text-align: center; }
+.felt-dialog .eyebrow { font-size: 10px; color: var(--green); }
+.felt-dialog h3 { margin: 6px 0 4px; font-size: 28px; }
+.felt-btns { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 16px; }
+.felt-btns button { height: 48px; border: 1px solid var(--border); border-radius: 3px; background: transparent; cursor: pointer; font: 11px var(--mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-2); }
+.felt-btns button:hover { background: var(--ink); color: var(--page); border-color: var(--ink); }
+.felt-btns button[data-felt="About right"] { border-color: var(--green-mid); }
+.felt-skip { margin-top: 12px; border: 0; background: none; cursor: pointer; font: 10px var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--faint); }
+
 /* "From the Epic": the parent's why and done-when, shown while planning a child */
 .coach-parent { display: flex; flex-direction: column; gap: 6px; margin: -16px -16px 8px; padding: 14px 16px; border-bottom: 1px solid var(--hair); background: var(--cream); border-radius: 4px 4px 0 0; }
 .coach-parent .eyebrow { font-size: 9px; color: var(--muted); }

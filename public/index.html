@@ -296,7 +296,12 @@
         <label>Parent<select name="parent"></select></label>
         <label>State<select name="status"></select></label>
         <label>Priority<select name="priority"></select></label>
-        <label>Effort (points)<input name="effort" type="number" min="0" step="1" inputmode="numeric"></label>
+        <div class="wide size-field" id="size-field">
+          <span class="field-label">Effort (points) <span id="size-feel"></span></span>
+          <div class="size-pick" id="size-pick" role="radiogroup" aria-label="Effort points"></div>
+          <p class="size-total" id="size-total" hidden></p>
+          <input name="effort" type="hidden">
+        </div>
         <label>Area<select name="area"></select></label>
         <label>Start<input name="start" type="date"></label>
         <label>Due<input name="due" type="date"></label>
@@ -312,6 +317,13 @@
         <p class="coach-what" id="coach-what"></p>
         <p class="coach-eg" id="coach-eg"></p>
         <ul class="coach-checks" id="coach-checks" aria-live="polite"></ul>
+        <!-- sizing: three questions suggest a size; your own finished goals are the reference -->
+        <section class="sizer" id="sizer" hidden>
+          <span class="cp-label">Help me size it</span>
+          <div id="sizer-qs"></div>
+          <p class="sizer-out" id="sizer-out"></p>
+          <div class="sizer-refs" id="sizer-refs"></div>
+        </section>
         <div class="coach-actions">
           <button type="button" class="g-act" id="coach-template">Start the list</button>
           <button type="button" class="g-act" id="coach-ask">Ask Claude</button>
@@ -344,6 +356,19 @@
       <button type="button" class="ghost" id="rv-back">Back</button>
       <button type="button" id="rv-next">Next</button>
     </div>
+  </dialog>
+
+  <!-- after finishing a sized goal: how big did it really feel? Builds your reference point over time -->
+  <dialog id="felt-dialog" class="felt-dialog">
+    <span class="eyebrow">Done ✓</span>
+    <h3 id="felt-title"></h3>
+    <p class="draft-note" id="felt-note"></p>
+    <div class="felt-btns">
+      <button type="button" data-felt="Smaller">Smaller</button>
+      <button type="button" data-felt="About right">About right</button>
+      <button type="button" data-felt="Bigger">Bigger</button>
+    </div>
+    <button type="button" class="felt-skip" id="felt-skip">Skip</button>
   </dialog>
 
   <dialog id="draft-dialog">

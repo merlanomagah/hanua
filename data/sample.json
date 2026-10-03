@@ -247,7 +247,8 @@
           "sample-goal-3"
         ],
         "Effort": 2,
-        "Completed": "2026-10-10"
+        "Completed": "2026-10-10",
+        "Felt": "About right"
       }
     },
     {
@@ -293,7 +294,8 @@
           "sample-goal-5"
         ],
         "Effort": 1,
-        "Completed": "2026-10-03"
+        "Completed": "2026-10-03",
+        "Felt": "About right"
       }
     },
     {
@@ -325,7 +327,8 @@
           "sample-goal-8"
         ],
         "Effort": 1,
-        "Completed": "2026-10-06"
+        "Completed": "2026-10-06",
+        "Felt": "Bigger"
       }
     },
     {
@@ -353,6 +356,84 @@
         "Level": "Task",
         "Area": "Personal",
         "Priority": 1
+      }
+    },
+    {
+      "id": "sample-goal-h0",
+      "title": "Book the car service",
+      "date": "2026-09-14",
+      "status": "Done",
+      "fields": {
+        "Level": "Task",
+        "Area": "Personal",
+        "Effort": 1,
+        "Completed": "2026-09-14",
+        "Felt": "About right"
+      }
+    },
+    {
+      "id": "sample-goal-h1",
+      "title": "Sort the spare room cupboard",
+      "date": "2026-09-16",
+      "status": "Done",
+      "fields": {
+        "Level": "Task",
+        "Area": "Personal",
+        "Effort": 2,
+        "Completed": "2026-09-16",
+        "Felt": "Bigger"
+      }
+    },
+    {
+      "id": "sample-goal-h2",
+      "title": "Compare three phone plans",
+      "date": "2026-09-20",
+      "status": "Done",
+      "fields": {
+        "Level": "Task",
+        "Area": "Personal",
+        "Effort": 2,
+        "Completed": "2026-09-20",
+        "Felt": "About right"
+      }
+    },
+    {
+      "id": "sample-goal-h3",
+      "title": "Clean out the garage",
+      "date": "2026-09-22",
+      "status": "Done",
+      "fields": {
+        "Level": "Task",
+        "Area": "Personal",
+        "Effort": 3,
+        "Completed": "2026-09-22",
+        "Felt": "Bigger"
+      }
+    },
+    {
+      "id": "sample-goal-h4",
+      "title": "Email the landlord about the lease",
+      "date": "2026-09-24",
+      "status": "Done",
+      "fields": {
+        "Level": "Task",
+        "Area": "Personal",
+        "Effort": 1,
+        "Completed": "2026-09-24",
+        "Felt": "Smaller"
+      }
+    },
+    {
+      "id": "sample-goal-h5",
+      "title": "Fill in the visa checklist",
+      "date": "2026-09-29",
+      "status": "Done",
+      "fields": {
+        "Level": "Task",
+        "Area": "Personal",
+        "Effort": 3,
+        "Completed": "2026-09-29",
+        "Felt": "Bigger"
       }
     }
   ],

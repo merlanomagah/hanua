@@ -50,6 +50,33 @@ export const GUIDE = {
   },
 };
 
+// Effort points: relative size, not hours. The skipping scale is on purpose: the bigger something is,
+// the less precisely you can size it. Starter examples until you have finished goals of your own.
+export const SIZES = [
+  { pts: 1, feel: "An hour or two", eg: "Send an email · book an appointment" },
+  { pts: 2, feel: "Half a day", eg: "Sort a cupboard · fill in a form that needs documents" },
+  { pts: 3, feel: "A solid day", eg: "Clean out the garage · research and compare three options" },
+  { pts: 5, feel: "A few days, over a week or two", eg: "Get the apartment photos and listing ready" },
+  { pts: 8, feel: "A big chunk of a month", eg: "Find and sign up a property manager" },
+  { pts: 13, feel: "Too big to size well: split it", eg: "" },
+];
+const LADDER = SIZES.map((s) => s.pts);
+
+// The three things points blend: how much work, how much is unknown, how much depends on others.
+export const SIZE_QUESTIONS = {
+  work: { label: "How much work?", options: ["An hour", "Half a day", "A day", "A few days", "Weeks"] },
+  unknown: { label: "How much is unknown?", options: ["Nothing", "Some", "Lots"] },
+  waiting: { label: "Waiting on others?", options: ["No", "Yes"] },
+};
+export function suggestSize({ work, unknown = 0, waiting = 0 }) {
+  if (work == null) return null;
+  const step = Math.min(LADDER.length - 1, work + unknown + waiting);
+  const reasons = [SIZE_QUESTIONS.work.options[work].toLowerCase() + " of work"];
+  if (unknown) reasons.push(unknown === 2 ? "lots unknown" : "some unknowns");
+  if (waiting) reasons.push("waiting on others");
+  return { pts: LADDER[step], why: reasons.join(", ") };
+}
+
 // Personal Kanban's second rule: limit work in progress. Three is the usual starting point for one person.
 export const WIP_LIMIT = 3;
 
@@ -123,6 +150,9 @@ export function coachChecks(values, ctx = {}) {
       : { ok: false, text: `Due ${days} days away, which is long for a ${values.level}. Split it, or make it a level up` });
   }
 
+  if ((values.level === "Task" || values.level === "PBI") && !values.effort && !ctx.childCount) {
+    out.push({ ok: false, text: "Give it a size (use “Help me size it”). Sizing everything is how you learn your pace" });
+  }
   if (g.maxEffort && Number(values.effort) > g.maxEffort) {
     out.push({ ok: false, text: `${values.effort} points is big for a ${values.level}. Split it into smaller pieces that each work on their own` });
   }

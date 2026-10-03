@@ -85,7 +85,8 @@
       "start": "Start",
       "completed": "Completed",
       "why": "Why",
-      "doneWhen": "Done when"
+      "doneWhen": "Done when",
+      "felt": "Felt"
     },
     "guideUrl": "https://www.notion.so/3ee16603f0bd818bbe32c6cf887853b2"
   },
@@ -103,7 +104,8 @@
       "done": "Done",
       "active": "Active",
       "atRisk": "At risk",
-      "energy": "Energy"
+      "energy": "Energy",
+      "points": "Points"
     }
   }
 }

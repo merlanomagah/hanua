@@ -118,8 +118,8 @@ app.post("/api/areas/:id/records/:recordId/done", async (req, res, next) => {
 // ---------- goals (the pin board): an ADO-style hierarchy, Epic > Feature > PBI > Task ----------
 // Notion is their home. Each goal links to its Parent; progress rolls up from children here, never stored.
 
-const GOAL_FORM = ["title", "level", "status", "area", "due", "start", "why", "doneWhen", "description", "parent", "priority", "effort", "progress", "completed"];
-const goalColumn = { title: "title", level: "level", status: "status", area: "area", due: "date", start: "start", why: "why", doneWhen: "doneWhen", description: "description", parent: "parent", priority: "priority", effort: "effort", progress: "amount", completed: "completed" };
+const GOAL_FORM = ["title", "level", "status", "area", "due", "start", "why", "doneWhen", "description", "parent", "priority", "effort", "progress", "completed", "felt"];
+const goalColumn = { title: "title", level: "level", status: "status", area: "area", due: "date", start: "start", why: "why", doneWhen: "doneWhen", description: "description", parent: "parent", priority: "priority", effort: "effort", progress: "amount", completed: "completed", felt: "felt" };
 
 function toGoal(r) {
   const f = goalsArea.fields, v = r.fields || {};
@@ -127,7 +127,7 @@ function toGoal(r) {
   return {
     id: r.id, url: r.url, title: r.title, due: r.date, status: r.status,
     level: v[f.level] ?? null, area: v[f.area] ?? null, description: v[f.description] ?? "", why: v[f.why] ?? "", doneWhen: v[f.doneWhen] ?? "",
-    parent: first(v[f.parent]), priority: v[f.priority] ?? null, effort: v[f.effort] ?? null, start: v[f.start] ?? null, completed: v[f.completed] ?? null,
+    parent: first(v[f.parent]), priority: v[f.priority] ?? null, effort: v[f.effort] ?? null, start: v[f.start] ?? null, completed: v[f.completed] ?? null, felt: v[f.felt] ?? null,
     progressSet: typeof r.amount === "number" ? Math.round(r.amount * 100) : null,
   };
 }
@@ -231,7 +231,7 @@ app.post("/api/goals/:id", async (req, res, next) => {
 
 // ---------- weekly reviews: one Notion row per review, written from the goals board ----------
 
-const REVIEW_FORM = ["title", "date", "wins", "stuck", "wip", "weekGoal", "tryNext", "done", "active", "atRisk", "energy"];
+const REVIEW_FORM = ["title", "date", "wins", "stuck", "wip", "weekGoal", "tryNext", "done", "active", "atRisk", "energy", "points"];
 
 function toReview(r) {
   const f = reviewsArea.fields, v = r.fields || {};
