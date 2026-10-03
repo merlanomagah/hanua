@@ -53,6 +53,8 @@ function propValue(p) {
       return p.formula[p.formula.type] ?? null;
     case "people":
       return p.people.map((u) => u.name).filter(Boolean).join(", ");
+    case "relation":
+      return p.relation.map((r) => r.id);
     case "created_time":
     case "last_edited_time":
       return p[p.type];
@@ -152,7 +154,24 @@ export function toNotionProperties(schema, values) {
       case "phone_number":
         out[name] = { [def.type]: value };
         break;
+      case "relation":
+        out[name] = { relation: String(value).split(",").map((id) => ({ id: id.trim() })).filter((r) => r.id) };
+        break;
     }
+  }
+  return out;
+}
+
+// Empty values for columns the user deliberately cleared in a form.
+export function clearedProperties(schema, names) {
+  const out = {};
+  for (const name of names) {
+    const def = schema[name];
+    if (!def) continue;
+    if (def.type === "rich_text") out[name] = { rich_text: [] };
+    else if (def.type === "relation") out[name] = { relation: [] };
+    else if (["date", "number", "select", "status", "url", "email", "phone_number"].includes(def.type)) out[name] = { [def.type]: null };
+    else if (def.type === "multi_select") out[name] = { multi_select: [] };
   }
   return out;
 }

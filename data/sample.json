@@ -129,84 +129,224 @@
   ],
   "goals": [
     {
-      "title": "Ship the Q4 roadmap",
-      "date": "2026-10-09",
-      "status": "On track",
-      "amount": 0.6,
-      "fields": {
-        "Timeframe": "Week",
-        "Area": "Work",
-        "Notes": "Draft done, needs Priya's review"
-      }
-    },
-    {
-      "title": "Three runs this week",
-      "date": "2026-10-04",
-      "status": "At risk",
-      "amount": 0.33,
-      "fields": {
-        "Timeframe": "Week",
-        "Area": "Health"
-      }
-    },
-    {
-      "title": "Spend under $2,000 in October",
-      "date": "2026-10-31",
-      "status": "On track",
-      "amount": 0.45,
-      "fields": {
-        "Timeframe": "Month",
-        "Area": "Money"
-      }
-    },
-    {
-      "title": "Finish te reo Māori level 1",
-      "date": "2026-10-30",
-      "status": "On track",
-      "amount": 0.4,
-      "fields": {
-        "Timeframe": "Month",
-        "Area": "Learning"
-      }
-    },
-    {
-      "title": "Catch up with Aunty Lani",
-      "date": "2026-10-18",
-      "status": "Not started",
-      "amount": 0,
-      "fields": {
-        "Timeframe": "Month",
-        "Area": "People"
-      }
-    },
-    {
-      "title": "Launch Bula Collective's first range",
+      "id": "sample-goal-0",
+      "title": "Launch Bula Collective",
       "date": "2026-12-15",
-      "status": "On track",
-      "amount": 0.25,
+      "status": "Active",
+      "amount": null,
       "fields": {
-        "Timeframe": "Quarter",
-        "Area": "Personal"
+        "Level": "Epic",
+        "Area": "Personal",
+        "Priority": 1,
+        "Description": "First range on sale before Christmas"
       }
     },
     {
-      "title": "Run a half marathon",
+      "id": "sample-goal-1",
+      "title": "Get fit for a half marathon",
       "date": "2027-05-01",
-      "status": "Not started",
-      "amount": 0.1,
+      "status": "Active",
+      "amount": null,
       "fields": {
-        "Timeframe": "Year",
-        "Area": "Health"
+        "Level": "Epic",
+        "Area": "Health",
+        "Priority": 2
       }
     },
     {
-      "title": "Read 12 books",
-      "date": "2026-12-31",
-      "status": "Done",
-      "amount": 1,
+      "id": "sample-goal-2",
+      "title": "First product range",
+      "date": "2026-11-30",
+      "status": "Active",
+      "amount": null,
       "fields": {
-        "Timeframe": "Year",
-        "Area": "Learning"
+        "Level": "Feature",
+        "Area": "Personal",
+        "Parent": [
+          "sample-goal-0"
+        ],
+        "Priority": 1
+      }
+    },
+    {
+      "id": "sample-goal-3",
+      "title": "Online shop live",
+      "date": "2026-12-10",
+      "status": "New",
+      "amount": null,
+      "fields": {
+        "Level": "Feature",
+        "Area": "Personal",
+        "Parent": [
+          "sample-goal-0"
+        ],
+        "Priority": 2
+      }
+    },
+    {
+      "id": "sample-goal-4",
+      "title": "Run 10 km without stopping",
+      "date": "2026-12-20",
+      "status": "At risk",
+      "amount": null,
+      "fields": {
+        "Level": "Feature",
+        "Area": "Health",
+        "Parent": [
+          "sample-goal-1"
+        ],
+        "Priority": 2
+      }
+    },
+    {
+      "id": "sample-goal-5",
+      "title": "Finalise three designs",
+      "date": "2026-10-24",
+      "status": "Active",
+      "amount": null,
+      "fields": {
+        "Level": "PBI",
+        "Area": "Personal",
+        "Parent": [
+          "sample-goal-2"
+        ],
+        "Priority": 1,
+        "Effort": 5,
+        "Start": "2026-10-01"
+      }
+    },
+    {
+      "id": "sample-goal-6",
+      "title": "Order samples from supplier",
+      "date": "2026-10-31",
+      "status": "New",
+      "amount": null,
+      "fields": {
+        "Level": "PBI",
+        "Area": "Personal",
+        "Parent": [
+          "sample-goal-2"
+        ],
+        "Priority": 2,
+        "Effort": 3
+      }
+    },
+    {
+      "id": "sample-goal-7",
+      "title": "Pick a shop platform",
+      "date": "2026-10-10",
+      "status": "Done",
+      "amount": null,
+      "fields": {
+        "Level": "PBI",
+        "Area": "Personal",
+        "Parent": [
+          "sample-goal-3"
+        ],
+        "Effort": 2
+      }
+    },
+    {
+      "id": "sample-goal-8",
+      "title": "Three runs a week in October",
+      "date": "2026-10-31",
+      "status": "At risk",
+      "amount": null,
+      "fields": {
+        "Level": "PBI",
+        "Area": "Health",
+        "Parent": [
+          "sample-goal-4"
+        ],
+        "Effort": 3
+      }
+    },
+    {
+      "id": "sample-goal-9",
+      "title": "Sketch pattern for design 3",
+      "date": "2026-10-07",
+      "status": "Active",
+      "amount": null,
+      "fields": {
+        "Level": "Task",
+        "Area": "Personal",
+        "Parent": [
+          "sample-goal-5"
+        ],
+        "Effort": 2
+      }
+    },
+    {
+      "id": "sample-goal-10",
+      "title": "Colour test prints",
+      "date": "2026-10-03",
+      "status": "Done",
+      "amount": null,
+      "fields": {
+        "Level": "Task",
+        "Area": "Personal",
+        "Parent": [
+          "sample-goal-5"
+        ],
+        "Effort": 1
+      }
+    },
+    {
+      "id": "sample-goal-11",
+      "title": "Email supplier for quotes",
+      "date": "2026-10-09",
+      "status": "New",
+      "amount": null,
+      "fields": {
+        "Level": "Task",
+        "Area": "Personal",
+        "Parent": [
+          "sample-goal-6"
+        ],
+        "Priority": 1,
+        "Effort": 1
+      }
+    },
+    {
+      "id": "sample-goal-12",
+      "title": "Run Tuesday 5 km",
+      "date": "2026-10-06",
+      "status": "Done",
+      "amount": null,
+      "fields": {
+        "Level": "Task",
+        "Area": "Health",
+        "Parent": [
+          "sample-goal-8"
+        ],
+        "Effort": 1
+      }
+    },
+    {
+      "id": "sample-goal-13",
+      "title": "Run Thursday 5 km",
+      "date": "2026-10-08",
+      "status": "New",
+      "amount": null,
+      "fields": {
+        "Level": "Task",
+        "Area": "Health",
+        "Parent": [
+          "sample-goal-8"
+        ],
+        "Effort": 1
+      }
+    },
+    {
+      "id": "sample-goal-14",
+      "title": "Complete flat rental walkthrough",
+      "date": "2026-10-09",
+      "status": "Active",
+      "amount": null,
+      "fields": {
+        "Level": "Task",
+        "Area": "Personal",
+        "Priority": 1
       }
     }
   ]

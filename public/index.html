@@ -41,17 +41,29 @@
         <!-- Swipe right (or the Goals tab) to slide the wall aside and show the pin board -->
         <div class="board-pane" id="board-pane" aria-label="Goals" inert>
           <div class="board-head">
-            <div>
-              <span class="eyebrow">Pin board</span>
+            <div class="board-title">
               <h2>Goals</h2>
               <p class="board-sub" id="board-sub"></p>
             </div>
-            <div class="board-actions">
-              <button type="button" class="b-btn" id="goal-add">+ Add a goal</button>
-              <a class="b-link" id="goals-notion" target="_blank" rel="noopener" hidden>Open in Notion ↗</a>
+            <div class="board-tools">
+              <div class="seg" role="tablist" aria-label="Board view">
+                <button type="button" role="tab" data-view="tree" aria-selected="true">Hierarchy</button>
+                <button type="button" role="tab" data-view="kanban" aria-selected="false">Board</button>
+              </div>
+              <div class="seg" id="level-seg" role="tablist" aria-label="Level" hidden>
+                <button type="button" role="tab" data-level="Epic">Epics</button>
+                <button type="button" role="tab" data-level="Feature">Features</button>
+                <button type="button" role="tab" data-level="PBI">PBIs</button>
+                <button type="button" role="tab" data-level="Task">Tasks</button>
+              </div>
+              <button type="button" class="b-btn" id="goal-add">+ New Epic</button>
+              <a class="b-link" id="goals-notion" target="_blank" rel="noopener" hidden>Notion ↗</a>
             </div>
           </div>
-          <div class="cork" id="cork"></div>
+          <div class="cork" id="cork">
+            <svg class="threads" id="threads" aria-hidden="true"></svg>
+            <div class="cork-cols" id="cork-cols"></div>
+          </div>
           <button type="button" class="edge-tab right" id="to-wall"><span>WALL</span><span aria-hidden="true">‹</span></button>
         </div>
 
@@ -274,13 +286,18 @@
       <h3 id="goal-heading">Edit goal</h3>
       <p class="draft-note" id="goal-note">Nothing changes in Notion until you press Save.</p>
       <div class="goal-fields">
-        <label class="wide">Goal<input name="title" required autocomplete="off"></label>
-        <label>Timeframe<select name="timeframe"></select></label>
-        <label>Status<select name="status"></select></label>
-        <label class="wide">Progress <output name="progressOut"></output><input name="progress" type="range" min="0" max="100" step="5"></label>
-        <label>Due<input name="due" type="date"></label>
+        <label class="wide">Title<input name="title" required autocomplete="off"></label>
+        <label>Level<select name="level"></select></label>
+        <label>Parent<select name="parent"></select></label>
+        <label>State<select name="status"></select></label>
+        <label>Priority<select name="priority"></select></label>
+        <label>Effort (points)<input name="effort" type="number" min="0" step="1" inputmode="numeric"></label>
         <label>Area<select name="area"></select></label>
-        <label class="wide">Notes<textarea name="notes" rows="2"></textarea></label>
+        <label>Start<input name="start" type="date"></label>
+        <label>Due<input name="due" type="date"></label>
+        <label class="wide" id="progress-field">Progress <output name="progressOut"></output><input name="progress" type="range" min="0" max="100" step="5"></label>
+        <p class="wide rolled" id="progress-rolled" hidden></p>
+        <label class="wide">Description / acceptance criteria<textarea name="description" rows="4"></textarea></label>
       </div>
       <div class="dialog-actions">
         <a class="b-link" id="goal-open" target="_blank" rel="noopener" hidden>Open in Notion ↗</a>

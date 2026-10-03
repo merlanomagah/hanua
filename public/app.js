@@ -58,13 +58,20 @@ async function api(path, body) {
   return json;
 }
 
-function toast(msg, bad = false) {
+// A short message at the bottom. Pass an action ({ label, run }) to offer e.g. Undo.
+function toast(msg, bad = false, action = null) {
   const t = $("toast");
-  t.textContent = msg;
+  t.replaceChildren(msg);
+  if (action) {
+    const b = h("button", { type: "button", className: "toast-act", textContent: action.label });
+    b.addEventListener("click", () => { t.classList.remove("show"); action.run(); });
+    t.append(b);
+  }
   t.classList.toggle("bad", bad);
+  t.classList.toggle("has-action", Boolean(action));
   t.classList.add("show");
   clearTimeout(toast.timer);
-  toast.timer = setTimeout(() => t.classList.remove("show"), 3500);
+  toast.timer = setTimeout(() => t.classList.remove("show"), action ? 6000 : 3500);
 }
 
 // ---------- bookcase ----------
@@ -805,12 +812,19 @@ $("library").addEventListener("click", (e) => { if (e.target === $("library")) c
 
 // ---------- goals pin board: swipe right to slide the wall aside ----------
 
-// Options match the columns of the Goals database in Notion (config/areas.json "goals")
-const TIMEFRAMES = ["Week", "Month", "Quarter", "Year"];
-const GOAL_STATUS = ["Not started", "On track", "At risk", "Done"];
+// Options match the columns of the Goals database in Notion (config/areas.json "goals").
+// The levels work like an Azure DevOps backlog: each goal belongs to one a level up.
+const LEVELS = [
+  { name: "Epic", when: "This year", plural: "Epics" },
+  { name: "Feature", when: "This quarter", plural: "Features" },
+  { name: "PBI", when: "This month", plural: "PBIs" },
+  { name: "Task", when: "This week", plural: "Tasks" },
+];
+const GOAL_STATUS = ["New", "Active", "At risk", "Done"];
 const GOAL_AREAS = ["Work", "Health", "Learning", "People", "Money", "Personal"];
-const STATUS_CLASS = { "on track": "good", "at risk": "risk", done: "done" };
-const CARD_TILTS = ["-1.6deg", "1.2deg", "-0.6deg", "2deg", "-2.2deg", "0.8deg"];
+const STATE_CLASS = { new: "new", active: "active", "at risk": "risk", done: "done" };
+const CARD_TILTS = ["-1.2deg", "0.9deg", "-0.5deg", "1.5deg", "-1.6deg", "0.6deg"];
+const levelIndex = (name) => LEVELS.findIndex((l) => l.name === name);
 
 let onBoard = false;
 function showBoard(on) {
@@ -818,6 +832,7 @@ function showBoard(on) {
   onBoard = on;
   if (on) renderBoard();
   $("wall").classList.toggle("on-board", on);
+  if (!on) $("wall").style.minHeight = "";
   $("board-pane").inert = !on;
   $("wall-in").inert = on;
   const top = $("wall").getBoundingClientRect().top + window.scrollY;
@@ -849,87 +864,288 @@ $("wall").addEventListener("touchend", (e) => {
   if (!touch0) return;
   const dx = e.changedTouches[0].clientX - touch0.x, dy = e.changedTouches[0].clientY - touch0.y;
   touch0 = null;
-  if (Math.abs(dx) > 70 && Math.abs(dx) > Math.abs(dy) * 1.5) showBoard(dx > 0);
+  if (Math.abs(dx) > 70 && Math.abs(dx) > Math.abs(dy) * 1.5 && !e.target.closest(".goal-card, .pin-list")) showBoard(dx > 0);
 });
+
+// ---- board state ----
+let boardView = store("goals-view") === "kanban" ? "kanban" : "tree";
+let boardLevel = LEVELS.some((l) => l.name === store("goals-level")) ? store("goals-level") : "Task";
+let focusGoal = null;
+const goalById = (id) => state.goals.goals.find((g) => g.id === id);
+const isGoalDone = (g) => /^done/i.test(g.status || "");
+
+// A goal plus everything above and below it: the thread shown when you pick a card.
+function lineage(id) {
+  const ids = new Set([id]);
+  for (let g = goalById(id); g?.parent && !ids.has(g.parent); g = goalById(g.parent)) ids.add(g.parent);
+  const down = (gid) => state.goals.goals.filter((c) => c.parent === gid).forEach((c) => { if (!ids.has(c.id)) { ids.add(c.id); down(c.id); } });
+  down(id);
+  return ids;
+}
+
+// Order each column so children sit in the same order as their parents (like a backlog tree).
+function treeOrder(goals) {
+  const order = new Map();
+  const byPriority = (a, b) => (a.priority ?? 9) - (b.priority ?? 9) || (a.due || "9").localeCompare(b.due || "9") || a.title.localeCompare(b.title);
+  let n = 0;
+  const visit = (g) => { order.set(g.id, n++); goals.filter((c) => c.parent === g.id).sort(byPriority).forEach(visit); };
+  goals.filter((g) => !g.parent || !goalById(g.parent)).sort((a, b) => levelIndex(a.level) - levelIndex(b.level) || byPriority(a, b)).forEach(visit);
+  return (a, b) => (order.get(a.id) ?? 1e9) - (order.get(b.id) ?? 1e9);
+}
 
 function renderBoard() {
   const { goals, live, notionUrl, error } = state.goals;
-  const active = goals.filter((g) => !/^done/i.test(g.status || ""));
+  const open = goals.filter((g) => !isGoalDone(g));
   const count = (st) => goals.filter((g) => (g.status || "").toLowerCase() === st).length;
-  const soon = active.filter((g) => g.due && daysBetween(todayStr(), g.due) >= 0 && daysBetween(todayStr(), g.due) <= 14).length;
+  const soon = open.filter((g) => g.due && daysBetween(todayStr(), g.due) >= 0 && daysBetween(todayStr(), g.due) <= 7).length;
   $("board-sub").textContent = error
     ? `Couldn't reach Notion: ${error}`
-    : `${active.length} active · ${count("on track")} on track · ${count("at risk")} at risk · ${count("done")} done · ${soon} due in the next fortnight${live ? "" : " · sample goals"}`;
+    : `${open.length} open · ${count("active")} active · ${count("at risk")} at risk · ${count("done")} done · ${soon} due this week${live ? "" : " · sample goals"}`;
   $("goals-notion").hidden = !notionUrl;
   if (notionUrl) $("goals-notion").href = notionUrl;
+  document.querySelectorAll("[data-view]").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.view === boardView)));
+  document.querySelectorAll("[data-level]").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.level === boardLevel)));
+  $("level-seg").hidden = boardView !== "kanban";
+  $("goal-add").textContent = boardView === "kanban" ? `+ New ${boardLevel}` : "+ New Epic";
+  $("cork").classList.toggle("kanban", boardView === "kanban");
+  if (focusGoal && !goalById(focusGoal)) focusGoal = null;
+  const thread = focusGoal ? lineage(focusGoal) : null;
   let n = 0;
-  $("cork").replaceChildren(...TIMEFRAMES.map((tf) => {
-    const list = goals.filter((g) => (g.timeframe || "Month") === tf)
-      .sort((a, b) => Number(/^done/i.test(a.status || "")) - Number(/^done/i.test(b.status || "")) || (a.due || "9").localeCompare(b.due || "9"));
-    return h("section", { className: "pin-col" },
-      h("h3", { className: "pin-tag", textContent: `This ${tf.toLowerCase()}` }),
-      list.length ? list.map((g) => goalCard(g, n++)) : h("p", { className: "pin-empty", textContent: "Nothing pinned" }));
-  }));
+  const cols = boardView === "kanban"
+    ? GOAL_STATUS.map((st) => {
+        const list = goals.filter((g) => g.level === boardLevel && (g.status || "New") === st).sort(treeOrder(goals));
+        const col = h("section", { className: `pin-col state-${STATE_CLASS[st.toLowerCase()]}` },
+          h("h3", { className: "pin-tag" }, st, h("span", { className: "pin-count", textContent: list.length })),
+          h("div", { className: "pin-list" }, list.length ? list.map((g) => goalCard(g, n++, thread)) : h("p", { className: "pin-empty", textContent: "Drop a card here" })));
+        dropZone(col, st);
+        return col;
+      })
+    : LEVELS.map((lvl) => {
+        const list = goals.filter((g) => (g.level || "Task") === lvl.name).sort(treeOrder(goals));
+        return h("section", { className: `pin-col lvl-${lvl.name.toLowerCase()}` },
+          h("h3", { className: "pin-tag" }, lvl.name, h("span", { className: "pin-when", textContent: ` · ${lvl.when}` }), h("span", { className: "pin-count", textContent: list.length })),
+          h("div", { className: "pin-list" }, list.length ? list.map((g) => goalCard(g, n++, thread)) : h("p", { className: "pin-empty", textContent: lvl.name === "Epic" ? "Start with a big goal for the year" : "Nothing pinned" })));
+      });
+  $("cork-cols").replaceChildren(...cols);
+  $("cork-cols").querySelectorAll(".pin-list").forEach((l) => l.addEventListener("scroll", drawThreads, { passive: true }));
+  // the wall stretches to fit a long board (phones stack the columns)
+  $("wall").style.minHeight = onBoard ? `${$("board-pane").offsetHeight}px` : "";
+  requestAnimationFrame(drawThreads);
 }
 
-function goalCard(g, i) {
-  const st = STATUS_CLASS[(g.status || "").toLowerCase()] || "";
-  const late = g.due && st !== "done" && g.due < todayStr();
-  const el = h("button", { type: "button", className: `goal-card ${st}` },
-    h("span", { className: "g-area", textContent: g.area || "Goal" }),
+function actButton(act, label) {
+  const b = h("button", { type: "button", className: "g-act", textContent: label });
+  b.dataset.act = act;
+  return b;
+}
+
+function goalCard(g, i, thread) {
+  const st = STATE_CLASS[(g.status || "new").toLowerCase()] || "new";
+  const late = g.due && st !== "done" && dayOf(g.due) < todayStr();
+  const lvl = (g.level || "Task").toLowerCase();
+  const childLevel = LEVELS[levelIndex(g.level) + 1];
+  const parent = goalById(g.parent);
+  const kids = g.children?.length || 0;
+  const el = h("article", {
+    className: `goal-card lvl-${lvl} ${st}${thread ? (thread.has(g.id) ? " lit" : " dim") : ""}${focusGoal === g.id ? " focus" : ""}`,
+    tabIndex: 0, ariaLabel: `${g.level || "Task"}: ${g.title}, ${g.status || "New"}`,
+  },
+    h("span", { className: "g-top" },
+      h("span", { className: "g-type", textContent: g.level || "Task" }),
+      g.priority ? h("span", { className: `g-pri p${g.priority}`, textContent: `P${g.priority}`, title: `Priority ${g.priority}` }) : null,
+      g.area ? h("span", { className: "g-area", textContent: g.area }) : null),
     h("span", { className: "g-title", textContent: g.title }),
-    typeof g.progress === "number" ? h("span", { className: "g-bar" }, Object.assign(h("i"), { style: `width:${g.progress}%` })) : null,
+    boardView === "kanban" && parent ? h("span", { className: "g-parent", textContent: `↑ ${parent.title}` }) : null,
+    h("span", { className: "g-bar", title: kids ? `${g.childDone} of ${kids} done` : "" }, Object.assign(h("i"), { style: `width:${g.progress ?? 0}%` })),
     h("span", { className: "g-meta" },
-      h("span", { className: "g-status", textContent: g.status || "No status" }),
-      h("span", { className: late ? "late" : "", textContent: [typeof g.progress === "number" ? `${g.progress}%` : null, g.due ? `${late ? "Was due" : "Due"} ${fmtDay(g.due, { day: "numeric", month: "short" })}` : null].filter(Boolean).join(" · ") })),
+      h("span", { className: "g-state" }, h("i"), g.status || "New"),
+      h("span", { className: late ? "late" : "", textContent: [
+        kids ? `${g.childDone}/${kids}` : `${g.progress ?? 0}%`,
+        g.effortTotal ? `${g.effortTotal} pts` : null,
+        g.due ? `${late ? "was due" : "due"} ${fmtDay(g.due, { day: "numeric", month: "short" })}` : null,
+      ].filter(Boolean).join(" · ") })),
+    focusGoal === g.id ? h("span", { className: "g-actions" },
+      actButton("edit", "Edit"),
+      childLevel ? actButton("child", `+ ${childLevel.name}`) : null,
+      g.url ? h("a", { className: "g-act", href: g.url, target: "_blank", rel: "noopener", textContent: "Notion ↗" }) : null) : null,
     st === "done" ? h("span", { className: "g-stamp", textContent: "Done" }) : null);
+  el.dataset.id = g.id;
   el.style.setProperty("--r", CARD_TILTS[i % CARD_TILTS.length]);
-  el.addEventListener("click", () => openGoal(g));
+  el.addEventListener("click", (e) => {
+    const act = e.target.closest("[data-act]")?.dataset.act;
+    if (act === "edit") return openGoal(g);
+    if (act === "child") return openGoal(null, { level: childLevel.name, parent: g.id, area: g.area });
+    if (e.target.closest("a")) return;
+    focusGoal = focusGoal === g.id ? null : g.id;
+    renderBoard();
+  });
+  el.addEventListener("dblclick", () => openGoal(g));
+  el.addEventListener("keydown", (e) => { if (e.key === "Enter" && e.target === el) openGoal(g); });
+  if (boardView === "kanban") {
+    el.draggable = true;
+    el.addEventListener("dragstart", (e) => { e.dataTransfer.setData("text/plain", g.id); e.dataTransfer.effectAllowed = "move"; el.classList.add("dragging"); });
+    el.addEventListener("dragend", () => el.classList.remove("dragging"));
+  }
   return el;
 }
 
-let editingGoal = null;
-function fillSelect(sel, options, value) {
-  sel.replaceChildren(h("option", { value: "", textContent: "—" }), ...options.map((o) => h("option", { value: o, textContent: o })));
-  if (value && !options.includes(value)) sel.append(h("option", { value, textContent: value }));
-  sel.value = value || "";
+// Red string, pin to pin, between a picked goal and its parents and children.
+function drawThreads() {
+  const svg = $("threads");
+  svg.replaceChildren();
+  if (!focusGoal || !onBoard) return;
+  const ids = lineage(focusGoal);
+  const box = $("cork").getBoundingClientRect();
+  svg.setAttribute("viewBox", `0 0 ${box.width} ${box.height}`);
+  const pin = (id) => {
+    const card = $("cork-cols").querySelector(`.goal-card[data-id="${CSS.escape(id)}"]`);
+    if (!card) return null;
+    const r = card.getBoundingClientRect(), list = card.closest(".pin-list").getBoundingClientRect();
+    if (r.bottom < list.top || r.top > list.bottom) return null; // scrolled out of view
+    return { x: r.left + r.width / 2 - box.left, y: r.top - box.top + 2 };
+  };
+  const NS = "http://www.w3.org/2000/svg";
+  for (const id of ids) {
+    const g = goalById(id);
+    if (!g?.parent || !ids.has(g.parent)) continue;
+    const a = pin(g.parent), b = pin(id);
+    if (!a || !b) continue;
+    const sag = Math.min(60, Math.abs(b.x - a.x) * 0.18 + 14);
+    const path = document.createElementNS(NS, "path");
+    path.setAttribute("d", `M${a.x},${a.y} Q${(a.x + b.x) / 2},${Math.max(a.y, b.y) + sag} ${b.x},${b.y}`);
+    svg.append(path);
+  }
 }
-function openGoal(g) {
-  editingGoal = g || null;
+window.addEventListener("resize", () => { if (onBoard) drawThreads(); });
+
+// Kanban: drop a card on a column to change its state. Saves straight away, with Undo.
+function dropZone(col, status) {
+  col.addEventListener("dragover", (e) => { e.preventDefault(); col.classList.add("over"); });
+  col.addEventListener("dragleave", (e) => { if (!col.contains(e.relatedTarget)) col.classList.remove("over"); });
+  col.addEventListener("drop", (e) => {
+    e.preventDefault();
+    col.classList.remove("over");
+    const g = goalById(e.dataTransfer.getData("text/plain"));
+    if (g && (g.status || "New") !== status) moveGoal(g, status);
+  });
+}
+
+async function moveGoal(g, status, undoing = false) {
+  const before = g.status || "New";
+  g.status = status;
+  renderBoard();
+  try {
+    const res = await api(`/api/goals/${g.id}`, { values: { status } });
+    if (res.live) state.goals = await api("/api/goals");
+    else recalcSample();
+    renderBoard();
+    if (!undoing) toast(`“${g.title}” moved to ${status}${res.live ? "" : " (sample, not saved to Notion)"}`, false, { label: "Undo", run: () => moveGoal(goalById(g.id) || g, before, true) });
+  } catch (err) {
+    g.status = before;
+    renderBoard();
+    toast(err.message, true);
+  }
+}
+
+// Sample goals: roll progress up locally, the way the server does for real ones.
+function recalcSample() {
+  const goals = state.goals.goals;
+  const kids = (id) => goals.filter((c) => c.parent === id);
+  const walk = (g, seen = new Set()) => {
+    if (seen.has(g.id)) return g;
+    seen.add(g.id);
+    const ch = kids(g.id).map((c) => walk(c, seen));
+    g.children = ch.map((c) => c.id);
+    g.childDone = ch.filter(isGoalDone).length;
+    g.progress = isGoalDone(g) ? 100 : ch.length ? Math.round(ch.reduce((s, c) => s + c.progress, 0) / ch.length) : g.progressSet ?? 0;
+    const ce = ch.reduce((s, c) => s + (c.effortTotal || 0), 0);
+    g.effortTotal = ch.length && ce ? ce : g.effort ?? null;
+    return g;
+  };
+  goals.forEach((g) => walk(g));
+}
+
+document.querySelectorAll("[data-view]").forEach((b) => b.addEventListener("click", () => {
+  boardView = b.dataset.view;
+  store("goals-view", boardView);
+  renderBoard();
+}));
+document.querySelectorAll("[data-level]").forEach((b) => b.addEventListener("click", () => {
+  boardLevel = b.dataset.level;
+  store("goals-level", boardLevel);
+  renderBoard();
+}));
+$("cork").addEventListener("click", (e) => {
+  if (focusGoal && !e.target.closest(".goal-card")) { focusGoal = null; renderBoard(); }
+});
+
+// ---- the goal form: review, edit, or add (Notion only changes on Save) ----
+let editingGoal = null;
+function fillSelect(sel, options, value, blank = "—") {
+  sel.replaceChildren(h("option", { value: "", textContent: blank }), ...options.map((o) => typeof o === "string" ? h("option", { value: o, textContent: o }) : h("option", { value: o.value, textContent: o.label })));
+  if (value && ![...sel.options].some((o) => o.value === String(value))) sel.append(h("option", { value, textContent: String(value) }));
+  sel.value = value ?? "";
+}
+function fillParents(level, value) {
+  const up = LEVELS[levelIndex(level) - 1];
   const f = $("goal-form").elements;
-  $("goal-heading").textContent = g ? "Review goal" : "New goal";
-  $("goal-note").textContent = state.goals.live
-    ? "Nothing changes in Notion until you press Save."
-    : "Sample goals: saving changes them here only, not in Notion.";
-  f.title.value = g?.title || "";
-  fillSelect(f.timeframe, TIMEFRAMES, g?.timeframe || (g ? "" : "Week"));
-  fillSelect(f.status, GOAL_STATUS, g?.status || (g ? "" : "Not started"));
-  fillSelect(f.area, GOAL_AREAS, g?.area || "");
-  f.progress.value = g?.progress ?? 0;
+  f.parent.disabled = !up;
+  const options = up ? state.goals.goals.filter((g) => g.level === up.name && g.id !== editingGoal?.id).map((g) => ({ value: g.id, label: g.title })) : [];
+  fillSelect(f.parent, options, value, up ? `No ${up.name} yet` : "Epics are the top level");
+}
+function openGoal(g, preset = {}) {
+  editingGoal = g || null;
+  const v = { ...g, ...preset };
+  const f = $("goal-form").elements;
+  const level = v.level || "Epic";
+  $("goal-heading").textContent = g ? `${level}: review` : `New ${level}`;
+  $("goal-note").textContent = state.goals.live ? "Nothing changes in Notion until you press Save." : "Sample goals: saving changes them here only, not in Notion.";
+  f.title.value = v.title || "";
+  fillSelect(f.level, LEVELS.map((l) => ({ value: l.name, label: `${l.name} · ${l.when}` })), level);
+  fillParents(level, v.parent || "");
+  fillSelect(f.status, GOAL_STATUS, v.status || "New");
+  fillSelect(f.priority, [1, 2, 3, 4].map((p) => ({ value: String(p), label: `P${p}${p === 1 ? " · highest" : p === 4 ? " · lowest" : ""}` })), v.priority ? String(v.priority) : "");
+  fillSelect(f.area, GOAL_AREAS, v.area || "");
+  f.effort.value = v.effort ?? "";
+  f.start.value = dayOf(v.start || "");
+  f.due.value = dayOf(v.due || "");
+  f.description.value = v.description || "";
+  // a goal with children has its progress worked out from them
+  const kids = g?.children?.length || 0;
+  $("progress-field").hidden = kids > 0;
+  $("progress-rolled").hidden = !kids;
+  if (kids) $("progress-rolled").textContent = `Progress ${g.progress}%, worked out from ${g.childDone} of ${kids} ${LEVELS[levelIndex(g.level) + 1]?.plural || "children"} done.`;
+  f.progress.value = g?.progressSet ?? 0;
   f.progressOut.value = `${f.progress.value}%`;
-  f.due.value = dayOf(g?.due || "");
-  f.notes.value = g?.notes || "";
   $("goal-open").hidden = !g?.url;
   if (g?.url) $("goal-open").href = g.url;
   $("goal-dialog").showModal();
 }
+$("goal-form").elements.level.addEventListener("change", (e) => fillParents(e.target.value, ""));
 $("goal-form").elements.progress.addEventListener("input", (e) => { $("goal-form").elements.progressOut.value = `${e.target.value}%`; });
-$("goal-add").addEventListener("click", () => openGoal(null));
+$("goal-add").addEventListener("click", () => openGoal(null, { level: boardView === "kanban" ? boardLevel : "Epic" }));
 $("goal-dialog").addEventListener("close", async () => {
   if ($("goal-dialog").returnValue !== "save") return;
   const f = $("goal-form").elements;
-  const values = { title: f.title.value.trim(), timeframe: f.timeframe.value, status: f.status.value, area: f.area.value, progress: Number(f.progress.value), due: f.due.value, notes: f.notes.value.trim() };
-  if (!values.title) return toast("Give the goal a name.", true);
+  const values = {
+    title: f.title.value.trim(), level: f.level.value, parent: f.parent.disabled ? "" : f.parent.value, status: f.status.value,
+    priority: f.priority.value, effort: f.effort.value, area: f.area.value, start: f.start.value, due: f.due.value, description: f.description.value.trim(),
+  };
   const g = editingGoal;
+  if (!(g?.children?.length)) values.progress = f.progress.value;
+  if (!values.title) return toast("Give the goal a name.", true);
   try {
     const res = await api(g ? `/api/goals/${g.id}` : "/api/goals", { values });
     if (res.live) {
-      toast(g ? "Goal updated in Notion ✓" : "Goal added to Notion ✓");
+      toast(g ? "Saved to Notion ✓" : `${values.level} added to Notion ✓`);
       state.goals = await api("/api/goals");
+      if (!g && res.goal) focusGoal = res.goal.id;
     } else {
       // sample data: change it on this page only
-      if (g) Object.assign(g, values);
-      else state.goals.goals.push({ id: `local-${Date.now()}`, url: null, ...values });
+      const local = { ...values, priority: values.priority ? Number(values.priority) : null, effort: values.effort ? Number(values.effort) : null, progressSet: values.progress ? Number(values.progress) : null };
+      if (g) Object.assign(g, local);
+      else state.goals.goals.push({ id: `local-${Date.now()}`, url: null, ...local });
+      recalcSample();
       toast("Saved here only (sample goals, so Notion isn't changed)");
     }
     renderBoard();

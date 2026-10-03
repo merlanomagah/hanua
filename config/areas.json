@@ -75,9 +75,14 @@
       "date": "Due",
       "status": "Status",
       "amount": "Progress",
-      "timeframe": "Timeframe",
+      "level": "Level",
       "area": "Area",
-      "notes": "Notes"
+      "description": "Description",
+      "parent": "Parent",
+      "children": "Children",
+      "priority": "Priority",
+      "effort": "Effort",
+      "start": "Start"
     }
   }
 }
