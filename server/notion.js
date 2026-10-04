@@ -218,3 +218,25 @@ export async function createPage(area, properties) {
 export async function archivePage(pageId) {
   await call(`/pages/${pageId}`, { method: "PATCH", body: { archived: true } });
 }
+
+// The text under one heading of a Notion page (paragraphs and bullets, up to the next heading), as plain lines.
+// Quotes are skipped: on Hanua's guide pages they hold notes to the reader, not content. The page must be shared
+// with the Hanua integration like any database.
+export async function pageSection(pageId, heading) {
+  const blocks = [];
+  let cursor;
+  for (let i = 0; i < 5; i++) {
+    const page = await call(`/blocks/${pageId}/children?page_size=100${cursor ? `&start_cursor=${cursor}` : ""}`);
+    blocks.push(...page.results);
+    if (!page.has_more) break;
+    cursor = page.next_cursor;
+  }
+  const text = (b) => (b[b.type]?.rich_text || []).map((t) => t.plain_text).join("").trim();
+  const lines = [];
+  let inside = false;
+  for (const b of blocks) {
+    if (/^heading_/.test(b.type)) { if (inside) break; inside = text(b).toLowerCase() === heading.toLowerCase(); continue; }
+    if (inside && ["paragraph", "bulleted_list_item", "numbered_list_item", "to_do"].includes(b.type) && text(b)) lines.push(text(b));
+  }
+  return lines;
+}

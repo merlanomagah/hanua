@@ -155,3 +155,31 @@ ${level}s it already has: ${children.length ? children.map((c) => `\n- ${c}`).jo
   if (response.stop_reason === "refusal" || !response.parsed_output) throw new Error("Claude couldn't come up with ideas for this one.");
   return response.parsed_output;
 }
+
+// Three meal ideas built around the protein Mel picked, kept strictly to the household's tastes (read from the
+// Notion "Eating well guide", section "Our tastes"). Ideas only; Mel picks one, and nothing is written for her.
+export async function suggestMeals({ meal, day, protein, tastes, planned }) {
+  const Ideas = z.object({
+    ideas: z.array(z.object({ title: z.string(), note: z.string() })).max(3),
+  });
+  const response = await getClient().messages.parse({
+    model: MODEL,
+    max_tokens: 2000,
+    output_config: { effort: "low", format: zodOutputFormat(Ideas) },
+    system: `You suggest home-cooked meals for a couple in New Zealand (moving to Sydney). Give exactly 3 different ideas for one meal.
+Follow the household's tastes strictly: never suggest anything they say they don't eat, and never hide it as an ingredient (e.g. no mushrooms in a sauce).
+Build each idea around the chosen protein if one is given. Favour balanced plates: half vegetables, a quarter protein, a quarter wholegrains.
+Vary the three (different cuisines or methods), keep them realistic for a weeknight unless it's the weekend, and avoid repeating meals already planned this week.
+"title": the meal as it would be written on a whiteboard, under 40 characters (e.g. "Steak, kumara wedges & slaw"). "note": one short line on why it's a good pick or a time-saving tip, under 90 characters.`,
+    messages: [{
+      role: "user",
+      content: `Meal: ${meal} on ${day}
+Protein: ${protein || "any (your pick)"}
+Our tastes:
+${tastes.length ? tastes.map((t) => `- ${t}`).join("\n") : "- (none written yet)"}
+Already planned this week: ${planned.length ? planned.join("; ") : "nothing yet"}`,
+    }],
+  });
+  if (response.stop_reason === "refusal" || !response.parsed_output) throw new Error("Claude couldn't come up with ideas for this one.");
+  return response.parsed_output;
+}

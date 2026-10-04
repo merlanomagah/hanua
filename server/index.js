@@ -4,14 +4,14 @@ import Anthropic from "@anthropic-ai/sdk";
 import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
-import { notionEnabled, queryArea, getSchema, toNotionProperties, createPage, updatePage, archivePage, NotionError } from "./notion.js";
-import { claudeEnabled, ask, draftEntry, coachGoal, suggestChildren } from "./claude.js";
+import { notionEnabled, queryArea, getSchema, toNotionProperties, createPage, updatePage, archivePage, pageSection, NotionError } from "./notion.js";
+import { claudeEnabled, ask, draftEntry, coachGoal, suggestChildren, suggestMeals } from "./claude.js";
 import { getMoney } from "./money.js";
 import { musicStatus, musicAction, playPlaylist } from "./music.js";
 import { toGoal, goalProperties, goalOptions } from "./goals.js";
 import { rollUp } from "../public/shared/goals.js";
 import { weekKey } from "../public/shared/dates.js";
-import { menuShape } from "../public/shared/menu.js";
+import { MEALS, menuShape } from "../public/shared/menu.js";
 import { lockStatus, setPin, checkPin } from "./lock.js";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -107,6 +107,43 @@ app.put("/api/board/:week", express.json({ limit: "6mb" }), async (req, res) => 
   await mkdir(boardDir, { recursive: true });
   await writeFile(path.join(boardDir, `${req.params.week}.png`), Buffer.from(m[1], "base64"));
   res.json({ ok: true });
+});
+
+// (Before /api/menu/:week, so these aren't taken for a week's name.)
+// The household's tastes: the "Our tastes" section of the Notion Eating well guide (Notion is their home; Hanua
+// only reads them, for Claude's meal ideas). Cached 5 minutes. Sample mode has made-up tastes.
+const SAMPLE_TASTES = ["Dinners are shared; breakfasts and lunches are mostly mine.", "Partner: loves steak; no seafood except snapper; no mushrooms.", "Me: prawns, salmon and white fish are fine; not oysters, crab, mussels or octopus."];
+let tastesCache = null;
+async function readTastes() {
+  const url = config.menu?.guideUrl || null;
+  if (!notionEnabled()) return { tastes: SAMPLE_TASTES, url, sample: true };
+  if (tastesCache && Date.now() - tastesCache.at < 300_000) return tastesCache.value;
+  const id = /([0-9a-f]{32})(?:[?#]|$)/i.exec(url || "")?.[1];
+  if (!id) return { tastes: [], url, error: "No Eating well guide is set in config/areas.json (menu.guideUrl)." };
+  try {
+    const value = { tastes: await pageSection(id, "Our tastes"), url };
+    tastesCache = { at: Date.now(), value };
+    return value;
+  } catch (err) {
+    const error = err.status === 404 || err.status === 403
+      ? "Hanua can't see the Eating well guide yet: in Notion, open it, then ••• → Connections → add Hanua."
+      : `Couldn't read your tastes from Notion (${err.message}).`;
+    return { tastes: [], url, error };
+  }
+}
+app.get("/api/menu/tastes", async (_req, res) => res.json(await readTastes()));
+// Three ideas around a protein, for one meal. Suggestions only: Mel picks, and the board is only changed in the page.
+app.post("/api/menu/ideas", async (req, res, next) => {
+  const { meal, day, protein, planned } = req.body ?? {};
+  if (!MEALS.includes(meal)) return res.status(400).json({ error: "Which meal?" });
+  if (!claudeEnabled()) return res.status(503).json({ error: "Add ANTHROPIC_API_KEY to .env to ask Claude for ideas." });
+  try {
+    const { tastes } = await readTastes();
+    const clip = (v, n) => String(v || "").slice(0, n);
+    res.json(await suggestMeals({ meal, day: clip(day, 30), protein: clip(protein, 40), tastes, planned: (Array.isArray(planned) ? planned : []).slice(0, 21).map((p) => clip(p, 120)) }));
+  } catch (err) {
+    next(err);
+  }
 });
 
 // The menu: one small JSON file per week, named by its Monday, holding what was typed in each box

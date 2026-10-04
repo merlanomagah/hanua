@@ -9,6 +9,7 @@ import { openReview, reviewDue } from "./goals/review.js";
 import { renderTopShelf, toggleEarnings } from "./shelf.js";
 import { loadPlant } from "./plant.js";
 import { loadWhiteboard, renderWhiteboard } from "./whiteboard.js";
+import "./menu-plan.js"; // Plan the week ✦ on the menu board
 import "./bird.js"; // the canary: just for life
 
 // Which Notion area plays which part on the page (ids from config/areas.json)

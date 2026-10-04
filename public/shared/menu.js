@@ -61,3 +61,55 @@ export function menuTips(menu, { minMeals = 3, max = 2 } = {}) {
   const note = red.length > 3 ? { id: "red-meat", text: `Red or processed meat in ${red.length} meals. About three a week is plenty; a fish or bean night could swap in for one.` } : null;
   return { ready: true, wins, ideas: ideas.slice(0, max), note };
 }
+
+// ---- planning the week: protein first (how Mel and her partner choose), then the meal ----
+// Each protein carries the icon it shows with; its name joins the meal's text for the tips, so picking Salmon
+// counts as fish even before the meal is written.
+export const PROTEINS = [
+  { name: "Steak", icon: "steak" }, { name: "Beef", icon: "steak" }, { name: "Lamb", icon: "steak" }, { name: "Pork", icon: "steak" },
+  { name: "Chicken", icon: "chicken" }, { name: "Mince", icon: "steak" }, { name: "Sausages", icon: "steak" },
+  { name: "Salmon", icon: "fish" }, { name: "Snapper", icon: "fish" }, { name: "White fish", icon: "fish" }, { name: "Prawns", icon: "fish" }, { name: "Tuna", icon: "fish" },
+  { name: "Beans or lentils", icon: "leaf" }, { name: "Tofu", icon: "leaf" }, { name: "Eggs", icon: "egg" }, { name: "Yoghurt", icon: "bowl" }, { name: "Oats", icon: "grain" },
+  { name: "Leftovers", icon: "bowl" }, { name: "Eat out", icon: "hat" },
+];
+
+// ---- a tip a day: short, sourced, one habit at a time, so something new is learned each day ----
+const NZ = "NZ Eating and Activity Guidelines", AU = "Australian Dietary Guidelines", HSPH = "Harvard Healthy Eating Plate", HF = "Heart Foundation";
+export const DAILY_TIPS = [
+  { icon: "leaf", text: "Fill half the plate with vegetables first, then add the rest. It's the simplest balance check there is.", source: HSPH },
+  { icon: "fish", text: "Oily fish like salmon, sardines and mackerel bring omega-3 fats. About twice a week is the aim.", source: HF },
+  { icon: "grain", text: "Wholegrains keep you fuller for longer than white versions. Try half brown, half white rice to start.", source: NZ },
+  { icon: "leaf", text: "Frozen vegetables are picked and frozen fresh, so they count just as much, and they don't go limp in the fridge.", source: AU },
+  { icon: "leaf", text: "A tin of chickpeas or lentils stretches mince or a curry further, adds fibre, and costs very little.", source: AU },
+  { icon: "steak", text: "Lean red meat is a great source of iron. About three red-meat meals a week is plenty.", source: AU },
+  { icon: "steak", text: "Keep processed meats (bacon, ham, salami, sausages) for now and then, rather than every week.", source: NZ },
+  { icon: "drop", text: "Water first. Sugary drinks are the easiest added sugar to cut, and the body doesn't count them as food.", source: NZ },
+  { icon: "bowl", text: "Cook once, eat twice: double tonight's dinner and lunch tomorrow is already done.", source: "Eating well guide" },
+  { icon: "leaf", text: "Eat the rainbow: different coloured vegetables bring different vitamins, so variety beats volume.", source: HSPH },
+  { icon: "grain", text: "Porridge or muesli with fruit is a breakfast that keeps you going until lunch.", source: NZ },
+  { icon: "egg", text: "Eggs are a quick, cheap protein for any meal: an omelette with leftover veg is a five-minute dinner.", source: AU },
+  { icon: "leaf", text: "Nuts and seeds count as protein too. A small handful a day is a good snack.", source: AU },
+  { icon: "drop", text: "Cook with olive, canola or avocado oil, and go easy on butter and coconut oil.", source: HF },
+  { icon: "leaf", text: "Salt hides in sauces, stock and bread. Taste before adding more, and use herbs, lemon or garlic instead.", source: HF },
+  { icon: "fish", text: "Tinned fish counts. Salmon or tuna on wholegrain toast is a quick lunch with good fats.", source: HF },
+  { icon: "bowl", text: "A plain yoghurt with fruit is a better snack than a flavoured one: those can hold several teaspoons of sugar.", source: NZ },
+  { icon: "leaf", text: "Fruit whole beats fruit juiced: the fibre stays and it fills you up.", source: NZ },
+  { icon: "chicken", text: "Chicken thighs are cheaper and harder to dry out than breast. Trim the skin to keep it leaner.", source: "Eating well guide" },
+  { icon: "steak", text: "With steak, let the sides do the work: a big salad or roast veg keeps the plate in balance.", source: HSPH },
+  { icon: "grain", text: "Check the label: \"wholegrain\" or \"wholemeal\" should be the first ingredient on bread.", source: AU },
+  { icon: "hat", text: "Plan dinners first, then breakfasts and lunches around them. Fewer decisions, less waste.", source: "Eating well guide" },
+  { icon: "leaf", text: "Soups and curries hide a lot of vegetables. Grate in a carrot or zucchini and nobody notices.", source: "Eating well guide" },
+  { icon: "fish", text: "Snapper and other white fish are mild, quick to cook and low in fat: a good start for seafood doubters.", source: HF },
+  { icon: "drop", text: "Keep a water bottle on the desk. Thirst is often mistaken for hunger in the afternoon.", source: NZ },
+  { icon: "leaf", text: "One meat-free night a week built on beans, lentils or tofu is good for you, your budget and the planet.", source: HSPH },
+  { icon: "bowl", text: "Batch-cook a big pot on Sunday: soups, chillies and curries freeze well for busy nights.", source: "Eating well guide" },
+  { icon: "grain", text: "Swap a white wrap for a wholemeal one, or rice for quinoa or barley, one meal at a time.", source: AU },
+  { icon: "egg", text: "Protein at breakfast (eggs, yoghurt, nut butter) helps you stay full through the morning.", source: HSPH },
+  { icon: "hat", text: "Takeaway night? Pick the one with the most vegetables, and keep it to one night a week.", source: NZ },
+];
+// The tip for a day (YYYY-MM-DD): the same all day, a different one tomorrow, all of them before any repeats
+export function dailyTip(day) {
+  const [y, m, d] = day.split("-").map(Number);
+  const n = Math.floor(Date.UTC(y, m - 1, d) / 86_400_000);
+  return DAILY_TIPS[((n % DAILY_TIPS.length) + DAILY_TIPS.length) % DAILY_TIPS.length];
+}

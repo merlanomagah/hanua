@@ -1,7 +1,7 @@
 // The week's menu (public/shared/menu.js): the saved shape and the eating-well tips.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { menuShape, menuTips, DAYS, MEALS } from "../public/shared/menu.js";
+import { menuShape, menuTips, dailyTip, DAILY_TIPS, DAYS, MEALS } from "../public/shared/menu.js";
 
 const menu = (cells) => {
   const m = menuShape({});
@@ -45,4 +45,12 @@ test("a red-meat note only past three meals", () => {
   assert.equal(menuTips(three).note, null);
   three.thu.Dinner = "Sausages";
   assert.equal(menuTips(three).note.id, "red-meat");
+});
+
+test("a different tip each day, the same all day, every tip before a repeat", () => {
+  assert.equal(dailyTip("2026-10-05"), dailyTip("2026-10-05"));
+  assert.notEqual(dailyTip("2026-10-05"), dailyTip("2026-10-06"));
+  const days = Array.from({ length: DAILY_TIPS.length }, (_, i) => new Date(Date.UTC(2026, 9, 5 + i)).toISOString().slice(0, 10));
+  assert.equal(new Set(days.map(dailyTip)).size, DAILY_TIPS.length);
+  for (const t of DAILY_TIPS) assert.ok(t.icon && t.text && t.source);
 });

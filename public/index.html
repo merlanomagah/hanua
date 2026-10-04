@@ -300,10 +300,11 @@
           <section class="menu-board" id="menu-board" aria-label="This week's menu">
             <div class="mb-frame">
               <header class="mb-head">
-                <span class="mb-title">Menu</span>
+                <span class="mb-hat" id="mb-hat"></span><span class="mb-title">Menu</span>
                 <span class="mb-week" id="mb-week"></span>
                 <a class="mb-drawn" id="mb-drawn" target="_blank" rel="noopener" hidden>The drawing ↗</a>
                 <span class="mb-nav">
+                  <button type="button" class="mb-plan" id="mb-plan">Plan the week ✦</button>
                   <button type="button" id="mb-prev" aria-label="Last week's menu">‹</button>
                   <button type="button" id="mb-this">This week</button>
                   <button type="button" id="mb-next" aria-label="Next week's menu">›</button>
@@ -560,6 +561,27 @@
       <div class="dialog-actions">
         <button value="cancel" type="submit" class="ghost" formnovalidate>Cancel</button>
         <button value="save" type="submit" id="plan-save">Add</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- plan the week's meals: protein first, then the meal; Claude's ideas keep to "Our tastes" (Notion) -->
+  <dialog id="meal-dialog" class="meal-dialog">
+    <form method="dialog" id="meal-form">
+      <h3>Plan the week</h3>
+      <p class="draft-note" id="meal-note"></p>
+      <div class="meal-layout">
+        <aside class="coach-parent plan-parent meal-coach" id="meal-coach"></aside>
+        <div class="meal-main">
+          <div class="meal-days" id="meal-days" role="tablist" aria-label="Day"></div>
+          <h4 class="meal-day-title" id="meal-day-title"></h4>
+          <ol class="meal-rows" id="meal-rows"></ol>
+          <div class="plan-tools"><button type="button" class="g-act" id="meal-next">Next day ›</button></div>
+        </div>
+      </div>
+      <div class="dialog-actions">
+        <button value="cancel" type="submit" class="ghost" formnovalidate>Cancel</button>
+        <button value="save" type="submit" id="meal-save">Add to the board</button>
       </div>
     </form>
   </dialog>
