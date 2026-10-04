@@ -391,16 +391,32 @@
         <div class="desk-up"><button type="button" id="desk-up"><span class="arrow" aria-hidden="true">↑</span>THE WALL</button></div>
         <!-- seen front-on (Mel, 5 Oct 2026): the bricks come down to an oak desk top -->
         <div class="desk-top" aria-hidden="true"></div>
-        <!-- the agenda on a ruled sheet pinned to the wall: swipe, or ‹ ›, for other days -->
+        <!-- sticky notes on the wall: typed here, kept on this Mac until taken down (the × in each corner) -->
+        <div class="stickies" id="stickies" aria-label="Sticky notes"></div>
+        <!-- the agenda on lined paper pinned at the right, above the lamp: swipe, or ‹ ›, for other days -->
         <article class="agenda-sheet" id="agenda" aria-label="Agenda" tabindex="0"></article>
         <!-- today's meals, pinned beside it -->
         <button type="button" class="meal-slip" id="meal-slip" title="Open the kitchen" hidden></button>
-        <!-- a MacBook Pro on the desk: its screen is the day's plan (Focus, Key tasks, General, Work) -->
-        <div class="macbook">
-          <div class="mb-lid"><span class="mb-notch" aria-hidden="true"></span><article class="mb-screen planner" id="todo" aria-label="Today's plan"></article></div>
-          <div class="mb-base" aria-hidden="true"></div>
+        <!-- a desk monitor showing a desktop: double-click "Plan my day" to open the planner (Mel, 5 Oct 2026) -->
+        <div class="pc">
+          <div class="pc-monitor">
+            <div class="pc-screen">
+              <div class="pc-menubar" aria-hidden="true"><span class="pc-apple"></span><b>Hanua</b><span>File</span><span>Edit</span><span>View</span><span class="pc-clock" id="pc-clock"></span></div>
+              <div class="pc-desktop" role="group" aria-label="Desktop">
+                <button type="button" class="pc-folder" id="open-plan" title="Double-click to open" aria-label="Plan my day: open the planner">
+                  <svg viewBox="0 0 64 52" aria-hidden="true"><path d="M2 8a4 4 0 0 1 4-4h18l6 6h28a4 4 0 0 1 4 4v32a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4z" fill="#6aaee8"/><path d="M2 16h60v30a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4z" fill="#8cc4f2"/><path d="M2 16h60" stroke="#5a9bd6" stroke-width="1.2"/></svg>
+                  <span>Plan my day</span>
+                </button>
+              </div>
+              <!-- the dock, just for the look -->
+              <div class="pc-dock" aria-hidden="true"><i class="d1"></i><i class="d2"></i><i class="d3"></i><i class="d4"></i><i class="d5"></i><i class="d6"></i><b></b><i class="d7"></i></div>
+            </div>
+          </div>
+          <div class="pc-stand" aria-hidden="true"><i class="pc-neck"></i><i class="pc-foot"></i></div>
         </div>
-        <!-- a mug on the desk, left of the laptop -->
+        <!-- a pad of sticky notes on the desk: click it and a fresh note goes up on the wall -->
+        <button type="button" class="sticky-pad-btn" id="add-sticky" title="Add a sticky note to the wall" aria-label="Add a sticky note"><img src="assets/obj/sticky-pad.png" alt=""><span aria-hidden="true">+</span></button>
+        <!-- a mug on the desk, left of the monitor -->
         <svg class="mug" viewBox="0 0 64 60" aria-hidden="true"><defs><linearGradient id="mug-glaze" x1="0" x2="1"><stop offset="0" stop-color="#e9e1d3"/><stop offset=".35" stop-color="#faf6ee"/><stop offset="1" stop-color="#cfc4b2"/></linearGradient></defs><path d="M44 18h6a9 9 0 0 1 0 18h-5" fill="none" stroke="#d6ccbb" stroke-width="5"/><path d="M6 10h40v36a10 10 0 0 1-10 10H16A10 10 0 0 1 6 46z" fill="url(#mug-glaze)"/><ellipse cx="26" cy="10" rx="20" ry="3.4" fill="#5a3a26"/><ellipse cx="26" cy="10" rx="20" ry="3.4" fill="none" stroke="#efe8dc" stroke-width="1.6"/></svg>
         <!-- the same lamp on the desk; its cord switches every light -->
         <div class="lamp-wrap desk-lamp">
@@ -459,6 +475,9 @@
       </div>
     </div>
   </div>
+
+  <!-- Plan my day: the planner as a large landscape window over the room (opened from the desk monitor) -->
+  <dialog id="plan-day" class="plan-dialog" aria-label="Plan my day"><article class="planner" id="todo"></article></dialog>
 
   <dialog id="day-dialog" class="day-dialog">
     <div class="day-nav">

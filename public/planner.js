@@ -5,7 +5,7 @@
 // Focus (3), Key tasks (3), General and Work. Focus, Key tasks and General jottings live in a small file per day on
 // this Mac; Work is the Work book in Notion, and a Work line typed here goes there after five quiet minutes.
 // Rules: public/shared/desk.js (tested).
-import { carriedOver, deskSections, deskShape, lastFocus, stepDay, workReady, WORK_WAIT_MS } from "./shared/desk.js";
+import { carriedOver, deskSections, deskShape, lastFocus, stepDay, stickiesUp, stickyShape, workReady, STICKY_COLOURS, STICKY_MAX, STICKY_TEXT, WORK_WAIT_MS } from "./shared/desk.js";
 import { isGoalDone } from "./shared/goals.js";
 import { dayOf, parseDay, timeOf, todayStr } from "./shared/dates.js";
 import { $, api, area, focus, focusGoals, h, isDone, isWorkGoal, longDate, records, reducedMotion, state, toast } from "./lib.js";
@@ -252,12 +252,18 @@ export function renderTodo() {
 
   // keep the cursor where it was across a re-render
   const active = document.activeElement?.closest?.("#todo") ? { sec: document.activeElement.closest("[data-section]")?.dataset.section, i: [...document.querySelectorAll(`#todo [data-section="${document.activeElement.closest("[data-section]")?.dataset.section}"] .pl-input`)].indexOf(document.activeElement) } : null;
-  const page = h("div", { className: "pl-page", ariaLabel: `Plan for ${longDate(parseDay(today), false)}` }, ...sections);
+  // two columns in the landscape window: Focus and Key tasks | General and Work
+  const col = (...names) => h("div", { className: "pl-col" }, sections.filter((x) => names.includes(x.dataset?.section)));
+  const covered = sections.find((x) => x.classList?.contains("pl-covered"));
+  const page = h("div", { className: "pl-page", ariaLabel: `Plan for ${longDate(parseDay(today), false)}` },
+    h("div", { className: "pl-cols" }, col("focus", "key"), h("div", { className: "pl-col" }, col("general", "work"), covered)));
   const old = $("todo").querySelector(".pl-page");
   if (old) page.scrollTop = old.scrollTop;
-  // the laptop's screen: a planner app with a title bar (the day), the four sections underneath
-  const bar = h("div", { className: "mb-bar", ariaHidden: "true" }, h("span", { className: "mb-dots" }, h("i"), h("i"), h("i")),
-    h("span", { className: "mb-title", textContent: `Today · ${longDate(parseDay(today), false)}` }));
+  // Plan my day: a window with a title bar (the day); its red button closes it, like a Mac window
+  const close = h("button", { type: "button", className: "pw-close", ariaLabel: "Close Plan my day", title: "Close (Esc)" });
+  close.addEventListener("click", () => $("plan-day").close());
+  const bar = h("div", { className: "pw-bar" }, h("span", { className: "pw-dots" }, close, h("i", { ariaHidden: "true" }), h("i", { ariaHidden: "true" })),
+    h("span", { className: "pw-title", textContent: `Plan my day · ${longDate(parseDay(today), false)}` }));
   $("todo").replaceChildren(bar, page);
   if (old) page.scrollTop = old.scrollTop;
   if (active && active.i >= 0) focusLine(active.sec, active.i);
@@ -368,4 +374,69 @@ $("agenda").addEventListener("keydown", (e) => {
   if (e.target.closest("button, a") && e.target.closest(".ip-list")) return;
   if (e.key === "ArrowLeft") { e.preventDefault(); movePad(-1); }
   if (e.key === "ArrowRight") { e.preventDefault(); movePad(1); }
+});
+
+// ---- the desk monitor: double-click "Plan my day" to open the planner (Enter or a tap work too), like a real desktop ----
+const folder = $("open-plan");
+let lastPointer = "mouse";
+folder.addEventListener("pointerdown", (e) => { lastPointer = e.pointerType; });
+folder.addEventListener("click", (e) => {
+  if (e.detail === 0 || lastPointer === "touch") return openPlan(); // keyboard or touch: one press opens it
+  folder.classList.add("sel");
+});
+folder.addEventListener("dblclick", openPlan);
+document.addEventListener("pointerdown", (e) => { if (!folder.contains(e.target)) folder.classList.remove("sel"); });
+export function openPlan() {
+  folder.classList.remove("sel");
+  if (!$("plan-day").open) $("plan-day").showModal();
+}
+$("plan-day").addEventListener("close", () => folder.focus({ preventScroll: true }));
+$("plan-day").addEventListener("click", (e) => { if (e.target === $("plan-day")) $("plan-day").close(); });
+
+// the clock in the monitor's menu bar
+function pcClock() { $("pc-clock").textContent = new Date().toLocaleTimeString(undefined, { weekday: "short", hour: "numeric", minute: "2-digit" }); }
+pcClock();
+setInterval(pcClock, 30_000);
+
+// ---- sticky notes on the wall: typed here, kept on this Mac until taken down (× in the corner, with Undo) ----
+let stickies = [];
+let stickySave = 0;
+export async function loadStickies() {
+  try { stickies = stickyShape(await (await fetch("/api/stickies")).json()); } catch { stickies = []; }
+  renderStickies();
+}
+function saveStickies() {
+  clearTimeout(stickySave);
+  stickySave = setTimeout(() => fetch("/api/stickies", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(stickies) })
+    .then((r) => { if (!r.ok) throw new Error(`Request failed (${r.status})`); })
+    .catch((err) => toast(`Sticky notes couldn't be saved: ${err.message}`, true)), 400);
+}
+export function renderStickies(focusId) {
+  const wall = $("stickies");
+  const up = stickiesUp(stickies);
+  wall.hidden = focus.on; // personal: put away at work
+  wall.replaceChildren(...up.map((n, i) => {
+    const text = h("textarea", { className: "st-text", value: n.text, ariaLabel: "Sticky note", maxLength: STICKY_TEXT, placeholder: "Write something…", spellcheck: true });
+    text.addEventListener("input", () => { const s = stickies.find((x) => x.id === n.id); if (s) { s.text = text.value; saveStickies(); } });
+    const x = h("button", { type: "button", className: "st-x", ariaLabel: "Take this note down", title: "Take it down", textContent: "×" });
+    x.addEventListener("click", () => takeDown(n.id));
+    const note = h("div", { className: `desk-sticky st-${n.colour}`, style: `--tilt:${[-2.5, 1.8, -1, 2.6, -1.8, 1.2][i % 6]}deg` }, x, text);
+    if (n.id === focusId) requestAnimationFrame(() => text.focus());
+    return note;
+  }));
+  $("add-sticky").disabled = up.length >= STICKY_MAX;
+  $("add-sticky").title = up.length >= STICKY_MAX ? "The wall's full: take one down first" : "Add a sticky note to the wall";
+}
+function takeDown(id) {
+  const n = stickies.find((x) => x.id === id);
+  if (!n) return;
+  n.down = todayStr();
+  saveStickies(); renderStickies();
+  toast("Note taken down", false, { label: "Undo", run: () => { n.down = null; saveStickies(); renderStickies(); } });
+}
+$("add-sticky").addEventListener("click", () => {
+  if (stickiesUp(stickies).length >= STICKY_MAX) return;
+  const id = newId();
+  stickies.push({ id, text: "", colour: STICKY_COLOURS[stickies.length % STICKY_COLOURS.length], added: todayStr(), down: null });
+  saveStickies(); renderStickies(id);
 });

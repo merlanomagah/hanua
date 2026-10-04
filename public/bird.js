@@ -32,8 +32,9 @@ const PERCHES = [
   { sel: ".note", x: [0.3, 0.7], y: 0, w: 1 },
   { sel: ".desk .mug", x: [0.2, 0.6], y: 0.12, w: 1 },
   { sel: ".desk-lamp .lamp-img", x: [0.4, 0.6], y: 0.2, w: 1 },
-  { sel: ".mb-lid", x: [0.15, 0.85], y: 0, w: 2 },
+  { sel: ".pc-monitor", x: [0.15, 0.85], y: 0, w: 2 },
   { sel: ".agenda-sheet", x: [0.2, 0.8], y: 0, w: 1 },
+  { sel: ".desk-sticky", x: [0.3, 0.7], y: 0, w: 1 },
   { sel: ".player-shelf .now-playing", x: [0.2, 0.8], y: 0, w: 1 },
 ];
 // the coin is right at the top of the screen, so the bird stands in front of it rather than on top

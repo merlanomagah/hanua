@@ -13,7 +13,7 @@ import "./menu-plan.js"; // Plan the week ✦ on the menu board
 import { onKitchen, renderMealSlip, showKitchen } from "./kitchen.js"; // swipe left: the weather window and the menu
 import { weatherLine } from "./weather-window.js";
 import "./bird.js"; // the canary: just for life
-import { loadDesk, renderAgenda, renderTodo, showDesk } from "./planner.js"; // the desk: the MacBook planner and the agenda sheet
+import { loadDesk, loadStickies, renderAgenda, renderStickies, renderTodo, showDesk } from "./planner.js"; // the desk: monitor, planner, stickies, agenda
 
 // Which Notion area plays which part on the page (ids from config/areas.json)
 export const ROLE = { tasks: "work", events: "calendar", notes: "learning", people: "relationships" };
@@ -1281,6 +1281,7 @@ export function renderAll() {
   renderNotes();
   renderTodo();
   renderAgenda();
+  renderStickies();
   renderTopShelf();
   renderWhiteboard();
   renderMealSlip();
@@ -1310,6 +1311,7 @@ renderMoneyScreen();
 load();
 loadPlant();
 loadDesk();
+loadStickies();
 loadWhiteboard();
 setInterval(renderClock, 1000);
 // keep the "now" line, greeting and today's date current

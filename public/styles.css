@@ -681,9 +681,13 @@ button:disabled { opacity: 0.5; cursor: progress; }
 .desk {
   --pad-r: clamp(24px, 4vw, 52px);
   --top-h: 30%;                                   /* the desk top's band, from the bottom of the screen */
-  --sheet-h: min(calc((100vh - var(--rail-h)) * 0.7 - 120px), 470px, 36vw); /* the pinned sheet fits the wall above the desk */
   --lamp-w: clamp(96px, 9vw, 140px);
-  --mb-left: calc(clamp(28px, 4.5vw, 64px) + var(--sheet-h) * 0.707 + clamp(28px, 3.5vw, 56px)); /* the laptop starts past the sheet */
+  /* the agenda sheet hangs at the right above the lamp, so it ends where the lamp's shade begins */
+  --sheet-h: clamp(220px, calc((100vh - var(--rail-h)) * 0.7 - 84px - var(--lamp-w) * 1.32), 420px);
+  --edge: clamp(28px, 4.5vw, 64px);
+  --stick: clamp(72px, 5.6vw, 88px);             /* a sticky note: 7.6 cm, about an eighth of a 27" screen's width */
+  --pc-left: calc(var(--edge) + var(--stick) * 2 + 12px + clamp(20px, 2.4vw, 36px));
+  --pc-right: calc(var(--pad-r) + var(--sheet-h) * 0.707 + clamp(20px, 2.4vw, 36px));
   position: relative; box-sizing: border-box; min-height: calc(100vh - var(--rail-h)); overflow: clip;
   /* the same painted bricks as the wall, so it reads as the same room looking down a little */
   background-color: var(--wall-base);
@@ -698,31 +702,70 @@ button:disabled { opacity: 0.5; cursor: progress; }
     linear-gradient(180deg, rgb(0 0 0 / 0.18), rgb(0 0 0 / 0) 18%, rgb(0 0 0 / 0) 82%, rgb(0 0 0 / 0.2) 100%),
     url("assets/desk.png");
   background-size: 100% 100%, 100% 100%, cover; background-position: 0 0, 0 0, center; background-color: #A87650;
-  box-shadow: 0 -18px 30px -12px rgb(28 24 20 / 0.4);
 }
 .desk-top::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 22px; background: linear-gradient(180deg, #8a5a38, #5e3a22); box-shadow: inset 0 1px 0 rgb(255 230 200 / 0.35); }
-/* the agenda sheet, pinned to the bricks at the left */
+/* the agenda sheet, pinned to the bricks at the right, above the lamp */
 .agenda-sheet {
-  position: absolute; z-index: 2; left: clamp(28px, 4.5vw, 64px); top: 64px; height: var(--sheet-h); aspect-ratio: 21 / 29.7; box-sizing: border-box;
+  position: absolute; z-index: 2; right: var(--pad-r); top: 64px; height: var(--sheet-h); aspect-ratio: 21 / 29.7; box-sizing: border-box;
   transform: rotate(-1.2deg); outline-offset: 6px; container-type: inline-size;
   background: #FBFAF6 repeating-linear-gradient(180deg, transparent 0 25px, #D3DBE4 25px 26px) 0 56px / 100% calc(100% - 56px) no-repeat;
   box-shadow: 0 1px 1px rgb(28 24 20 / 0.12), 6px 14px 20px -8px rgb(28 24 20 / 0.45);
 }
 .agenda-sheet::before { content: ""; position: absolute; top: 0; bottom: 0; left: 34px; width: 1px; background: rgb(196 96 42 / 0.35); }
 .ag-pin { position: absolute; z-index: 3; top: -6px; left: calc(50% - 8px); width: 16px; height: 16px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #f4a37a, #c4602a 60%, #8a3d17); box-shadow: 2px 4px 4px rgb(0 0 0 / 0.35); }
-/* the MacBook Pro: a 14" seen from the front (screen about 1.55 : 1), standing on the desk top */
-.macbook {
-  position: absolute; z-index: 3; left: var(--mb-left); bottom: calc(var(--top-h) - 34px);
-  width: clamp(360px, calc(100% - var(--mb-left) - var(--pad-r) - var(--lamp-w) * 0.9), 700px);
-}
-.mb-lid { position: relative; aspect-ratio: 1.55; box-sizing: border-box; padding: 2.2% 2.2% 3.4%; border-radius: 14px 14px 4px 4px;
-  background: #0f0f10; box-shadow: inset 0 0 0 1.5px #3a3a3c, inset 0 0 0 3px #050505, 0 18px 30px -14px rgb(0 0 0 / 0.55); }
-.mb-notch { position: absolute; z-index: 2; top: 2.2%; left: calc(50% - 7%); width: 14%; height: 3.4%; border-radius: 0 0 6px 6px; background: #0f0f10; }
-.mb-base { position: relative; height: 16px; margin: 0 -7%; border-radius: 2px 2px 12px 12px / 2px 2px 10px 10px;
-  background: linear-gradient(180deg, #d9dadd, #b9bbbf 55%, #8e9095); box-shadow: 0 10px 14px -6px rgb(0 0 0 / 0.5); }
-.mb-base::before { content: ""; position: absolute; top: 0; left: calc(50% - 9%); width: 18%; height: 5px; border-radius: 0 0 6px 6px; background: #a7a9ad; }
-.mug { position: absolute; z-index: 3; width: clamp(60px, 5.4vw, 84px); height: auto; left: calc(var(--mb-left) - clamp(82px, 7vw, 108px)); bottom: calc(var(--top-h) - 52px); filter: drop-shadow(4px 8px 6px rgb(28 24 20 / 0.4)); }
-/* the lamp stands on the desk at the right, a little behind the laptop */
+/* the desk monitor: a 27" screen (16:9) on a stand, showing a desktop with a "Plan my day" folder and a dock */
+.pc { position: absolute; z-index: 4; left: var(--pc-left); right: var(--pc-right); bottom: calc(var(--top-h) - 30px); display: flex; flex-direction: column; align-items: center; }
+.pc-monitor { width: min(100%, 860px); box-sizing: border-box; padding: 10px 10px 12px; border-radius: 10px; background: linear-gradient(180deg, #2a2a2c, #161617);
+  box-shadow: inset 0 0 0 1px #4a4a4d, 0 22px 34px -16px rgb(0 0 0 / 0.6); }
+.pc-screen { position: relative; aspect-ratio: 16 / 9; overflow: hidden; border-radius: 3px; container-type: inline-size;
+  background: radial-gradient(120% 90% at 20% 10%, #f3c9a2 0%, rgb(243 201 162 / 0) 55%), linear-gradient(160deg, #e8a978 0%, #c4602a 42%, #6a3e2f 72%, #2f4a40 100%); }
+.pc-screen::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(118deg, rgb(255 255 255 / 0.12), rgb(255 255 255 / 0) 35%); }
+.pc-menubar { position: absolute; left: 0; right: 0; top: 0; display: flex; align-items: center; gap: 12px; height: 20px; padding: 0 10px;
+  background: rgb(250 247 242 / 0.5); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); font: 10px var(--ui); color: #2b2420; }
+.pc-menubar b { font-weight: 600; }
+.pc-apple { width: 9px; height: 10px; border-radius: 50% 50% 45% 45%; background: #2b2420; }
+.pc-clock { margin-left: auto; }
+.pc-desktop { position: absolute; top: 34px; right: 18px; display: flex; flex-direction: column; align-items: center; gap: 14px; }
+.pc-folder { display: flex; flex-direction: column; align-items: center; gap: 4px; width: 92px; padding: 6px 4px; border: 1px solid transparent; border-radius: 6px; background: transparent; cursor: default; }
+.pc-folder svg { width: clamp(44px, 9cqw, 64px); height: auto; filter: drop-shadow(0 2px 3px rgb(0 0 0 / 0.3)); }
+.pc-folder span { padding: 1px 5px; border-radius: 3px; font: 500 11px var(--ui); color: #fff; text-shadow: 0 1px 2px rgb(0 0 0 / 0.6); }
+.pc-folder.sel { background: rgb(255 255 255 / 0.18); border-color: rgb(255 255 255 / 0.3); }
+.pc-folder.sel span { background: #2f6fd1; text-shadow: none; }
+.pc-folder:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+.pc-dock { position: absolute; left: 50%; bottom: 6px; transform: translateX(-50%); display: flex; align-items: center; gap: 6px; padding: 5px 8px; border-radius: 12px;
+  background: rgb(250 247 242 / 0.32); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.35); }
+.pc-dock i { width: clamp(18px, 4.4cqw, 30px); aspect-ratio: 1; border-radius: 26%; box-shadow: 0 1px 2px rgb(0 0 0 / 0.3); }
+.pc-dock b { width: 1px; height: 22px; background: rgb(255 255 255 / 0.5); }
+.pc-dock .d1 { background: linear-gradient(180deg, #7fd0ff, #2a7fe0); } .pc-dock .d2 { background: linear-gradient(180deg, #fff, #e8e2d6); }
+.pc-dock .d3 { background: linear-gradient(180deg, #ffe680, #f2b632); } .pc-dock .d4 { background: linear-gradient(180deg, #ff8a80, #e0453a); }
+.pc-dock .d5 { background: linear-gradient(180deg, #9be37a, #3fa64a); } .pc-dock .d6 { background: linear-gradient(180deg, #c7a6ff, #7c4ddb); }
+.pc-dock .d7 { background: linear-gradient(180deg, #d9dadd, #8e9095); }
+.pc-stand { display: flex; flex-direction: column; align-items: center; width: min(100%, 860px); }
+.pc-neck { width: 13%; height: clamp(34px, 4.6vw, 64px); background: linear-gradient(90deg, #9a9ca0, #d9dadd 45%, #b1b3b7); }
+.pc-foot { width: 30%; height: 9px; border-radius: 3px 3px 6px 6px; background: linear-gradient(180deg, #d9dadd, #8e9095); box-shadow: 0 8px 10px -4px rgb(0 0 0 / 0.45); }
+/* sticky notes on the wall at the left: two columns, a little tilt each; the × shows on hover (always on touch) */
+.stickies { position: absolute; z-index: 3; left: var(--edge); top: 64px; display: grid; grid-template-columns: repeat(2, var(--stick)); gap: 12px; }
+.desk-sticky { position: relative; width: var(--stick); height: var(--stick); box-sizing: border-box; padding: 12px 8px 6px; transform: rotate(var(--tilt, 0deg));
+  box-shadow: 0 1px 1px rgb(28 24 20 / 0.1), 4px 10px 12px -6px rgb(28 24 20 / 0.4); }
+.st-yellow { background: #F6E7A8; } .st-pink { background: #F2C9C0; } .st-green { background: #CFE3C8; } .st-blue { background: #C9DCEC; }
+.st-text { width: 100%; height: 100%; box-sizing: border-box; padding: 0; border: 0; resize: none; background: transparent; overflow: hidden;
+  font: italic 400 clamp(12px, 1vw, 15px)/1.2 var(--display); color: var(--ink); }
+.st-text:focus { outline: none; }
+.st-text::placeholder { color: rgb(28 24 20 / 0.35); }
+.st-x { position: absolute; top: 2px; right: 3px; width: 20px; height: 20px; padding: 0; border: 0; border-radius: 3px; background: transparent; cursor: pointer;
+  font: 15px/1 var(--ui); color: var(--ink-3); opacity: 0; transition: opacity 150ms; }
+.desk-sticky:hover .st-x, .desk-sticky:focus-within .st-x, .st-x:focus-visible { opacity: 1; }
+.st-x:hover { background: rgb(28 24 20 / 0.08); color: var(--ink); }
+@media (hover: none) { .st-x { opacity: 0.7; } }
+/* the pad of sticky notes on the desk: click it to put a new one on the wall */
+.sticky-pad-btn { position: absolute; z-index: 4; left: var(--edge); bottom: calc(var(--top-h) - 70px); width: clamp(72px, 6vw, 92px); padding: 0; border: 0; background: none; cursor: pointer; transform: rotate(-6deg); }
+.sticky-pad-btn img { width: 100%; height: auto; filter: drop-shadow(4px 8px 6px rgb(28 24 20 / 0.35)); }
+.sticky-pad-btn span { position: absolute; top: 30%; left: 0; right: 0; text-align: center; font: 300 26px var(--ui); color: rgb(28 24 20 / 0.5); }
+.sticky-pad-btn:hover { transform: rotate(-6deg) translateY(-2px); }
+.sticky-pad-btn:hover span { color: var(--terra); }
+.sticky-pad-btn:disabled { opacity: 0.6; cursor: default; }
+.mug { position: absolute; z-index: 3; width: clamp(56px, 5vw, 80px); height: auto; left: calc(var(--pc-left) - clamp(72px, 6.4vw, 100px)); bottom: calc(var(--top-h) - 48px); filter: drop-shadow(4px 8px 6px rgb(28 24 20 / 0.4)); }
+/* the lamp stands on the desk at the right, under the agenda sheet */
 .desk-lamp { position: absolute; z-index: 2; right: var(--pad-r); bottom: calc(var(--top-h) - 40px); top: auto; width: var(--lamp-w); }
 /* back up to the wall */
 .desk-up { position: absolute; z-index: 4; top: 14px; left: 0; right: 0; display: flex; justify-content: center; pointer-events: none; }
@@ -751,18 +794,31 @@ button:disabled { opacity: 0.5; cursor: progress; }
 @media (max-width: 900px) { .desk-up { display: none; } }
 @media (prefers-reduced-motion: reduce) { .wall, .desk-pane { transition: none; } }
 
-/* ---- the planner on the laptop's screen: a clean app with faint rows; one --line sets each row's height and the rule
-   spacing, so typed text sits in the middle of every row ---- */
-.mb-screen { position: relative; height: 100%; display: flex; flex-direction: column; overflow: hidden; border-radius: 4px; background: #FCFBF8; container-type: inline-size; }
-.mb-bar { flex: none; display: flex; align-items: center; gap: 10px; height: 30px; padding: 0 12px; background: linear-gradient(180deg, #f3f0ea, #e9e5dd); border-bottom: 1px solid #ddd6c9; }
-.mb-dots { display: flex; gap: 6px; }
-.mb-dots i { width: 10px; height: 10px; border-radius: 50%; background: #e2675c; }
-.mb-dots i:nth-child(2) { background: #e9b949; } .mb-dots i:nth-child(3) { background: #6cbf5a; }
-.mb-title { flex: 1; text-align: center; margin-right: 46px; font: 10px var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-4); }
+/* ---- Plan my day: the planner as a large landscape window over the room; faint rows, one --line sets each row's
+   height and the rule spacing, so typed text sits in the middle of every row ---- */
+.plan-dialog { width: min(1200px, calc(100% - 48px)); height: min(760px, calc(100vh - 96px)); max-width: none; max-height: none; box-sizing: border-box; padding: 0; border: 0; border-radius: 10px; overflow: hidden;
+  background: #FCFBF8; box-shadow: 0 0 0 1px rgb(0 0 0 / 0.12), 0 40px 80px -20px rgb(0 0 0 / 0.55); }
+.plan-dialog[open] { animation: plan-in 220ms ease-out; }
+@keyframes plan-in { from { opacity: 0; transform: scale(0.97); } }
+@media (prefers-reduced-motion: reduce) { .plan-dialog[open] { animation: none; } }
+.plan-dialog::backdrop { background: rgb(28 24 20 / 0.45); -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px); }
+.plan-dialog .planner { height: 100%; display: flex; flex-direction: column; container-type: inline-size; }
+.pw-bar { flex: none; display: flex; align-items: center; gap: 10px; height: 38px; padding: 0 14px; background: linear-gradient(180deg, #f3f0ea, #e9e5dd); border-bottom: 1px solid #ddd6c9; }
+.pw-dots { display: flex; gap: 8px; }
+.pw-dots > * { width: 12px; height: 12px; padding: 0; border: 0; border-radius: 50%; background: #e9b949; }
+.pw-dots > i:last-child { background: #6cbf5a; }
+.pw-close { background: #e2675c !important; cursor: pointer; position: relative; }
+.pw-close::after { content: "×"; position: absolute; inset: 0; display: grid; place-items: center; font: 600 10px/1 var(--ui); color: rgb(80 20 10 / 0.75); opacity: 0; }
+.pw-bar:hover .pw-close::after, .pw-close:focus-visible::after { opacity: 1; }
+.pw-title { flex: 1; text-align: center; margin-right: 54px; font: 10px var(--mono); letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-4); }
+.pl-cols { display: grid; grid-template-columns: 1fr 1fr; column-gap: 7%; align-items: start; }
+.pl-col { min-width: 0; }
+.pl-col > .pl-col:empty { display: none; }
+@media (max-width: 760px) { .pl-cols { grid-template-columns: 1fr; } .pl-cols > .pl-col + .pl-col { margin-top: var(--line); } .plan-dialog { width: 100%; height: 100%; border-radius: 0; } }
 .pl-page {
-  --line: clamp(22px, 4.6cqw, 28px); --paper: #FCFBF8; --rule: #ECE8E0;
+  --line: 30px; --paper: #FCFBF8; --rule: #ECE8E0;
   flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin;
-  padding: calc(var(--line) / 2) 6% var(--line); box-sizing: border-box;
+  padding: calc(var(--line) / 2) 5% var(--line); box-sizing: border-box;
   background: var(--paper) repeating-linear-gradient(180deg, transparent 0 calc(var(--line) - 1px), var(--rule) calc(var(--line) - 1px) var(--line)) local;
   background-position: 0 calc(var(--line) / 2);
 }
@@ -1819,11 +1875,14 @@ dialog h3 { margin: 0 0 4px; font: italic 300 32px/1.1 var(--display); }
   .topshelf { flex-wrap: wrap; gap: 8px 10px; }
   /* phones: one scrolling column on the bricks, the laptop's screen first (no laptop body), then the agenda sheet */
   .desk { display: flex; flex-direction: column; gap: 28px; padding: 110px 16px 60px; min-height: 0; }
-  .desk-top, .mug, .mb-base, .mb-notch { display: none; }
-  .macbook { position: static; order: 1; width: 100%; }
-  .mb-lid { aspect-ratio: auto; padding: 8px; border-radius: 12px; }
-  .mb-screen { height: 520px; }
-  .agenda-sheet { position: relative; order: 2; left: auto; top: auto; height: 420px; width: 100%; aspect-ratio: auto; transform: none; }
+  .desk-top, .mug, .pc-stand, .sticky-pad-btn img { display: none; }
+  .pc { position: static; order: 1; }
+  .pc-monitor { width: 100%; }
+  .stickies { position: static; order: 2; grid-template-columns: repeat(auto-fill, 96px); justify-content: center; --stick: 96px; }
+  .sticky-pad-btn { position: static; order: 3; align-self: center; width: auto; transform: none; padding: 8px 14px; border: 1px dashed var(--ink-4); border-radius: 3px; }
+  .sticky-pad-btn span { position: static; font-size: 14px; }
+  .sticky-pad-btn span::after { content: " Add a sticky note"; font: 10px var(--mono); letter-spacing: 0.14em; text-transform: uppercase; }
+  .agenda-sheet { position: relative; order: 4; right: auto; top: auto; height: 420px; width: 100%; aspect-ratio: auto; transform: none; }
   .desk-lamp { top: 20px; bottom: auto; right: 16px; width: 70px; }
   .open-book { grid-template-columns: 1fr; height: calc(100vh - 48px); }
   .open-book .page.left { display: none; }
@@ -2085,7 +2144,7 @@ dialog.lock::backdrop { background: #14110e; }
 .weather-window.unavailable .ww-sky { filter: grayscale(0.6); }
 
 /* today's meals on the desk, a slip of paper: so the menu isn't forgotten now it's in the kitchen */
-.meal-slip { position: absolute; z-index: 3; top: 64px; right: calc(var(--pad-r) + var(--lamp-w) * 0.2); display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 14px; max-width: 300px;
+.meal-slip { position: absolute; z-index: 3; top: 64px; left: var(--pc-left); display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 14px; max-width: min(300px, calc(100% - var(--pc-left) - var(--pc-right)));
   padding: 10px 16px; border: 0; border-radius: 2px; cursor: pointer; text-align: left; transform: rotate(-0.8deg);
   background: #FBF8F1; box-shadow: 6px 10px 14px -6px rgb(28 24 20 / 0.45); color: var(--ink-2); font: italic 16px var(--display); }
 .meal-slip b { font: 9px var(--mono); font-style: normal; letter-spacing: 0.18em; color: var(--terra); }

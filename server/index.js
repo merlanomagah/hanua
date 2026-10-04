@@ -12,7 +12,7 @@ import { toGoal, goalProperties, goalOptions } from "./goals.js";
 import { rollUp } from "../public/shared/goals.js";
 import { weekKey } from "../public/shared/dates.js";
 import { MEALS, menuShape } from "../public/shared/menu.js";
-import { dayKey, deskShape, stepDay, CARRY_DAYS } from "../public/shared/desk.js";
+import { dayKey, deskShape, stepDay, stickyShape, CARRY_DAYS } from "../public/shared/desk.js";
 import { lockStatus, setPin, checkPin } from "./lock.js";
 import { getWeather } from "./weather.js";
 
@@ -187,6 +187,15 @@ app.get("/api/desk/prompts", async (_req, res) => {
       ? "Hanua can't see the planner prompts yet: in Notion, open “Hanua planner prompts”, then ••• → Connections → add Hanua."
       : `Couldn't read the planner prompts (${err.message}).` });
   }
+});
+// Sticky notes on the desk's wall: one small file, kept until each is taken down (taken-down notes are marked, not erased)
+const stickiesFile = path.join(roomDir, "stickies.json");
+app.get("/api/stickies", async (_req, res) => res.set("Cache-Control", "no-store").json(stickyShape(await readJson(stickiesFile, []))));
+app.put("/api/stickies", async (req, res) => {
+  const notes = stickyShape(req.body);
+  await mkdir(roomDir, { recursive: true });
+  await writeFile(stickiesFile, JSON.stringify(notes, null, 2) + "\n");
+  res.json(notes);
 });
 app.get("/api/desk/:day", async (req, res) => {
   const day = dayKey(req.params.day);

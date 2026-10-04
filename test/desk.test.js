@@ -64,3 +64,16 @@ test("desk: at work only the Work list shows", () => {
   assert.ok(!deskSections(true).includes("general"));
   assert.deepEqual(deskSections(false), ["focus", "key", "general", "work"]);
 });
+
+test("desk: sticky notes are tidied, taken-down ones are kept but not shown, and the wall holds twelve", async () => {
+  const { stickyShape, stickiesUp, STICKY_MAX } = await import("../public/shared/desk.js");
+  const s = stickyShape([{ id: "a", text: "x".repeat(500), colour: "purple", added: "2026-10-05" }, { id: "../b", text: "Hi", down: "2026-10-06" }, null]);
+  assert.equal(s[0].text.length, 160);
+  assert.equal(s[0].colour, "yellow");
+  assert.equal(s[1].id, "l1");
+  assert.equal(s[1].down, "2026-10-06");
+  assert.equal(s[2].text, "");
+  assert.deepEqual(stickiesUp(s).map((n) => n.id), ["a", "l2"]);
+  assert.equal(stickiesUp(Array.from({ length: 20 }, (_, i) => ({ id: `n${i}`, text: "t" }))).length, STICKY_MAX);
+  assert.deepEqual(stickyShape("nope"), []);
+});

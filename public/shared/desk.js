@@ -70,3 +70,19 @@ export const workReady = (work, now = Date.now()) => work.filter((w) => w.text &
 
 // Which sections show: at work only Work (focus areas, key tasks and General can be personal)
 export const deskSections = (atWork) => (atWork ? ["work"] : ["focus", "key", "general", "work"]);
+
+// ---- sticky notes on the desk's wall: typed by Mel, kept on this Mac (data/room/stickies.json) until taken down ----
+export const STICKY_MAX = 12, STICKY_TEXT = 160;
+export const STICKY_COLOURS = ["yellow", "pink", "green", "blue"];
+// [{ id, text, colour, added (YYYY-MM-DD), down (YYYY-MM-DD, set when taken down: marked, never erased) }]
+export function stickyShape(list) {
+  return (Array.isArray(list) ? list : []).slice(0, 200).map((n, i) => ({
+    id: idOf(n?.id, i),
+    text: String(n?.text ?? "").slice(0, STICKY_TEXT),
+    colour: STICKY_COLOURS.includes(n?.colour) ? n.colour : STICKY_COLOURS[i % STICKY_COLOURS.length],
+    added: dayKey(n?.added) || null,
+    down: dayKey(n?.down) || null,
+  }));
+}
+// the notes still up, oldest first, never more than fit on the wall
+export const stickiesUp = (list) => stickyShape(list).filter((n) => !n.down).slice(0, STICKY_MAX);
