@@ -10,6 +10,8 @@ import { getMoney } from "./money.js";
 import { musicStatus, musicAction, playPlaylist } from "./music.js";
 import { toGoal, goalProperties, goalOptions } from "./goals.js";
 import { rollUp } from "../public/shared/goals.js";
+import { weekKey } from "../public/shared/dates.js";
+import { menuShape } from "../public/shared/menu.js";
 import { lockStatus, setPin, checkPin } from "./lock.js";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -72,7 +74,7 @@ app.post("/api/lock/setup", async (req, res) => {
 });
 app.post("/api/lock/check", async (req, res) => res.json(await checkPin(lockFile, req.body?.pin)));
 
-// Things the room itself keeps, with no other home: the plant's watering log and the menu whiteboard's drawings.
+// Things the room itself keeps, with no other home: the plant's watering log and the week's menu.
 // On this Mac only (gitignored). The sample preview keeps its own folder so tests never touch Mel's.
 const roomDir = path.resolve(root, process.env.ROOM_DATA || (notionEnabled() ? "data/room" : "data/room-sample"));
 const readJson = async (file, fallback) => { try { return JSON.parse(await readFile(file, "utf8")); } catch { return fallback; } };
@@ -105,6 +107,21 @@ app.put("/api/board/:week", express.json({ limit: "6mb" }), async (req, res) => 
   await mkdir(boardDir, { recursive: true });
   await writeFile(path.join(boardDir, `${req.params.week}.png`), Buffer.from(m[1], "base64"));
   res.json({ ok: true });
+});
+
+// The menu: one small JSON file per week, named by its Monday, holding what was typed in each box
+const menuDir = path.join(roomDir, "menu");
+app.get("/api/menu/:week", async (req, res) => {
+  if (!weekKey(req.params.week)) return res.status(400).json({ error: "Which week?" });
+  const menu = menuShape(await readJson(path.join(menuDir, `${req.params.week}.json`), {}));
+  res.set("Cache-Control", "no-store").json({ ...menu, guideUrl: config.menu?.guideUrl || null });
+});
+app.put("/api/menu/:week", async (req, res) => {
+  if (!weekKey(req.params.week)) return res.status(400).json({ error: "That week's menu couldn't be saved" });
+  const menu = menuShape(req.body);
+  await mkdir(menuDir, { recursive: true });
+  await writeFile(path.join(menuDir, `${req.params.week}.json`), JSON.stringify(menu, null, 2) + "\n");
+  res.json(menu);
 });
 
 app.get("/api/status", (_req, res) => {

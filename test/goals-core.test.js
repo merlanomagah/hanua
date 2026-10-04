@@ -1,8 +1,8 @@
 // The shared goals rules (public/shared/goals.js), used by both the page and the server.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { rollUp, treeOrder, lineageIn, goalSpan, dateConflicts, coinValue, donePoints, levelIndex } from "../public/shared/goals.js";
-import { addDays, daysBetween } from "../public/shared/dates.js";
+import { rollUp, treeOrder, lineageIn, goalSpan, dateConflicts, coinValue, donePoints, levelIndex, onCalendar } from "../public/shared/goals.js";
+import { addDays, daysBetween, weekKey } from "../public/shared/dates.js";
 
 const goal = (id, level, extra = {}) => ({ id, level, title: id, status: "New", parent: null, ...extra });
 const tree = () => [
@@ -145,4 +145,21 @@ test("the plant grows with each day watered and browns with days missed, kindly"
   assert.equal(back.days, 3);
   assert.equal(back.health, "fresh");
   assert.equal(back.wateredToday, true);
+});
+
+test("only open, dated Tasks and PBIs go on the calendar", () => {
+  assert.equal(onCalendar(goal("E", "Epic", { due: "2026-12-01" })), false);
+  assert.equal(onCalendar(goal("F", "Feature", { due: "2026-12-01" })), false);
+  assert.equal(onCalendar(goal("P", "PBI", { due: "2026-12-01" })), true);
+  assert.equal(onCalendar(goal("T", "Task", { due: "2026-12-01" })), true);
+  assert.equal(onCalendar(goal("T", "Task")), false);
+  assert.equal(onCalendar(goal("T", "Task", { due: "2026-12-01", status: "Done" })), false);
+});
+
+test("a week is named by a real Monday", () => {
+  assert.equal(weekKey("2026-10-05"), "2026-10-05");
+  assert.equal(weekKey("2026-10-06"), null);
+  assert.equal(weekKey("2026-13-40"), null);
+  assert.equal(weekKey("../x"), null);
+  assert.equal(weekKey("2026-1-5"), null);
 });

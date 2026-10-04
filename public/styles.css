@@ -165,7 +165,9 @@ button:disabled { opacity: 0.5; cursor: progress; }
 .pill.on::before { background: var(--green); box-shadow: 0 0 0 2px var(--green-soft); }
 
 .wall-row { display: flex; flex-wrap: wrap; align-items: stretch; gap: 48px 64px; margin-top: 4px; }
-.wall-left { flex: 1.4 1 520px; min-width: 0; display: flex; flex-direction: column; gap: 44px; padding-top: 34px; }
+.wall-left { flex: 1.4 1 520px; min-width: 0; display: flex; flex-direction: column; gap: 44px; padding-top: 34px; margin-top: calc(-1 * var(--lift, 0px)); }
+/* the greeting's curved date lines up with the status pills (Mel, 6 Oct 2026): lifted by the pills' row and the gap */
+@media (min-width: 601px) { .wall-left { --lift: 54px; } }
 .wall-right { flex: 1 1 360px; min-width: 0; display: flex; flex-direction: column; gap: 40px; }
 
 /* floating shelf: a plank on two brass brackets */
@@ -442,7 +444,7 @@ button:disabled { opacity: 0.5; cursor: progress; }
 .upcoming .tag { font: 9px var(--mono); color: var(--faint); letter-spacing: 0.1em; text-transform: uppercase; }
 
 /* books and plant on a shelf */
-.deco-shelf { position: relative; z-index: 4; margin-top: auto; }
+.deco-shelf { position: relative; z-index: 4; }
 .deco-row { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; padding: 0 7%; margin-bottom: -7px; position: relative; z-index: 1; }
 .deco-books { flex: none; width: clamp(120px, 34%, 200px); height: auto; margin-top: -90px; filter: drop-shadow(-5px 6px 8px rgb(28 24 20 / 0.25)); }
 /* when the calendar lists events, the books only tuck into its bottom margin */
@@ -486,9 +488,7 @@ button:disabled { opacity: 0.5; cursor: progress; }
 @media (prefers-reduced-motion: reduce) { .vine .leaf.new, .can.pour .drops i { animation: none; } }
 
 /* pinned notes */
-.notes-row { margin-top: 56px; }
-.notes-row .wall-left { padding-top: 0; }
-.notes { position: relative; min-height: 220px; display: flex; flex-wrap: wrap; align-content: flex-start; gap: 22px 18px; padding-top: 10px; }
+.notes { position: relative; min-height: 140px; display: flex; flex-wrap: wrap; align-content: flex-start; gap: 22px 18px; padding-top: 10px; }
 .notes-empty { display: flex; align-items: center; gap: 20px; }
 .notes-empty .placeholder { position: relative; width: 132px; height: 120px; border: 1px dashed var(--border-2); transform: rotate(-2deg); }
 .notes-empty .placeholder::before { content: ""; position: absolute; top: -9px; left: 38px; width: 56px; height: 18px; background: rgb(224 213 191 / 0.7); transform: rotate(3deg); }
@@ -504,36 +504,50 @@ button:disabled { opacity: 0.5; cursor: progress; }
 .note .meta { font: 9px var(--mono); letter-spacing: 0.14em; color: var(--ink-4); text-transform: uppercase; }
 .note .text { font: 19px/1.25 var(--display); color: var(--ink); text-wrap: pretty; overflow-wrap: anywhere; }
 
-/* ---- the menu whiteboard: hung on the wall above the desk ---- */
-.menu-board { width: min(100%, 1080px); margin: 56px auto 0; filter: drop-shadow(-8px 14px 16px rgb(28 24 20 / 0.3)); }
+/* ---- the menu whiteboard: under the TV, days down the side, meals typed in marker ink ---- */
+.menu-board { filter: drop-shadow(-8px 14px 16px rgb(28 24 20 / 0.3)); }
 .mb-frame { padding: 12px 12px 0; border-radius: 4px; background: linear-gradient(160deg, #e9e7e2, #b9b6ae 55%, #d6d3cc); box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.8), inset 0 -1px 0 rgb(0 0 0 / 0.15); }
-.mb-head { display: flex; align-items: baseline; gap: 14px; padding: 2px 6px 10px; }
+.mb-head { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 14px; padding: 2px 6px 10px; }
 .mb-title { font: italic 300 26px/1 var(--display); color: var(--ink); }
 .mb-week { font: 10px var(--mono); letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-3); }
+.mb-drawn { font: 9px var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-3); }
 .mb-nav { margin-left: auto; display: flex; gap: 4px; }
 .mb-nav button { height: 26px; min-width: 26px; padding: 0 8px; border: 1px solid rgb(28 24 20 / 0.18); border-radius: 2px; background: rgb(255 255 255 / 0.55); color: var(--ink); cursor: pointer; font: 10px var(--mono); letter-spacing: 0.12em; text-transform: uppercase; }
 .mb-nav button:hover { background: #fff; }
-.mb-surface { position: relative; aspect-ratio: 1400 / 560; border-radius: 2px; overflow: hidden;
+.mb-surface { position: relative; border-radius: 2px; overflow: hidden;
   background: linear-gradient(115deg, #fdfdfb 0%, #f4f4f0 40%, #fbfbf8 55%, #eeeeea 100%); box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.08), inset 0 2px 6px rgb(0 0 0 / 0.08); }
-.mb-grid { position: absolute; inset: 0; display: grid; grid-template-columns: 9% repeat(7, 1fr); grid-template-rows: 11% repeat(3, 1fr); pointer-events: none; }
-.mb-grid > span { border-right: 1px solid rgb(35 44 69 / 0.08); border-bottom: 1px solid rgb(35 44 69 / 0.08); }
-.mb-day { display: flex; align-items: center; justify-content: center; gap: 4px; font: 11px var(--mono); letter-spacing: 0.1em; color: var(--ink-3); }
+.mb-grid { display: grid; grid-template-columns: 74px repeat(3, minmax(0, 1fr)); }
+.mb-grid > * { min-width: 0; border-right: 1px solid rgb(35 44 69 / 0.08); border-bottom: 1px solid rgb(35 44 69 / 0.08); }
+.mb-grid > :nth-child(4n) { border-right: 0; }
+.mb-grid > :nth-last-child(-n+4) { border-bottom: 0; }
+.mb-day { display: flex; align-items: center; gap: 5px; padding-left: 10px; font: 11px var(--mono); letter-spacing: 0.1em; color: var(--ink-3); }
 .mb-day b { font-weight: 500; text-transform: uppercase; color: var(--ink); }
 .mb-day.today, .mb-cell.today { background: rgb(184 78 30 / 0.06); }
 .mb-day.today b { color: var(--terra); }
-.mb-meal { display: flex; align-items: center; padding-left: 10px; font: italic 15px var(--display); color: var(--ink-4); }
-.mb-canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
-.menu-board[data-tool="ink"] .mb-canvas, .menu-board[data-tool="red"] .mb-canvas { cursor: crosshair; }
-.menu-board[data-tool="erase"] .mb-canvas { cursor: cell; }
+.mb-meal { padding: 8px 10px 6px; font: italic 15px var(--display); color: var(--ink-4); }
+/* each box is written in marker ink (the black marker's colour), in the room's display face */
+.mb-cell { width: 100%; height: 38px; padding: 0 10px; border: 0; border-radius: 0; background: transparent; color: #232c45; font: italic 500 18px var(--display); outline: none; text-overflow: ellipsis; }
+.mb-cell::placeholder { color: transparent; }
+.mb-cell:hover { background: rgb(35 44 69 / 0.03); }
+.mb-cell:focus { background: rgb(255 255 255 / 0.85); box-shadow: inset 0 -2px 0 var(--terra); }
 .mb-cover { position: absolute; inset: 0; z-index: 2; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; background: #f4f4f0; }
 .mb-cover span { font: italic 300 30px var(--display); color: var(--ink-3); }
 .mb-cover small { font: 10px var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
 .menu-board.covered .mb-tray button, .menu-board.covered .mb-nav { visibility: hidden; }
-/* the tray along the bottom: two markers and an eraser lying on it; picked up, they lift off */
-.mb-tray { display: flex; align-items: flex-end; gap: 14px; height: 30px; margin: 0 -12px; padding: 0 22px 5px; border-radius: 0 0 4px 4px;
+/* eating well: a card of the plate, what's already in the week, and a couple of ideas */
+.mb-tips { display: grid; grid-template-columns: 1fr 1.2fr; gap: 18px; margin-top: 10px; padding: 14px 16px; border-radius: 2px; background: #fbfaf6; box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.08); }
+.mb-tips h3 { margin: 0 0 6px; font: 9px var(--mono); letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-3); }
+.mb-tips h3 + ul + h3 { margin-top: 12px; }
+.mb-tips ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; font: 13px/1.4 var(--ui); color: var(--ink-2); }
+.mb-plate b { font-weight: 600; color: var(--ink); }
+.mb-tips .wins li::before { content: "✓ "; color: var(--green); }
+.mb-tips .ideas li::before { content: "✦ "; color: var(--terra); }
+.mb-tips .quiet { margin: 0; font: italic 16px var(--display); color: var(--ink-3); }
+.mb-guide { display: inline-block; margin-top: 12px; font: 9px var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--terra); }
+/* the tray along the bottom: two markers and an eraser lying on it, for the look (and the canary) */
+.mb-tray { display: flex; align-items: flex-end; gap: 14px; height: 30px; margin: 10px -12px 0; padding: 0 22px 5px; border-radius: 0 0 4px 4px;
   background: linear-gradient(180deg, #cfccc5, #a9a59c); box-shadow: inset 0 2px 3px rgb(0 0 0 / 0.18); }
-.mb-tray [data-tool] { position: relative; padding: 0; border: 0; background: transparent; cursor: pointer; transition: transform 250ms cubic-bezier(.3,1.4,.5,1), filter 250ms; filter: drop-shadow(0 2px 1px rgb(0 0 0 / 0.3)); }
-.mb-tray [data-tool][aria-pressed="true"] { transform: translateY(-16px) rotate(-10deg); filter: drop-shadow(0 12px 6px rgb(0 0 0 / 0.25)); }
+.mb-tray .marker, .mb-tray .eraser { position: relative; filter: drop-shadow(0 2px 1px rgb(0 0 0 / 0.3)); }
 .marker { width: 86px; height: 14px; }
 .marker i { position: absolute; inset: 0; border-radius: 3px 7px 7px 3px; background: linear-gradient(180deg, #fff, #dcdcd6); }
 .marker::after { content: ""; position: absolute; right: -2px; top: -1px; width: 26px; height: 16px; border-radius: 3px 8px 8px 3px; background: var(--cap); }
@@ -545,17 +559,16 @@ button:disabled { opacity: 0.5; cursor: progress; }
 .eraser::after { content: ""; position: absolute; left: 2px; right: 2px; bottom: 0; height: 6px; border-radius: 0 0 2px 2px; background: #d9d2c3; }
 .mb-gap { flex: 1; }
 .mb-small { align-self: center; height: 22px; padding: 0 8px; border: 0; border-radius: 2px; background: transparent; color: var(--ink-3); cursor: pointer; font: 9px var(--mono); letter-spacing: 0.16em; text-transform: uppercase; }
-.mb-small:hover { background: rgb(255 255 255 / 0.5); color: var(--ink); }
+.mb-small:hover, .mb-small[aria-expanded="true"] { background: rgb(255 255 255 / 0.5); color: var(--ink); }
 .mb-tray button:focus-visible, .mb-nav button:focus-visible { outline: 2px solid var(--terra); outline-offset: 2px; }
-@media (max-width: 760px) {
-  .menu-board { margin-top: 36px; }
-  .mb-grid { grid-template-columns: 0 repeat(7, 1fr); grid-template-rows: 17% repeat(3, 1fr); }
-  .mb-meal { font-size: 0; padding: 0; border: 0 !important; overflow: hidden; }
-  .mb-day { flex-direction: column; gap: 0; font-size: 9px; letter-spacing: 0.04em; }
-  .mb-head { flex-wrap: wrap; gap: 4px 10px; }
-  .marker { width: 60px; }
+@media (max-width: 600px) {
+  .mb-grid { grid-template-columns: 52px repeat(3, minmax(0, 1fr)); }
+  .mb-day { flex-direction: column; align-items: flex-start; justify-content: center; gap: 0; padding-left: 8px; font-size: 9px; }
+  .mb-cell { padding: 0 6px; font-size: 15px; }
+  .mb-tips { grid-template-columns: 1fr; }
+  .marker { width: 54px; }
+  .eraser { width: 40px; }
 }
-@media (prefers-reduced-motion: reduce) { .mb-tray [data-tool] { transition: none; } }
 
 .to-desk { display: flex; justify-content: center; padding: 48px 0 112px; }
 .to-desk button {

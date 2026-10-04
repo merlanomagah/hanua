@@ -233,6 +233,8 @@
                 <div class="answer" id="ask-answer" hidden></div>
               </div>
 
+              <div class="notes" id="notes" aria-label="Pinned notes"></div>
+
               <div class="monitor-wrap">
                 <div class="monitor" id="monitor">
                   <button class="glass" id="money-screen" type="button" aria-label="Open the Money book">
@@ -264,6 +266,35 @@
                   <div class="pocket" aria-hidden="true"></div>
                 </div>
               </div>
+
+              <!-- the week's menu: typed into the boxes; the days fill in by themselves -->
+              <section class="menu-board" id="menu-board" aria-label="This week's menu">
+                <div class="mb-frame">
+                  <header class="mb-head">
+                    <span class="mb-title">Menu</span>
+                    <span class="mb-week" id="mb-week"></span>
+                    <a class="mb-drawn" id="mb-drawn" target="_blank" rel="noopener" hidden>The drawing ↗</a>
+                    <span class="mb-nav">
+                      <button type="button" id="mb-prev" aria-label="Last week's menu">‹</button>
+                      <button type="button" id="mb-this">This week</button>
+                      <button type="button" id="mb-next" aria-label="Next week's menu">›</button>
+                    </span>
+                  </header>
+                  <div class="mb-surface">
+                    <div class="mb-grid" id="mb-grid"></div>
+                    <div class="mb-cover" id="mb-cover" hidden><span>Personal</span><small>The menu's put away while you're at work</small></div>
+                  </div>
+                  <div class="mb-tips" id="mb-tips" hidden></div>
+                  <div class="mb-tray">
+                    <span class="marker ink" aria-hidden="true"><i></i></span>
+                    <span class="marker red" aria-hidden="true"><i></i></span>
+                    <span class="eraser" aria-hidden="true"><i></i></span>
+                    <span class="mb-gap"></span>
+                    <button type="button" class="mb-small" id="mb-tips-btn" aria-expanded="false" aria-controls="mb-tips">Eating well ✦</button>
+                    <button type="button" class="mb-small" id="mb-clear">Wipe</button>
+                  </div>
+                </div>
+              </section>
             </div>
 
             <div class="wall-right">
@@ -292,41 +323,6 @@
               </div>
             </div>
           </div>
-
-          <div class="wall-row notes-row">
-            <div class="wall-left">
-              <div class="notes" id="notes" aria-label="Pinned notes"></div>
-            </div>
-            <div class="wall-right"></div>
-          </div>
-
-          <!-- the week's menu: drawn by hand with the markers on the tray; the days fill in by themselves -->
-          <section class="menu-board" id="menu-board" aria-label="This week's menu">
-            <div class="mb-frame">
-              <header class="mb-head">
-                <span class="mb-title">Menu</span>
-                <span class="mb-week" id="mb-week"></span>
-                <span class="mb-nav">
-                  <button type="button" id="mb-prev" aria-label="Last week's menu">‹</button>
-                  <button type="button" id="mb-this">This week</button>
-                  <button type="button" id="mb-next" aria-label="Next week's menu">›</button>
-                </span>
-              </header>
-              <div class="mb-surface">
-                <div class="mb-grid" id="mb-grid" aria-hidden="true"></div>
-                <canvas class="mb-canvas" id="mb-canvas" aria-label="The menu drawing. Pick up a marker from the tray to draw"></canvas>
-                <div class="mb-cover" id="mb-cover" hidden><span>Personal</span><small>The menu's put away while you're at work</small></div>
-              </div>
-              <div class="mb-tray">
-                <button type="button" class="marker ink" data-tool="ink" aria-pressed="false" aria-label="Black marker" title="Black marker: click to pick it up, click again (or Esc) to put it down"><i></i></button>
-                <button type="button" class="marker red" data-tool="red" aria-pressed="false" aria-label="Red marker" title="Red marker"><i></i></button>
-                <button type="button" class="eraser" data-tool="erase" aria-pressed="false" aria-label="Eraser" title="Eraser: pick it up and rub out"><i></i></button>
-                <span class="mb-gap"></span>
-                <button type="button" class="mb-small" id="mb-undo">Undo</button>
-                <button type="button" class="mb-small" id="mb-clear">Wipe</button>
-              </div>
-            </div>
-          </section>
 
           <div class="to-desk">
             <button type="button" id="to-desk"><span>TO THE DESK</span><span class="arrow">↓</span></button>

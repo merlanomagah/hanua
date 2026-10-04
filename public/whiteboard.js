@@ -1,151 +1,145 @@
-// The menu whiteboard on the wall, above the desk: a week of meals drawn by hand. The days and dates fill in
-// by themselves; pick up a marker (or the eraser) and draw on it. Each week is saved as a picture on this Mac
-// after every stroke, and past weeks are kept (‹ and ›). At work it's covered: the menu is personal.
-// A probe (5 Oct 2026): if no week gets drawn on in about three weeks, it goes on the cut list.
+// The menu whiteboard on the wall, under the TV: a week of meals, typed into the boxes in marker ink.
+// The days and dates fill in by themselves; each week is saved on this Mac as you type, and past weeks are kept
+// (‹ and ›). Eating well ✦ opens gentle tips matched against what's typed (rules: public/shared/menu.js).
+// At work it's covered: the menu is personal.
+// A probe (5 Oct 2026; drawing swapped for typing 6 Oct after Mel found it finicky): if no week gets filled in
+// by about 26 Oct, it goes on the cut list.
 import { addDays, parseDay, todayStr, weekStart } from "./shared/dates.js";
+import { DAYS, MEALS, PLATE, menuShape, menuTips } from "./shared/menu.js";
 import { $, focus, fmtDay, h, toast } from "./lib.js";
 
-const W = 1400, H = 560; // the drawing's own size; it scales to fit the board on any screen
-const MEALS = ["Breakfast", "Lunch", "Dinner"];
-const TOOLS = { ink: { colour: "#232c45", width: 4 }, red: { colour: "#b84e1e", width: 4 }, erase: { width: 38 } };
 let week = weekStart();
-let tool = null; // the marker or eraser in hand, or null
-let saveTimer = 0, dirty = false, loaded = "";
-const undo = [];
-const canvas = $("mb-canvas"), ctx = canvas.getContext("2d");
-canvas.width = W;
-canvas.height = H;
+let menu = menuShape({});
+let loaded = "", saveTimer = 0, dirty = false;
+let drawnWeeks = new Set(), guideUrl = null;
+let tipsOpen = false;
+try { tipsOpen = localStorage.getItem("menu-tips") === "1"; } catch { /* no storage: tips start closed */ }
 
 export async function loadWhiteboard() {
+  // weeks drawn by hand before the menu was typed: still viewable, read-only
+  try { drawnWeeks = new Set((await (await fetch("/api/board")).json()).weeks || []); } catch { /* none */ }
   renderWhiteboard();
 }
 
-// the days across the top, today's column marked, and the week's name
+// the days down the side, today's row marked, and the week's name
 export function renderWhiteboard() {
   const covered = focus.on;
   $("mb-cover").hidden = !covered;
   $("menu-board").classList.toggle("covered", covered);
-  if (covered) { putDown(); clearCanvas(); loaded = ""; }
+  if (covered) { flush(); loaded = ""; menu = menuShape({}); }
   const today = todayStr();
   $("mb-week").textContent = week === weekStart() ? `This week · from ${fmtDay(week, { day: "numeric", month: "short" })}`
     : `Week of ${fmtDay(week, { day: "numeric", month: "short", year: parseDay(week).getFullYear() === new Date().getFullYear() ? undefined : "numeric" })}`;
   $("mb-this").hidden = week === weekStart();
+  const drawn = $("mb-drawn");
+  drawn.hidden = covered || !drawnWeeks.has(week);
+  drawn.href = `/api/board/${week}`;
+  // keep typing where it is when the board redraws (the minute tick re-renders it)
+  const active = document.activeElement?.closest?.("#mb-grid") ? document.activeElement.dataset.cell : null;
   $("mb-grid").replaceChildren(h("span", { className: "mb-corner" }),
-    ...Array.from({ length: 7 }, (_, i) => {
-      const d = addDays(week, i);
-      return h("span", { className: `mb-day${d === today ? " today" : ""}` },
-        h("b", { textContent: fmtDay(d, { weekday: "short" }) }), ` ${parseDay(d).getDate()}`);
-    }),
-    ...MEALS.flatMap((m) => [h("span", { className: "mb-meal", textContent: m }), ...Array.from({ length: 7 }, (_, i) => h("span", { className: `mb-cell${addDays(week, i) === today ? " today" : ""}` }))]));
+    ...MEALS.map((m) => h("span", { className: "mb-meal", textContent: m })),
+    ...DAYS.flatMap((key, i) => {
+      const d = addDays(week, i), isToday = d === today;
+      return [
+        h("span", { className: `mb-day${isToday ? " today" : ""}` }, h("b", { textContent: fmtDay(d, { weekday: "short" }) }), ` ${parseDay(d).getDate()}`),
+        ...MEALS.map((m) => {
+          const input = h("input", { type: "text", className: `mb-cell${isToday ? " today" : ""}`, value: menu[key][m], title: menu[key][m], maxLength: 120, disabled: covered, autocomplete: "off", spellcheck: true,
+            ariaLabel: `${m}, ${fmtDay(d, { weekday: "long", day: "numeric", month: "long" })}` });
+          input.dataset.cell = `${key}.${m}`;
+          input.addEventListener("input", () => { menu[key][m] = input.title = input.value; scheduleSave(); renderTips(); });
+          input.addEventListener("keydown", (e) => moveFocus(e, i, MEALS.indexOf(m)));
+          return input;
+        }),
+      ];
+    }));
+  if (active) document.querySelector(`#mb-grid [data-cell="${active}"]`)?.focus();
+  renderTips();
   if (!covered && loaded !== week) loadWeek(week);
+}
+
+// Enter goes down a day (like a spreadsheet), arrows up/down move between days
+function moveFocus(e, day, meal) {
+  const step = e.key === "Enter" || e.key === "ArrowDown" ? 1 : e.key === "ArrowUp" ? -1 : 0;
+  if (!step || e.isComposing) return;
+  const next = document.querySelector(`#mb-grid [data-cell="${DAYS[day + step]}.${MEALS[meal]}"]`);
+  if (!next) return;
+  e.preventDefault();
+  next.focus();
+  next.select();
 }
 
 async function loadWeek(w) {
   loaded = w;
-  undo.length = 0;
-  clearCanvas();
   try {
-    const res = await fetch(`/api/board/${w}`);
+    const res = await fetch(`/api/menu/${w}`);
     if (!res.ok || loaded !== w) return;
-    const img = new Image();
-    img.src = URL.createObjectURL(await res.blob());
-    await img.decode();
-    if (loaded === w) ctx.drawImage(img, 0, 0, W, H);
-    URL.revokeObjectURL(img.src);
-  } catch { /* nothing drawn that week yet */ }
+    const data = await res.json();
+    guideUrl = data.guideUrl || null;
+    if (loaded === w && !dirty) { menu = menuShape(data); renderWhiteboard(); }
+  } catch { /* the server's away: the boxes stay empty */ }
 }
-const clearCanvas = () => ctx.clearRect(0, 0, W, H);
-
-// ---- picking up a marker or the eraser ----
-function pickUp(name) {
-  if (focus.on) return;
-  tool = tool === name ? null : name;
-  document.querySelectorAll("#menu-board [data-tool]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.tool === tool)));
-  $("menu-board").dataset.tool = tool || "";
-  canvas.style.touchAction = tool ? "none" : "";
-}
-function putDown() { if (tool) pickUp(tool); }
-document.querySelectorAll("#menu-board [data-tool]").forEach((b) => b.addEventListener("click", () => pickUp(b.dataset.tool)));
-document.addEventListener("keydown", (e) => { if (e.key === "Escape" && tool && !document.querySelector("dialog[open]")) putDown(); });
-
-// ---- drawing: smoothed strokes in the drawing's own coordinates ----
-let stroke = null;
-const at = (e) => { const r = canvas.getBoundingClientRect(); return { x: (e.clientX - r.left) * (W / r.width), y: (e.clientY - r.top) * (H / r.height) }; };
-canvas.addEventListener("pointerdown", (e) => {
-  if (!tool || focus.on || e.button > 0) return;
-  e.preventDefault();
-  canvas.setPointerCapture(e.pointerId);
-  undo.push(ctx.getImageData(0, 0, W, H));
-  if (undo.length > 12) undo.shift();
-  const t = TOOLS[tool];
-  ctx.globalCompositeOperation = tool === "erase" ? "destination-out" : "source-over";
-  ctx.strokeStyle = t.colour || "#000";
-  ctx.fillStyle = t.colour || "#000";
-  ctx.lineWidth = t.width;
-  ctx.lineCap = ctx.lineJoin = "round";
-  const p = at(e);
-  stroke = { last: p, mid: p };
-  ctx.beginPath();
-  ctx.arc(p.x, p.y, t.width / 2, 0, Math.PI * 2);
-  ctx.fill();
-});
-canvas.addEventListener("pointermove", (e) => {
-  if (!stroke) return;
-  // the in-between points since the last move, for smooth lines (some browsers give none: then just this one)
-  const points = e.getCoalescedEvents?.() || [];
-  for (const ev of points.length ? points : [e]) {
-    const p = at(ev), mid = { x: (stroke.last.x + p.x) / 2, y: (stroke.last.y + p.y) / 2 };
-    ctx.beginPath();
-    ctx.moveTo(stroke.mid.x, stroke.mid.y);
-    ctx.quadraticCurveTo(stroke.last.x, stroke.last.y, mid.x, mid.y);
-    ctx.stroke();
-    stroke.last = p;
-    stroke.mid = mid;
-  }
-});
-const endStroke = () => {
-  if (!stroke) return;
-  stroke = null;
-  ctx.globalCompositeOperation = "source-over";
-  scheduleSave();
-};
-canvas.addEventListener("pointerup", endStroke);
-canvas.addEventListener("pointercancel", endStroke);
 
 function scheduleSave() {
   dirty = true;
   clearTimeout(saveTimer);
-  saveTimer = setTimeout(save, 700);
+  saveTimer = setTimeout(save, 600);
 }
 async function save() {
+  clearTimeout(saveTimer);
   if (!dirty || focus.on || loaded !== week) return;
   dirty = false;
   try {
-    const res = await fetch(`/api/board/${week}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ image: canvas.toDataURL("image/png") }) });
+    const res = await fetch(`/api/menu/${week}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(menu), keepalive: true });
     if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || "The menu couldn't be saved");
   } catch (err) { dirty = true; toast(err.message, true); }
 }
-// don't lose the last stroke when the page closes or the week changes
-window.addEventListener("pagehide", () => { if (dirty) save(); });
+const flush = () => { if (dirty) save(); };
+// don't lose the last few letters when the page closes
+window.addEventListener("pagehide", flush);
 
-$("mb-undo").addEventListener("click", () => {
-  const last = undo.pop();
-  if (!last) return toast("Nothing to undo on the board.");
-  ctx.putImageData(last, 0, 0);
-  scheduleSave();
-});
 $("mb-clear").addEventListener("click", () => {
   if (focus.on) return;
-  undo.push(ctx.getImageData(0, 0, W, H));
-  clearCanvas();
+  const before = menuShape(menu);
+  if (!Object.values(before).some((d) => Object.values(d).some(Boolean))) return toast("The board's already clean.");
+  menu = menuShape({});
   scheduleSave();
-  toast("Board wiped.", false, { label: "Undo", run: () => $("mb-undo").click() });
+  renderWhiteboard();
+  toast("Board wiped.", false, { label: "Undo", run: () => { menu = before; scheduleSave(); renderWhiteboard(); } });
+});
+
+// ---- eating well: the plate, what's already there, and a couple of ideas ----
+function renderTips() {
+  const box = $("mb-tips"), btn = $("mb-tips-btn");
+  const show = tipsOpen && !focus.on;
+  box.hidden = !show;
+  btn.setAttribute("aria-expanded", String(show));
+  if (!show) return;
+  const t = menuTips(menu);
+  const guide = guideUrl ? h("a", { href: guideUrl, target: "_blank", rel: "noopener", className: "mb-guide", textContent: "Why these? The Eating well guide ↗" }) : null;
+  box.replaceChildren(
+    h("div", { className: "mb-plate" },
+      h("h3", { textContent: "A good plate" }),
+      h("ul", {}, PLATE.map((p) => h("li", {}, h("b", { textContent: p.part }), ` ${p.what}`)))),
+    h("div", { className: "mb-ideas" },
+      t.ready ? [
+        t.wins.length ? h("h3", { textContent: "Already in your week" }) : null,
+        t.wins.length ? h("ul", { className: "wins" }, t.wins.map((w) => h("li", { textContent: w.text }))) : null,
+        t.ideas.length || t.note ? h("h3", { textContent: "Ideas" }) : null,
+        h("ul", { className: "ideas" }, [...t.ideas, t.note].filter(Boolean).map((x) => h("li", { textContent: x.text }))),
+      ] : h("p", { className: "quiet", textContent: "Type a few meals and ideas for the week will show here." }),
+      guide));
+}
+$("mb-tips-btn").addEventListener("click", () => {
+  tipsOpen = !tipsOpen;
+  try { localStorage.setItem("menu-tips", tipsOpen ? "1" : "0"); } catch { /* fine */ }
+  renderTips();
 });
 
 // ---- other weeks: last week's menu stays, next week can be planned ahead ----
 async function goWeek(w) {
-  if (dirty) { clearTimeout(saveTimer); await save(); }
+  if (dirty) await save();
   week = w;
+  menu = menuShape({});
   renderWhiteboard();
 }
 $("mb-prev").addEventListener("click", () => goWeek(addDays(week, -7)));
@@ -157,5 +151,5 @@ let shownWeek = weekStart();
 setInterval(() => {
   const now = weekStart();
   if (now !== shownWeek) { const was = shownWeek; shownWeek = now; if (week === was) goWeek(now); else renderWhiteboard(); }
-  else renderWhiteboard(); // today's column moves at midnight
+  else if (!document.activeElement?.closest?.("#mb-grid")) renderWhiteboard(); // today's row moves at midnight
 }, 60_000);

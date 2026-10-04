@@ -12,6 +12,11 @@ export const LEVELS = [
 export const levelIndex = (name) => LEVELS.findIndex((l) => l.name === name);
 export const isGoalDone = (g) => /^done/i.test(g?.status || "");
 
+// Which goals go on the wall calendar: open Tasks and PBIs with a due date. Epic and Feature dates are a rough
+// "by when", not a day to plan around, and cluttered the month (Mel, 6 Oct 2026); they stay on the Timeline.
+export const CALENDAR_LEVELS = ["PBI", "Task"];
+export const onCalendar = (g) => Boolean(g?.due) && !isGoalDone(g) && (!g.level || CALENDAR_LEVELS.includes(g.level));
+
 // Progress and effort roll up the tree: a parent's progress is the average of its children's.
 // Sets children, childDone, progress and effortTotal on every goal (never stored in Notion).
 export function rollUp(goals) {

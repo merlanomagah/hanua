@@ -68,7 +68,7 @@ const lightsOff = () => $("app").classList.contains("lamp-off");
 const musicOn = () => $("app").dataset.music === "playing";
 const cageShown = () => Boolean(cage && cage.getClientRects().length && cage.getBoundingClientRect().width);
 const busy = () => document.hidden || document.querySelector("dialog[open]") || Date.now() - lastKey < 4000
-  || $("menu-board")?.dataset.tool || document.querySelector(".can.lifted") || flying;
+  || document.querySelector(".can.lifted") || flying;
 
 // a perch's landing point right now (screen coordinates), or null when it isn't on screen
 function pointOf(p, el, fx) {

@@ -1,6 +1,6 @@
 import "./lock.js"; // the sleep screen goes up before anything else
 import { dayOf, daysBetween, lastLightSwitch, pad, parseDay, timeOf, todayStr, ymd } from "./shared/dates.js";
-import { isGoalDone } from "./shared/goals.js";
+import { isGoalDone, onCalendar } from "./shared/goals.js";
 import { $, ago, api, area, fmtDay, focus, focusGoals, h, hiddenInFocus, isDone, isNarrow, longDate, money, num, records, reducedMotion, state, store, toast, updatedLine } from "./lib.js";
 import { goalById, moveGoal, onBoard, renderBoard, showBoard } from "./goals/board.js";
 import { openGoal } from "./goals/form.js";
@@ -332,8 +332,8 @@ export let calOffset = 0; // months away from this one
 export function calendarItems() {
   const ev = records(ROLE.events).filter((r) => r.date).map((r) => ({ ...r, kind: r.status || "Event", color: TYPE_COLORS[(r.status || "").toLowerCase()] || "#3B6B5A" }));
   const due = records(ROLE.tasks).filter((r) => r.date && !isDone(r)).map((r) => ({ ...r, kind: "Due", color: "#C4602A" }));
-  // goals land on their due date automatically, in their level's colour
-  const goals = focusGoals(state.goals?.goals || []).filter((g) => g.due && !isGoalDone(g)).map((g) => ({ id: g.id, url: g.url, title: g.title, date: g.due, status: g.status, kind: g.level || "Task", color: LEVEL_COLORS[g.level] || "#C9962F", goal: g }));
+  // Tasks and PBIs land on their due date automatically, in their level's colour (Epics and Features don't: onCalendar)
+  const goals = focusGoals(state.goals?.goals || []).filter(onCalendar).map((g) => ({ id: g.id, url: g.url, title: g.title, date: g.due, status: g.status, kind: g.level || "Task", color: LEVEL_COLORS[g.level] || "#C9962F", goal: g }));
   return [...ev, ...due, ...goals];
 }
 

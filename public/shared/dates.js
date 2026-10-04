@@ -23,3 +23,10 @@ export function lastLightSwitch(now = new Date()) {
 
 // The Monday that starts the week holding `d` (a Date), as YYYY-MM-DD
 export const weekStart = (d = new Date()) => ymd(new Date(d.getFullYear(), d.getMonth(), d.getDate() - ((d.getDay() + 6) % 7)));
+
+// A week's name as the room saves it (its Monday, YYYY-MM-DD), or null for anything that isn't a real Monday
+export function weekKey(s) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(s || ""))) return null;
+  const d = parseDay(s);
+  return ymd(d) === s && d.getDay() === 1 ? s : null;
+}
