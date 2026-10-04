@@ -9,3 +9,6 @@ data/lock*.json
 
 # the room's own things: the plant's watering log and the menu whiteboard's drawings (this Mac only)
 data/room*/
+
+# the Apple Calendar helper, built on this Mac from scripts/calendar.swift
+bin/

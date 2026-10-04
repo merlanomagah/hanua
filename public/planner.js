@@ -12,7 +12,7 @@ import { $, api, area, focus, focusGoals, h, isDone, isWorkGoal, longDate, recor
 import { goalById, moveGoal } from "./goals/board.js";
 import { openGoal } from "./goals/form.js";
 import { openQuick } from "./goals/quick.js";
-import { bookEl, calendarItems, openBook, ROLE, sortByTime, toggleTask } from "./app.js";
+import { bookEl, calendarItems, ensureApple, openBook, openInCalendar, ROLE, sortByTime, toggleTask } from "./app.js";
 
 // ---- the desk as a pane ----
 export let onDesk = false;
@@ -326,8 +326,8 @@ export function renderAgenda() {
     const t = timeOf(x.date);
     if (!nowPlaced && t && t > nowHM) { list.append(h("li", { className: "now-line" }, h("span", { textContent: `NOW ${nowHM}` }))); nowPlaced = true; }
     const inner = [h("span", { className: "t", textContent: x.kind === "Due" ? `Due: ${x.title}` : x.title }), h("span", { className: "k", textContent: x.goal ? x.kind : x.busy ? "" : x.kind })];
-    const open = x.busy ? h("span", { className: "slot-open busy" }, ...inner) : h("button", { type: "button", className: "slot-open", title: x.goal ? "Open the goal" : "Open in your book" }, ...inner);
-    if (!x.busy) open.addEventListener("click", () => (x.goal ? openGoal(x.goal) : openBook(x.kind === "Due" ? ROLE.tasks : ROLE.events, bookEl(x.kind === "Due" ? ROLE.tasks : ROLE.events), x.id)));
+    const open = x.busy ? h("span", { className: "slot-open busy" }, ...inner) : h("button", { type: "button", className: "slot-open", title: x.goal ? "Open the goal" : x.apple ? "Open in Calendar" : "Open in your book" }, ...inner);
+    if (!x.busy) open.addEventListener("click", () => (x.goal ? openGoal(x.goal) : x.apple ? openInCalendar(x) : openBook(x.kind === "Due" ? ROLE.tasks : ROLE.events, bookEl(x.kind === "Due" ? ROLE.tasks : ROLE.events), x.id)));
     list.append(h("li", { className: `slot${key === today && t && t < nowHM ? " past" : ""}`, style: `--dot:${x.color}` },
       h("time", { textContent: t || (x.kind === "Due" || x.goal ? "Due" : "All day") }), open,
       x.url ? h("a", { className: "slot-out", href: x.url, target: "_blank", rel: "noopener", title: "Open in Notion", ariaLabel: `Open ${x.title} in Notion`, textContent: "↗" }) : null));
@@ -348,6 +348,7 @@ export function renderAgenda() {
 }
 function movePad(step) {
   padDay = stepDay(padDay, step);
+  ensureApple(padDay);
   const screen = $("agenda").querySelector(".ip-screen");
   renderAgenda();
   if (!reducedMotion && screen) $("agenda").querySelector(".ip-screen").animate([{ transform: `translateX(${step * 24}px)`, opacity: 0.3 }, { transform: "none", opacity: 1 }], { duration: 260, easing: "ease-out" });

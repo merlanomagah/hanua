@@ -7,6 +7,7 @@ import path from "node:path";
 import { notionEnabled, queryArea, getSchema, toNotionProperties, createPage, updatePage, archivePage, pageSection, pageSections, NotionError } from "./notion.js";
 import { claudeEnabled, ask, draftEntry, coachGoal, suggestChildren, suggestMeals } from "./claude.js";
 import { getMoney, getMoneyMonth, isMonthKey } from "./money.js";
+import { getAppleEvents, showDay } from "./calendar.js";
 import { musicStatus, musicAction, playPlaylist } from "./music.js";
 import { toGoal, goalProperties, goalOptions } from "./goals.js";
 import { rollUp } from "../public/shared/goals.js";
@@ -261,6 +262,25 @@ app.get("/api/money/:ym", async (req, res, next) => {
   try {
     res.json(await getMoneyMonth(req.params.ym));
   } catch (err) {
+    next(err);
+  }
+});
+
+// Apple Calendar, read live from this Mac (never kept): the calendar asks for the weeks it shows
+app.get("/api/calendar", async (req, res, next) => {
+  try {
+    res.json(await getAppleEvents(String(req.query.from || ""), String(req.query.to || ""), { fresh: req.query.fresh === "1" }));
+  } catch (err) {
+    if (err.status) return res.status(err.status).json({ error: err.message });
+    next(err);
+  }
+});
+// Open Calendar.app on a day (Apple events live there, not in Notion)
+app.post("/api/calendar/show", async (req, res, next) => {
+  try {
+    res.json(await showDay(String(req.body?.date || "")));
+  } catch (err) {
+    if (err.status) return res.status(err.status).json({ error: err.message });
     next(err);
   }
 });

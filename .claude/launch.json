@@ -21,10 +21,44 @@
         "ANTHROPIC_AUTH_TOKEN=",
         "PUTEA_URL=http://127.0.0.1:1",
         "LOCK_FILE=data/lock-sample.json",
+        "APPLE_CAL=0",
         "node",
         "server/index.js"
       ],
       "port": 3001
+    },
+    {
+      "name": "sample-desk",
+      "runtimeExecutable": "env",
+      "runtimeArgs": [
+        "NOTION_TOKEN=",
+        "ANTHROPIC_API_KEY=",
+        "ANTHROPIC_AUTH_TOKEN=",
+        "PUTEA_URL=http://127.0.0.1:1",
+        "LOCK_FILE=data/lock-sample.json",
+        "APPLE_CAL=0",
+        "node",
+        "server/index.js"
+      ],
+      "port": 3027,
+      "autoPort": true
+    },
+    {
+      "name": "sample-fresh",
+      "runtimeExecutable": "env",
+      "runtimeArgs": [
+        "NOTION_TOKEN=",
+        "ANTHROPIC_API_KEY=",
+        "ANTHROPIC_AUTH_TOKEN=",
+        "PUTEA_URL=http://127.0.0.1:1",
+        "LOCK_FILE=data/lock-test.json",
+        "ROOM_DATA=data/room-sample",
+        "APPLE_CAL=0",
+        "node",
+        "server/index.js"
+      ],
+      "port": 3031,
+      "autoPort": true
     }
   ]
 }

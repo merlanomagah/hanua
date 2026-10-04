@@ -2,6 +2,7 @@ import "./lock.js"; // the sleep screen goes up before anything else
 import { aheadText, dayOf, daysBetween, lastLightSwitch, pad, parseDay, timeIn, timeOf, todayStr, ymd } from "./shared/dates.js";
 import { GREET_EVERY_MS, GREET_NAME, greetingsAt, timeOfDay } from "./shared/greetings.js";
 import { onCalendar } from "./shared/goals.js";
+import { appleAtWork, withoutDuplicates } from "./shared/events.js";
 import { $, ago, api, area, fmtDay, focus, focusGoals, h, hiddenInFocus, isDone, isNarrow, longDate, money, num, records, reducedMotion, state, store, toast, updatedLine } from "./lib.js";
 import { onBoard, renderBoard, showBoard } from "./goals/board.js";
 import { openGoal } from "./goals/form.js";
@@ -368,8 +369,43 @@ export let selectedDay = todayStr();
 export const LEVEL_COLORS = { Epic: "#C4602A", Feature: "#5a4372", PBI: "#2b3f6b", Task: "#C9962F" };
 export let calOffset = 0; // months away from this one
 
+// Apple Calendar: read live from the Mac a few weeks at a time (whatever the calendar or agenda shows), never kept
+export const apple = { live: false, reason: "", work: [], months: new Map() };
+const monthOfDay = (key) => key.slice(0, 7);
+export async function ensureApple(key = todayStr(), { fresh = false } = {}) {
+  const m = monthOfDay(key);
+  if (!fresh && apple.months.has(m)) return;
+  apple.months.set(m, apple.months.get(m) || { items: [] }); // asked for once at a time
+  const first = parseDay(`${m}-01`);
+  const from = ymd(new Date(first.getFullYear(), first.getMonth(), -6));
+  const to = ymd(new Date(first.getFullYear(), first.getMonth() + 1, 14));
+  try {
+    const res = await api(`/api/calendar?from=${from}&to=${to}${fresh ? "&fresh=1" : ""}`);
+    Object.assign(apple, { live: res.live, reason: res.reason || "", work: res.work || [] });
+    apple.months.set(m, { items: res.items || [] });
+  } catch {
+    apple.months.delete(m);
+    return;
+  }
+  renderCalendar();
+  renderAgenda();
+  renderHeader();
+  if ($("day-dialog").open && dialogDay) openDay(dialogDay);
+}
+function appleEvents(notion) {
+  const byId = new Map();
+  for (const { items } of apple.months.values()) for (const it of items) byId.set(it.id, it);
+  const list = withoutDuplicates([...byId.values()], notion);
+  return focus.on ? list.map((it) => appleAtWork(it, apple.work)) : list;
+}
+// Open Calendar.app on that day: an Apple event lives there, not in Notion
+export function openInCalendar(x) {
+  api("/api/calendar/show", { date: dayOf(x.date) }).catch((err) => toast(err.message, true));
+}
+
 export function calendarItems() {
-  const ev = records(ROLE.events).filter((r) => r.date).map((r) => ({ ...r, kind: r.status || "Event", color: TYPE_COLORS[(r.status || "").toLowerCase()] || "#3B6B5A" }));
+  const notion = records(ROLE.events).filter((r) => r.date).map((r) => ({ ...r, kind: r.status || "Event", color: TYPE_COLORS[(r.status || "").toLowerCase()] || "#3B6B5A" }));
+  const ev = [...notion, ...appleEvents((area(ROLE.events)?.records || []).filter((r) => r.date))]; // compared before "Busy" hides titles
   const due = records(ROLE.tasks).filter((r) => r.date && !isDone(r)).map((r) => ({ ...r, kind: "Due", color: "#C4602A" }));
   // Tasks and PBIs land on their due date automatically, in their level's colour (Epics and Features don't: onCalendar)
   const goals = focusGoals(state.goals?.goals || []).filter(onCalendar).map((g) => ({ id: g.id, url: g.url, title: g.title, date: g.due, status: g.status, kind: g.level || "Task", color: LEVEL_COLORS[g.level] || "#C9962F", goal: g }));
@@ -553,7 +589,9 @@ export function openDay(key) {
     return h("li", { className: "entry" },
       h("span", { className: "t", textContent: x.title }),
       h("span", { className: "v", textContent: label }),
-      h("span", { className: "m" }, x.kind, openGoalBtn ? h("span", {}, " · ", openGoalBtn) : null, x.url ? h("span", {}, " · ", h("a", { href: x.url, target: "_blank", rel: "noopener", textContent: "Open in Notion ↗" })) : null));
+      h("span", { className: "m" }, x.kind, openGoalBtn ? h("span", {}, " · ", openGoalBtn) : null, x.url ? h("span", {}, " · ", h("a", { href: x.url, target: "_blank", rel: "noopener", textContent: "Open in Notion ↗" })) : null,
+        x.apple && !x.busy ? h("span", {}, " · ", h("button", { type: "button", className: "link-btn", textContent: "Open in Calendar ↗", onclick: () => openInCalendar(x) })) : null,
+        x.location ? h("span", {}, ` · ${x.location}`) : null));
   };
   $("day-body").replaceChildren(...[
     events.length ? h("div", {}, h("h4", { textContent: `${events.length} event${events.length > 1 ? "s" : ""}` }),
@@ -586,6 +624,7 @@ export function calNav(label, aria, step) {
     const real = new Date();
     selectedDay = calOffset ? ymd(new Date(real.getFullYear(), real.getMonth() + calOffset, 1)) : todayStr();
     renderCalendar();
+    ensureApple(selectedDay);
   });
   return b;
 }
@@ -1457,6 +1496,7 @@ export function renderHeader() {
   $("status").replaceChildren(
     h("span", { className: `pill${notion && live ? " on" : ""}`, textContent: notion ? `Notion ${live}/${state.areas.length}` : "Notion · sample" }),
     h("span", { className: `pill${state.money?.live ? " on" : ""}`, textContent: !state.money?.live ? (state.money?.reason === "closed" ? "Pūtea closed · sample" : "Pūtea · sample") : state.money.setup && !state.money.setup.accounts ? "Pūtea · no bank yet" : "Pūtea live" }),
+    h("span", { className: `pill${apple.live ? " on" : ""}`, title: apple.reason === "denied" ? "System Settings → Privacy & Security → Calendars: turn on Hanua Calendar" : "", textContent: apple.live ? "Calendar live" : apple.reason === "denied" ? "Calendar · not allowed" : apple.reason === "off" ? "Calendar · sample" : "Calendar · waiting" }),
     h("span", { className: `pill${claude ? " on" : ""}`, textContent: claude ? "Claude on" : "Claude off" }),
   );
 }
@@ -1486,6 +1526,7 @@ export async function load() {
   if (reviews.status === "fulfilled") state.reviews = reviews.value;
   if (shop.status === "fulfilled") state.shop = { ...state.shop, ...shop.value };
   renderAll();
+  ensureApple(todayStr());
 }
 
 renderLamp();
@@ -1496,7 +1537,11 @@ refreshMusic();
 // keep the song name current (only while Hanua's tab is showing)
 setInterval(() => { if (document.visibilityState === "visible") refreshMusic(); }, 5000);
 // money: Pūtea may have been opened (or synced) since Hanua loaded
-setInterval(() => { if (document.visibilityState === "visible") refreshMoney(); }, 5 * 60_000);
+setInterval(() => {
+  if (document.visibilityState !== "visible") return;
+  refreshMoney();
+  for (const m of apple.months.keys()) ensureApple(`${m}-01`, { fresh: true });
+}, 5 * 60_000);
 renderMoneyScreen();
 load();
 loadPlant();
