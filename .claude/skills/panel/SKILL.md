@@ -67,7 +67,7 @@ Each seat that sits gives:
 
 **Fix, Small, Medium:** run the seats yourself in one pass. Keep the voices distinct: answer each seat's own checklist, don't blend.
 
-**Large (the hybrid part):** the Data steward, the engineer most affected (Frontend or Backend) and the Test lead each run as a separate read-only agent, in parallel, so their views come from reading the code independently rather than from your assumptions. Use the Agent tool with `subagent_type: "Plan"`, and give each one: the one-line problem, the Gate result, the path to its seat file (`.claude/skills/panel/seats/…`), and "Return your verdict, up to 5 points with file references, and must-haves. Do not change any files." Run the other seats yourself while they work, then fold their answers in.
+**Large (the hybrid part):** the Data steward, the engineer most affected (Frontend or Backend) and the Test lead each run as a separate read-only agent, in parallel, so their views come from reading the code independently rather than from your assumptions. Use the Agent tool with `subagent_type: "Plan"`, and give each one: the one-line problem, the Gate result, the path to its seat file (`.claude/skills/panel/seats/…`), and "Return your verdict, up to 5 points with file references, and must-haves. Do not change any files." Run the other seats yourself while they work, then fold their answers in. **Check any claim of an existing bug or risk in the code before it goes into the brief** (first run, 4 Oct 2026: an agent flagged a time-zone bug that the code already avoids).
 
 ## Step 5. Settle conflicts
 
