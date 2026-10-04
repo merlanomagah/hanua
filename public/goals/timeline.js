@@ -6,6 +6,7 @@ import { updateGoal } from "./store.js";
 import { STATE_CLASS, conflictNote, goalById, inView, kidsOf, renderBoard, shown, tlLevelPicker, tlLevels, tlRoot, tlZoom } from "./board.js";
 import { openGoal } from "./form.js";
 import { openQuick } from "./quick.js";
+import { levelIcon } from "./icons.js";
 export function renderTimeline() {
   const goals = state.goals.goals;
   let list = shown().filter((g) => tlLevels.has(g.level || "Task"));
@@ -58,7 +59,7 @@ export function renderTimeline() {
       const st = STATE_CLASS[(g.status || "new").toLowerCase()] || "new";
       const late = g.due && st !== "done" && dayOf(g.due) < today;
       const label = h("button", { type: "button", className: "tl-label", style: `padding-left:${10 + depthOf(g) * 14}px`, title: `Review “${g.title}”` },
-        h("span", { className: "sp-type", textContent: g.level || "Task" }), h("span", { className: "tl-name", textContent: g.title }));
+        h("span", { className: "sp-type", title: g.level || "Task" }, levelIcon(g.level)), h("span", { className: "tl-name", textContent: g.title }));
       const left = x(s.start), w = Math.max(dayW, (daysBetween(s.start, s.end) + 1) * dayW);
       const warn = conflictNote(g);
       const bar = h("button", {

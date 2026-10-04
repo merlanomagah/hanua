@@ -968,7 +968,7 @@ button:disabled { opacity: 0.5; cursor: progress; }
 .goal-card.focus { box-shadow: 0 0 0 2px var(--lvl), 6px 18px 22px -8px rgb(28 24 20 / 0.5); }
 .goal-card.dragging { opacity: 0.4; }
 .g-top { display: flex; align-items: center; gap: 8px; font: 9px var(--mono); letter-spacing: 0.14em; text-transform: uppercase; }
-.g-type { color: var(--lvl); font-weight: 500; }
+.g-type { display: inline-flex; }
 .g-pri { padding: 1px 5px; border-radius: 2px; background: var(--hair); color: var(--ink-3); letter-spacing: 0.06em; }
 .g-pri.p1 { background: var(--terra); color: var(--cream); }
 .g-pri.p2 { background: var(--terra-soft); color: var(--ink); }
@@ -1300,7 +1300,16 @@ button.g-state:hover, button.g-state:focus-visible { background: var(--hair); co
 
 /* Backlog and Timeline replace the columns with one panel that scrolls inside the cork */
 .cork.view-backlog .cork-cols, .cork.view-timeline .cork-cols { display: block; }
-.sp-type { font: 500 9px var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--lvl); }
+.sp-type { display: inline-flex; }
+/* level symbols (public/goals/icons.js): one colour per level, the same everywhere */
+.lvl-ico { flex: none; width: 15px; height: 15px; vertical-align: -2px; }
+.lvl-ico.lvl-epic { color: var(--terra); }
+.lvl-ico.lvl-feature { color: #5a4372; }
+.lvl-ico.lvl-pbi { color: #2b3f6b; }
+.lvl-ico.lvl-task { color: #C9962F; }
+.new-menu b .lvl-ico { margin-right: 4px; }
+#level-seg .lvl-ico { width: 12px; height: 12px; vertical-align: -1px; }
+#level-seg [aria-selected="true"] .lvl-ico { color: inherit; }
 
 /* Backlog: one ledger pinned to the cork, each goal indented under the one it belongs to (like ADO's backlog) */
 .bl-wrap { height: 100%; display: flex; flex-direction: column; gap: 12px; }
@@ -1329,7 +1338,8 @@ button.g-state:hover, button.g-state:focus-visible { background: var(--hair); co
 .bl-twist { flex: none; width: 22px; height: 22px; padding: 0; border: 0; border-radius: 2px; background: transparent; color: var(--ink-3); cursor: pointer; font: 13px/1 var(--ui); }
 .bl-twist:hover { background: var(--hair); color: var(--ink); }
 .bl-twist.none { display: inline-block; }
-.bl-type { flex: none; width: 54px; font: 500 9px var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--lvl); }
+.bl-type { flex: none; display: inline-flex; width: 18px; }
+.bl-row.top .bl-type .lvl-ico { width: 17px; height: 17px; }
 .bl-name { min-width: 0; padding: 4px 0; border: 0; background: transparent; color: var(--ink); cursor: pointer; text-align: left; font: 17px/1.2 var(--display); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .bl-name:hover { text-decoration: underline; text-decoration-color: var(--border-2); }
 .bl-row.lvl-epic .bl-name { font-weight: 600; font-size: 19px; }
@@ -1364,8 +1374,6 @@ button.g-state:hover, button.g-state:focus-visible { background: var(--hair); co
   .bl { --cols: minmax(0, 1fr) 84px 76px; }
   .bl-size, .bl-keys { display: none; }
   .bl-title { padding-left: calc(var(--depth) * 14px); }
-  .bl-row:not(.top):not(.bl-adding) .bl-type { display: none; }
-  .bl-row { box-shadow: inset 3px 0 0 var(--lvl); }
 }
 @media (max-width: 760px) {
   /* phones: the name gets the room; state is just its coloured dot, and names wrap */
@@ -1376,7 +1384,6 @@ button.g-state:hover, button.g-state:focus-visible { background: var(--hair); co
   .bl-row .g-state { font-size: 0; gap: 0; }
   .bl-row .g-state i { width: 8px; height: 8px; }
   .bl-title { padding-left: calc(var(--depth) * 10px); gap: 2px; }
-  .bl-row:not(.bl-adding) .bl-type { display: none; }
   .bl-name { font-size: 16px; white-space: normal; padding: 6px 0; }
   .bl-row.lvl-epic .bl-name { font-size: 17px; }
 }
@@ -1466,8 +1473,6 @@ button.g-state:hover, button.g-state:focus-visible { background: var(--hair); co
   #plan-size-col, #plan-form .plan-row select[name="s"] { display: none; }
   .b-select { max-width: 100%; flex: 1 1 200px; }
   /* phones: the level shows as a coloured edge on the name, leaving room for the name */
-  .tl-label .sp-type { display: none; }
-  .tl-label { box-shadow: inset 3px 0 0 var(--lvl); }
   .tl-name { font-size: 15px; }
 }
 

@@ -7,6 +7,7 @@ import { refreshGoals, removeGoal, statusOptions, updateGoal } from "./store.js"
 import { askFelt, openGoal } from "./form.js";
 import { openPlan } from "./plan.js";
 import { openQuick } from "./quick.js";
+import { levelIcon } from "./icons.js";
 import { reviewDue } from "./review.js";
 import { renderTimeline, scrollTimelineToToday } from "./timeline.js";
 import { renderBacklog } from "./backlog.js";
@@ -200,7 +201,7 @@ export function goalCard(g, i, thread) {
     tabIndex: 0, ariaLabel: `${g.level || "Task"}: ${g.title}, ${g.status || "New"}`,
   },
     h("span", { className: "g-top" },
-      h("span", { className: "g-type", textContent: g.level || "Task" }),
+      h("span", { className: "g-type", title: g.level || "Task" }, levelIcon(g.level)),
       g.priority ? h("span", { className: `g-pri p${g.priority}`, textContent: `P${g.priority}`, title: `Priority ${g.priority}` }) : null,
       g.area ? h("span", { className: "g-area", textContent: g.area }) : null),
     h("span", { className: "g-title", textContent: g.title }),
@@ -318,6 +319,7 @@ document.querySelectorAll('[role="tablist"]').forEach((list) => list.addEventLis
   next.click();
   next.focus();
 }));
+document.querySelectorAll("[data-level]").forEach((b) => b.prepend(levelIcon(b.dataset.level), " "));
 document.querySelectorAll("[data-level]").forEach((b) => b.addEventListener("click", () => {
   boardLevel = b.dataset.level;
   store("goals-level", boardLevel);
@@ -387,7 +389,7 @@ function toggleMenu(id, open) {
 }
 export const toggleNewMenu = (open) => toggleMenu("new-menu", open);
 $("new-menu").replaceChildren(...LEVELS.map((l) => {
-  const b = h("button", { type: "button", role: "menuitem" }, h("b", { textContent: `+ ${l.name}` }), h("span", { textContent: l.when }));
+  const b = h("button", { type: "button", role: "menuitem" }, h("b", {}, levelIcon(l.name), ` ${l.name}`), h("span", { textContent: l.when }));
   b.addEventListener("click", () => { toggleNewMenu(false); openGoal(null, { level: l.name }); });
   return b;
 }));

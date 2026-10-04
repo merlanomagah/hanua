@@ -10,6 +10,7 @@ import { STATE_CLASS, confirmDelete, conflictNote, flashGoals, goalById, isFresh
 import { openGoal } from "./form.js";
 import { openPlan } from "./plan.js";
 import { openQuick } from "./quick.js";
+import { levelIcon } from "./icons.js";
 
 // Which goals are closed, on this Mac only (a view preference, not data)
 let closed = new Set((store("goals-closed") || "").split(",").filter(Boolean));
@@ -115,7 +116,7 @@ function row(g, depth, kidCount, lit) {
         b.setAttribute("aria-expanded", String(isOpen));
         return b;
       })() : h("span", { className: "bl-twist none" }),
-      h("span", { className: "bl-type", textContent: g.level || "Task" }),
+      h("span", { className: "bl-type", title: g.level || "Task" }, levelIcon(g.level)),
       (() => { const b = tool(g.title, `Open “${g.title}”`, () => openGoal(g), "bl-name"); b.textContent = g.title; return b; })(),
       kidCount ? h("span", { className: "bl-count", textContent: `${g.childDone}/${kidCount}` }) : null),
     h("span", { role: "gridcell" }, (() => {
@@ -153,7 +154,7 @@ function addRow(depth) {
   }, 150));
   return h("div", { className: `bl-row bl-adding lvl-${adding.level.toLowerCase()}`, role: "row", style: `--depth:${depth}` },
     h("span", { className: "bl-title", role: "gridcell" }, h("span", { className: "bl-add-gap" }), h("span", { className: "bl-twist none" }),
-      h("span", { className: "bl-type", textContent: adding.level }), input),
+      h("span", { className: "bl-type", title: adding.level }, levelIcon(adding.level)), input),
     h("span", { className: "bl-keys", role: "gridcell", textContent: `Enter adds${childLevel(adding.level) ? " · Tab ↘" : ""}${p ? " · ⇧Tab ↖" : ""} · Esc` }));
 }
 
