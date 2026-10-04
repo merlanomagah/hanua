@@ -4,6 +4,7 @@ A personal daily dashboard drawn as a room: a bookcase menu (Notion databases), 
 
 ## Workflow
 
+- **Every change request goes through the Hanua Panel first** (`/panel`, `.claude/skills/panel/`), automatically, before anything is touched. It starts with a "worth it?" Gate (Chair and Sceptic), then the seats for the lane (Fix / Small / Medium / Large) assess it, and Mel approves one brief. Not for questions, Mel's own data entry or close-out; skipped when Mel says "skip panel". Parked ideas: `docs/panel/parked.md`. Mel's choice, 4 Oct 2026; the panel is itself Being tested (each Diary row notes which seats caught something).
 - Do the work on a working branch. When a change is finished and tested, **also update `main`** (fast-forward it to the finished work and push). The owner has given standing permission for this. They pull `main` with GitHub Desktop.
 - **Push it yourself.** The owner logged in GitHub's `gh` tool (4 Oct 2026) so Claude can push; they shouldn't need GitHub Desktop for it. Use it per command, without changing git config:
   `git -c credential.helper= -c "credential.helper=!$HOME/.local/gh/gh_2.102.0_macOS_arm64/bin/gh auth git-credential" push origin main` (and the working branch). If that fails, `gh auth status` says why.
