@@ -7,7 +7,7 @@
 // about one flight a minute, paused when Hanua isn't showing, and just sits in its cage if motion is reduced.
 import { $, reducedMotion, store } from "./lib.js";
 
-const W = 30, H = 26; // the bird's size; its feet are at the bottom middle
+const W = 42, H = 36; // the bird's size (its drawing is 30 × 26, scaled up); its feet are at the bottom middle
 // Where it can land: the top of each thing, x between two fractions of its width, y a fraction down from its top
 const PERCHES = [
   { sel: ".greet-row .lamp-img", x: [0.38, 0.62], y: 0.2, w: 3 },
@@ -230,7 +230,7 @@ window.addEventListener("keydown", () => { lastKey = Date.now(); }, true);
 window.addEventListener("pointermove", (e) => {
   if (!where || where === "cage" || flight || Date.now() - lastShoo < 3000) return;
   const r = bird.getBoundingClientRect();
-  if (Math.hypot(e.clientX - (r.left + W / 2), e.clientY - (r.top + H / 2)) > 46) return;
+  if (Math.hypot(e.clientX - (r.left + W / 2), e.clientY - (r.top + H / 2)) > 56) return;
   lastShoo = Date.now();
   const here = current();
   const c = choose((p) => { const el = document.querySelector(p.sel); if (!el) return false; const b = el.getBoundingClientRect(); return Math.hypot(b.left - here.x, b.top - here.y) < 500; }) || choose();
