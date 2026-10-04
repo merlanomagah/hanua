@@ -2,7 +2,7 @@
 // the helper's output (scripts/calendar.swift); nothing here runs the helper or touches Calendar.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { appleItems, appleAtWork, calendarList, sameEvent, withoutDuplicates } from "../public/shared/events.js";
+import { appleItems, appleAtWork, calendarList, calendarName, inCalendars, sameEvent, withoutDuplicates } from "../public/shared/events.js";
 
 const ev = (o) => ({ id: "E1", title: "Pilates", calendar: "Personal", color: "#1BADF8", allDay: false, start: "2026-10-06T18:00", end: "2026-10-06T19:00", location: "", ...o });
 
@@ -58,4 +58,13 @@ test("at work, only Work calendars show in full; the rest keep their time and sa
 test("calendar names from .env", () => {
   assert.deepEqual(calendarList(" Bills, Income ,Spark NZ,,"), ["Bills", "Income", "Spark NZ"]);
   assert.deepEqual(calendarList(undefined), []);
+});
+
+test("calendar names match on their words, whatever emoji they start with", () => {
+  assert.equal(calendarName("👔 Spark NZ"), "spark nz");
+  assert.equal(calendarName("👩🏽‍🤝‍👨🏾 G + M"), "g m");
+  assert.ok(inCalendars("🏡 Manueli Calendar", ["Bills", "Manueli Calendar"]));
+  assert.ok(!inCalendars("🙋🏾‍♀️ Personal", ["Bills"]));
+  const [work] = appleItems([ev({ id: "S", title: "Stand-up", calendar: "👔 Spark NZ" })]);
+  assert.equal(appleAtWork(work, ["Spark NZ"]).title, "Stand-up");
 });

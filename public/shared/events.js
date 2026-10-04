@@ -30,12 +30,15 @@ export function appleItems(events = []) {
 
 // The same event in Notion and Apple Calendar shows once (Notion's, since it links to the book)
 const norm = (s) => String(s || "").toLowerCase().replace(/\s+/g, " ").trim();
+// Calendar names match on their words alone: "👔 Spark NZ" is "Spark NZ"
+export const calendarName = (s) => String(s || "").toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+export const inCalendars = (name, list = []) => list.some((w) => calendarName(w) === calendarName(name));
 export const sameEvent = (a, b) => dayOf(a.date) === dayOf(b.date) && timeOf(a.date) === timeOf(b.date) && norm(a.title) === norm(b.title);
 export const withoutDuplicates = (apple, notion) => apple.filter((a) => !notion.some((n) => sameEvent(a, n)));
 
 // At work: only the Work calendars show in full; everything else keeps its time and says "Busy"
 export const appleAtWork = (item, workCalendars = []) =>
-  workCalendars.some((w) => norm(w) === norm(item.calendar))
+  inCalendars(item.calendar, workCalendars)
     ? item
     : { id: item.id, date: item.date, title: "Busy", kind: "Busy", busy: true, apple: true, color: "#8a8178" };
 

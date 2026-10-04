@@ -1496,7 +1496,7 @@ export function renderHeader() {
   $("status").replaceChildren(
     h("span", { className: `pill${notion && live ? " on" : ""}`, textContent: notion ? `Notion ${live}/${state.areas.length}` : "Notion · sample" }),
     h("span", { className: `pill${state.money?.live ? " on" : ""}`, textContent: !state.money?.live ? (state.money?.reason === "closed" ? "Pūtea closed · sample" : "Pūtea · sample") : state.money.setup && !state.money.setup.accounts ? "Pūtea · no bank yet" : "Pūtea live" }),
-    h("span", { className: `pill${apple.live ? " on" : ""}`, title: apple.reason === "denied" ? "System Settings → Privacy & Security → Calendars: turn on Hanua Calendar" : "", textContent: apple.live ? "Calendar live" : apple.reason === "denied" ? "Calendar · not allowed" : apple.reason === "off" ? "Calendar · sample" : "Calendar · waiting" }),
+    h("span", { className: `pill${apple.live ? " on" : ""}`, title: apple.reason === "denied" ? "System Settings → Privacy & Security → Calendars: turn on Hanua Calendar" : apple.reason === "ask" ? "Double-click HanuaCalendar in Hanua's bin folder and choose Allow" : "", textContent: apple.live ? "Calendar live" : apple.reason === "denied" ? "Calendar · not allowed" : apple.reason === "ask" ? "Calendar · allow access" : apple.reason === "off" ? "Calendar · sample" : "Calendar · waiting" }),
     h("span", { className: `pill${claude ? " on" : ""}`, textContent: claude ? "Claude on" : "Claude off" }),
   );
 }

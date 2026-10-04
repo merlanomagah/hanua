@@ -9,7 +9,7 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { addDays, todayStr } from "../public/shared/dates.js";
-import { appleItems, calendarList } from "../public/shared/events.js";
+import { appleItems, calendarList, inCalendars } from "../public/shared/events.js";
 
 const run = promisify(execFile);
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -81,9 +81,12 @@ export async function getAppleEvents(from, to, { fresh = false } = {}) {
   if (!fresh && hit && Date.now() - hit.at < TTL) return hit.value;
   let value;
   try {
-    const res = await helper(["events", from, to, ...calendars()]);
+    // every calendar from the helper, then the chosen ones by name (emoji in names don't matter)
+    const res = await helper(["events", from, to]);
+    const chosen = calendars();
+    if (!res.error && chosen.length) res.events = (res.events || []).filter((e) => inCalendars(e.calendar, chosen));
     value = res.error
-      ? { live: false, reason: res.error === "denied" || res.error === "restricted" ? "denied" : "error", work, items: [] }
+      ? { live: false, reason: res.error === "denied" || res.error === "restricted" ? "denied" : res.error === "notDetermined" ? "ask" : "error", work, items: [] }
       : { live: true, work, items: appleItems(res.events), calendars: res.calendars };
   } catch (err) {
     console.error("[calendar]", err.message);

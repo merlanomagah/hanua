@@ -3,9 +3,11 @@
 // Built by server/calendar.js into bin/HanuaCalendar.app, so macOS asks once for "Hanua Calendar"
 // (whatever started Hanua), and run through `open`, writing JSON to the file named by --stdout.
 //
+//   HanuaCalendar                             → (double-clicked) asks for access, then says how it went
 //   HanuaCalendar status                      → {"status":"granted" | "notDetermined" | "denied" | …}
 //   HanuaCalendar events FROM TO [names…]     → {"events":[…],"calendars":[…]} or {"error":"denied"}
 //   FROM and TO are days (YYYY-MM-DD, TO included); names, if given, limit it to those calendars.
+import AppKit
 import EventKit
 import Foundation
 
@@ -33,20 +35,33 @@ func hex(_ color: CGColor?) -> String {
 }
 
 let args = CommandLine.arguments
-let mode = args.count > 1 ? args[1] : "status"
+let mode = args.count > 1 && !args[1].hasPrefix("-") ? args[1] : "ask"
 let store = EKEventStore()
 var status = EKEventStore.authorizationStatus(for: .event)
 if mode == "status" { out(["status": statusName(status)]) }
 
-guard mode == "events", args.count >= 4 else { out(["error": "usage"]) }
+guard mode == "ask" || (mode == "events" && args.count >= 4) else { out(["error": "usage"]) }
 
-// first time: macOS asks; keep the run loop turning until it has an answer
+// first time: macOS asks. It shows its question for a proper app in front, so be one (no Dock icon)
+// and keep the run loop turning until there's an answer
 if status == .notDetermined {
+  let app = NSApplication.shared
+  app.setActivationPolicy(.accessory)
+  app.activate(ignoringOtherApps: true)
   var answered = false
   store.requestFullAccessToEvents { _, _ in answered = true }
-  let giveUp = Date().addingTimeInterval(120)
+  let giveUp = Date().addingTimeInterval(180)
   while !answered && Date() < giveUp { RunLoop.main.run(until: Date().addingTimeInterval(0.1)) }
   status = EKEventStore.authorizationStatus(for: .event)
+}
+if mode == "ask" {
+  let alert = NSAlert()
+  alert.messageText = status == .fullAccess ? "Hanua can read your calendars now." : "Hanua still can't read your calendars."
+  alert.informativeText = status == .fullAccess ? "You can close this. Restart Hanua to see your events." : "System Settings → Privacy & Security → Calendars: turn on Hanua Calendar (Full Access)."
+  NSApplication.shared.setActivationPolicy(.accessory)
+  NSApplication.shared.activate(ignoringOtherApps: true)
+  alert.runModal()
+  out(["status": statusName(status)])
 }
 guard status == .fullAccess else { out(["error": statusName(status)]) }
 
