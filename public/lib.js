@@ -1,6 +1,13 @@
 // Shared by every part of the page: element helpers, the one state object, the API, toasts.
 import { daysBetween, parseDay, todayStr, ymd } from "./shared/dates.js";
 
+export function store(key, value) {
+  try {
+    if (value === undefined) return localStorage.getItem(key);
+    localStorage.setItem(key, value);
+  } catch { return null; }
+}
+
 export const $ = (id) => document.getElementById(id);
 export const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
 export const isNarrow = () => matchMedia("(max-width: 900px)").matches;
@@ -28,7 +35,27 @@ export function longDate(d, comma = true) {
   return `${wd}${comma ? "," : ""} ${d.getDate()} ${mon}`;
 }
 export const area = (id) => state.areas.find((a) => a.id === id);
-export const records = (id) => area(id)?.records ?? [];
+
+// Focus ("At work"): only what's marked Work is on screen, for when someone can see it. Allow-list, so anything
+// unmarked stays hidden. The Work book shows; the Calendar shows Work events and "Busy" for the rest; every
+// other book, money, earnings and the shop are hidden. Goals show when their Area (or an ancestor's) is Work.
+export const focus = { on: store("room-focus") === "work" };
+const FOCUS_BOOKS = new Set(["work", "calendar"]);
+const isWork = (v) => /^work$/i.test(v || "");
+export const hiddenInFocus = (id) => focus.on && !FOCUS_BOOKS.has(id);
+const busy = (r) => (isWork(r.status) ? r : { id: r.id, date: r.date, title: "Busy", status: "Busy", busy: true, fields: {} });
+export const records = (id) => {
+  const list = area(id)?.records ?? [];
+  if (!focus.on) return list;
+  if (hiddenInFocus(id)) return [];
+  return id === "calendar" ? list.map(busy) : list;
+};
+export function focusGoals(list) {
+  if (!focus.on) return list;
+  const byId = new Map(list.map((g) => [g.id, g]));
+  const work = (g, depth = 0) => (g.area ? isWork(g.area) : Boolean(g.parent) && depth < 8 && byId.has(g.parent) && work(byId.get(g.parent), depth + 1));
+  return list.filter((g) => work(g));
+}
 export const isDone = (r) => /^(done|complete|reached)/i.test(r.status || "");
 
 // The newest Notion edit across a book's rows, and how long ago that was in words
@@ -49,12 +76,6 @@ export function ago(iso) {
 }
 export const updatedLine = (id) => { const e = lastEdited(id); return e ? `updated ${ago(e)}` : ""; };
 
-export function store(key, value) {
-  try {
-    if (value === undefined) return localStorage.getItem(key);
-    localStorage.setItem(key, value);
-  } catch { return null; }
-}
 
 export async function api(path, body) {
   const res = await fetch(path, body

@@ -1,6 +1,7 @@
+import "./lock.js"; // the sleep screen goes up before anything else
 import { dayOf, daysBetween, pad, parseDay, timeOf, todayStr, ymd } from "./shared/dates.js";
 import { isGoalDone } from "./shared/goals.js";
-import { $, ago, api, area, fmtDay, h, isDone, isNarrow, longDate, money, num, records, reducedMotion, state, store, toast, updatedLine } from "./lib.js";
+import { $, ago, api, area, fmtDay, focus, focusGoals, h, hiddenInFocus, isDone, isNarrow, longDate, money, num, records, reducedMotion, state, store, toast, updatedLine } from "./lib.js";
 import { goalById, moveGoal, onBoard, renderBoard, showBoard } from "./goals/board.js";
 import { openGoal } from "./goals/form.js";
 import { openQuick } from "./goals/quick.js";
@@ -32,8 +33,9 @@ export function renderShelf() {
   $("books").replaceChildren(...groups.map((group) => h("div", { className: "shelf-row" },
     h("div", { className: "shelf-books" }, group.map((b) => {
       const spine = SPINES[b.id];
-      const badge = badgeFor(b);
-      const el = h("button", { className: `book${spine ? "" : " plain"}${b.id === activeBook ? " active" : ""}`, type: "button", title: [b.label, b.money ? "" : updatedLine(b.id)].filter(Boolean).join(" · "), ariaLabel: `Open ${b.label}` },
+      const away = hiddenInFocus(b.id);
+      const badge = away ? "" : badgeFor(b);
+      const el = h("button", { className: `book${spine ? "" : " plain"}${b.id === activeBook ? " active" : ""}${away ? " away" : ""}`, type: "button", title: away ? `${b.label} · put away while you're at work` : [b.label, b.money ? "" : updatedLine(b.id)].filter(Boolean).join(" · "), ariaLabel: away ? `${b.label}, put away while you're at work` : `Open ${b.label}` },
         h("span", { className: "b-label" },
           h("span", { className: "b-title", textContent: b.label }),
           h("span", { className: "b-vol", textContent: ROMAN[books.indexOf(b)] ?? "" })),
@@ -161,6 +163,8 @@ export function renderClock() {
 
 // The remote's power hides every money view (screen, desk receipt, Money book); the screen's own button only the screen.
 export let moneyHidden = store("room-money") === "hidden";
+// At work (Focus) money is always hidden and the TV is off, whatever the remote was last set to
+export const moneyOff = () => moneyHidden || focus.on;
 export const CHANNELS = ["Overview", "Expenses", "Income"];
 export let channel = Math.min(CHANNELS.length - 1, Math.max(0, Number(store("room-channel")) || 0));
 
@@ -170,6 +174,7 @@ export const row = (name, mid, amt, cls = "") =>
 export function renderMoneyScreen() {
   const m = state.money;
   const el = $("screen");
+  if (focus.on) return el.replaceChildren();
   if (!m) return el.replaceChildren(h("span", { className: "screen-title", textContent: "Loading Pūtea…" }));
   const month = parseDay(`${m.month.ym}-01`).toLocaleDateString(undefined, { month: "long" });
   const total = (n) => h("span", { className: "total" }, h("span", { className: "cur", textContent: "$" }), h("span", { className: "num", textContent: num(n) }));
@@ -223,8 +228,11 @@ export function renderMoneyScreen() {
 
 // The power button blanks the screen, for when someone is looking over your shoulder. Remembered between visits.
 export let screenOn = store("room-screen") !== "off";
+export const screenShows = () => screenOn && !focus.on;
+const atWork = () => toast("Money stays hidden while you're at work. Flip the sign to At home to show it.");
 export const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)");
 export function applyScreen(animate) {
+  const screenOn = screenShows();
   const mon = $("monitor");
   mon.classList.remove("powering-off", "powering-on");
   const done = () => { mon.classList.remove("powering-off", "powering-on"); mon.classList.toggle("off", !screenOn); };
@@ -246,7 +254,7 @@ export function setScreen(on, animate = true) {
   store("room-screen", screenOn ? "on" : "off");
   applyScreen(animate);
 }
-$("screen-power").addEventListener("click", () => setScreen(!screenOn));
+$("screen-power").addEventListener("click", () => (focus.on ? atWork() : setScreen(!screenOn)));
 
 export function blinkRemote() {
   const ir = $("remote-ir");
@@ -257,14 +265,15 @@ export function blinkRemote() {
 
 export function applyRemote() {
   const p = $("remote-power");
-  p.setAttribute("aria-pressed", String(moneyHidden));
-  p.title = moneyHidden ? "Show money views again" : "Hide all money views";
-  p.ariaLabel = moneyHidden ? "Show all money views" : "Hide all money views";
-  $("app").classList.toggle("money-hidden", moneyHidden);
+  p.setAttribute("aria-pressed", String(moneyOff()));
+  p.title = moneyOff() ? "Show money views again" : "Hide all money views";
+  p.ariaLabel = moneyOff() ? "Show all money views" : "Hide all money views";
+  $("app").classList.toggle("money-hidden", moneyOff());
 }
 
 $("remote-power").addEventListener("click", () => {
   blinkRemote();
+  if (focus.on) return atWork();
   moneyHidden = !moneyHidden;
   store("room-money", moneyHidden ? "hidden" : "shown");
   setScreen(!moneyHidden);
@@ -275,7 +284,7 @@ $("remote-power").addEventListener("click", () => {
 
 export function changeChannel(step) {
   blinkRemote();
-  if (!screenOn) return; // like a real set: channels need the screen on
+  if (!screenShows()) return; // like a real set: channels need the screen on
   channel = (channel + step + CHANNELS.length) % CHANNELS.length;
   store("room-channel", String(channel));
   renderMoneyScreen();
@@ -292,7 +301,7 @@ applyRemote();
 
 // ---------- wall: calendar ----------
 
-export const TYPE_COLORS = { work: "#2b3f6b", personal: "#3B6B5A", family: "#C4602A", social: "#9a5530" };
+export const TYPE_COLORS = { work: "#2b3f6b", personal: "#3B6B5A", family: "#C4602A", social: "#9a5530", busy: "#8a8178" };
 export let selectedDay = todayStr();
 
 // Goal levels' colours, matching the cards on the goals board
@@ -303,7 +312,7 @@ export function calendarItems() {
   const ev = records(ROLE.events).filter((r) => r.date).map((r) => ({ ...r, kind: r.status || "Event", color: TYPE_COLORS[(r.status || "").toLowerCase()] || "#3B6B5A" }));
   const due = records(ROLE.tasks).filter((r) => r.date && !isDone(r)).map((r) => ({ ...r, kind: "Due", color: "#C4602A" }));
   // goals land on their due date automatically, in their level's colour
-  const goals = (state.goals?.goals || []).filter((g) => g.due && !isGoalDone(g)).map((g) => ({ id: g.id, url: g.url, title: g.title, date: g.due, status: g.status, kind: g.level || "Task", color: LEVEL_COLORS[g.level] || "#C9962F", goal: g }));
+  const goals = focusGoals(state.goals?.goals || []).filter((g) => g.due && !isGoalDone(g)).map((g) => ({ id: g.id, url: g.url, title: g.title, date: g.due, status: g.status, kind: g.level || "Task", color: LEVEL_COLORS[g.level] || "#C9962F", goal: g }));
   return [...ev, ...due, ...goals];
 }
 
@@ -450,7 +459,7 @@ export function renderNotes() {
   for (const r of records(ROLE.tasks)) {
     if (/blocked/i.test(r.status || "")) notes.push({ text: `${r.title} is blocked`, meta: "Work · needs a nudge", book: ROLE.tasks, rid: r.id });
   }
-  if (reviewDue()) notes.unshift({ text: "Weekly review due", meta: "Goals · ten minutes", run: () => { showBoard(true); openReview(); } });
+  if (reviewDue() && !focus.on) notes.unshift({ text: "Weekly review due", meta: "Goals · ten minutes", run: () => { showBoard(true); openReview(); } });
   const box = $("notes");
   if (!notes.length) {
     return box.replaceChildren(h("div", { className: "notes-empty" },
@@ -477,7 +486,7 @@ export function renderTodo() {
     .filter((r) => (!isDone(r) && (!r.date || dayOf(r.date) <= today)) || (isDone(r) && dayOf(r.date) === today))
     .map((r) => ({ r, title: r.title, date: r.date, done: isDone(r) }));
   // goal Tasks due today or earlier (and any finished today) share the list: one place to tick things off
-  const goalTasks = state.goals.goals
+  const goalTasks = focusGoals(state.goals.goals)
     .filter((g) => g.level === "Task" && (isGoalDone(g) ? dayOf(g.completed) === today : g.due && dayOf(g.due) <= today))
     .map((g) => ({ g, title: g.title, date: g.due, done: isGoalDone(g) }));
   const tasks = [...work, ...goalTasks].sort((a, b) => Number(a.done) - Number(b.done) || (a.date || "9").localeCompare(b.date || "9"));
@@ -551,9 +560,10 @@ export function renderAgenda() {
   for (const r of items) {
     const t = timeOf(r.date);
     if (!nowPlaced && t && t > nowHM) { list.append(h("li", { className: "now-line" }, h("span", { textContent: `NOW ${nowHM}` }))); nowPlaced = true; }
-    const open = h("button", { type: "button", className: "slot-open", title: "Open in your Calendar book" },
-      h("span", { className: "t", textContent: r.title }), r.status ? h("span", { className: "k", textContent: r.status }) : null);
-    open.addEventListener("click", () => openBook(ROLE.events, bookEl(ROLE.events), r.id));
+    const inner = [h("span", { className: "t", textContent: r.title }), r.status && !r.busy ? h("span", { className: "k", textContent: r.status }) : null];
+    // a personal event at work is just "Busy": nothing to open
+    const open = r.busy ? h("span", { className: "slot-open busy" }, ...inner) : h("button", { type: "button", className: "slot-open", title: "Open in your Calendar book" }, ...inner);
+    if (!r.busy) open.addEventListener("click", () => openBook(ROLE.events, bookEl(ROLE.events), r.id));
     list.append(h("li", { className: `slot${t && t < nowHM ? " past" : ""}` },
       h("time", { textContent: t || "All day" }),
       open,
@@ -575,12 +585,12 @@ export function renderAgenda() {
 export function renderWeek() {
   const m = state.money;
   if (!m) return;
-  if (moneyHidden) {
+  if (moneyOff()) {
     return $("week").replaceChildren(
       h("div", { className: "paper hidden-paper" },
         h("div", { className: "r-head", textContent: "THIS WEEK" }),
-        h("div", { className: "r-hidden", textContent: "Hidden with the remote" }),
-        h("div", { className: "r-foot", textContent: "PRESS ⏻ ON THE REMOTE TO SHOW" })),
+        h("div", { className: "r-hidden", textContent: focus.on ? "Hidden at work" : "Hidden with the remote" }),
+        h("div", { className: "r-foot", textContent: focus.on ? "FLIP THE SIGN TO AT HOME TO SHOW" : "PRESS ⏻ ON THE REMOTE TO SHOW" })),
       h("div", { className: "tear", ariaHidden: "true" }));
   }
   const w = m.week;
@@ -619,7 +629,7 @@ export let openEl = null;
 
 export function bookPages(id) {
   if (id === "money") return moneyPages();
-  const a = area(id);
+  const a = { ...area(id), records: records(id) };
   const today = todayStr();
   const recent = a.records.filter((r) => r.date && Math.abs(daysBetween(r.date, today)) <= 30).length;
   const open = a.records.filter((r) => r.status && !isDone(r)).length;
@@ -651,7 +661,7 @@ export function bookPages(id) {
 
 export function moneyPages() {
   const m = state.money;
-  if (moneyHidden) {
+  if (moneyOff()) {
     return {
       left: [h("p", { className: "eyebrow", textContent: "Hidden" }), h("h2", { id: "book-title", textContent: "Money" }),
         h("p", { className: "sub", textContent: "Money is hidden with the remote. Press its power button to show it again." })],
@@ -708,6 +718,7 @@ export function setActive(id) {
 // focusId: a record to scroll to and mark, e.g. from a pinned note or the agenda
 export async function openBook(id, fromEl, focusId = null) {
   if (openEl || !(id === "money" ? state.money : area(id))) return;
+  if (hiddenInFocus(id)) return toast("That book is put away while you're at work.");
   const book = shelfBooks().find((b) => b.id === id);
   const { left, right } = bookPages(id);
   $("page-left").replaceChildren(...left);
@@ -761,7 +772,7 @@ export async function closeBook() {
 
 $("reader-close").addEventListener("click", closeBook);
 $("reader").addEventListener("click", (e) => { if (e.target === $("reader")) closeBook(); });
-$("money-screen").addEventListener("click", () => { if (screenOn) openBook("money", bookEl("money")); });
+$("money-screen").addEventListener("click", () => { if (screenShows()) openBook("money", bookEl("money")); });
 document.addEventListener("keydown", (e) => {
   if (e.key !== "Escape" || document.querySelector("dialog[open]")) return;
   if (!$("reader").hidden) closeBook();
@@ -777,11 +788,12 @@ export const LIB_HEIGHTS = [100, 92, 97, 88, 95, 90, 98, 86];
 
 export function bookSummary(b) {
   if (b.id === "money") {
-    if (moneyHidden) return "Hidden with the remote";
+    if (moneyOff()) return focus.on ? "Put away while you're at work" : "Hidden with the remote";
     return state.money ? `${money(state.money.month.expenses)} spent this month · ${state.money.live ? "live from Pūtea" : "sample"}` : "Loading";
   }
   const a = area(b.id);
   if (!a) return "";
+  if (hiddenInFocus(b.id)) return "Put away while you're at work";
   if (a.error) return "Couldn't reach Notion";
   const n = a.records.length;
   return [n ? `${n} entr${n === 1 ? "y" : "ies"}` : "No entries yet", a.live ? "live from Notion" : "sample", updatedLine(b.id)].filter(Boolean).join(" · ");
@@ -797,7 +809,7 @@ export function renderLibrary() {
   caption.replaceChildren(h("span", { className: "lc-sum", textContent: `${books.length} books · choose one to take it down` }));
   $("lib-books").replaceChildren(...books.map((b, i) => {
     const spine = SPINES[b.id];
-    const el = h("button", { type: "button", className: `lib-book${spine ? "" : " plain"}`, ariaLabel: `Take down ${b.label}` },
+    const el = h("button", { type: "button", className: `lib-book${spine ? "" : " plain"}${hiddenInFocus(b.id) ? " away" : ""}`, ariaLabel: hiddenInFocus(b.id) ? `${b.label}, put away while you're at work` : `Take down ${b.label}` },
       h("span", { className: "lib-spine" },
         h("span", { className: "b-title", textContent: b.label }),
         h("span", { className: "b-vol", textContent: ROMAN[i] ?? "" })));
@@ -814,6 +826,7 @@ export function renderLibrary() {
 
 export async function takeDown(b, el) {
   if (openEl || el.classList.contains("out")) return;
+  if (hiddenInFocus(b.id)) return toast("That book is put away while you're at work.");
   el.classList.add("out");
   $("lib-books").classList.add("picking");
   if (!reducedMotion) {
@@ -871,6 +884,40 @@ $("ts-desk").addEventListener("click", () => {
 $("ts-goals").addEventListener("click", () => { closeOverlays(); showBoard(!onBoard); renderTopShelf(); });
 $("ts-library").addEventListener("click", () => { closeOverlays(); openLibrary(); });
 $("ts-music").addEventListener("click", () => { closeOverlays(); openTurntable(); });
+
+// ---- Focus: the "At home / At work" sign on the top shelf ----
+// At work only work things are on screen (see focus in lib.js). Remembered between visits.
+export function applyFocus() {
+  const sign = $("ts-focus");
+  sign.setAttribute("aria-pressed", String(focus.on));
+  sign.querySelector(".sign-face").textContent = focus.on ? "At work" : "At home";
+  sign.dataset.tip = focus.on ? "At work: only work things show (⌃F)" : "At home: everything shows (⌃F for work)";
+  sign.ariaLabel = focus.on ? "At work: only work things show. Switch to at home" : "At home: everything shows. Switch to at work";
+  $("app").classList.toggle("focus", focus.on);
+}
+export function setFocus(on) {
+  if (on === focus.on) return;
+  focus.on = on;
+  store("room-focus", on ? "work" : "home");
+  if (on && activeBook && hiddenInFocus(activeBook)) closeBook();
+  if (on && !$("library").hidden) renderLibrary();
+  if (on && !$("ts-panel").hidden) toggleEarnings(false);
+  if (on) document.querySelectorAll("dialog[open]").forEach((d) => d.close());
+  applyFocus();
+  applyScreen(false);
+  applyRemote();
+  renderAll();
+  const sign = $("ts-focus");
+  sign.classList.remove("flip");
+  void sign.offsetWidth;
+  sign.classList.add("flip");
+}
+$("ts-focus").addEventListener("click", () => setFocus(!focus.on));
+const typing = (t) => t?.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t?.tagName || "");
+document.addEventListener("keydown", (e) => {
+  if (e.ctrlKey && !e.metaKey && !e.altKey && e.key.toLowerCase() === "f" && !typing(e.target)) { e.preventDefault(); setFocus(!focus.on); }
+});
+applyFocus();
 
 // ---------- record player and music controls (the Music app on this Mac) ----------
 

@@ -3,13 +3,13 @@ import { addDays, dayOf, daysBetween, parseDay, todayStr, ymd } from "../shared/
 import { goalSpan, treeOrder } from "../shared/goals.js";
 import { $, fmtDay, h, state, toast } from "../lib.js";
 import { updateGoal } from "./store.js";
-import { STATE_CLASS, conflictNote, goalById, kidsOf, renderBoard, shown, tlLevelPicker, tlLevels, tlRoot, tlZoom } from "./board.js";
+import { STATE_CLASS, conflictNote, goalById, inView, kidsOf, renderBoard, shown, tlLevelPicker, tlLevels, tlRoot, tlZoom } from "./board.js";
 import { openGoal } from "./form.js";
 import { openQuick } from "./quick.js";
 export function renderTimeline() {
   const goals = state.goals.goals;
   let list = shown().filter((g) => tlLevels.has(g.level || "Task"));
-  if (tlRoot && goalById(tlRoot)) {
+  if (tlRoot && inView(tlRoot)) {
     const ids = new Set([tlRoot]);
     const down = (id) => kidsOf(id).forEach((c) => { if (!ids.has(c.id)) { ids.add(c.id); down(c.id); } });
     down(tlRoot);

@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" class="asleep">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -10,6 +10,18 @@
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+  <!-- The sleep screen: Hanua opens asleep and wakes with your PIN or Touch ID (public/lock.js) -->
+  <dialog class="lock" id="lock" aria-labelledby="lock-title">
+    <div class="lock-inner">
+      <img src="assets/obj/lamp-off.png" alt="" class="lock-lamp">
+      <div class="lock-time" id="lock-time" aria-hidden="true"></div>
+      <div class="lock-date" id="lock-date"></div>
+      <h2 class="lock-title" id="lock-title">Hanua is asleep</h2>
+      <div class="lock-dots" id="lock-dots" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+      <p class="lock-msg" id="lock-msg" role="status" aria-live="polite"></p>
+      <div class="lock-pad" id="lock-pad" role="group" aria-label="PIN keypad"></div>
+    </div>
+  </dialog>
   <div class="app" id="app">
     <!-- Bookcase: the menu. Each book is one area of life. -->
     <aside class="shelf" aria-label="Your books">
@@ -43,7 +55,13 @@
           <button type="button" class="ts-btn" id="ts-library" data-tip="Library" aria-label="Open the library"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4v16M9 4v16M13 6l4 14"/><path d="M3 20h18"/></svg></button>
           <button type="button" class="ts-btn" id="ts-feed" data-tip="Feed: add anything (⌘S)" aria-label="Open the Feed"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
           <button type="button" class="ts-btn" id="ts-music" data-tip="Record player" aria-label="Open the record player"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="2"/></svg></button>
+          <button type="button" class="ts-btn" id="ts-sleep" data-tip="Sleep: hide everything (⌃L)" aria-label="Put Hanua to sleep"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg></button>
         </nav>
+        <!-- Focus: flip the sign to "At work" and only work things show -->
+        <button type="button" class="ts-sign" id="ts-focus" aria-pressed="false" data-tip="At home: everything shows (⌃F for work)" aria-label="At home: everything shows. Switch to at work">
+          <span class="sign-strings" aria-hidden="true"></span>
+          <span class="sign-board"><span class="sign-face">At home</span></span>
+        </button>
         <div class="ts-centre">
           <button type="button" class="ts-earn" id="ts-earn" data-tip="Open the treat shop" aria-label="Earnings: open the treat shop">
             <span class="coin" aria-hidden="true"><img src="assets/obj/coin.png" alt=""><b>H</b></span>

@@ -2,7 +2,7 @@
 import { dayOf, daysBetween, todayStr, ymd } from "../shared/dates.js";
 import { LEVELS, dateConflicts, isGoalDone, levelIndex, lineageIn, treeOrder, visibleGoals } from "../shared/goals.js";
 import { GUIDE, WIP_LIMIT } from "../coach.js";
-import { $, ago, fmtDay, h, reducedMotion, state, store, toast } from "../lib.js";
+import { $, ago, fmtDay, focus, focusGoals, h, reducedMotion, state, store, toast } from "../lib.js";
 import { refreshGoals, removeGoal, statusOptions, updateGoal } from "./store.js";
 import { askFelt, openGoal } from "./form.js";
 import { openPlan } from "./plan.js";
@@ -90,8 +90,10 @@ export let showDone = store("goals-show-done") === "1";
 export const TL_ZOOMS = { fit: "Fit", week: "Weeks", month: "Months", quarter: "Quarter" };
 export let tlZoom = TL_ZOOMS[store("goals-tl-zoom")] ? store("goals-tl-zoom") : "fit";
 export const goalById = (id) => state.goals.goals.find((g) => g.id === id);
+// A goal the current view may show (all of them, unless Focus is on)
+export const inView = (id) => focusGoals(state.goals.goals).some((g) => g.id === id);
 // What the views show: finished goals stay two weeks, then hide unless Show done is on
-export const shown = () => visibleGoals(state.goals.goals, { showDone, today: todayStr() });
+export const shown = () => visibleGoals(focusGoals(state.goals.goals), { showDone, today: todayStr() });
 export const isShown = (g) => showDone || !isGoalDone(g) || shown().includes(g);
 // Dates that can't work inside the parent's, worked out once per render
 let conflicts = new Map();
@@ -120,7 +122,7 @@ export const lineage = (id) => lineageIn(state.goals.goals, id);
 
 export function renderBoard() {
   const { live, notionUrl, error, fetchedAt } = state.goals;
-  const all = state.goals.goals, goals = shown();
+  const all = focusGoals(state.goals.goals), goals = shown();
   conflicts = dateConflicts(all);
   const open = all.filter((g) => !isGoalDone(g));
   const count = (st) => all.filter((g) => (g.status || "").toLowerCase() === st).length;
@@ -140,10 +142,13 @@ export function renderBoard() {
   $("level-seg").hidden = boardView !== "kanban";
   fillRootPicker();
   // the review sits in the toolbar only when it's due; it's always in the ⋯ menu
-  $("review-open").hidden = !reviewDue();
-  $("review-open").classList.toggle("due", reviewDue());
+  // the review covers every goal, so it stays out of sight at work
+  const due = reviewDue() && !focus.on;
+  $("review-open").hidden = !due;
+  $("review-open").classList.toggle("due", due);
   $("review-open").title = "Your weekly review is due";
-  $("board-more").classList.toggle("due", reviewDue());
+  $("board-more").classList.toggle("due", due);
+  $("review-menu").hidden = focus.on;
   $("review-when").textContent = reviewDue() ? "due now" : `last ${fmtDay(state.reviews.reviews[0]?.date, { day: "numeric", month: "short" })}`;
   $("goal-add").textContent = boardView === "kanban" ? `+ New ${boardLevel}` : "+ New ▾";
   $("goal-add").setAttribute("aria-haspopup", boardView === "kanban" ? "false" : "menu");
@@ -218,7 +223,7 @@ export function goalCard(g, i, thread) {
         g.due ? `${late ? "was due" : "due"} ${fmtDay(g.due, { day: "numeric", month: "short" })}` : null,
       ].filter(Boolean).join(" · ") }),
       conflictNote(g) ? h("span", { className: "g-warn", title: conflictNote(g), ariaLabel: conflictNote(g), textContent: "⚠" }) : null),
-    g.level === "Epic" ? (() => { const v = epicValue(g); return h("span", { className: "g-value", textContent: `${dollars(v.earned)} of ${dollars(v.target)}` }); })() : null,
+    g.level === "Epic" && !focus.on ? (() => { const v = epicValue(g); return h("span", { className: "g-value", textContent: `${dollars(v.earned)} of ${dollars(v.target)}` }); })() : null,
     // actions: always on the picked card; on the others they float in on hover (always shown on touch screens)
     h("span", { className: `g-actions${focusGoal === g.id ? "" : " float"}` },
       actButton("edit", "Edit"),
@@ -298,7 +303,7 @@ export async function moveGoal(g, status, undoing = false) {
     if (status === "Done" && !undoing) askFelt(goalById(g.id) || g);
     const active = state.goals.goals.filter((x) => x.level === g.level && x.status === "Active").length;
     const wip = status === "Active" && active > WIP_LIMIT ? ` That's ${active} active, over your limit of ${WIP_LIMIT}.` : "";
-    const earned = status === "Done" ? coinText(g) : "";
+    const earned = status === "Done" && !focus.on ? coinText(g) : ""; // coins are personal money: not at work
     if (!undoing) toast(`“${g.title}” moved to ${status}${res.live ? "" : " (sample, not saved to Notion)"}.${earned}${wip}`, Boolean(wip), { label: "Undo", run: () => moveGoal(goalById(g.id) || g, before, true) });
   } catch (err) {
     renderBoard();
@@ -334,10 +339,10 @@ $("cork").addEventListener("click", (e) => {
 });
 
 // ---- picking the goal for the Tree and Timeline views ----
-export const kidsOf = (id) => state.goals.goals.filter((c) => c.parent === id).sort(treeOrder(state.goals.goals));
+export const kidsOf = (id) => focusGoals(state.goals.goals).filter((c) => c.parent === id).sort(treeOrder(state.goals.goals));
 // Top-level goals worth looking at: Epics, and anything stand-alone that has goals under it
 export function rootChoices() {
-  const goals = state.goals.goals;
+  const goals = focusGoals(state.goals.goals);
   return goals.filter((g) => (!g.parent || !goalById(g.parent)) && (g.level === "Epic" || g.children?.length)).sort(treeOrder(goals));
 }
 export function setSpiderRoot(id) {
@@ -352,7 +357,7 @@ export function fillRootPicker() {
   const opts = roots.map((g) => h("option", { value: g.id, textContent: `${g.level === "Epic" ? "" : `${g.level}: `}${g.title}` }));
   if (boardView === "timeline") {
     sel.replaceChildren(h("option", { value: "", textContent: "All goals" }), ...opts);
-    if (tlRoot && !goalById(tlRoot)) tlRoot = "";
+    if (tlRoot && !inView(tlRoot)) tlRoot = "";
     sel.value = tlRoot;
   } else {
     // the Tree shows the Epic a drilled-in goal belongs to

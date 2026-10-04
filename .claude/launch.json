@@ -4,14 +4,26 @@
     {
       "name": "dev",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev"],
+      "runtimeArgs": [
+        "run",
+        "dev"
+      ],
       "port": 3000,
       "autoPort": true
     },
     {
       "name": "sample",
       "runtimeExecutable": "env",
-      "runtimeArgs": ["PORT=3001", "NOTION_TOKEN=", "ANTHROPIC_API_KEY=", "ANTHROPIC_AUTH_TOKEN=", "PUTEA_URL=http://127.0.0.1:1", "node", "server/index.js"],
+      "runtimeArgs": [
+        "PORT=3001",
+        "NOTION_TOKEN=",
+        "ANTHROPIC_API_KEY=",
+        "ANTHROPIC_AUTH_TOKEN=",
+        "PUTEA_URL=http://127.0.0.1:1",
+        "LOCK_FILE=data/lock-sample.json",
+        "node",
+        "server/index.js"
+      ],
       "port": 3001
     }
   ]

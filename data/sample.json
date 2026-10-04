@@ -440,6 +440,77 @@
         "Completed": "2026-09-29",
         "Felt": "Bigger"
       }
+    },
+    {
+      "id": "sample-goal-w0",
+      "title": "Lead the Q4 roadmap",
+      "date": "2026-12-18",
+      "status": "Active",
+      "amount": null,
+      "fields": {
+        "Level": "Epic",
+        "Area": "Work",
+        "Priority": 1,
+        "Why": "So that the team knows what matters most before the new year",
+        "Done when": "- Roadmap agreed with leadership\n- Every team has its top three"
+      }
+    },
+    {
+      "id": "sample-goal-w1",
+      "title": "Roadmap agreed",
+      "date": "2026-11-13",
+      "status": "Active",
+      "amount": null,
+      "fields": {
+        "Level": "Feature",
+        "Parent": [
+          "sample-goal-w0"
+        ],
+        "Priority": 1
+      }
+    },
+    {
+      "id": "sample-goal-w2",
+      "title": "Draft shared with the leads",
+      "date": "2026-10-16",
+      "status": "Active",
+      "amount": null,
+      "fields": {
+        "Level": "PBI",
+        "Parent": [
+          "sample-goal-w1"
+        ],
+        "Effort": 3,
+        "Start": "2026-10-01"
+      }
+    },
+    {
+      "id": "sample-goal-w3",
+      "title": "Collect each team's priorities",
+      "date": "2026-10-03",
+      "status": "Active",
+      "amount": null,
+      "fields": {
+        "Level": "Task",
+        "Parent": [
+          "sample-goal-w2"
+        ],
+        "Effort": 1
+      }
+    },
+    {
+      "id": "sample-goal-w4",
+      "title": "Write the one-page summary",
+      "date": "2026-10-08",
+      "status": "New",
+      "amount": null,
+      "fields": {
+        "Level": "Task",
+        "Parent": [
+          "sample-goal-w2"
+        ],
+        "Effort": 2
+      }
     }
   ],
   "reviews": [

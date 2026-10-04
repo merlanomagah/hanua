@@ -2,7 +2,7 @@
 import { dayOf, todayStr } from "../shared/dates.js";
 import { LEVELS, levelIndex } from "../shared/goals.js";
 import { $, fmtDay, h, reducedMotion } from "../lib.js";
-import { STATE_CLASS, actButton, boardView, conflictNote, goalById, isFresh, isShown, kidsOf, onBoard, renderBoard, rootChoices, setSpiderRoot, spiderRoot } from "./board.js";
+import { STATE_CLASS, actButton, boardView, conflictNote, goalById, inView, isFresh, isShown, kidsOf, onBoard, renderBoard, rootChoices, setSpiderRoot, spiderRoot } from "./board.js";
 import { openGoal } from "./form.js";
 import { openPlan } from "./plan.js";
 import { openQuick } from "./quick.js";
@@ -60,7 +60,7 @@ export function spNode(g, depth) {
 
 export function renderSpider() {
   const roots = rootChoices();
-  if (!goalById(spiderRoot)) setSpiderRoot(roots[0]?.id);
+  if (!inView(spiderRoot)) setSpiderRoot(roots[0]?.id);
   const wrap = h("div", { className: "sp-wrap" });
   const root = goalById(spiderRoot);
   if (!root) {

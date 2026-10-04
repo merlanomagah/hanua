@@ -2,7 +2,7 @@
 import { dayOf, todayStr } from "../shared/dates.js";
 import { LEVELS, donePoints, isGoalDone, levelIndex } from "../shared/goals.js";
 import { GUIDE, SIZES, SIZE_QUESTIONS, coachChecks, suggestSize } from "../coach.js";
-import { $, api, fmtDay, h, state, toast } from "../lib.js";
+import { $, api, fmtDay, focus, focusGoals, h, state, toast } from "../lib.js";
 import { areaOptions, createGoal, statusOptions, updateGoal } from "./store.js";
 import { GOAL_AREAS, GOAL_STATUS, boardLevel, boardView, flashGoals, goalById, renderBoard, toggleNewMenu } from "./board.js";
 import { coinText } from "../shelf.js";
@@ -16,7 +16,7 @@ export function fillParents(level, value) {
   const up = LEVELS[levelIndex(level) - 1];
   const f = $("goal-form").elements;
   f.parent.disabled = !up;
-  const options = up ? state.goals.goals.filter((g) => g.level === up.name && g.id !== editingGoal?.id).map((g) => ({ value: g.id, label: g.title })) : [];
+  const options = up ? focusGoals(state.goals.goals).filter((g) => g.level === up.name && g.id !== editingGoal?.id).map((g) => ({ value: g.id, label: g.title })) : [];
   fillSelect(f.parent, options, value, up ? `No ${up.name} yet` : "Epics are the top level");
 }
 export function openGoal(g, preset = {}) {
@@ -31,7 +31,8 @@ export function openGoal(g, preset = {}) {
   fillParents(level, v.parent || "");
   fillSelect(f.status, statusOptions(GOAL_STATUS), v.status || "New");
   fillSelect(f.priority, [1, 2, 3, 4].map((p) => ({ value: String(p), label: `P${p}${p === 1 ? " · highest" : p === 4 ? " · lowest" : ""}` })), v.priority ? String(v.priority) : "");
-  fillSelect(f.area, areaOptions(GOAL_AREAS), v.area || "");
+  // a goal added at work is a work goal, so it stays on screen
+  fillSelect(f.area, areaOptions(GOAL_AREAS), v.area || (!g && focus.on ? "Work" : ""));
   f.effort.value = v.effort ?? "";
   f.start.value = dayOf(v.start || "");
   f.due.value = dayOf(v.due || "");
@@ -303,7 +304,7 @@ $("goal-dialog").addEventListener("close", async () => {
     flashGoals([g ? g.id : res.goal.id]);
     toast(!res.live ? "Saved here only (sample goals, so Notion isn't changed)" : g ? "Saved to Notion ✓" : `${values.level} added to Notion ✓`);
     renderBoard();
-    if (g && values.status === "Done" && !wasDone) { askFelt(goalById(g.id)); toast(`Done ✓${coinText(g)}`); }
+    if (g && values.status === "Done" && !wasDone) { askFelt(goalById(g.id)); toast(`Done ✓${focus.on ? "" : coinText(g)}`); }
   } catch (err) {
     toast(err.message, true);
   }

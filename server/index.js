@@ -10,6 +10,7 @@ import { getMoney } from "./money.js";
 import { musicStatus, musicAction, playPlaylist } from "./music.js";
 import { toGoal, goalProperties, goalOptions } from "./goals.js";
 import { rollUp } from "../public/shared/goals.js";
+import { lockStatus, setPin, checkPin } from "./lock.js";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const config = JSON.parse(await readFile(path.join(root, "config/areas.json"), "utf8"));
@@ -59,6 +60,15 @@ async function recordsFor(area, { fresh = false } = {}) {
 const app = express();
 app.use(express.json({ limit: "100kb" }));
 app.use(express.static(path.join(root, "public")));
+
+// The sleep screen's PIN (a hash in data/lock.json, or LOCK_FILE; the sample preview uses its own file)
+const lockFile = path.resolve(root, process.env.LOCK_FILE || "data/lock.json");
+app.get("/api/lock", async (_req, res) => res.json(await lockStatus(lockFile)));
+app.post("/api/lock/setup", async (req, res) => {
+  try { await setPin(lockFile, req.body?.pin); res.json({ ok: true }); }
+  catch (err) { res.status(err.status || 500).json({ error: err.message }); }
+});
+app.post("/api/lock/check", async (req, res) => res.json(await checkPin(lockFile, req.body?.pin)));
 
 app.get("/api/status", (_req, res) => {
   res.json({ notion: notionEnabled(), claude: claudeEnabled() });

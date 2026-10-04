@@ -749,6 +749,11 @@ button:disabled { opacity: 0.5; cursor: progress; }
   /* the earnings toggle now sits near the right edge: open its tip leftwards so it stays on screen */
   .ts-toggle[data-tip]::after { left: auto; right: 0; transform: translate(0, -4px); }
   .ts-toggle[data-tip]:hover::after, .ts-toggle[data-tip]:focus-visible::after { transform: none; }
+  /* the Focus sign shares the music's row when the first row is full */
+  .ts-sign { order: 3; }
+  .ts-right { order: 4; flex: 1 1 auto; flex-basis: calc(100% - 110px); }
+  .ts-sign[data-tip]::after { left: auto; right: 0; transform: translate(0, -4px); }
+  .ts-sign[data-tip]:hover::after, .ts-sign[data-tip]:focus-visible::after { transform: none; }
 }
 
 /* ---------- open book ---------- */
@@ -1589,3 +1594,68 @@ dialog h3 { margin: 0 0 4px; font: italic 300 32px/1.1 var(--display); }
 .tl-label .g-warn { margin-left: auto; flex: none; }
 .tl-filter { row-gap: 6px; }
 .rv-views { margin: 6px 0 0; font: 12px/1.4 var(--ui); color: var(--muted); }
+
+/* ---------- Focus: the "At home / At work" sign on the top shelf ---------- */
+.ts-sign {
+  position: relative; flex: none; display: grid; justify-items: center; align-self: stretch; margin: -8px 0 -6px; padding: 0 2px;
+  border: 0; background: none; cursor: pointer; perspective: 300px;
+}
+/* two strings from the shelf's edge down to the board */
+.sign-strings { width: 46px; height: 12px; border-left: 1px solid rgb(250 247 242 / 0.55); border-right: 1px solid rgb(250 247 242 / 0.55); }
+.sign-board {
+  display: grid; place-items: center; min-width: 78px; padding: 6px 10px 5px; border-radius: 2px; transform-origin: 50% -12px;
+  background: var(--page); color: var(--ink-2); box-shadow: inset 0 0 0 1px rgb(28 24 20 / 0.12), -3px 4px 6px rgb(0 0 0 / 0.45);
+  transition: background 300ms, color 300ms;
+}
+.sign-face { font: 500 10px/1 var(--mono); letter-spacing: 0.18em; text-transform: uppercase; white-space: nowrap; }
+.ts-sign:hover .sign-board { filter: brightness(1.06); }
+.ts-sign:focus-visible { outline: none; }
+.ts-sign:focus-visible .sign-board { box-shadow: 0 0 0 2px var(--glow), -3px 4px 6px rgb(0 0 0 / 0.45); }
+.ts-sign[aria-pressed="true"] .sign-board { background: #2b3f6b; color: var(--cream); box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.12), -3px 4px 6px rgb(0 0 0 / 0.45); }
+.ts-sign.flip .sign-board { animation: sign-flip 520ms cubic-bezier(.3,1.4,.5,1); }
+@keyframes sign-flip { 0% { transform: rotateX(0); } 45% { transform: rotateX(90deg); } 100% { transform: rotateX(0); } }
+@media (prefers-reduced-motion: reduce) { .ts-sign.flip .sign-board { animation: none; } }
+/* at work: earnings and the shop are put away; personal books are greyed and closed */
+.focus .ts-centre, .focus .ts-panel { display: none; }
+.book.away, .lib-book.away { filter: grayscale(0.85) brightness(0.62); opacity: 0.6; cursor: default; }
+.book.away:hover, .lib-book.away:hover { transform: none; }
+.slot-open.busy { color: var(--faint); font-style: italic; cursor: default; }
+@media (max-width: 600px) {
+  .sign-board { min-width: 64px; padding: 5px 7px 4px; }
+  .sign-face { font-size: 8px; letter-spacing: 0.12em; }
+  .sign-strings { width: 38px; height: 8px; }
+}
+
+/* ---------- the sleep screen: the room with the lights off ---------- */
+/* Hanua opens asleep: nothing behind the curtain is visible until the PIN or Touch ID wakes it */
+html.asleep body { background: #14110e; }
+html.asleep body > *:not(#lock) { visibility: hidden !important; }
+dialog.lock {
+  position: fixed; inset: 0; width: 100%; height: 100%; max-width: none; max-height: none; margin: 0; padding: 16px; border: 0;
+  background: linear-gradient(180deg, rgb(20 16 12 / 0.82), rgb(12 10 8 / 0.95)), url("assets/wall.jpg") center / cover;
+  color: var(--page); display: none; place-items: center; overflow: auto;
+}
+dialog.lock[open] { display: grid; }
+dialog.lock::backdrop { background: #14110e; }
+.lock-inner { display: grid; justify-items: center; gap: 6px; width: min(300px, 100%); text-align: center; }
+.lock-lamp { width: 64px; margin-bottom: 6px; filter: brightness(0.55) var(--object-shadow); }
+.lock-time { font: 300 clamp(56px, 12vw, 84px)/1 var(--display); letter-spacing: 0.01em; color: var(--cream); }
+.lock-date { font: 10px var(--mono); letter-spacing: 0.18em; text-transform: uppercase; color: var(--faint); }
+.lock-title { margin: 22px 0 4px; font: italic 400 22px/1.2 var(--display); color: var(--glow); }
+.lock-dots { display: flex; gap: 14px; margin: 6px 0 2px; }
+.lock-dots i { width: 11px; height: 11px; border-radius: 50%; border: 1.5px solid var(--border-2); transition: background 120ms; }
+.lock-dots i.on { background: var(--glow); border-color: var(--glow); }
+.lock-dots.shake { animation: lock-shake 360ms; }
+@keyframes lock-shake { 20%, 60% { transform: translateX(-7px); } 40%, 80% { transform: translateX(7px); } }
+.lock-msg { min-height: 2.6em; margin: 4px 0 8px; font: 13px/1.35 var(--ui); color: var(--border-2); }
+.lock-pad { display: grid; grid-template-columns: repeat(3, 64px); gap: 12px; }
+.lock-key {
+  display: grid; place-items: center; width: 64px; height: 52px; padding: 0; border: 1px solid rgb(250 247 242 / 0.14); border-radius: 4px; cursor: pointer;
+  background: rgb(250 247 242 / 0.06); color: var(--cream); font: 400 24px/1 var(--display); transition: background 150ms;
+}
+.lock-key:hover { background: rgb(250 247 242 / 0.14); }
+.lock-key:active { background: rgb(240 201 174 / 0.25); }
+.lock-key:focus-visible { outline: 2px solid var(--glow); outline-offset: 2px; }
+.lock-key svg { width: 24px; height: 24px; fill: none; stroke: var(--glow); stroke-width: 1.5; stroke-linecap: round; }
+@media (prefers-reduced-motion: reduce) { .lock-dots.shake { animation: none; } }
+.lock-key[hidden] { display: grid; visibility: hidden; }
