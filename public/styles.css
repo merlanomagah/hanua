@@ -493,7 +493,8 @@ button:disabled { opacity: 0.5; cursor: progress; }
 .cal-month { padding: 0; border: 0; background: none; font: inherit; letter-spacing: inherit; color: inherit; cursor: zoom-in; border-radius: 2px; }
 .cal-month:hover { color: var(--terra); }
 .cal-month:focus-visible, .cal-close:focus-visible { outline: 2px solid var(--terra); outline-offset: 4px; }
-.cal-close { margin-left: 10px; width: 26px; height: 26px; padding: 0; border: 1px solid var(--border); border-radius: 2px; background: var(--page); color: var(--ink-3); cursor: pointer; font: 12px var(--ui); vertical-align: middle; }
+.cal-body { position: relative; }
+.cal-close { position: absolute; z-index: 2; top: 10px; right: 10px; width: 28px; height: 28px; padding: 0; border: 1px solid var(--border); border-radius: 2px; background: var(--page); color: var(--ink-3); cursor: pointer; font: 12px var(--ui); }
 .cal-close:hover { color: var(--ink); border-color: var(--ink-4); }
 .cal-wide .cal-month { cursor: zoom-out; }
 .cal-slide > .wall-left { display: none; }
@@ -670,7 +671,8 @@ button:disabled { opacity: 0.5; cursor: progress; }
 .to-desk button:hover { color: var(--terra); }
 .to-desk .arrow { font-size: 14px; }
 
-/* ---------- desk: one slide down from the wall, for planning the day (5 Oct 2026) ---------- */
+/* ---------- the desk, seen front-on (Mel, 5 Oct 2026): the bricks come down to an oak desk top; a MacBook Pro on it is
+   the day's plan, the agenda is a ruled sheet pinned to the wall, the lamp stands at the right ---------- */
 .desk-edge {
   height: 26px; position: relative; z-index: 1;
   background: linear-gradient(180deg, #C79A72 0%, #A87650 35%, #7A4E30 100%);
@@ -678,59 +680,94 @@ button:disabled { opacity: 0.5; cursor: progress; }
 }
 .desk {
   --pad-r: clamp(24px, 4vw, 52px);
-  /* real sizes: a 15 × 21 cm notebook beside an iPad Pro 13" (21.5 × 28 cm), so the iPad is about 1.4 × as wide */
-  --pad-w: clamp(280px, 26vw, 400px);
-  --ipad-w: min(calc(var(--pad-w) * 1.43), calc((100vh - var(--rail-h) - 130px) * 0.768));
-  position: relative; box-sizing: border-box; min-height: calc(100vh - var(--rail-h));
-  display: grid; grid-template-columns: var(--pad-w) minmax(0, var(--ipad-w)) minmax(0, 1fr); grid-template-rows: auto auto 1fr;
-  column-gap: clamp(28px, 3.5vw, 56px); row-gap: 22px; align-items: start; align-content: start;
-  padding: 64px var(--pad-r) 40px clamp(28px, 4.5vw, 64px);
-  /* one oak top, sized once to cover the desk: no tiles, no seams (Mel, 5 Oct 2026) */
-  background-color: #A87650;
-  background-image:
-    radial-gradient(90% 70% at 40% 20%, rgb(255 240 220 / 0.22), rgb(0 0 0 / 0) 70%),
-    linear-gradient(180deg, rgb(0 0 0 / 0.12), rgb(0 0 0 / 0) 12%),
-    url("assets/desk.png");
-  background-size: 100% 100%, 100% 100%, cover;
-  background-repeat: no-repeat;
-  background-position: 0 0, 0 0, center;
-  /* the lamp's glow spills past the right edge; trim it there so the page never scrolls sideways */
-  overflow-x: clip;
+  --top-h: 30%;                                   /* the desk top's band, from the bottom of the screen */
+  --sheet-h: min(calc((100vh - var(--rail-h)) * 0.7 - 120px), 470px, 36vw); /* the pinned sheet fits the wall above the desk */
+  --lamp-w: clamp(96px, 9vw, 140px);
+  --mb-left: calc(clamp(28px, 4.5vw, 64px) + var(--sheet-h) * 0.707 + clamp(28px, 3.5vw, 56px)); /* the laptop starts past the sheet */
+  position: relative; box-sizing: border-box; min-height: calc(100vh - var(--rail-h)); overflow: clip;
+  /* the same painted bricks as the wall, so it reads as the same room looking down a little */
+  background-color: var(--wall-base);
+  background-image: linear-gradient(180deg, rgb(28 24 20 / 0.06), rgb(28 24 20 / 0) 30%), url("assets/wall.jpg");
+  background-size: 100% 100%, var(--wall-w, 1600px) auto; background-repeat: no-repeat, repeat-y; background-position: 0 0, center bottom;
 }
-/* wide desks keep a column at the right for the lamp; narrower ones give it to the iPad and stand the lamp at the bottom right */
-@media (min-width: 1181px) { .desk { grid-template-columns: var(--pad-w) minmax(0, var(--ipad-w)) minmax(96px, 1fr); } }
-@media (min-width: 901px) and (max-width: 1180px) { .desk-lamp { top: auto; bottom: 40px; } }
+/* the oak desk top: its surface seen from just above, a lit back edge and a darker front edge */
+.desk-top {
+  position: absolute; left: 0; right: 0; bottom: 0; height: var(--top-h); z-index: 1;
+  background-image:
+    linear-gradient(180deg, rgb(255 236 210 / 0.35) 0, rgb(255 236 210 / 0) 6px),
+    linear-gradient(180deg, rgb(0 0 0 / 0.18), rgb(0 0 0 / 0) 18%, rgb(0 0 0 / 0) 82%, rgb(0 0 0 / 0.2) 100%),
+    url("assets/desk.png");
+  background-size: 100% 100%, 100% 100%, cover; background-position: 0 0, 0 0, center; background-color: #A87650;
+  box-shadow: 0 -18px 30px -12px rgb(28 24 20 / 0.4);
+}
+.desk-top::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 22px; background: linear-gradient(180deg, #8a5a38, #5e3a22); box-shadow: inset 0 1px 0 rgb(255 230 200 / 0.35); }
+/* the agenda sheet, pinned to the bricks at the left */
+.agenda-sheet {
+  position: absolute; z-index: 2; left: clamp(28px, 4.5vw, 64px); top: 64px; height: var(--sheet-h); aspect-ratio: 21 / 29.7; box-sizing: border-box;
+  transform: rotate(-1.2deg); outline-offset: 6px; container-type: inline-size;
+  background: #FBFAF6 repeating-linear-gradient(180deg, transparent 0 25px, #D3DBE4 25px 26px) 0 56px / 100% calc(100% - 56px) no-repeat;
+  box-shadow: 0 1px 1px rgb(28 24 20 / 0.12), 6px 14px 20px -8px rgb(28 24 20 / 0.45);
+}
+.agenda-sheet::before { content: ""; position: absolute; top: 0; bottom: 0; left: 34px; width: 1px; background: rgb(196 96 42 / 0.35); }
+.ag-pin { position: absolute; z-index: 3; top: -6px; left: calc(50% - 8px); width: 16px; height: 16px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #f4a37a, #c4602a 60%, #8a3d17); box-shadow: 2px 4px 4px rgb(0 0 0 / 0.35); }
+/* the MacBook Pro: a 14" seen from the front (screen about 1.55 : 1), standing on the desk top */
+.macbook {
+  position: absolute; z-index: 3; left: var(--mb-left); bottom: calc(var(--top-h) - 34px);
+  width: clamp(360px, calc(100% - var(--mb-left) - var(--pad-r) - var(--lamp-w) * 0.9), 700px);
+}
+.mb-lid { position: relative; aspect-ratio: 1.55; box-sizing: border-box; padding: 2.2% 2.2% 3.4%; border-radius: 14px 14px 4px 4px;
+  background: #0f0f10; box-shadow: inset 0 0 0 1.5px #3a3a3c, inset 0 0 0 3px #050505, 0 18px 30px -14px rgb(0 0 0 / 0.55); }
+.mb-notch { position: absolute; z-index: 2; top: 2.2%; left: calc(50% - 7%); width: 14%; height: 3.4%; border-radius: 0 0 6px 6px; background: #0f0f10; }
+.mb-base { position: relative; height: 16px; margin: 0 -7%; border-radius: 2px 2px 12px 12px / 2px 2px 10px 10px;
+  background: linear-gradient(180deg, #d9dadd, #b9bbbf 55%, #8e9095); box-shadow: 0 10px 14px -6px rgb(0 0 0 / 0.5); }
+.mb-base::before { content: ""; position: absolute; top: 0; left: calc(50% - 9%); width: 18%; height: 5px; border-radius: 0 0 6px 6px; background: #a7a9ad; }
+.mug { position: absolute; z-index: 3; width: clamp(60px, 5.4vw, 84px); height: auto; left: calc(var(--mb-left) - clamp(82px, 7vw, 108px)); bottom: calc(var(--top-h) - 52px); filter: drop-shadow(4px 8px 6px rgb(28 24 20 / 0.4)); }
+/* the lamp stands on the desk at the right, a little behind the laptop */
+.desk-lamp { position: absolute; z-index: 2; right: var(--pad-r); bottom: calc(var(--top-h) - 40px); top: auto; width: var(--lamp-w); }
 /* back up to the wall */
-.desk-up { position: absolute; z-index: 2; top: 14px; left: 0; right: 0; display: flex; justify-content: center; pointer-events: none; }
+.desk-up { position: absolute; z-index: 4; top: 14px; left: 0; right: 0; display: flex; justify-content: center; pointer-events: none; }
 .desk-up button {
   pointer-events: auto; display: flex; align-items: center; gap: 8px; min-height: 32px; padding: 0 10px; border: 0; border-radius: 3px; background: transparent; cursor: pointer;
-  font: 10px var(--mono); letter-spacing: 0.2em; color: rgb(250 247 242 / 0.8); text-shadow: 0 1px 2px rgb(0 0 0 / 0.4); transition: color 200ms;
+  font: 10px var(--mono); letter-spacing: 0.2em; color: var(--ink-3); transition: color 200ms;
 }
-.desk-up button:hover { color: var(--cream); }
-/* the desk as its own pane: the wall slides up and away, the desk slides up into view, like the kitchen and goals */
+.desk-up button:hover { color: var(--terra); }
+
+/* the desk as its own pane: the wall and the desk move together as one push, the same distance (a screen) on the
+   kitchen's curve, and each starts exactly where it is on screen, so nothing jumps (Mel, 5 Oct 2026) */
 .room { overflow: clip; }
 @media (min-width: 901px) {
-  .wall, .desk-pane { transition: transform 560ms cubic-bezier(.65,0,.35,1), opacity 560ms; }
-  .desk-pane { position: absolute; z-index: 3; left: 0; right: 0; top: 0; transform: translateY(100vh); opacity: 0; pointer-events: none; }
+  .wall, .desk-pane { transition: transform 560ms cubic-bezier(.65,0,.35,1); }
+  .desk-pane { position: absolute; z-index: 3; left: 0; right: 0; top: 0; transform: translateY(100vh); pointer-events: none; }
+  .room.on-desk .desk-pane { position: relative; transform: none; pointer-events: auto; }
+  .room.on-desk .wall { position: absolute; left: 0; right: 0; top: 0; transform: translateY(calc(var(--wall-y, 0px) - 100vh)); pointer-events: none; }
+  /* the first frame of each move: where things are now on screen, before they slide */
+  .room.desk-start .wall, .room.desk-start .desk-pane { transition: none; }
+  .room.on-desk.desk-start .wall { transform: translateY(var(--wall-y, 0px)); }
+  .room.on-desk.desk-start .desk-pane { transform: translateY(100vh); }
+  .room.desk-leave.desk-start .wall { transform: translateY(-100vh); }
+  .room.desk-leave.desk-start .desk-pane { transform: translateY(var(--desk-y, 0px)); }
   .desk-edge { display: none; }
-  .room.on-desk .desk-pane { position: relative; transform: none; opacity: 1; pointer-events: auto; }
-  .room.on-desk .wall { position: absolute; left: 0; right: 0; top: 0; transform: translateY(-45%); opacity: 0; pointer-events: none; }
 }
 @media (max-width: 900px) { .desk-up { display: none; } }
 @media (prefers-reduced-motion: reduce) { .wall, .desk-pane { transition: none; } }
 
-/* ---- the notebook: the picture gives the spiral and card; the page and its lines are drawn, so typed text sits
-   in the middle of every line by construction (one --line sets each row's height and the rule spacing) ---- */
-.planner { position: relative; grid-column: 1; grid-row: 1; transform: rotate(-1deg); container-type: inline-size; filter: drop-shadow(6px 14px 12px rgb(28 24 20 / 0.4)); }
-.planner > img { width: 100%; height: auto; }
+/* ---- the planner on the laptop's screen: a clean app with faint rows; one --line sets each row's height and the rule
+   spacing, so typed text sits in the middle of every row ---- */
+.mb-screen { position: relative; height: 100%; display: flex; flex-direction: column; overflow: hidden; border-radius: 4px; background: #FCFBF8; container-type: inline-size; }
+.mb-bar { flex: none; display: flex; align-items: center; gap: 10px; height: 30px; padding: 0 12px; background: linear-gradient(180deg, #f3f0ea, #e9e5dd); border-bottom: 1px solid #ddd6c9; }
+.mb-dots { display: flex; gap: 6px; }
+.mb-dots i { width: 10px; height: 10px; border-radius: 50%; background: #e2675c; }
+.mb-dots i:nth-child(2) { background: #e9b949; } .mb-dots i:nth-child(3) { background: #6cbf5a; }
+.mb-title { flex: 1; text-align: center; margin-right: 46px; font: 10px var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-4); }
 .pl-page {
-  --line: clamp(22px, 6.6cqw, 27px);
-  --paper: #FBFAF7; --rule: #D9DEE4;
-  position: absolute; top: 7.2%; left: 3.8%; right: 3.4%; bottom: 3%; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none;
-  padding: var(--line) 7% var(--line) 9%; box-sizing: border-box;
+  --line: clamp(22px, 4.6cqw, 28px); --paper: #FCFBF8; --rule: #ECE8E0;
+  flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin;
+  padding: calc(var(--line) / 2) 6% var(--line); box-sizing: border-box;
   background: var(--paper) repeating-linear-gradient(180deg, transparent 0 calc(var(--line) - 1px), var(--rule) calc(var(--line) - 1px) var(--line)) local;
+  background-position: 0 calc(var(--line) / 2);
 }
-.pl-page::-webkit-scrollbar { display: none; }
+.pl-sec + .pl-sec { margin-top: var(--line); }
+
 .pl-head { display: flex; align-items: center; gap: 10px; height: var(--line); min-width: 0; }
 .pl-head h3 { flex: none; margin: 0; font: italic 500 calc(var(--line) * 0.78)/var(--line) var(--display); color: var(--terra); }
 .pl-prompt { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: italic 400 calc(var(--line) * 0.52)/var(--line) var(--display); color: var(--ink-4); }
@@ -770,37 +807,30 @@ button:disabled { opacity: 0.5; cursor: progress; }
 .pl-act:hover { background: rgb(196 96 42 / 0.1); }
 .pl-covered { margin: var(--line) 0 0; height: var(--line); font: italic 13px/var(--line) var(--display); color: var(--ink-4); }
 
-/* ---- the iPad, lying flat and seen from above: drawn in code, the agenda on its screen ---- */
-.ipad {
-  position: relative; grid-column: 2; grid-row: 1 / span 3; width: 100%; aspect-ratio: 21.5 / 28; box-sizing: border-box; padding: 4%;
-  border-radius: 6.5% / 5%; background: linear-gradient(150deg, #44423e, #1d1c1a 38%, #121110);
-  box-shadow: inset 0 0 0 1.5px #5d5a55, inset 0 0 0 3px #0b0a09, 10px 24px 32px -12px rgb(28 24 20 / 0.6), 2px 5px 8px rgb(0 0 0 / 0.3);
-  transform: rotate(1.4deg); container-type: inline-size; outline-offset: 6px;
-}
-.ip-camera { position: absolute; top: 1.7%; left: calc(50% - 3px); width: 6px; height: 6px; border-radius: 50%; background: radial-gradient(circle at 40% 35%, #3d4757, #0d0f13 70%); }
-.ip-screen {
-  position: relative; height: 100%; box-sizing: border-box; display: flex; flex-direction: column; overflow: hidden; padding: 0 6cqw 4cqw;
-  border-radius: 3% / 2.3%; background: var(--cream); box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.5);
-}
-/* a soft reflection across the glass */
-.ip-screen::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(118deg, rgb(255 255 255 / 0.22), rgb(255 255 255 / 0) 34%, rgb(255 255 255 / 0) 70%, rgb(255 255 255 / 0.08)); }
-.ip-status { display: flex; justify-content: space-between; padding-top: 2.6cqw; font: 9px var(--mono); letter-spacing: 0.08em; color: var(--ink-4); }
-.ip-head { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 10px; margin-top: 5cqw; padding-bottom: 4cqw; border-bottom: 1px solid var(--ink); }
-.ip-title { display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center; min-width: 0; }
-.ip-title h2 { margin: 0; font: italic 300 clamp(26px, 8.4cqw, 44px)/1 var(--display); letter-spacing: -0.02em; }
-.ip-date { font: 9px var(--mono); letter-spacing: 0.2em; color: var(--ink-4); text-transform: uppercase; }
-.ip-nav { width: 34px; height: 34px; border: 1px solid var(--border); border-radius: 3px; background: transparent; cursor: pointer; font-size: 18px; color: var(--ink-3); }
-.ip-nav:hover { background: var(--page); color: var(--ink); }
-.ip-back { display: flex; justify-content: center; margin-top: 10px; }
-.ip-today { padding: 3px 8px; border: 1px solid var(--terra); border-radius: 3px; background: transparent; color: var(--terra); cursor: pointer; font: 9px var(--mono); letter-spacing: 0.12em; text-transform: uppercase; }
-.ip-body { flex: 1; min-height: 0; overflow-y: auto; margin-top: 3cqw; padding-top: 6px; scrollbar-width: thin; }
-.ip-body .empty { margin: 14px 0 0; font: italic 18px var(--display); color: var(--muted); }
+/* ---- the agenda sheet's contents: the day at the top, ‹ › at the sides, events on the ruled lines ---- */
+.ip-screen { position: relative; height: 100%; box-sizing: border-box; display: flex; flex-direction: column; padding: 14px 18px 12px 44px; }
+.ip-head { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 6px; height: 42px; }
+.ip-title { display: flex; flex-direction: column; align-items: center; gap: 2px; text-align: center; min-width: 0; }
+.ip-title h2 { margin: 0; font: italic 400 clamp(20px, 9cqw, 30px)/1 var(--display); letter-spacing: -0.01em; }
+.ip-date { font: 8px var(--mono); letter-spacing: 0.18em; color: var(--ink-4); text-transform: uppercase; }
+.ip-nav { width: 26px; height: 26px; border: 0; border-radius: 3px; background: transparent; cursor: pointer; font-size: 18px; color: var(--ink-3); }
+.ip-nav:hover { background: rgb(28 24 20 / 0.06); color: var(--ink); }
+.ip-back { position: absolute; top: 60px; right: 14px; }
+.ip-today { padding: 2px 6px; border: 1px solid var(--terra); border-radius: 3px; background: transparent; color: var(--terra); cursor: pointer; font: 8px var(--mono); letter-spacing: 0.12em; text-transform: uppercase; }
+.ip-body { flex: 1; min-height: 0; overflow-y: auto; scrollbar-width: none; }
+.ip-body .empty { margin: 0; line-height: 26px; font: italic 17px/26px var(--display); color: var(--muted); }
 .ip-list { list-style: none; padding: 0; margin: 0; position: relative; }
-.ip-list .slot time::before { content: ""; display: inline-block; width: 6px; height: 6px; margin-right: 7px; border-radius: 50%; background: var(--dot, var(--green)); vertical-align: 1px; }
-.ip-list .slot { grid-template-columns: 70px 1fr; }
-.ip-dots { display: flex; justify-content: center; gap: 6px; padding-top: 3cqw; }
-.ip-dots i { width: 5px; height: 5px; border-radius: 50%; background: var(--border-2); }
+.ip-list .slot { grid-template-columns: 52px 1fr; gap: 6px; padding: 0; min-height: 52px; border-bottom: 0; align-items: start; }
+.ip-list .slot time { line-height: 26px; font-size: 10px; }
+.ip-list .slot time::before { content: ""; display: inline-block; width: 5px; height: 5px; margin-right: 5px; border-radius: 50%; background: var(--dot, var(--green)); vertical-align: 1px; }
+.ip-list .slot .t { display: block; font: 17px/26px var(--display); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ip-list .slot .k { margin: 0; line-height: 26px; }
+.ip-list .slot-out { bottom: auto; top: 30px; }
+.ip-list .now-line { margin: 0; }
+.ip-dots { display: flex; justify-content: center; gap: 5px; padding-top: 6px; }
+.ip-dots i { width: 4px; height: 4px; border-radius: 50%; background: var(--border-2); }
 .ip-dots i.on { background: var(--ink-3); }
+
 .slots { list-style: none; padding: 0; margin: -10px 0 0; position: relative; }
 .slot { position: relative; display: grid; grid-template-columns: 54px 1fr; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--hair); align-items: baseline; }
 .slot:last-child { border-bottom: 0; }
@@ -816,10 +846,6 @@ button:disabled { opacity: 0.5; cursor: progress; }
 .now-line { position: relative; height: 0; border-top: 1px solid var(--terra); margin: 4px 0; }
 .now-line span { position: absolute; left: 0; top: -8px; font: 500 9px var(--mono); color: var(--cream); background: var(--terra); border-radius: 2px; padding: 1px 5px; letter-spacing: 0.1em; }
 
-
-/* desk objects: a sticky pad and the cup under the notebook, the lamp at the right */
-.sticky-pad { grid-column: 1; grid-row: 2; justify-self: start; width: 112px; height: auto; margin-left: 6px; transform: rotate(-7deg); filter: drop-shadow(5px 10px 8px rgb(28 24 20 / 0.35)); pointer-events: none; }
-.cup { grid-column: 1; grid-row: 2; justify-self: end; width: 124px; height: auto; margin-right: 10px; pointer-events: none; filter: drop-shadow(8px 14px 12px rgb(28 24 20 / 0.45)); }
 
 /* ---------- the top shelf: quick actions, the Feed, and what you've earned ---------- */
 .topshelf {
@@ -842,7 +868,14 @@ button:disabled { opacity: 0.5; cursor: progress; }
 .ts-nav { flex: none; align-items: center; }
 .ts-div { flex: none; width: 1px; height: 20px; margin: 0 6px; background: rgb(28 24 20 / 0.12); }
 .ts-centre { flex: none; display: flex; align-items: center; gap: 2px; }
-.ts-right { flex: none; display: flex; justify-content: flex-end; min-width: 0; }
+.ts-right { justify-content: flex-end; min-width: 0; }
+/* a light rail (Mel, 5 Oct 2026): home, lock and the home/work switch on the left, Ask in the true middle, earnings right */
+@media (min-width: 901px) {
+  .topshelf { display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, 620px) minmax(0, 1fr); }
+  .ts-nav { justify-self: start; }
+  .ts-ask { width: 100%; max-width: none; }
+  .ts-right { justify-self: end; }
+}
 /* earnings: the label beside the dollars, the target faintly underneath them, so the rail stays slim */
 .ts-earn { flex: none; display: flex; align-items: center; gap: 12px; padding: 4px 8px 4px 4px; border: 0; border-radius: 3px; background: transparent; cursor: pointer; text-align: left; transition: background 200ms; }
 .ts-earn:hover { background: rgb(28 24 20 / 0.05); }
@@ -892,15 +925,6 @@ button:disabled { opacity: 0.5; cursor: progress; }
 .ts-toggle svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; transition: transform 250ms; }
 .ts-toggle:hover { background: rgb(28 24 20 / 0.06); color: var(--ink); }
 .ts-toggle.open svg { transform: rotate(180deg); }
-/* music on the rail: always the same width (a long title ends in …), three equal buttons */
-.ts-right .now-playing { width: 264px; max-width: 100%; margin: 0; padding: 2px 2px 2px 8px; gap: 2px; animation: none; background: transparent; border: 0; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; }
-.ts-right .np-text { flex: 1; max-width: none; margin-right: 4px; }
-.ts-right .np-text b { color: var(--ink-2); font-size: 15px; }
-.ts-right .np-text span { color: var(--ink-4); }
-.ts-right .np-btn, .ts-right .np-btn.main { width: 32px; height: 32px; background: transparent; box-shadow: none; color: var(--ink-3); border-radius: 3px; }
-.ts-right .np-btn:hover, .ts-right .np-btn.main:hover { background: rgb(28 24 20 / 0.06); color: var(--terra-hover); }
-.ts-right .np-btn svg { width: 13px; height: 13px; }
-.ts-right .np-disc { width: 18px; height: 18px; margin-right: 4px; }
 /* ---- the earnings panel: a digital readout like the TV screen ---- */
 .ts-panel {
   position: absolute; top: calc(100% + 6px); left: 50%; transform: translateX(-50%); z-index: 25; width: min(760px, calc(100% - 24px));
@@ -990,8 +1014,6 @@ button:disabled { opacity: 0.5; cursor: progress; }
 @media (max-width: 1100px) {
   /* the rail stays one slim line: music keeps just the record and its buttons (the song shows on hover) */
   .topshelf { gap: 8px; }
-  .ts-right .now-playing { width: auto; padding-left: 4px; }
-  .ts-right .np-text { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
 }
 /* laptop widths, beside the bookcase: earnings show today only on the rail; the week and month are one click away in ▾ */
 @media (min-width: 901px) and (max-width: 1100px) {
@@ -1795,14 +1817,14 @@ dialog h3 { margin: 0 0 4px; font: italic 300 32px/1.1 var(--display); }
   .shelf-row { margin-top: 14px; }
   .case-fill, .case-foot { display: none; }
   .topshelf { flex-wrap: wrap; gap: 8px 10px; }
-  /* narrow desks: one column, the notebook first, then the iPad; the lamp stands at the top right */
-  .desk { grid-template-columns: minmax(0, 1fr); grid-template-rows: none; padding: 120px 20px 80px; min-height: 0; }
-  .planner { width: min(100%, 440px); justify-self: center; }
-  .ipad { grid-column: 1; grid-row: auto; width: min(100%, 520px); justify-self: center; }
-  .sticky-pad, .cup { grid-column: 1; grid-row: auto; }
-  .cup { width: 84px; position: absolute; top: 18px; left: 20px; margin: 0; }
-  .sticky-pad { display: none; }
-  .desk-lamp { top: 6px; right: 20px; width: 76px; }
+  /* phones: one scrolling column on the bricks, the laptop's screen first (no laptop body), then the agenda sheet */
+  .desk { display: flex; flex-direction: column; gap: 28px; padding: 110px 16px 60px; min-height: 0; }
+  .desk-top, .mug, .mb-base, .mb-notch { display: none; }
+  .macbook { position: static; order: 1; width: 100%; }
+  .mb-lid { aspect-ratio: auto; padding: 8px; border-radius: 12px; }
+  .mb-screen { height: 520px; }
+  .agenda-sheet { position: relative; order: 2; left: auto; top: auto; height: 420px; width: 100%; aspect-ratio: auto; transform: none; }
+  .desk-lamp { top: 20px; bottom: auto; right: 16px; width: 70px; }
   .open-book { grid-template-columns: 1fr; height: calc(100vh - 48px); }
   .open-book .page.left { display: none; }
   .open-book .page.right { border-radius: 2px; }
@@ -2063,7 +2085,7 @@ dialog.lock::backdrop { background: #14110e; }
 .weather-window.unavailable .ww-sky { filter: grayscale(0.6); }
 
 /* today's meals on the desk, a slip of paper: so the menu isn't forgotten now it's in the kitchen */
-.meal-slip { position: relative; grid-column: 1; grid-row: 3; justify-self: start; display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 14px; max-width: min(640px, calc(100% - 56px));
+.meal-slip { position: absolute; z-index: 3; top: 64px; right: calc(var(--pad-r) + var(--lamp-w) * 0.2); display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 14px; max-width: 300px;
   padding: 10px 16px; border: 0; border-radius: 2px; cursor: pointer; text-align: left; transform: rotate(-0.8deg);
   background: #FBF8F1; box-shadow: 6px 10px 14px -6px rgb(28 24 20 / 0.45); color: var(--ink-2); font: italic 16px var(--display); }
 .meal-slip b { font: 9px var(--mono); font-style: normal; letter-spacing: 0.18em; color: var(--terra); }
@@ -2084,8 +2106,10 @@ dialog.lock::backdrop { background: #14110e; }
 
 /* ---- the shelves under the calendar: books on one, the record player on its own shelf below ---- */
 .books-shelf { margin-top: 28px; }
-.player-shelf .deco-row { justify-content: flex-start; padding-left: 9%; }
-.player-shelf .record-player { margin: 0 4% 2px auto; }
+.player-shelf .deco-row { justify-content: flex-end; gap: 14px; }
+.player-shelf .record-player { margin: 0 0 2px; }
+/* the books at the left, the can and plant at the right end of the same shelf */
+.books-shelf .can { margin-left: auto; }
 
 /* ---- Ask Claude on the rail: a slim field filling the space between the buttons and the earnings ---- */
 .ts-ask { position: relative; flex: 1 1 260px; min-width: 0; max-width: 620px; gap: 0; }
@@ -2115,4 +2139,22 @@ dialog.lock::backdrop { background: #14110e; }
 @keyframes drop-bob { 50% { transform: translateY(-3px); } }
 @media (prefers-reduced-motion: reduce) { .plant-drop { animation: none; } }
 
-@media (max-width: 900px) { .meal-slip { grid-row: auto; justify-self: center; max-width: 100%; } }
+@media (max-width: 900px) { .meal-slip { position: relative; top: auto; right: auto; order: 3; align-self: center; max-width: 100%; } }
+
+/* ---- the music card: a glass card floating by the record player, the song small above its three buttons ---- */
+.player-shelf .now-playing {
+  flex: none; display: grid; grid-template-columns: auto 1fr; grid-template-areas: "disc text" "btns btns"; align-items: center; gap: 4px 6px;
+  width: 168px; margin: 0 0 18px; padding: 8px 10px 6px; align-self: center;
+}
+.player-shelf .np-disc { grid-area: disc; width: 16px; height: 16px; margin: 0; }
+.player-shelf .np-text { grid-area: text; max-width: none; margin: 0; min-width: 0; }
+.player-shelf .np-text b { font-size: 13px; color: var(--ink-2); }
+.player-shelf .np-text span { font-size: 8px; color: var(--ink-4); }
+.player-shelf .np-btns { grid-area: btns; display: flex; justify-content: center; gap: 6px; }
+.player-shelf .np-btn { width: 28px; height: 28px; }
+.player-shelf .np-btn.main { width: 30px; height: 30px; }
+.player-shelf .np-btn svg { width: 12px; height: 12px; }
+.lamp-off .player-shelf .now-playing { filter: brightness(0.85); }
+
+/* narrower desks have no room beside the laptop: the desk lamp steps away (the wall's lamp still switches every light) */
+@media (min-width: 901px) and (max-width: 1180px) { .desk-lamp { display: none; } }

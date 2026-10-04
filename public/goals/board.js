@@ -30,7 +30,6 @@ export function showBoard(on) {
   if (on) { noteView(boardView); renderBoard(); }
   $("wall").classList.toggle("on-board", on);
   if (!on) $("wall").style.minHeight = "";
-  $("ts-goals")?.classList.toggle("on", on);
   $("board-pane").inert = !on;
   $("wall-in").inert = on;
   // the wall sits right under the top shelf, so the top of the page shows it (or the board) in full

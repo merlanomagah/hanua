@@ -1,7 +1,7 @@
-// ---------- the desk: a notebook to plan the day, and the agenda on an iPad lying beside it ----------
+// ---------- the desk, seen front-on: a MacBook Pro whose screen plans the day, the agenda pinned on the wall ----------
 // The desk is its own pane, one slide down from the wall (or the kitchen), and one slide back up (Mel, 5 Oct 2026),
 // except on phones, where the stacked room is taller than the screen and the page just scrolls.
-// The notebook has four sections on drawn lines (the text sits in the middle of each line by construction):
+// The planner on the laptop's screen has four sections on faint rows (the text sits in the middle of each row):
 // Focus (3), Key tasks (3), General and Work. Focus, Key tasks and General jottings live in a small file per day on
 // this Mac; Work is the Work book in Notion, and a Work line typed here goes there after five quiet minutes.
 // Rules: public/shared/desk.js (tested).
@@ -26,13 +26,20 @@ export function showDesk(on) {
   }
   if (on === onDesk) return;
   onDesk = on;
-  document.querySelector(".room").classList.toggle("on-desk", on);
+  const room = document.querySelector(".room");
+  // one push, like the kitchen: first put each pane exactly where it shows now (no transitions), scroll to the top in
+  // the same frame so nothing moves, then let both slide a screen's height together
+  room.style.setProperty(on ? "--wall-y" : "--desk-y", `${-window.scrollY}px`);
+  room.classList.add("desk-start");
+  room.classList.toggle("desk-leave", !on);
+  room.classList.toggle("on-desk", on);
+  window.scrollTo(0, 0);
+  void room.offsetHeight; // the start positions are laid out, so removing the class now slides from them
+  room.classList.remove("desk-start");
   $("wall").inert = on;
   $("desk-pane").inert = !on;
-  $("ts-desk").classList.toggle("on", on);
-  window.scrollTo(0, 0);
   // keyboard focus follows the slide (only when it was in the pane that just went away)
-  if (document.activeElement?.closest?.(on ? "#wall" : "#desk-pane")) (on ? $("desk-up") : $("ts-desk")).focus({ preventScroll: true });
+  if (document.activeElement?.closest?.(on ? "#wall" : "#desk-pane")) (on ? $("desk-up") : $("to-desk")).focus({ preventScroll: true });
   // the canary leaves perches that just went away, once the slide has finished
   clearTimeout(deskTimer);
   deskTimer = setTimeout(() => window.dispatchEvent(new Event("resize")), reducedMotion ? 0 : 620);
@@ -40,7 +47,7 @@ export function showDesk(on) {
 }
 function fitPanes() {
   // crossing the phone width: back to one scrolling page, or back to panes (starting on the wall)
-  if (stacked()) { document.querySelector(".room").classList.remove("on-desk"); $("wall").inert = false; $("desk-pane").inert = false; $("ts-desk").classList.remove("on"); onDesk = false; }
+  if (stacked()) { document.querySelector(".room").classList.remove("on-desk"); $("wall").inert = false; $("desk-pane").inert = false; onDesk = false; }
   else if (!onDesk) $("desk-pane").inert = true;
 }
 fitPanes();
@@ -248,7 +255,10 @@ export function renderTodo() {
   const page = h("div", { className: "pl-page", ariaLabel: `Plan for ${longDate(parseDay(today), false)}` }, ...sections);
   const old = $("todo").querySelector(".pl-page");
   if (old) page.scrollTop = old.scrollTop;
-  $("todo").replaceChildren(h("img", { src: "assets/obj/notepad.png", alt: "" }), page);
+  // the laptop's screen: a planner app with a title bar (the day), the four sections underneath
+  const bar = h("div", { className: "mb-bar", ariaHidden: "true" }, h("span", { className: "mb-dots" }, h("i"), h("i"), h("i")),
+    h("span", { className: "mb-title", textContent: `Today · ${longDate(parseDay(today), false)}` }));
+  $("todo").replaceChildren(bar, page);
   if (old) page.scrollTop = old.scrollTop;
   if (active && active.i >= 0) focusLine(active.sec, active.i);
 }
@@ -292,7 +302,7 @@ function typedLines(list, lines, section, tickable) {
   });
 }
 
-// ---- the agenda on the iPad: swipe (or ‹ ›) through the days ----
+// ---- the agenda on a ruled sheet pinned to the wall: swipe (or ‹ ›) through the days ----
 let padDay = todayStr();
 export function renderAgenda() {
   const today = todayStr();
@@ -319,14 +329,13 @@ export function renderAgenda() {
   back.addEventListener("click", () => { padDay = todayStr(); renderAgenda(); });
   const word = rel === 0 ? "Today" : rel === 1 ? "Tomorrow" : rel === -1 ? "Yesterday" : parseDay(key).toLocaleDateString(undefined, { weekday: "long" });
   const screen = h("div", { className: "ip-screen" },
-    h("div", { className: "ip-status", ariaHidden: "true" }, h("span", { textContent: nowHM }), h("span", { textContent: "●●● ▮" })),
     h("header", { className: "ip-head" }, nav("‹", -1),
       h("div", { className: "ip-title" }, h("h2", { textContent: word }), h("span", { className: "ip-date", textContent: longDate(parseDay(key), false) })),
       nav("›", 1)),
     rel ? h("div", { className: "ip-back" }, back) : null,
     h("div", { className: "ip-body" }, items.length ? list : h("p", { className: "empty", textContent: key === today ? "No meetings today." : "Nothing on this day." })),
     h("div", { className: "ip-dots", ariaHidden: "true" }, [-2, -1, 0, 1, 2].map((n) => h("i", { className: n === 0 ? "on" : "" }))));
-  $("agenda").replaceChildren(h("span", { className: "ip-camera", ariaHidden: "true" }), screen);
+  $("agenda").replaceChildren(h("span", { className: "ag-pin", ariaHidden: "true" }), screen);
 }
 function movePad(step) {
   padDay = stepDay(padDay, step);

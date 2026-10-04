@@ -13,7 +13,7 @@ import "./menu-plan.js"; // Plan the week ✦ on the menu board
 import { onKitchen, renderMealSlip, showKitchen } from "./kitchen.js"; // swipe left: the weather window and the menu
 import { weatherLine } from "./weather-window.js";
 import "./bird.js"; // the canary: just for life
-import { loadDesk, onDesk, renderAgenda, renderTodo, showDesk } from "./planner.js"; // the desk: notebook and iPad
+import { loadDesk, renderAgenda, renderTodo, showDesk } from "./planner.js"; // the desk: the MacBook planner and the agenda sheet
 
 // Which Notion area plays which part on the page (ids from config/areas.json)
 export const ROLE = { tasks: "work", events: "calendar", notes: "learning", people: "relationships" };
@@ -424,6 +424,8 @@ export function renderCalendar() {
 
   $("calendar").closest(".wall-right").classList.toggle("has-list", list.length > 0);
   $("calendar").replaceChildren(
+    // zoomed: a ✕ in the calendar's top-right corner, where anyone looks for it (Mel, 5 Oct 2026)
+    calWide ? (() => { const b = h("button", { type: "button", className: "cal-close", textContent: "✕", ariaLabel: "Back to the wall", title: "Back to the wall (Esc)" }); b.addEventListener("click", () => zoomCalendar(false)); return b; })() : "",
     // the month in the middle with the year small underneath, the arrows at the calendar's sides (Mel, 5 Oct 2026)
     h("div", { className: "cal-head" },
       calNav("‹", "Previous month", -1),
@@ -437,8 +439,7 @@ export function renderCalendar() {
         return b;
       })()),
       h("span", { className: "cal-year" }, String(now.getFullYear()),
-        calOffset ? (() => { const b = h("button", { type: "button", className: "cal-today", textContent: "Today" }); b.addEventListener("click", () => { calOffset = 0; selectedDay = todayStr(); renderCalendar(); }); return b; })() : null,
-        calWide ? (() => { const b = h("button", { type: "button", className: "cal-close", textContent: "✕", ariaLabel: "Back to the wall", title: "Back to the wall (Esc)" }); b.addEventListener("click", () => zoomCalendar(false)); return b; })() : null)),
+        calOffset ? (() => { const b = h("button", { type: "button", className: "cal-today", textContent: "Today" }); b.addEventListener("click", () => { calOffset = 0; selectedDay = todayStr(); renderCalendar(); }); return b; })() : null)),
       calNav("›", "Next month", 1)),
     h("div", { className: "dow", ariaHidden: "true" }, ["M", "T", "W", "T", "F", "S", "S"].map((d) => h("span", { textContent: d }))),
     grid,
@@ -897,14 +898,6 @@ export function closeOverlays() {
   if ($("turntable").classList.contains("open")) closeTurntable();
 }
 $("ts-home").addEventListener("click", () => { closeOverlays(); showBoard(false); showKitchen(false); showDesk(false); window.scrollTo({ top: 0, behavior: reducedMotion ? "auto" : "smooth" }); });
-$("ts-desk").addEventListener("click", () => {
-  closeOverlays();
-  showBoard(false);
-  showDesk(!onDesk);
-});
-$("ts-goals").addEventListener("click", () => { closeOverlays(); showBoard(!onBoard); renderTopShelf(); });
-$("ts-library").addEventListener("click", () => { closeOverlays(); openLibrary(); });
-$("ts-music").addEventListener("click", () => { closeOverlays(); openTurntable(); });
 
 // ---- Focus: the "At home / At work" sign on the top shelf ----
 // At work only work things are on screen (see focus in lib.js). Remembered between visits.
@@ -1142,7 +1135,6 @@ document.addEventListener("keydown", (e) => {
     if (!document.querySelector("dialog[open]:not(#spotlight)")) openSpotlight();
   }
 });
-$("ts-feed").addEventListener("click", () => openSpotlight());
 $("spotlight").addEventListener("click", (e) => { if (e.target === $("spotlight")) $("spotlight").close(); });
 
 $("feed-form").addEventListener("submit", async (e) => {

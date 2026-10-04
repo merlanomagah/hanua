@@ -28,13 +28,7 @@
     <header class="topshelf" id="topshelf">
       <nav class="ts-nav" aria-label="Quick actions">
         <button type="button" class="ts-btn" id="ts-home" data-tip="Home: the wall" aria-label="Home"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg></button>
-        <button type="button" class="ts-btn" id="ts-desk" data-tip="The desk: today" aria-label="Go to the desk"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 9h18"/><path d="M5 9v10M19 9v10"/><path d="M8 5h8v4H8z"/></svg></button>
-        <button type="button" class="ts-btn" id="ts-goals" data-tip="Goals board" aria-label="Goals board"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="0.8" fill="currentColor"/></svg></button>
-        <button type="button" class="ts-btn" id="ts-kitchen" data-tip="Kitchen: weather and the menu" aria-label="Kitchen"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11h16v2a7 7 0 0 1-7 7h-2a7 7 0 0 1-7-7z"/><path d="M2 11h20"/><path d="M9 7c0-1.5 1-1.5 1-3M14 7c0-1.5 1-1.5 1-3"/></svg></button>
-        <button type="button" class="ts-btn" id="ts-library" data-tip="Library" aria-label="Open the library"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4v16M9 4v16M13 6l4 14"/><path d="M3 20h18"/></svg></button>
-        <button type="button" class="ts-btn" id="ts-feed" data-tip="Feed: add anything (⌘S)" aria-label="Open the Feed"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
-        <button type="button" class="ts-btn" id="ts-music" data-tip="Record player" aria-label="Open the record player"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="2"/></svg></button>
-        <button type="button" class="ts-btn" id="ts-sleep" data-tip="Sleep: hide everything (⌃L)" aria-label="Put Hanua to sleep"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg></button>
+        <button type="button" class="ts-btn" id="ts-sleep" data-tip="Lock: hide everything (⌃L)" aria-label="Lock Hanua"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/><circle cx="12" cy="16" r="1.2" fill="currentColor"/></svg></button>
         <span class="ts-div" aria-hidden="true"></span>
         <!-- Focus: a small home / work switch; at work only work things show -->
         <button type="button" class="ts-switch" id="ts-focus" role="switch" aria-checked="false" data-tip="At home: everything shows (⌃F for work)" aria-label="At work">
@@ -56,23 +50,14 @@
         </form>
         <div class="answer" id="ask-answer" hidden><p class="answer-text" id="ask-text"></p><button type="button" class="ask-icon answer-x" id="ask-close" aria-label="Close the answer" data-tip="Close"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
       </div>
-      <div class="ts-centre">
+      <!-- earnings on the right (Mel, 5 Oct 2026: where the music controls were) -->
+      <div class="ts-centre ts-right">
         <button type="button" class="ts-earn" id="ts-earn" data-tip="Open the treat shop" aria-label="Earnings: open the treat shop">
           <span class="ts-periods" id="ts-periods"></span>
         </button>
         <button type="button" class="ts-toggle" id="ts-toggle" data-tip="Earnings in detail" aria-expanded="false" aria-controls="ts-panel" aria-label="Show earnings in detail">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
         </button>
-      </div>
-      <div class="ts-right">
-          <!-- The Music app on this Mac: what's playing, with play / previous / next -->
-          <div class="now-playing" id="now-playing" role="group" aria-label="Music" hidden>
-            <span class="np-disc" aria-hidden="true"></span>
-            <span class="np-text"><b id="np-track">Music</b><span id="np-artist">Not playing</span></span>
-            <button type="button" class="np-btn" id="np-prev" data-tip="Previous song" aria-label="Previous song"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 5v14M19 5L9 12l10 7z"/></svg></button>
-            <button type="button" class="np-btn main" id="np-play" data-tip="Play / pause" aria-label="Play"><svg viewBox="0 0 24 24" aria-hidden="true"><path id="np-icon" d="M7 4l13 8-13 8z"/></svg></button>
-            <button type="button" class="np-btn" id="np-next" data-tip="Next song" aria-label="Next song"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 5v14M5 5l10 7-10 7z"/></svg></button>
-          </div>
       </div>
       <!-- the earnings panel: drops down from the shelf, styled like the TV screen -->
       <section class="ts-panel" id="ts-panel" aria-label="Earnings in detail" hidden></section>
@@ -288,20 +273,10 @@
               </figure>
 
               <!-- the books' shelf widens with the calendar when it zooms (the books keep their size and ride along) -->
-              <div class="deco-shelf books-shelf">
+              <!-- the books, then the plant and its can at the right end (Mel, 5 Oct 2026); the vine trails left along the front -->
+              <div class="deco-shelf books-shelf" id="plant-shelf">
                 <div class="deco-row">
                   <img src="assets/obj/books.png" alt="" class="deco-books">
-                </div>
-                <div class="float-shelf" aria-hidden="true">
-                  <img src="assets/shelf/bookend.png" alt="" class="bracket left">
-                  <img src="assets/shelf/bookend.png" alt="" class="bracket right">
-                  <img src="assets/shelf/plank.png" alt="" class="plank">
-                </div>
-              </div>
-              <!-- the record player on a shelf of its own, below the books, with the plant and its can beside it
-                   (moved down from the greeting shelf, 5 Oct 2026); the vine trails left along this shelf -->
-              <div class="deco-shelf player-shelf" id="plant-shelf">
-                <div class="deco-row">
                   <!-- the watering can: drag it over the plant and hold, or click, to water it -->
                   <button type="button" class="can" id="can" aria-label="Water the plant">
                     <svg viewBox="0 0 70 50" aria-hidden="true">
@@ -321,10 +296,30 @@
                   <img src="assets/obj/plant.png" alt="" class="shelf-plant" id="shelf-plant">
                   <!-- a drop of water by the leaves until it's been watered today -->
                   <svg class="plant-drop" id="plant-drop" viewBox="0 0 20 28" aria-hidden="true" hidden><path d="M10 1C10 1 2 12 2 18a8 8 0 0 0 16 0C18 12 10 1 10 1z"/><path class="shine" d="M6.5 17.5a4 4 0 0 0 2.5 4"/></svg>
-                  <button type="button" class="record-player" id="record-player" aria-label="Open the record player"></button>
                 </div>
                 <div class="float-shelf" aria-hidden="true">
                   <svg class="vine" id="vine" aria-hidden="true"></svg>
+                  <img src="assets/shelf/bookend.png" alt="" class="bracket left">
+                  <img src="assets/shelf/bookend.png" alt="" class="bracket right">
+                  <img src="assets/shelf/plank.png" alt="" class="plank">
+                </div>
+              </div>
+              <!-- the record player on a shelf of its own, below the books, with the music card floating beside it -->
+              <div class="deco-shelf player-shelf">
+                <div class="deco-row">
+                  <!-- The Music app on this Mac: a glass card floating by the record player, the song small above play / previous / next -->
+                  <div class="now-playing" id="now-playing" role="group" aria-label="Music" hidden>
+                    <span class="np-disc" aria-hidden="true"></span>
+                    <span class="np-text"><b id="np-track">Music</b><span id="np-artist">Not playing</span></span>
+                    <span class="np-btns">
+                      <button type="button" class="np-btn" id="np-prev" data-tip="Previous song" aria-label="Previous song"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 5v14M19 5L9 12l10 7z"/></svg></button>
+                      <button type="button" class="np-btn main" id="np-play" data-tip="Play / pause" aria-label="Play"><svg viewBox="0 0 24 24" aria-hidden="true"><path id="np-icon" d="M7 4l13 8-13 8z"/></svg></button>
+                      <button type="button" class="np-btn" id="np-next" data-tip="Next song" aria-label="Next song"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 5v14M5 5l10 7-10 7z"/></svg></button>
+                    </span>
+                  </div>
+                  <button type="button" class="record-player" id="record-player" aria-label="Open the record player"></button>
+                </div>
+                <div class="float-shelf" aria-hidden="true">
                   <img src="assets/shelf/bookend.png" alt="" class="bracket left">
                   <img src="assets/shelf/bookend.png" alt="" class="bracket right">
                   <img src="assets/shelf/plank.png" alt="" class="plank">
@@ -394,14 +389,19 @@
       <div class="desk-edge" id="desk-edge" aria-hidden="true"></div>
       <section class="desk" aria-label="Today">
         <div class="desk-up"><button type="button" id="desk-up"><span class="arrow" aria-hidden="true">↑</span>THE WALL</button></div>
-        <!-- the notebook: Focus, Key tasks, General and Work, typed on drawn lines -->
-        <article class="notepad planner" id="todo" aria-label="Today's plan"></article>
-        <!-- the agenda on an iPad lying flat: swipe, or ‹ ›, for other days -->
-        <article class="ipad" id="agenda" aria-label="Agenda" tabindex="0"></article>
-        <!-- today's meals, from the menu in the kitchen -->
+        <!-- seen front-on (Mel, 5 Oct 2026): the bricks come down to an oak desk top -->
+        <div class="desk-top" aria-hidden="true"></div>
+        <!-- the agenda on a ruled sheet pinned to the wall: swipe, or ‹ ›, for other days -->
+        <article class="agenda-sheet" id="agenda" aria-label="Agenda" tabindex="0"></article>
+        <!-- today's meals, pinned beside it -->
         <button type="button" class="meal-slip" id="meal-slip" title="Open the kitchen" hidden></button>
-        <img src="assets/obj/sticky-pad.png" alt="" class="sticky-pad" aria-hidden="true">
-        <img src="assets/obj/cup.png" alt="" class="cup" aria-hidden="true">
+        <!-- a MacBook Pro on the desk: its screen is the day's plan (Focus, Key tasks, General, Work) -->
+        <div class="macbook">
+          <div class="mb-lid"><span class="mb-notch" aria-hidden="true"></span><article class="mb-screen planner" id="todo" aria-label="Today's plan"></article></div>
+          <div class="mb-base" aria-hidden="true"></div>
+        </div>
+        <!-- a mug on the desk, left of the laptop -->
+        <svg class="mug" viewBox="0 0 64 60" aria-hidden="true"><defs><linearGradient id="mug-glaze" x1="0" x2="1"><stop offset="0" stop-color="#e9e1d3"/><stop offset=".35" stop-color="#faf6ee"/><stop offset="1" stop-color="#cfc4b2"/></linearGradient></defs><path d="M44 18h6a9 9 0 0 1 0 18h-5" fill="none" stroke="#d6ccbb" stroke-width="5"/><path d="M6 10h40v36a10 10 0 0 1-10 10H16A10 10 0 0 1 6 46z" fill="url(#mug-glaze)"/><ellipse cx="26" cy="10" rx="20" ry="3.4" fill="#5a3a26"/><ellipse cx="26" cy="10" rx="20" ry="3.4" fill="none" stroke="#efe8dc" stroke-width="1.6"/></svg>
         <!-- the same lamp on the desk; its cord switches every light -->
         <div class="lamp-wrap desk-lamp">
           <button type="button" class="lamp" aria-label="Lamp">

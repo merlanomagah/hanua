@@ -16,7 +16,6 @@ export function showKitchen(on) {
   $("wall").classList.toggle("on-kitchen", on);
   $("kitchen-pane").inert = !on;
   $("wall-in").inert = on;
-  $("ts-kitchen")?.classList.toggle("on", on);
   // the panes sit right under the top shelf, so the top of the page shows the one you've moved to
   if (window.scrollY > 40) window.scrollTo({ top: 0, behavior: reducedMotion || window.scrollY > 1200 ? "auto" : "smooth" });
   (on ? $("kitchen-to-wall") : $("to-kitchen")).focus({ preventScroll: true });
@@ -27,7 +26,6 @@ document.addEventListener("hanua:board", () => showKitchen(false));
 
 $("to-kitchen").addEventListener("click", () => showKitchen(true));
 $("kitchen-to-wall").addEventListener("click", () => showKitchen(false));
-$("ts-kitchen").addEventListener("click", () => showKitchen(!onKitchen));
 
 // One pane at a time: fingers moving right go towards the goals board, left towards the kitchen.
 function swipe(towardsBoard) {

@@ -3,7 +3,7 @@
 import { dayOf, todayStr, ymd } from "./shared/dates.js";
 import { coinValue, isGoalDone, levelIndex } from "./shared/goals.js";
 import { $, api, fmtDay, h, money, state, toast } from "./lib.js";
-import { goalById, lineage, onBoard } from "./goals/board.js";
+import { goalById, lineage } from "./goals/board.js";
 import { mondayOf, sundayOf } from "./goals/review.js";
 
 // by level, with a PBI's Tasks capped at the PBI's own value (public/shared/goals.js coinValue)
@@ -78,7 +78,6 @@ export function renderTopShelf() {
       h("b", { className: "ts-value", ariaLabel: dollars(t[k]) }, flipDigits(dollars(t[k]), "ts")),
       h("span", { className: "ts-target", textContent: t[`${k}Target`] ? `of ${dollars(t[`${k}Target`])}` : "nothing planned" }))));
   $("ts-earn").title = `${dollars(t.balance)} to spend · open the treat shop`;
-  $("ts-goals").classList.toggle("on", onBoard);
   if (!$("ts-panel").hidden) renderEarnings();
 }
 
