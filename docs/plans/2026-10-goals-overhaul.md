@@ -69,7 +69,7 @@ The order is set so that nothing gets built twice. The foundations go first beca
 
 **Testing:** tick a goal Task on the desk (sample data) and check the coins, the cap message and the board update; run the 375 width check on the desk.
 
-### Phase 4: Close-out (once, at the end)
+### Phase 4: Close-out (once, at the end) — done 4 Oct 2026
 
 `CLAUDE.md` layout; Hanua OS Map rows (Goals pin board, Goals (Notion), Today's list, Top shelf / shop); Preferences; Learning Log (coin cap; goal Tasks on the desk); Session Diary; the Goals guide page.
 
