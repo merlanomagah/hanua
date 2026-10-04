@@ -23,6 +23,60 @@
     </div>
   </dialog>
   <div class="app" id="app">
+    <!-- The top shelf: always in view, across the whole screen with the bookcase under it. Quick ways around the room,
+       Ask Claude, what you've earned, and the music -->
+    <header class="topshelf" id="topshelf">
+      <nav class="ts-nav" aria-label="Quick actions">
+        <button type="button" class="ts-btn" id="ts-home" data-tip="Home: the wall" aria-label="Home"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg></button>
+        <button type="button" class="ts-btn" id="ts-desk" data-tip="The desk: today" aria-label="Go to the desk"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 9h18"/><path d="M5 9v10M19 9v10"/><path d="M8 5h8v4H8z"/></svg></button>
+        <button type="button" class="ts-btn" id="ts-goals" data-tip="Goals board" aria-label="Goals board"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="0.8" fill="currentColor"/></svg></button>
+        <button type="button" class="ts-btn" id="ts-kitchen" data-tip="Kitchen: weather and the menu" aria-label="Kitchen"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11h16v2a7 7 0 0 1-7 7h-2a7 7 0 0 1-7-7z"/><path d="M2 11h20"/><path d="M9 7c0-1.5 1-1.5 1-3M14 7c0-1.5 1-1.5 1-3"/></svg></button>
+        <button type="button" class="ts-btn" id="ts-library" data-tip="Library" aria-label="Open the library"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4v16M9 4v16M13 6l4 14"/><path d="M3 20h18"/></svg></button>
+        <button type="button" class="ts-btn" id="ts-feed" data-tip="Feed: add anything (⌘S)" aria-label="Open the Feed"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
+        <button type="button" class="ts-btn" id="ts-music" data-tip="Record player" aria-label="Open the record player"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="2"/></svg></button>
+        <button type="button" class="ts-btn" id="ts-sleep" data-tip="Sleep: hide everything (⌃L)" aria-label="Put Hanua to sleep"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg></button>
+        <span class="ts-div" aria-hidden="true"></span>
+        <!-- Focus: a small home / work switch; at work only work things show -->
+        <button type="button" class="ts-switch" id="ts-focus" role="switch" aria-checked="false" data-tip="At home: everything shows (⌃F for work)" aria-label="At work">
+          <svg class="sw-home" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 11V8a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v3"/><path d="M3 12a2 2 0 0 1 4 0v2h10v-2a2 2 0 0 1 4 0v5H3z"/><path d="M5 17v2M19 17v2"/></svg>
+          <span class="sw-track" aria-hidden="true"><span class="sw-knob"></span></span>
+          <svg class="sw-work" viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="8" width="17" height="11" rx="1.5"/><path d="M9 8V6.5A1.5 1.5 0 0 1 10.5 5h3A1.5 1.5 0 0 1 15 6.5V8"/><path d="M3.5 13h17"/></svg>
+        </button>
+      </nav>
+      <!-- Ask Claude, on the rail so it's always a glance away (Mel, 5 Oct 2026); the answer drops down under it -->
+      <div class="ask-wrap ts-ask">
+        <form class="ask" id="ask-form">
+          <span class="ask-label">CLAUDE</span>
+          <span class="divider" aria-hidden="true"></span>
+          <input id="ask-input" type="text" autocomplete="off" aria-label="Ask Claude" placeholder="Ask about anything on your wall…">
+          <button type="button" class="ask-icon" id="ask-clear" aria-label="Clear" data-tip="Clear (Esc)" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+          <!-- speak instead of typing (Safari's own speech-to-text; hidden where it isn't there, and at work) -->
+          <button type="button" class="ask-icon" id="ask-mic" aria-label="Speak your question" aria-pressed="false" data-tip="Speak" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/></svg></button>
+          <button type="submit">ASK</button>
+        </form>
+        <div class="answer" id="ask-answer" hidden><p class="answer-text" id="ask-text"></p><button type="button" class="ask-icon answer-x" id="ask-close" aria-label="Close the answer" data-tip="Close"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+      </div>
+      <div class="ts-centre">
+        <button type="button" class="ts-earn" id="ts-earn" data-tip="Open the treat shop" aria-label="Earnings: open the treat shop">
+          <span class="ts-periods" id="ts-periods"></span>
+        </button>
+        <button type="button" class="ts-toggle" id="ts-toggle" data-tip="Earnings in detail" aria-expanded="false" aria-controls="ts-panel" aria-label="Show earnings in detail">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+        </button>
+      </div>
+      <div class="ts-right">
+          <!-- The Music app on this Mac: what's playing, with play / previous / next -->
+          <div class="now-playing" id="now-playing" role="group" aria-label="Music" hidden>
+            <span class="np-disc" aria-hidden="true"></span>
+            <span class="np-text"><b id="np-track">Music</b><span id="np-artist">Not playing</span></span>
+            <button type="button" class="np-btn" id="np-prev" data-tip="Previous song" aria-label="Previous song"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 5v14M19 5L9 12l10 7z"/></svg></button>
+            <button type="button" class="np-btn main" id="np-play" data-tip="Play / pause" aria-label="Play"><svg viewBox="0 0 24 24" aria-hidden="true"><path id="np-icon" d="M7 4l13 8-13 8z"/></svg></button>
+            <button type="button" class="np-btn" id="np-next" data-tip="Next song" aria-label="Next song"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 5v14M5 5l10 7-10 7z"/></svg></button>
+          </div>
+      </div>
+      <!-- the earnings panel: drops down from the shelf, styled like the TV screen -->
+      <section class="ts-panel" id="ts-panel" aria-label="Earnings in detail" hidden></section>
+    </header>
     <!-- Bookcase: the menu. Each book is one area of life. -->
     <aside class="shelf" aria-label="Your books">
       <div class="case">
@@ -56,47 +110,6 @@
     </aside>
 
     <main class="room">
-      <!-- The top shelf: always in view. Quick ways around the room, the Feed, and what you've earned -->
-      <header class="topshelf" id="topshelf">
-        <nav class="ts-nav" aria-label="Quick actions">
-          <button type="button" class="ts-btn" id="ts-home" data-tip="Home: the wall" aria-label="Home"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg></button>
-          <button type="button" class="ts-btn" id="ts-desk" data-tip="The desk: today" aria-label="Go to the desk"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 9h18"/><path d="M5 9v10M19 9v10"/><path d="M8 5h8v4H8z"/></svg></button>
-          <button type="button" class="ts-btn" id="ts-goals" data-tip="Goals board" aria-label="Goals board"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="0.8" fill="currentColor"/></svg></button>
-          <button type="button" class="ts-btn" id="ts-kitchen" data-tip="Kitchen: weather and the menu" aria-label="Kitchen"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11h16v2a7 7 0 0 1-7 7h-2a7 7 0 0 1-7-7z"/><path d="M2 11h20"/><path d="M9 7c0-1.5 1-1.5 1-3M14 7c0-1.5 1-1.5 1-3"/></svg></button>
-          <button type="button" class="ts-btn" id="ts-library" data-tip="Library" aria-label="Open the library"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4v16M9 4v16M13 6l4 14"/><path d="M3 20h18"/></svg></button>
-          <button type="button" class="ts-btn" id="ts-feed" data-tip="Feed: add anything (⌘S)" aria-label="Open the Feed"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
-          <button type="button" class="ts-btn" id="ts-music" data-tip="Record player" aria-label="Open the record player"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="2"/></svg></button>
-          <button type="button" class="ts-btn" id="ts-sleep" data-tip="Sleep: hide everything (⌃L)" aria-label="Put Hanua to sleep"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg></button>
-          <span class="ts-div" aria-hidden="true"></span>
-          <!-- Focus: a small home / work switch; at work only work things show -->
-          <button type="button" class="ts-switch" id="ts-focus" role="switch" aria-checked="false" data-tip="At home: everything shows (⌃F for work)" aria-label="At work">
-            <svg class="sw-home" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 11V8a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v3"/><path d="M3 12a2 2 0 0 1 4 0v2h10v-2a2 2 0 0 1 4 0v5H3z"/><path d="M5 17v2M19 17v2"/></svg>
-            <span class="sw-track" aria-hidden="true"><span class="sw-knob"></span></span>
-            <svg class="sw-work" viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="8" width="17" height="11" rx="1.5"/><path d="M9 8V6.5A1.5 1.5 0 0 1 10.5 5h3A1.5 1.5 0 0 1 15 6.5V8"/><path d="M3.5 13h17"/></svg>
-          </button>
-        </nav>
-        <div class="ts-centre">
-          <button type="button" class="ts-earn" id="ts-earn" data-tip="Open the treat shop" aria-label="Earnings: open the treat shop">
-            <span class="coin" aria-hidden="true"><img src="assets/obj/coin.png" alt=""><b>H</b></span>
-            <span class="ts-periods" id="ts-periods"></span>
-          </button>
-          <button type="button" class="ts-toggle" id="ts-toggle" data-tip="Earnings in detail" aria-expanded="false" aria-controls="ts-panel" aria-label="Show earnings in detail">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
-          </button>
-        </div>
-        <div class="ts-right">
-            <!-- The Music app on this Mac: what's playing, with play / previous / next -->
-            <div class="now-playing" id="now-playing" role="group" aria-label="Music" hidden>
-              <span class="np-disc" aria-hidden="true"></span>
-              <span class="np-text"><b id="np-track">Music</b><span id="np-artist">Not playing</span></span>
-              <button type="button" class="np-btn" id="np-prev" data-tip="Previous song" aria-label="Previous song"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 5v14M19 5L9 12l10 7z"/></svg></button>
-              <button type="button" class="np-btn main" id="np-play" data-tip="Play / pause" aria-label="Play"><svg viewBox="0 0 24 24" aria-hidden="true"><path id="np-icon" d="M7 4l13 8-13 8z"/></svg></button>
-              <button type="button" class="np-btn" id="np-next" data-tip="Next song" aria-label="Next song"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 5v14M5 5l10 7-10 7z"/></svg></button>
-            </div>
-        </div>
-        <!-- the earnings panel: drops down from the shelf, styled like the TV screen -->
-        <section class="ts-panel" id="ts-panel" aria-label="Earnings in detail" hidden></section>
-      </header>
       <!-- The wall: your overview -->
       <section class="wall" id="wall" aria-label="Overview">
         <div class="window-light" aria-hidden="true"></div>
@@ -217,45 +230,12 @@
                     <span class="sr-only" id="today-label"></span>
                     <h1 id="greet"><span class="greet-word" id="greet-word">Good morning</span><span class="greet-name">, Mel.</span></h1>
                   </div>
-                  <!-- the watering can: drag it over the plant and hold, or click, to water it -->
-                  <button type="button" class="can" id="can" aria-label="Water the plant">
-                    <svg viewBox="0 0 70 50" aria-hidden="true">
-                      <defs>
-                        <linearGradient id="can-metal" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#d79a6b"/><stop offset=".45" stop-color="#b56b3f"/><stop offset="1" stop-color="#7d4426"/></linearGradient>
-                      </defs>
-                      <path d="M14 18 Q24 2 36 18" fill="none" stroke="#7d4426" stroke-width="3" stroke-linecap="round"/>
-                      <path d="M38 36 L60 15 L63 18 L42 41 Z" fill="url(#can-metal)"/>
-                      <ellipse cx="62" cy="15" rx="3.2" ry="4.6" transform="rotate(-45 62 15)" fill="#8a4c2b"/>
-                      <path d="M10 18 H40 L43 46 Q25 49 7 46 Z" fill="url(#can-metal)"/>
-                      <path d="M10 18 H40" stroke="#e8b48a" stroke-width="1.5"/>
-                      <path d="M9 30 H41" stroke="#7d4426" stroke-width="1" opacity=".45"/>
-                    </svg>
-                    <span class="drops" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
-                  </button>
-                  <!-- the plant: it grows along the shelf with every day it's watered -->
-                  <img src="assets/obj/plant.png" alt="" class="shelf-plant" id="shelf-plant">
-                  <!-- a drop of water by the leaves until it's been watered today -->
-                  <svg class="plant-drop" id="plant-drop" viewBox="0 0 20 28" aria-hidden="true" hidden><path d="M10 1C10 1 2 12 2 18a8 8 0 0 0 16 0C18 12 10 1 10 1z"/><path class="shine" d="M6.5 17.5a4 4 0 0 0 2.5 4"/></svg>
                 </div>
                 <div class="float-shelf" aria-hidden="true">
-                  <svg class="vine" id="vine" aria-hidden="true"></svg>
                   <img src="assets/shelf/bookend.png" alt="" class="bracket left">
                   <img src="assets/shelf/bookend.png" alt="" class="bracket right">
                   <img src="assets/shelf/plank.png" alt="" class="plank">
                 </div>
-              </div>
-
-              <div class="ask-wrap">
-                <form class="ask" id="ask-form">
-                  <span class="ask-label">CLAUDE</span>
-                  <span class="divider" aria-hidden="true"></span>
-                  <input id="ask-input" type="text" autocomplete="off" aria-label="Ask Claude" placeholder="Ask about anything on your wall…">
-                  <button type="button" class="ask-icon" id="ask-clear" aria-label="Clear" data-tip="Clear (Esc)" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
-                  <!-- speak instead of typing (Safari's own speech-to-text; hidden where it isn't there, and at work) -->
-                  <button type="button" class="ask-icon" id="ask-mic" aria-label="Speak your question" aria-pressed="false" data-tip="Speak" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/></svg></button>
-                  <button type="submit">ASK</button>
-                </form>
-                <div class="answer" id="ask-answer" hidden><p class="answer-text" id="ask-text"></p><button type="button" class="ask-icon answer-x" id="ask-close" aria-label="Close the answer" data-tip="Close"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
               </div>
 
               <div class="notes" id="notes" aria-label="Pinned notes"></div>
@@ -318,12 +298,33 @@
                   <img src="assets/shelf/plank.png" alt="" class="plank">
                 </div>
               </div>
-              <!-- the record player on a shelf of its own, below the books -->
-              <div class="deco-shelf player-shelf">
+              <!-- the record player on a shelf of its own, below the books, with the plant and its can beside it
+                   (moved down from the greeting shelf, 5 Oct 2026); the vine trails left along this shelf -->
+              <div class="deco-shelf player-shelf" id="plant-shelf">
                 <div class="deco-row">
+                  <!-- the watering can: drag it over the plant and hold, or click, to water it -->
+                  <button type="button" class="can" id="can" aria-label="Water the plant">
+                    <svg viewBox="0 0 70 50" aria-hidden="true">
+                      <defs>
+                        <linearGradient id="can-metal" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#d79a6b"/><stop offset=".45" stop-color="#b56b3f"/><stop offset="1" stop-color="#7d4426"/></linearGradient>
+                      </defs>
+                      <path d="M14 18 Q24 2 36 18" fill="none" stroke="#7d4426" stroke-width="3" stroke-linecap="round"/>
+                      <path d="M38 36 L60 15 L63 18 L42 41 Z" fill="url(#can-metal)"/>
+                      <ellipse cx="62" cy="15" rx="3.2" ry="4.6" transform="rotate(-45 62 15)" fill="#8a4c2b"/>
+                      <path d="M10 18 H40 L43 46 Q25 49 7 46 Z" fill="url(#can-metal)"/>
+                      <path d="M10 18 H40" stroke="#e8b48a" stroke-width="1.5"/>
+                      <path d="M9 30 H41" stroke="#7d4426" stroke-width="1" opacity=".45"/>
+                    </svg>
+                    <span class="drops" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+                  </button>
+                  <!-- the plant: it grows along the shelf with every day it's watered -->
+                  <img src="assets/obj/plant.png" alt="" class="shelf-plant" id="shelf-plant">
+                  <!-- a drop of water by the leaves until it's been watered today -->
+                  <svg class="plant-drop" id="plant-drop" viewBox="0 0 20 28" aria-hidden="true" hidden><path d="M10 1C10 1 2 12 2 18a8 8 0 0 0 16 0C18 12 10 1 10 1z"/><path class="shine" d="M6.5 17.5a4 4 0 0 0 2.5 4"/></svg>
                   <button type="button" class="record-player" id="record-player" aria-label="Open the record player"></button>
                 </div>
                 <div class="float-shelf" aria-hidden="true">
+                  <svg class="vine" id="vine" aria-hidden="true"></svg>
                   <img src="assets/shelf/bookend.png" alt="" class="bracket left">
                   <img src="assets/shelf/bookend.png" alt="" class="bracket right">
                   <img src="assets/shelf/plank.png" alt="" class="plank">

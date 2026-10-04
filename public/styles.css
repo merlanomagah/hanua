@@ -1,5 +1,6 @@
 /* Layout: a walnut bookcase menu on the left; the rest is a brick wall (overview) above an oak desk (today). */
 :root {
+  --rail-h: 46px; /* the top rail's height: the bookcase sticks just under it */
   --cream: #FAF7F2;
   --page: #F5F0E8;
   --hair: #EDE5D4;
@@ -51,7 +52,9 @@ button:disabled { opacity: 0.5; cursor: progress; }
 .eyebrow { font: 400 11px var(--mono); letter-spacing: 0.22em; text-transform: uppercase; color: var(--ink-3); margin: 0; }
 
 /* ---------- bookcase ---------- */
-.shelf { position: sticky; top: 0; height: 100vh; z-index: 5; padding: 14px 0 14px 14px; background: var(--page); }
+/* the rail spans the screen above it (5 Oct 2026), so the bookcase sticks just under the rail */
+.topshelf { grid-column: 1 / -1; }
+.shelf { position: sticky; top: var(--rail-h); height: calc(100vh - var(--rail-h)); z-index: 5; padding: 14px 0 14px 14px; background: var(--page); }
 .case {
   position: relative; height: 100%; display: flex; flex-direction: column; padding: 22px 20px 18px;
   background: url("assets/shelf/case.png") 0 0 / 100% 100% no-repeat;
@@ -233,8 +236,9 @@ button:disabled { opacity: 0.5; cursor: progress; }
 .board-lamp { position: absolute; z-index: 4; right: 22px; bottom: calc(100% + 10px); width: clamp(58px, 6vw, 78px); }
 .board-head { padding-right: clamp(96px, 9vw, 120px); }
 .board-lamp .pull-cord { --len: 22px; }
-/* the greeting sits level with the middle of the lamp and clock, not down on the plank */
-.greet-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 12px; align-self: center; padding-top: 14px; container-type: inline-size; }
+/* the greeting sits level with the middle of the lamp, and centred on the shelf: the right padding matches the lamp's
+   width, so the line's middle is the shelf's middle (Mel, 5 Oct 2026) */
+.greet-text { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 12px; align-self: center; padding-right: clamp(88px, 19%, 124px); container-type: inline-size; }
 .greet-text h1 {
   margin: 0; font: italic 300 clamp(26px, 18cqi, 66px)/0.9 var(--display); white-space: nowrap; letter-spacing: -0.025em; color: var(--ink-2);
   text-shadow: 0 1px 0 rgb(255 255 255 / 0.6), -4px 8px 14px rgb(28 24 20 / 0.12);
@@ -249,11 +253,12 @@ button:disabled { opacity: 0.5; cursor: progress; }
 /* retro flip clock in a walnut case */
 /* the wall clocks: four of them in a row above the greeting shelf, like pieces of wall art, all the same size: here in
    black, Sydney, Suva and Los Angeles in white (Mel, 5 Oct 2026: the eye goes to the black one). The row starts at the
-   shelf's left end and fills its width; the cards are sized from the row's width so four always fit */
-.clocks { position: relative; z-index: 2; display: flex; justify-content: space-between; align-items: flex-end; gap: 16px;
-  align-self: stretch; padding: 22px 0 0; margin-bottom: clamp(18px, 2vw, 28px); container-type: inline-size; }
+   shelf's left end and fills its width; the cards are sized from the row's width so four always fit. Their tops line up
+   with the status pills on the right, and the room that frees goes to the shelf below (Mel, 5 Oct 2026: breathing room) */
+.clocks { position: relative; z-index: 2; display: flex; justify-content: space-between; align-items: flex-end; gap: 8px;
+  align-self: stretch; padding: 0; margin: -11px 0 calc(clamp(18px, 2vw, 28px) + 33px); container-type: inline-size; }
 .wall-clock {
-  --card-w: clamp(11px, calc((100cqi - 176px) / 19), 23px); --card-h: calc(var(--card-w) * 1.45);
+  --card-w: clamp(11px, calc((100cqi - 152px) / 19), 24px); --card-h: calc(var(--card-w) * 1.45);
   position: relative; flex: none; padding: 9px 10px 18px; border-radius: 5px;
   background: linear-gradient(180deg, #FCFAF6, #ECE6DC); box-shadow: inset 0 1px 0 #fff, inset 0 -2px 0 rgb(28 24 20 / 0.1), 0 0 0 1px rgb(28 24 20 / 0.08);
   filter: drop-shadow(-4px 7px 8px rgb(28 24 20 / 0.24));
@@ -519,19 +524,20 @@ button:disabled { opacity: 0.5; cursor: progress; }
 .deco-books { flex: none; width: clamp(120px, 34%, 200px); height: auto; margin-top: -90px; filter: drop-shadow(-5px 6px 8px rgb(28 24 20 / 0.25)); }
 /* when the calendar lists events, the books only tuck into its bottom margin */
 .wall-right.has-list .deco-books { margin-top: -22px; }
-/* ---- the plant and its watering can on the greeting shelf ---- */
-.greet-row { --plant-w: clamp(80px, 14.5%, 124px); }
-.shelf-plant { flex: none; width: var(--plant-w); height: auto; margin: 0 -5% -12px 34px; filter: var(--object-shadow); transition: filter 1.2s; position: relative; z-index: 2; }
+/* ---- the plant and its watering can, beside the record player (moved from the greeting shelf, 5 Oct 2026) ---- */
+/* a pothos about 30 cm tall beside a 45 cm record player, so roughly two thirds of the player's width */
+#plant-shelf { --plant-w: clamp(96px, 28%, 136px); }
+.shelf-plant { flex: none; width: var(--plant-w); height: auto; margin: 0 0 -10px; filter: var(--object-shadow); transition: filter 1.2s; position: relative; z-index: 2; }
 /* days without water: a little thirsty, wilting, browning, then mostly brown (never dead) */
-.greet-shelf { --leaf: #6f9a3e; --leaf-2: #9dbb5c; --stem: #557a2c; }
-.greet-shelf[data-health="thirsty"] { --leaf: #87a043; --leaf-2: #b5bf62; --stem: #6d8436; }
-.greet-shelf[data-health="thirsty"] .shelf-plant { filter: var(--object-shadow) saturate(0.85) hue-rotate(-6deg); }
-.greet-shelf[data-health="wilting"] { --leaf: #a09a48; --leaf-2: #c5b56a; --stem: #847d3a; }
-.greet-shelf[data-health="wilting"] .shelf-plant { filter: var(--object-shadow) sepia(0.3) saturate(0.8) hue-rotate(-12deg); }
-.greet-shelf[data-health="browning"] { --leaf: #a27a45; --leaf-2: #c29a62; --stem: #82603a; }
-.greet-shelf[data-health="browning"] .shelf-plant { filter: var(--object-shadow) sepia(0.6) saturate(0.75) hue-rotate(-20deg) brightness(0.95); }
-.greet-shelf[data-health="dormant"] { --leaf: #87613d; --leaf-2: #a07850; --stem: #6e5034; }
-.greet-shelf[data-health="dormant"] .shelf-plant { filter: var(--object-shadow) sepia(0.85) saturate(0.6) hue-rotate(-24deg) brightness(0.88); }
+#plant-shelf { --leaf: #6f9a3e; --leaf-2: #9dbb5c; --stem: #557a2c; }
+#plant-shelf[data-health="thirsty"] { --leaf: #87a043; --leaf-2: #b5bf62; --stem: #6d8436; }
+#plant-shelf[data-health="thirsty"] .shelf-plant { filter: var(--object-shadow) saturate(0.85) hue-rotate(-6deg); }
+#plant-shelf[data-health="wilting"] { --leaf: #a09a48; --leaf-2: #c5b56a; --stem: #847d3a; }
+#plant-shelf[data-health="wilting"] .shelf-plant { filter: var(--object-shadow) sepia(0.3) saturate(0.8) hue-rotate(-12deg); }
+#plant-shelf[data-health="browning"] { --leaf: #a27a45; --leaf-2: #c29a62; --stem: #82603a; }
+#plant-shelf[data-health="browning"] .shelf-plant { filter: var(--object-shadow) sepia(0.6) saturate(0.75) hue-rotate(-20deg) brightness(0.95); }
+#plant-shelf[data-health="dormant"] { --leaf: #87613d; --leaf-2: #a07850; --stem: #6e5034; }
+#plant-shelf[data-health="dormant"] .shelf-plant { filter: var(--object-shadow) sepia(0.85) saturate(0.6) hue-rotate(-24deg) brightness(0.88); }
 .vine { position: absolute; z-index: 3; left: 0; top: -2px; height: 160px; overflow: visible; pointer-events: none; }
 .vine .stem { fill: none; stroke: var(--stem); stroke-width: 2.2; stroke-linecap: round; filter: drop-shadow(0 2px 1px rgb(28 24 20 / 0.3)); transition: stroke 1.2s; }
 .vine .leaf path:first-child { fill: var(--leaf); stroke: color-mix(in srgb, var(--stem) 80%, black); stroke-width: 0.6; transition: fill 1.2s; }
@@ -540,8 +546,8 @@ button:disabled { opacity: 0.5; cursor: progress; }
 .vine .leaf.new { animation: leaf-in 1.4s cubic-bezier(.2,1.4,.4,1) both; transform-box: fill-box; transform-origin: 50% 100%; }
 @keyframes leaf-in { from { opacity: 0; scale: 0.1; } }
 .can {
-  /* stands on the shelf just in front of the plant's pot, as it would in real life, so it takes no room from the greeting */
-  position: absolute; z-index: 5; bottom: 9px; right: calc(var(--plant-w) - 1% - 34px); width: clamp(66px, 11.5%, 92px); margin: 0; padding: 0; border: 0; background: transparent; cursor: grab;
+  /* stands on the shelf just in front of the plant's pot, as it would in real life (a can is about 70% of the plant's height) */
+  position: relative; flex: none; z-index: 5; width: calc(var(--plant-w) * 0.86); margin: 0 calc(var(--plant-w) * -0.3) 2px 0; padding: 0; border: 0; background: transparent; cursor: grab;
   filter: drop-shadow(-4px 6px 5px rgb(28 24 20 / 0.32)); touch-action: none; transform-origin: 70% 80%;
   transition: transform 450ms cubic-bezier(.3,.8,.3,1), rotate 300ms;
 }
@@ -779,7 +785,7 @@ button:disabled { opacity: 0.5; cursor: progress; }
 /* ---------- the top shelf: quick actions, the Feed, and what you've earned ---------- */
 .topshelf {
   /* a slim frosted-glass rail: the wall shows through, so it reads as light rather than a plank */
-  position: sticky; top: 0; z-index: 12; display: flex; align-items: center; gap: 14px; min-height: 46px; padding: 3px clamp(12px, 2vw, 22px);
+  position: sticky; top: 0; z-index: 12; display: flex; align-items: center; gap: 14px; min-height: var(--rail-h); box-sizing: border-box; padding: 3px clamp(12px, 2vw, 22px);
   background: rgb(250 247 242 / 0.62); -webkit-backdrop-filter: blur(16px) saturate(1.2); backdrop-filter: blur(16px) saturate(1.2);
   border-bottom: 1px solid rgb(28 24 20 / 0.08);
   box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.6);
@@ -793,11 +799,11 @@ button:disabled { opacity: 0.5; cursor: progress; }
 .ts-btn:hover { background: rgb(28 24 20 / 0.06); color: var(--ink); }
 .topshelf button:focus-visible { outline: 2px solid var(--terra); outline-offset: 1px; }
 .ts-btn.on { background: rgb(196 96 42 / 0.1); color: var(--terra-hover); }
-/* three zones: buttons left, earnings centre, music right */
-.ts-nav { flex: 1 1 0; align-items: center; }
+/* four zones: buttons far left, Ask filling the middle, earnings, music right */
+.ts-nav { flex: none; align-items: center; }
 .ts-div { flex: none; width: 1px; height: 20px; margin: 0 6px; background: rgb(28 24 20 / 0.12); }
 .ts-centre { flex: none; display: flex; align-items: center; gap: 2px; }
-.ts-right { flex: 1 1 0; display: flex; justify-content: flex-end; min-width: 0; }
+.ts-right { flex: none; display: flex; justify-content: flex-end; min-width: 0; }
 /* earnings: the label beside the dollars, the target faintly underneath them, so the rail stays slim */
 .ts-earn { flex: none; display: flex; align-items: center; gap: 12px; padding: 4px 8px 4px 4px; border: 0; border-radius: 3px; background: transparent; cursor: pointer; text-align: left; transition: background 200ms; }
 .ts-earn:hover { background: rgb(28 24 20 / 0.05); }
@@ -931,12 +937,12 @@ button:disabled { opacity: 0.5; cursor: progress; }
 .goal-card .g-top { padding-right: 18px; }
 /* calendar month arrows */
 .cal-head { gap: 8px; }
-.cal-head h2 { flex: 1; }
 .cal-nav { order: 0; width: 32px; height: 32px; border: 1px solid var(--border); border-radius: 3px; background: transparent; cursor: pointer; font-size: 18px; color: var(--ink-3); align-self: center; }
 .cal-nav:hover { background: var(--page); color: var(--ink); }
-.cal-head h2 + .cal-nav { order: 2; }
-.cal-head h2 { order: 1; }
-.cal-year { order: 3; display: flex; align-items: center; gap: 8px; font: 11px var(--mono); letter-spacing: 0.18em; color: var(--ink-4); }
+.cal-head { align-items: center; }
+.cal-title { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; }
+.cal-title h2 { flex: none; }
+.cal-year { display: flex; align-items: center; justify-content: center; gap: 8px; font: 10px var(--mono); letter-spacing: 0.24em; color: var(--ink-4); }
 .cal-today { padding: 3px 7px; border: 1px solid var(--terra); border-radius: 3px; background: transparent; color: var(--terra); cursor: pointer; font: 9px var(--mono); letter-spacing: 0.12em; text-transform: uppercase; }
 .link-btn { padding: 0; border: 0; background: none; color: var(--terra); cursor: pointer; font: inherit; text-decoration: none; }
 .link-btn:hover { text-decoration: underline; }
@@ -1782,13 +1788,9 @@ dialog h3 { margin: 0 0 4px; font: italic 300 32px/1.1 var(--display); }
   .wc-others { display: block; font: 8px var(--mono); letter-spacing: 0.16em; color: var(--ink-3); }
   .flip-face { gap: 4px; padding: 3px; }
   .now-playing { margin-bottom: 26px; }
-  .greet-text { gap: 8px; }
+  .greet-text { gap: 8px; padding-right: 0; }
   .greet-text .eyebrow { font-size: 9px; letter-spacing: 0.16em; }
   .greet-text h1 { font-size: clamp(20px, 24cqi, 40px); } /* one line here too: fitGreeting shrinks it so ", Mel." stays beside the words */
-  /* the shelf is busy on a phone: the plant tucks over the shelf's end and the can in front of it */
-  .greet-row { --plant-w: 60px; }
-  .shelf-plant { margin-right: -7%; margin-left: 22px; }
-  .can { width: 46px; right: calc(var(--plant-w) - 7% - 4px); }
   .ask { gap: 10px; padding-left: 14px; }
   .ask input { font-size: 18px; }
   .screen { padding: 18px 18px 14px; }
@@ -2041,18 +2043,31 @@ dialog.lock::backdrop { background: #14110e; }
 
 /* ---- the shelves under the calendar: books on one, the record player on its own shelf below ---- */
 .books-shelf { margin-top: 28px; }
-.player-shelf .deco-row { justify-content: flex-end; }
-.player-shelf .record-player { margin: 0 4% 2px; }
+.player-shelf .deco-row { justify-content: flex-start; padding-left: 9%; }
+.player-shelf .record-player { margin: 0 4% 2px auto; }
 
-/* ---- the rail runs on behind the bookcase to the left edge of the screen, so it reads as one piece ---- */
-@media (min-width: 901px) {
-  .topshelf::before { content: ""; position: absolute; top: 0; bottom: -1px; right: 100%; width: 100vw; pointer-events: none;
-    background: inherit; -webkit-backdrop-filter: inherit; backdrop-filter: inherit; border-bottom: inherit; box-shadow: inherit; }
-  .shelf { z-index: 13; background: linear-gradient(180deg, transparent 0 46px, var(--page) 46px); }
+/* ---- Ask Claude on the rail: a slim field filling the space between the buttons and the earnings ---- */
+.ts-ask { position: relative; flex: 1 1 260px; min-width: 0; max-width: 620px; gap: 0; }
+.ts-ask .ask { height: 36px; gap: 10px; padding: 0 3px 0 12px; background: rgb(250 247 242 / 0.78); border-color: rgb(28 24 20 / 0.1); box-shadow: none; }
+.ts-ask .ask:focus-within { background: var(--cream); border-color: var(--border-2); }
+.ts-ask .ask-label { font-size: 9px; }
+.ts-ask .ask input { font-size: 17px; }
+.ts-ask .ask button[type="submit"] { height: 28px; padding: 0 12px; font-size: 9px; }
+.ts-ask .ask .ask-icon { width: 28px; height: 28px; }
+.ts-ask .ask .ask-icon + .ask-icon { margin-left: -8px; }
+.ts-ask .ask-icon svg { width: 16px; height: 16px; }
+/* the answer drops down from the rail, over the room */
+.ts-ask #ask-answer { position: absolute; z-index: 31; left: 0; top: calc(100% + 8px); width: max(100%, 460px); max-height: 60vh; overflow: auto; }
+@media (max-width: 1250px) { .ts-ask .ask-label, .ts-ask .divider { display: none; } }
+/* phones: the rail wraps and Ask takes a row of its own under the buttons */
+@media (max-width: 900px) {
+  .ts-ask { order: 5; flex-basis: 100%; max-width: none; }
+  .ts-ask #ask-answer { width: 100%; }
+  .shelf { order: -1; top: 0; }
 }
 
 /* ---- the plant's drop: by the top right of the leaves until it's been watered today ---- */
-.plant-drop { position: absolute; z-index: 6; right: calc(4% + var(--plant-w) * 0.02); bottom: calc(var(--plant-w) * 0.98); width: 11px; height: auto; pointer-events: none;
+.plant-drop { position: absolute; z-index: 6; left: var(--drop-x, 50%); top: var(--drop-y, 0); width: 11px; height: auto; pointer-events: none;
   fill: #8ec3e6; filter: drop-shadow(-1px 2px 2px rgb(28 24 20 / 0.25)); animation: drop-bob 2.6s ease-in-out infinite; }
 .plant-drop .shine { fill: none; stroke: #fff; stroke-width: 1.6; stroke-linecap: round; opacity: 0.8; }
 .plant-drop[hidden] { display: none; }

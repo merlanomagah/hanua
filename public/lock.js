@@ -54,16 +54,40 @@ async function setUpTouch() {
     toast(err?.name === "NotAllowedError" ? "Touch ID wasn't set up. Your PIN still works." : "Touch ID isn't available here. Your PIN still works.", err?.name !== "NotAllowedError");
   }
 }
-async function touchWake() {
+// auto: asked by itself as Hanua falls asleep (Mel, 5 Oct 2026: ask for Touch ID straight away). Safari may refuse
+// without a tap or key press first; then it waits quietly and asks again on the first click or Enter/Space on the
+// sleep screen. The PIN keys never trigger it, so typing a PIN is never interrupted.
+let touchRetry = null;
+async function touchWake(auto = false) {
   const id = store(TOUCH_KEY);
-  if (!id) return;
+  if (!id || !asleep) return;
+  disarmTouchRetry();
   try {
     await navigator.credentials.get({ publicKey: {
       challenge: random(32), rpId: location.hostname, userVerification: "required", timeout: 60_000,
       allowCredentials: [{ type: "public-key", id: unb64(id) }],
     } });
     wake();
-  } catch { say("Hanua is asleep", "Touch ID didn't work. Use your PIN."); }
+  } catch {
+    if (!asleep) return;
+    if (auto) armTouchRetry();
+    else say("Hanua is asleep", "Touch ID didn't work. Use your PIN.");
+  }
+}
+function armTouchRetry() {
+  touchRetry = (e) => {
+    if (e.type === "keydown" && e.key !== "Enter" && e.key !== " ") return;
+    if (e.target.closest?.(".lock-key")) return;
+    touchWake();
+  };
+  lock.addEventListener("pointerdown", touchRetry);
+  lock.addEventListener("keydown", touchRetry);
+}
+function disarmTouchRetry() {
+  if (!touchRetry) return;
+  lock.removeEventListener("pointerdown", touchRetry);
+  lock.removeEventListener("keydown", touchRetry);
+  touchRetry = null;
 }
 async function offerTouch() {
   const offers = Number(store(OFFERS_KEY)) || 0;
@@ -126,7 +150,7 @@ function buildPad() {
   };
   const touch = h("button", { type: "button", className: "lock-key lock-touch", ariaLabel: "Wake with Touch ID", hidden: true,
     innerHTML: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 11a5 5 0 0 1 10 0v2"/><path d="M12 11v4a6 6 0 0 1-1 3"/><path d="M9.5 13.5a10 10 0 0 1-.5 4.5"/><path d="M14.5 12v2a11 11 0 0 1-.7 4"/><path d="M4.5 9a8 8 0 0 1 15 0"/></svg>' });
-  touch.addEventListener("click", touchWake);
+  touch.addEventListener("click", () => touchWake());
   $("lock-pad").replaceChildren(
     ...["1", "2", "3", "4", "5", "6", "7", "8", "9"].map((n) => key(n, n)),
     touch, key("0", "0"), key("⌫", "back", "Delete the last digit"));
@@ -151,11 +175,15 @@ export async function sleep() {
     mode = set ? "check" : "setup";
   } catch { mode = "check"; }
   if (mode === "setup") say("Choose a 4-digit PIN", "Hanua asks for it when it opens and after 15 minutes without use.");
-  else say("Hanua is asleep", touchKey.hidden ? "Type your PIN." : "Touch ID or your PIN.");
+  else {
+    say("Hanua is asleep", touchKey.hidden ? "Type your PIN." : "Touch ID or your PIN.");
+    if (!touchKey.hidden) touchWake(true);
+  }
 }
 
 export function wake() {
   asleep = false;
+  disarmTouchRetry();
   lastActive = Date.now();
   clearInterval(clockTimer);
   lock.close();

@@ -35,7 +35,7 @@ const PERCHES = [
   { sel: "#todo", x: [0.2, 0.8], y: 0, w: 1 },
 ];
 // the coin is right at the top of the screen, so the bird stands in front of it rather than on top
-const COIN = { sel: ".topshelf .coin", x: [0.5, 0.5], y: 0.98, w: 0, name: "coin" };
+const COIN = { sel: ".topshelf .ts-earn", x: [0.5, 0.5], y: 0.98, w: 0, name: "coin" };
 
 // ---- the frames: every pose drawn once, as pictures the bird swaps between ----
 const frames = {};

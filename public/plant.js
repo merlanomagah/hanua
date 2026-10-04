@@ -17,8 +17,8 @@ export async function loadPlant() {
 
 export function renderPlant(grown = false) {
   const s = plantState(watered, todayStr());
-  $("plant-drop").toggleAttribute("hidden", s.wateredToday); // a drop by the leaves until it's been watered today (an svg: no .hidden)
-  const shelf = document.querySelector(".greet-shelf");
+  placeDrop(s.wateredToday);
+  const shelf = $("plant-shelf");
   shelf.dataset.health = s.health;
   const can = $("can");
   can.title = s.wateredToday ? "Watered today ✓ Drag it over the plant, or click, any time" : "Water the plant: drag the can over it and hold, or just click";
@@ -29,10 +29,19 @@ export function renderPlant(grown = false) {
   drawVine(s.days, grown);
 }
 
+// A drop of water by the top right of the leaves until it's been watered today (an svg: no .hidden)
+function placeDrop(wateredToday) {
+  const drop = $("plant-drop"), pot = $("shelf-plant");
+  drop.toggleAttribute("hidden", wateredToday);
+  if (wateredToday) return;
+  drop.style.setProperty("--drop-x", `${pot.offsetLeft + pot.offsetWidth * 0.86}px`);
+  drop.style.setProperty("--drop-y", `${pot.offsetTop - 10}px`);
+}
+
 // The vine: a stem from the pot running left along the front of the shelf, a leaf for every day watered,
 // alternating above and below the stem. When the shelf is full, a second strand hangs down from the pot.
 function drawVine(leaves, grown) {
-  const svg = $("vine"), shelf = document.querySelector(".greet-shelf .float-shelf");
+  const svg = $("vine"), shelf = document.querySelector("#plant-shelf .float-shelf");
   const box = shelf.getBoundingClientRect(), pot = $("shelf-plant").getBoundingClientRect();
   if (!box.width || !pot.width) return;
   const x0 = pot.left + pot.width * 0.42 - box.left, y0 = 6;

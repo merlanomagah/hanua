@@ -425,8 +425,10 @@ export function renderCalendar() {
 
   $("calendar").closest(".wall-right").classList.toggle("has-list", list.length > 0);
   $("calendar").replaceChildren(
+    // the month in the middle with the year small underneath, the arrows at the calendar's sides (Mel, 5 Oct 2026)
     h("div", { className: "cal-head" },
       calNav("‹", "Previous month", -1),
+      h("div", { className: "cal-title" },
       h("h2", {}, (() => {
         // the month's name zooms the calendar out over the wall, and back (Mel, 5 Oct 2026)
         const b = h("button", { type: "button", className: "cal-month", id: "cal-month", textContent: now.toLocaleDateString(undefined, { month: "long" }),
@@ -435,14 +437,15 @@ export function renderCalendar() {
         b.addEventListener("click", () => zoomCalendar());
         return b;
       })()),
-      calNav("›", "Next month", 1),
       h("span", { className: "cal-year" }, String(now.getFullYear()),
         calOffset ? (() => { const b = h("button", { type: "button", className: "cal-today", textContent: "Today" }); b.addEventListener("click", () => { calOffset = 0; selectedDay = todayStr(); renderCalendar(); }); return b; })() : null,
         calWide ? (() => { const b = h("button", { type: "button", className: "cal-close", textContent: "✕", ariaLabel: "Back to the wall", title: "Back to the wall (Esc)" }); b.addEventListener("click", () => zoomCalendar(false)); return b; })() : null)),
+      calNav("›", "Next month", 1)),
     h("div", { className: "dow", ariaHidden: "true" }, ["M", "T", "W", "T", "F", "S", "S"].map((d) => h("span", { textContent: d }))),
     grid,
     h("div", { className: "cal-foot" },
-      h("span", { className: "sel-label", textContent: longDate(parseDay(selectedDay), false) }),
+      // today needs no heading: the clocks already say the date (Mel, 5 Oct 2026); another day picked says which
+      selectedDay === today ? null : h("span", { className: "sel-label", textContent: longDate(parseDay(selectedDay), false) }),
       list.length ? null : h("span", { className: "none", textContent: selectedDay === today ? "Nothing coming up." : "Nothing on this day." })),
     list.length
       ? h("ul", { className: "upcoming" }, list.map((x) => h("li", {},
@@ -1406,7 +1409,8 @@ function fitGreeting() {
   const h1 = $("greet");
   h1.style.fontSize = "";
   if (getComputedStyle(h1).whiteSpace !== "nowrap") return;
-  const room = h1.parentElement.clientWidth * 0.94, need = h1.scrollWidth;
+  const box = h1.parentElement, pad = getComputedStyle(box);
+  const room = (box.clientWidth - parseFloat(pad.paddingLeft) - parseFloat(pad.paddingRight)) * 0.94, need = h1.scrollWidth;
   if (need > room && room > 0) h1.style.fontSize = `${parseFloat(getComputedStyle(h1).fontSize) * (room / need)}px`;
 }
 setInterval(nextGreeting, GREET_EVERY_MS);
