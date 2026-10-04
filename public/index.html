@@ -41,10 +41,13 @@
             <span class="tagline">Plan with purpose.<br>Live with others in mind.</span>
             <!-- the canary's cage: close the door and it stays in -->
             <div class="cage" id="cage">
-              <!-- the same cage with its door shut and open (identically framed); the canary sits behind the bars -->
+              <!-- Claude Design's brass cage in layers (drawn by public/canary/cage.js): back bars, perch, the canary,
+                   front bars with the door, and a cloth that comes down at night -->
+              <img alt="" class="cage-layer" id="cage-back">
+              <img alt="" class="cage-layer" id="cage-perch">
               <div class="cage-slot" id="cage-slot"></div>
-              <img src="assets/obj/cage-closed.png" alt="" class="cage-img shut">
-              <img src="assets/obj/cage-open.png" alt="" class="cage-img open">
+              <img alt="" class="cage-layer" id="cage-front">
+              <img alt="" class="cage-layer" id="cage-cover">
               <button type="button" class="cage-door" id="cage-door" aria-pressed="false"></button>
             </div>
           </div>

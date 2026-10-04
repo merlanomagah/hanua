@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>body{margin:0;background:#F5F0E8;color:#1C1814;font-family:'DM Sans',sans-serif;-webkit-font-smoothing:antialiased}a{color:#C4602A}a:hover{color:#9E4A1E}</style>
+</helmet>
+<div ref="{{ root }}" style="display:flex;flex-direction:column;gap:0;min-height:100vh">
+  <header style="padding:56px 48px 32px;max-width:1180px;margin:0 auto;width:100%;box-sizing:border-box;display:flex;flex-direction:column;gap:14px">
+    <div style="font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:#5C4F3A;font-weight:600">Hanua · design response · 4 Oct 2026</div>
+    <h1 style="margin:0;font-family:'Cormorant Garamond',serif;font-weight:500;font-size:56px;line-height:1.05;letter-spacing:-.01em">The canary, <em style="font-style:italic;color:#C4602A">redrawn</em></h1>
+    <p style="margin:0;max-width:680px;font-size:17px;line-height:1.6;color:#5C4F3A;text-wrap:pretty">A layered vector canary with all 15 poses, a brass cage split into layers so the bird truly sits inside it, and the timing spec. Everything below runs on the same files the developer gets.</p>
+    <nav style="display:flex;gap:20px;flex-wrap:wrap;font-size:14px;font-weight:500;padding-top:6px">
+      <a href="#room">Live room</a><a href="#poses">Contact sheet</a>
+    </nav>
+  </header>
+
+  <section id="room" data-screen-label="Live room" style="padding:0 48px 64px;max-width:1276px;margin:0 auto;width:100%;box-sizing:border-box;display:flex;flex-direction:column;gap:16px">
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+      <button onClick="{{ toggleLights }}" style="font:500 14px 'DM Sans';padding:10px 16px;border-radius:5px;border:1px solid #D4C8B0;background:#FFFFFF;color:#1C1814;cursor:pointer;min-height:44px;white-space:nowrap" style-hover="border-color:#C4602A">{{ lightsLabel }}</button>
+      <button onClick="{{ toggleDoor }}" style="font:500 14px 'DM Sans';padding:10px 16px;border-radius:5px;border:1px solid #D4C8B0;background:#FFFFFF;color:#1C1814;cursor:pointer;min-height:44px;white-space:nowrap" style-hover="border-color:#C4602A">{{ doorLabel }}</button>
+      <button onClick="{{ toggleMusic }}" style="font:500 14px 'DM Sans';padding:10px 16px;border-radius:5px;border:1px solid #D4C8B0;background:#FFFFFF;color:#1C1814;cursor:pointer;min-height:44px;white-space:nowrap" style-hover="border-color:#C4602A">{{ musicLabel }}</button>
+      <button onClick="{{ water }}" style="font:500 14px 'DM Sans';padding:10px 16px;border-radius:5px;border:1px solid #D4C8B0;background:#FFFFFF;color:#1C1814;cursor:pointer;min-height:44px;white-space:nowrap" style-hover="border-color:#C4602A">Water the plant</button>
+      <button onClick="{{ goal }}" style="font:500 14px 'DM Sans';padding:10px 16px;border-radius:5px;border:1px solid #D4C8B0;background:#FFFFFF;color:#1C1814;cursor:pointer;min-height:44px;white-space:nowrap" style-hover="border-color:#C4602A">Finish a goal</button>
+      <button onClick="{{ flyNow }}" style="font:500 14px 'DM Sans';padding:10px 16px;border-radius:5px;border:1px solid #C4602A;background:#C4602A;color:#FFFFFF;cursor:pointer;min-height:44px;white-space:nowrap" style-hover="background:#9E4A1E">Fly now</button>
+      <label style="display:flex;align-items:center;gap:8px;font-size:14px;color:#5C4F3A;padding:0 8px;min-height:44px;cursor:pointer"><input type="checkbox" checked="{{ reduced }}" onChange="{{ toggleReduced }}" style="accent-color:#C4602A;width:18px;height:18px">Reduced motion</label>
+      <div style="margin-left:auto;font-size:13px;color:#5C4F3A;white-space:nowrap">{{ status }}</div>
+    </div>
+    <div style="overflow-x:auto;border-radius:5px">
+      <div ref="{{ stage }}" onPointerMove="{{ onMove }}" style="position:relative;width:1180px;height:640px;overflow:hidden;background:#C1B6AC url(public/assets/wall.jpg) center/cover;border-radius:5px">
+        <div style="position:absolute;left:0;top:0;width:250px;height:640px;background:linear-gradient(90deg,#3E2716,#5B3A22 12%,#4A2E1A 88%,#2E1C0F);box-shadow:8px 0 18px rgb(28 24 20 / .35);z-index:2">
+          <div style="position:absolute;left:16px;right:16px;top:0;bottom:0;background:linear-gradient(180deg,#2A190D,#3A2414)"></div>
+          <div style="position:absolute;left:0;right:0;top:130px;height:16px;background:linear-gradient(180deg,#7A5134,#5B3A22 60%,#3E2716)"></div>
+          <div style="position:absolute;left:0;right:0;top:300px;height:16px;background:linear-gradient(180deg,#7A5134,#5B3A22 60%,#3E2716)"></div>
+          <div style="position:absolute;left:0;right:0;top:470px;height:16px;background:linear-gradient(180deg,#7A5134,#5B3A22 60%,#3E2716)"></div>
+          <div style="position:absolute;left:0;right:0;top:618px;height:22px;background:linear-gradient(180deg,#7A5134,#5B3A22 60%,#3E2716)"></div>
+        </div>
+        <img src="public/assets/obj/coin.png" data-perch="coin" data-px=".5,.5" data-py=".98" data-pw="0" style="position:absolute;left:108px;top:96px;width:34px;z-index:3;filter:drop-shadow(-3px 4px 5px rgb(28 24 20 / .3))">
+        <img src="public/assets/obj/books.png" data-perch="books" data-px=".25,.6" data-py=".03" data-pw="1" style="position:absolute;left:24px;top:169px;width:120px;z-index:3;filter:drop-shadow(-6px 8px 10px rgb(28 24 20 / .28))">
+        <img src="public/assets/obj/books.png" style="position:absolute;left:146px;top:372px;width:90px;z-index:3;filter:drop-shadow(-6px 8px 10px rgb(28 24 20 / .28))">
+        <img src="public/assets/obj/books.png" style="position:absolute;left:148px;top:531px;width:80px;z-index:3;filter:drop-shadow(-6px 8px 10px rgb(28 24 20 / .28))">
+        <div ref="{{ cage }}" onClick="{{ toggleDoor }}" title="Click the cage to open or shut the door" style="position:absolute;left:34px;top:447px;width:98px;height:171px;z-index:4;cursor:pointer"></div>
+        <img ref="{{ cBack }}" style="position:absolute;left:34px;top:447px;width:98px;z-index:5;pointer-events:none;filter:drop-shadow(-6px 8px 10px rgb(28 24 20 / .28))">
+        <img ref="{{ cPerch }}" style="position:absolute;left:34px;top:447px;width:98px;z-index:6;pointer-events:none">
+        <img ref="{{ cFront }}" style="position:absolute;left:34px;top:447px;width:98px;z-index:8;pointer-events:none">
+        <img ref="{{ cCover }}" style="position:absolute;left:34px;top:447px;width:98px;z-index:9;pointer-events:none;opacity:0;transform:translateY(-36px);transition:opacity 1.2s ease,transform 1.4s cubic-bezier(.3,.7,.3,1)">
+        <div style="position:absolute;left:360px;top:330px;width:500px;height:14px;background:linear-gradient(180deg,#7A5134,#5B3A22 60%,#3E2716);box-shadow:-6px 8px 10px rgb(28 24 20 / .28);z-index:2"></div>
+        <img src="public/assets/obj/lamp-on.png" data-perch="lamp" data-px=".44,.56" data-py=".015" data-pw="3" style="position:absolute;left:384px;top:160px;width:128px;z-index:3;filter:drop-shadow(-6px 8px 10px rgb(28 24 20 / .28))">
+        <img src="public/assets/obj/clock.png" data-perch="clock" data-px=".38,.62" data-py=".015" data-pw="3" style="position:absolute;left:548px;top:198px;width:130px;z-index:3;filter:drop-shadow(-6px 8px 10px rgb(28 24 20 / .28))">
+        <img src="public/assets/obj/plant.png" data-perch="plant" data-px=".38,.5" data-py=".03" data-pw="2" style="position:absolute;left:716px;top:206px;width:120px;z-index:3;filter:drop-shadow(-6px 8px 10px rgb(28 24 20 / .28))">
+        <div style="position:absolute;left:330px;top:560px;width:790px;height:18px;background:linear-gradient(180deg,#7A5134,#5B3A22 60%,#3E2716);box-shadow:-6px 10px 14px rgb(28 24 20 / .3);z-index:2"></div>
+        <div style="position:absolute;left:360px;top:578px;width:730px;height:62px;background:linear-gradient(180deg,#3E2716,#4A2E1A);z-index:2"></div>
+        <img src="public/assets/obj/record-player.png" data-perch="records" data-px=".3,.7" data-py=".02" data-pw="1" style="position:absolute;left:400px;top:429px;width:180px;z-index:3;filter:drop-shadow(-6px 8px 10px rgb(28 24 20 / .28))">
+        <img src="public/assets/obj/books.png" data-perch="books" data-px=".25,.6" data-py=".03" data-pw="1" style="position:absolute;left:650px;top:440px;width:110px;z-index:3;filter:drop-shadow(-6px 8px 10px rgb(28 24 20 / .28))">
+        <img src="public/assets/obj/cup.png" data-perch="cup" data-px=".42,.58" data-py=".05" data-pw="1" style="position:absolute;left:840px;top:491px;width:70px;z-index:3;filter:drop-shadow(-6px 8px 10px rgb(28 24 20 / .28))">
+        <img ref="{{ bird }}" alt="" style="position:absolute;left:0;top:0;width:42px;height:36px;z-index:7;pointer-events:none;will-change:transform">
+        <div ref="{{ anchor }}" style="position:absolute;left:0;top:0;width:42px;height:36px;z-index:41;pointer-events:none;outline:1px dashed #C4602A;display:none"></div>
+        <div ref="{{ overlay }}" style="position:absolute;inset:0;background:#1C1814;opacity:0;transition:opacity 1.2s ease;z-index:40;pointer-events:none"></div>
+      </div>
+    </div>
+    <p style="margin:0;font-size:14px;line-height:1.6;color:#5C4F3A;max-width:760px;text-wrap:pretty">Shown at real size: bird 42 × 36 px, cage 98 px wide. Move the pointer near the bird to shoo it. Click the cage to shut the door. Flights come every 5–10 s here so there's something to watch; Hanua's real pace is 20–60 s (switch it in Tweaks).</p>
+  </section>
+
+  <section id="poses" data-screen-label="Contact sheet" style="background:#EDE5D4;padding:64px 48px">
+    <div style="max-width:1180px;margin:0 auto;display:flex;flex-direction:column;gap:28px">
+      <div style="display:flex;flex-direction:column;gap:10px;max-width:720px">
+        <div style="font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:#5C4F3A;font-weight:600">Contact sheet</div>
+        <h2 style="margin:0;font-family:'Cormorant Garamond',serif;font-weight:500;font-size:40px;line-height:1.1">Fifteen poses, at 4× and 1×</h2>
+        <p style="margin:0;font-size:16px;line-height:1.6;color:#5C4F3A;text-wrap:pretty">Each pose plays at its spec timing, on the cream wall and under the 34% lights-off overlay. The dashed box is the 42 × 36 frame; the terracotta tick is the shared feet anchor.</p>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(372px,1fr));gap:16px">
+        <sc-for list="{{ poses }}" as="p" hint-placeholder-count="15">
+          <div style="background:#FAF7F2;border-radius:5px;padding:18px;display:flex;flex-direction:column;gap:12px">
+            <div style="display:flex;align-items:baseline;gap:10px">
+              <span style="font-size:12px;color:#5C4F3A;font-variant-numeric:tabular-nums">{{ p.num }}</span>
+              <span style="font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:600;line-height:1">{{ p.name }}</span>
+              <span style="margin-left:auto;font-size:12px;color:#5C4F3A">{{ p.meta }}</span>
+            </div>
+            <div style="display:flex;gap:4px">
+              <div style="position:relative;width:168px;height:144px;background:#FAF7F2;outline:1px dashed #D4C8B0;outline-offset:-1px"><img data-anim="{{ p.name }}" style="position:absolute;inset:0;width:168px;height:144px"><div style="position:absolute;left:83px;bottom:0;width:2px;height:8px;background:#C4602A"></div></div>
+              <div style="position:relative;width:168px;height:144px;background:#FAF7F2;outline:1px dashed #D4C8B0;outline-offset:-1px"><img data-anim="{{ p.name }}" style="position:absolute;inset:0;width:168px;height:144px"><div style="position:absolute;inset:0;background:rgb(28 24 20 / .34)"></div></div>
+            </div>
+            <div style="display:flex;gap:10px;align-items:center">
+              <div style="display:flex;align-items:center;justify-content:center;width:64px;height:52px;background:#FAF7F2;border:1px solid #EDE5D4;border-radius:3px"><img data-anim="{{ p.name }}" style="width:42px;height:36px"></div>
+              <div style="position:relative;display:flex;align-items:center;justify-content:center;width:64px;height:52px;background:#C1B6AC;border-radius:3px"><img data-anim="{{ p.name }}" style="width:42px;height:36px"><div style="position:absolute;inset:0;background:rgb(28 24 20 / .34);border-radius:3px"></div></div>
+              <div style="position:relative;display:flex;align-items:center;justify-content:center;width:64px;height:52px;background:#C1B6AC;border-radius:3px"><img data-anim="{{ p.name }}" style="width:42px;height:36px"></div>
+              <div style="font-size:13px;line-height:1.45;color:#5C4F3A;text-wrap:pretty;flex:1;min-width:0">{{ p.when }}</div>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;pace&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;demo&quot;,&quot;real&quot;],&quot;default&quot;:&quot;demo&quot;,&quot;tsType&quot;:&quot;'demo' | 'real'&quot;,&quot;section&quot;:&quot;Behaviour&quot;},&quot;cover&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;cream&quot;,&quot;terracotta&quot;,&quot;none&quot;],&quot;default&quot;:&quot;cream&quot;,&quot;tsType&quot;:&quot;'cream' | 'terracotta' | 'none'&quot;,&quot;section&quot;:&quot;Night cover&quot;},&quot;showAnchor&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Developer&quot;}}">
+const SPEC = [
+  ["perch", "Sitting, the resting pose"], ["look", "Quick head turns while sitting"], ["tilt", "Curious head tilt"],
+  ["preen", "Beak into the wing feathers"], ["hop", "A little hop in place or along a perch"], ["peck", "Drinking from a leaf, or the whiteboard marker"],
+  ["bob", "Head bobbing on the record player"], ["fluff", "A shake that fluffs the feathers, then settles"], ["sleep", "Night: fluffed ball, head tucked"],
+  ["wake", "Head out, stretch one wing, settle"], ["takeoff", "Crouch, spring, first wingbeat"], ["flap", "Flight: full wingbeat, both wings"],
+  ["glide", "Wings tucked between bursts"], ["land", "Flare: wings up, tail down, feet reach"], ["happy", "Two bounces with wings flicked, goal done"],
+];
+const RIG = { perch: [4, 600, 1], look: [4, 100, 0], tilt: [3, 200, 0], preen: [8, 150, 0], hop: [5, 80, 0], peck: [4, 62, 0], bob: [4, 120, 1], fluff: [6, 117, 0], sleep: [4, 800, 1], wake: [8, 125, 0], takeoff: [4, 50, 0], flap: [6, 20, 1], glide: [1, 240, 0], land: [4, 62, 0], happy: [6, 117, 0] };
+const url = (svg) => "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
+const CAGE_W = 98, CAGE_H = 98 * 1450 / 830, CAGE_L = 34, CAGE_T = 447;
+
+class Component extends DCLogic {
+  state = { lights: true, door: true, music: false, reduced: false, status: "In the cage" };
+  root = React.createRef(); stage = React.createRef(); bird = React.createRef(); anchor = React.createRef(); overlay = React.createRef();
+  cage = React.createRef(); cBack = React.createRef(); cPerch = React.createRef(); cFront = React.createRef(); cCover = React.createRef();
+  x = 0; y = 0; face = 1; where = "cage"; flying = false; asleep = false; bobbing = false; busyPose = false; lastShoo = 0;
+
+  async componentDidMount() {
+    const [R, C] = await Promise.all([import("./canary-rig.js"), import("./cage-layers.js")]);
+    if (this.dead) return;
+    this.R = R; this.C = C;
+    this.frames = {}; this.keep = [];
+    for (const k of R.ORDER) this.frames[k] = R.POSES[k].frames.map((f, i) => { const u = url(R.frameSVG(f, { id: k + i })); const im = new Image(); im.src = u; this.keep.push(im); return u; });
+    this.cBack.current.src = url(C.cageSVG("cage-back"));
+    this.cPerch.current.src = url(C.cageSVG("cage-perch"));
+    this.doorFrames = C.DOOR_FRAMES.map((a) => url(a === 0 ? C.cageSVG("cage-front-closed") : C.cageSVG("cage-door-frame", { angle: a })));
+    this.doorFrames.forEach((u) => { const im = new Image(); im.src = u; this.keep.push(im); });
+    this.cFront.current.src = this.doorFrames[this.doorFrames.length - 1];
+    this.setCover();
+    this.startSheet();
+    this.fillExtras?.();
+    this.teleportHome();
+    this.rest(); this.idle();
+    this.nextT = setTimeout(() => this.wander(), 2500);
+    this.onVis = () => { if (!document.hidden) this.schedule(); };
+    document.addEventListener("visibilitychange", this.onVis);
+  }
+  componentWillUnmount() {
+    this.dead = true; clearTimeout(this.nextT); clearTimeout(this.idleT); clearTimeout(this.poseT); clearInterval(this.sheetT); cancelAnimationFrame(this.raf);
+    document.removeEventListener("visibilitychange", this.onVis);
+  }
+  componentDidUpdate(prev) {
+    if (prev.cover !== this.props.cover && this.C) this.setCover();
+    if (prev.showAnchor !== this.props.showAnchor && this.anchor.current) this.anchor.current.style.display = this.props.showAnchor ? "block" : "none";
+  }
+  setCover() {
+    const c = this.props.cover ?? "cream";
+    if (c === "none") { this.cCover.current.style.display = "none"; return; }
+    this.cCover.current.style.display = "block";
+    this.cCover.current.src = url(this.C.cageSVG("cage-cover", { color: c }));
+  }
+
+  // ---- contact sheet: every [data-anim] image plays its pose at spec timing ----
+  startSheet() {
+    const imgs = [...this.root.current.querySelectorAll("img[data-anim]")];
+    const st = imgs.map((el) => ({ el, pose: el.dataset.anim, i: 0, t: 0, hold: 0 }));
+    st.forEach((s) => (s.el.src = this.frames[s.pose][0]));
+    let last = performance.now();
+    this.sheetT = setInterval(() => {
+      const now = performance.now(), dt = now - last; last = now;
+      for (const s of st) {
+        const P = this.R.POSES[s.pose];
+        if (s.hold > 0) { s.hold -= dt; continue; }
+        s.t += dt;
+        if (s.t >= P.ms) {
+          s.t = 0; s.i++;
+          if (s.i >= P.frames.length) { s.i = 0; if (!P.loop) s.hold = s.pose === "flap" ? 0 : 900; }
+          s.el.src = this.frames[s.pose][s.i];
+        }
+      }
+    }, 16);
+  }
+
+  // ---- placing and posing ----
+  place(x, y) {
+    this.x = x; this.y = y;
+    const t = `translate(${(x - 21).toFixed(1)}px, ${(y - 36).toFixed(1)}px)`;
+    this.bird.current.style.transform = `${t} scaleX(${this.face})`;
+    this.anchor.current.style.transform = t;
+  }
+  setZ(z) { this.bird.current.style.zIndex = z; }
+  show(pose, i) { this.bird.current.src = this.frames[pose][i]; }
+  play(pose, { times = 1, then } = {}) {
+    clearTimeout(this.poseT);
+    const P = this.R.POSES[pose]; let i = 0, n = 0;
+    const step = () => {
+      this.show(pose, i); i++;
+      if (i >= P.frames.length) { i = 0; n++; if (!P.loop && n >= times) { this.poseT = setTimeout(() => (then ? then() : this.rest()), P.ms); return; } }
+      this.poseT = setTimeout(step, P.ms);
+    };
+    step();
+  }
+  rest() {
+    if (this.flying) return;
+    const base = this.asleep ? "sleep" : this.bobbing ? "bob" : "perch";
+    if (this.state.reduced) { clearTimeout(this.poseT); return this.show(base, 0); }
+    this.play(base);
+  }
+  homePt() { return { x: CAGE_L + (457 / 830) * CAGE_W, y: CAGE_T + CAGE_H * (1 - 0.355) }; }
+  teleportHome() { cancelAnimationFrame(this.raf); this.flying = false; this.where = "cage"; this.setZ(7); const p = this.homePt(); this.place(p.x, p.y); }
+  status(s) { this.setState({ status: s }); }
+
+  // ---- perches ----
+  perches() {
+    return [...this.stage.current.querySelectorAll("[data-perch]")].map((el) => ({ el, name: el.dataset.perch, px: el.dataset.px.split(",").map(Number), py: +el.dataset.py, w: +el.dataset.pw }));
+  }
+  pt(c) {
+    const s = this.stage.current.getBoundingClientRect(), r = c.el.getBoundingClientRect();
+    return { x: r.left - s.left + r.width * c.fx, y: r.top - s.top + r.height * c.p.py };
+  }
+  choose(filter = () => true) {
+    const opts = [];
+    for (const p of this.perches()) {
+      if (!filter(p) || (this.where && this.where.el === p.el)) continue;
+      const w = p.w * (p.name === "records" && this.state.music ? 4 : 1);
+      if (w > 0) opts.push({ p, el: p.el, fx: p.px[0] + Math.random() * (p.px[1] - p.px[0]), w });
+    }
+    let r = Math.random() * opts.reduce((a, o) => a + o.w, 0);
+    return opts.find((o) => (r -= o.w) <= 0) || opts[0];
+  }
+
+  // ---- flight: takeoff, bounding bursts of flapping and gliding, flare to land ----
+  flyTo(target, onLand) {
+    const to0 = target(); if (!to0) return this.schedule();
+    clearTimeout(this.nextT); clearTimeout(this.poseT); cancelAnimationFrame(this.raf);
+    this.flying = true; this.busyPose = false; this.bobbing = false;
+    const fromCage = this.where === "cage";
+    this.where = null;
+    const from = { x: this.x, y: this.y };
+    const dist = Math.hypot(to0.x - from.x, to0.y - from.y);
+    this.face = to0.x < from.x ? -1 : 1; this.place(from.x, from.y);
+    this.play("takeoff", { then: () => {
+      if (fromCage) this.setZ(30);
+      const dur = Math.min(2600, Math.max(800, 520 + dist * 1.15)), landMs = 248, lift = 26 + dist * 0.16, A = 7;
+      const segs = []; let t = 0;
+      while (t < dur) { const n = 3 + Math.floor(Math.random() * 2); segs.push({ k: "flap", t0: t, len: n * 120 }); t += n * 120; segs.push({ k: "glide", t0: t, len: 240 }); t += 240; }
+      const start = performance.now();
+      const step = (now) => {
+        const to = target() || to0;
+        const el = now - start, tt = Math.min(1, el / dur);
+        const e = tt < 0.5 ? 2 * tt * tt : 1 - Math.pow(-2 * tt + 2, 2) / 2;
+        const cx = (from.x + to.x) / 2, cy = Math.min(from.y, to.y) - lift;
+        let x = (1 - e) ** 2 * from.x + 2 * (1 - e) * e * cx + e * e * to.x;
+        let y = (1 - e) ** 2 * from.y + 2 * (1 - e) * e * cy + e * e * to.y;
+        if (el >= dur - landMs) this.show("land", Math.min(3, Math.floor((el - (dur - landMs)) / 62)));
+        else {
+          const s = segs.find((g) => el >= g.t0 && el < g.t0 + g.len), u = (el - s.t0) / s.len;
+          const fade = Math.min(1, (dur - landMs - el) / 220, el / 160);
+          if (s.k === "flap") { y -= A * u * fade; this.show("flap", Math.floor((el - s.t0) / 20) % 6); }
+          else { y -= A * (1 - u * u) * fade; this.show("glide", 0); }
+        }
+        this.place(x, y);
+        if (tt < 1) this.raf = requestAnimationFrame(step);
+        else { this.flying = false; this.place(to.x, to.y); onLand(); }
+      };
+      this.raf = requestAnimationFrame(step);
+    } });
+  }
+  perchAt(c, after) {
+    this.status(`Flying to the ${c.p.name === "records" ? "record player" : c.p.name}`);
+    this.flyTo(() => this.pt(c), () => {
+      this.where = c;
+      this.status(`On the ${c.p.name === "records" ? "record player" : c.p.name}`);
+      if (c.p.name === "records" && this.state.music) this.bobbing = true;
+      setTimeout(() => (after ? after() : this.rest()), 0);
+      this.schedule(); this.idle();
+    });
+  }
+  goHome(then) {
+    if (this.where === "cage") { then?.(); return; }
+    if (this.state.reduced) { this.teleportHome(); then?.(); return this.rest(); }
+    this.status("Flying home");
+    this.flyTo(() => this.homePt(), () => {
+      this.setZ(7); this.where = "cage"; this.status("In the cage");
+      if (then) then(); else this.rest();
+      this.schedule(); this.idle();
+    });
+  }
+
+  // ---- the day ----
+  pace() { return (this.props.pace ?? "demo") === "real" ? [20000, 40000] : [5000, 5000]; }
+  schedule() { clearTimeout(this.nextT); const [a, b] = this.pace(); this.nextT = setTimeout(() => this.wander(), a + Math.random() * b); }
+  wander() {
+    if (this.dead) return;
+    if (this.state.reduced || !this.state.lights || !this.state.door) return this.goHome();
+    if (document.hidden || this.flying) return this.schedule();
+    if (this.where !== "cage" && Math.random() < 0.15) return this.goHome();
+    const c = this.choose(); if (c) this.perchAt(c); else this.schedule();
+  }
+  idle() {
+    clearTimeout(this.idleT);
+    this.idleT = setTimeout(() => {
+      if (!this.flying && !this.asleep && !this.bobbing && !this.busyPose && !this.state.reduced) {
+        const m = ["look", "look", "tilt", "tilt", "hop", "preen", "fluff"][Math.floor(Math.random() * 7)];
+        this.busyPose = true;
+        if (m === "hop" && Math.random() < 0.4) setTimeout(() => { this.face *= -1; this.place(this.x, this.y); }, 160);
+        this.play(m, { then: () => { this.busyPose = false; if (m === "fluff" && Math.random() < 0.4) this.feather(); this.rest(); } });
+      }
+      this.idle();
+    }, 3000 + Math.random() * 5000);
+  }
+  feather() {
+    const f = document.createElement("img");
+    f.src = url(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 8"><path d="M1,4 Q8,0 19,3 Q9,8 1,4Z" fill="#F4D24A"/><path d="M1,4 Q10,3.4 18,3.2" stroke="#C9A12E" stroke-width=".6" fill="none"/></svg>`);
+    Object.assign(f.style, { position: "absolute", left: "0", top: "0", width: "10px", zIndex: 31, pointerEvents: "none" });
+    this.stage.current.appendChild(f);
+    const x0 = this.x, y0 = this.y - 16, t0 = performance.now();
+    const fall = (now) => {
+      const t = (now - t0) / 3200; if (t >= 1 || this.dead) return f.remove();
+      f.style.transform = `translate(${x0 + Math.sin(t * 9) * 10}px, ${y0 + t * 90}px) rotate(${Math.sin(t * 9) * 40}deg)`;
+      f.style.opacity = String(Math.min(1, (1 - t) * 3));
+      requestAnimationFrame(fall);
+    };
+    requestAnimationFrame(fall);
+  }
+  animateDoor(open, then) {
+    const fr = open ? this.doorFrames : [...this.doorFrames].reverse();
+    let i = 0;
+    const step = () => { this.cFront.current.src = fr[i++]; if (i < fr.length) setTimeout(step, 60); else then?.(); };
+    if (this.state.reduced) { this.cFront.current.src = fr[fr.length - 1]; then?.(); } else step();
+  }
+
+  renderVals() {
+    const s = this.state;
+    return {
+      root: this.root, stage: this.stage, bird: this.bird, anchor: this.anchor, overlay: this.overlay,
+      cage: this.cage, cBack: this.cBack, cPerch: this.cPerch, cFront: this.cFront, cCover: this.cCover,
+      status: s.status, reduced: s.reduced,
+      lightsLabel: s.lights ? "Lights off" : "Lights on",
+      doorLabel: s.door ? "Shut the cage door" : "Open the cage door",
+      musicLabel: s.music ? "Stop the music" : "Play music",
+      poses: SPEC.map(([name, when], i) => { const [n, ms, loop] = RIG[name]; return { num: String(i + 1).padStart(2, "0"), name, when, meta: `${n} fr · ${ms} ms${loop ? " · loops" : ""}` }; }),
+      toggleLights: () => {
+        const lights = !this.state.lights;
+        this.setState({ lights });
+        this.overlay.current.style.opacity = lights ? 0 : 0.34;
+        const cover = this.cCover.current;
+        if (!lights) {
+          this.goHome(() => { this.asleep = true; this.bobbing = false; this.status("Asleep"); this.rest(); cover.style.opacity = 1; cover.style.transform = "translateY(0)"; });
+        } else {
+          cover.style.opacity = 0; cover.style.transform = "translateY(-36px)";
+          this.asleep = false; this.status("Waking");
+          const after = () => { this.status("In the cage"); this.rest(); if (this.state.door) { clearTimeout(this.nextT); this.nextT = setTimeout(() => this.wander(), 2500); } };
+          if (this.state.reduced) after(); else this.play("wake", { then: after });
+        }
+      },
+      toggleDoor: () => {
+        const door = !this.state.door;
+        this.setState({ door });
+        if (door) { this.animateDoor(true); if (this.state.lights) { clearTimeout(this.nextT); this.nextT = setTimeout(() => this.wander(), 1500); } }
+        else this.goHome(() => { this.rest(); this.animateDoor(false); });
+      },
+      toggleMusic: () => {
+        const music = !this.state.music;
+        this.setState({ music });
+        if (this.where && this.where.p && this.where.p.name === "records" && !this.flying) { this.bobbing = music; this.rest(); }
+        else if (music && this.state.lights && this.state.door && !this.state.reduced) { const c = this.choose((p) => p.name === "records"); if (c) setTimeout(() => this.perchAt(c), 900); }
+      },
+      water: () => {
+        if (!this.state.lights || !this.state.door || this.state.reduced) return;
+        const c = this.choose((p) => p.name === "plant"); if (!c) return;
+        this.perchAt(c, () => setTimeout(() => { this.busyPose = true; this.status("Drinking from a leaf"); this.play("peck", { times: 3, then: () => { this.busyPose = false; this.rest(); } }); }, 300));
+      },
+      goal: () => {
+        if (!this.state.lights || !this.state.door || this.state.reduced) return;
+        const el = this.stage.current.querySelector('[data-perch="coin"]');
+        const p = this.perches().find((q) => q.el === el);
+        this.perchAt({ p, el, fx: 0.5 }, () => { this.busyPose = true; this.status("Happy hop at the coin"); this.play("happy", { times: 2, then: () => { this.busyPose = false; this.rest(); } }); });
+      },
+      flyNow: () => { if (!this.flying) this.wander(); },
+      toggleReduced: () => {
+        const reduced = !this.state.reduced;
+        this.setState({ reduced }, () => { if (reduced) { this.teleportHome(); this.status("Still, in the cage"); } this.rest(); if (!reduced) this.schedule(); });
+      },
+      onMove: (e) => {
+        if (!this.where || this.where === "cage" || this.flying || Date.now() - this.lastShoo < 3000) return;
+        const s = this.stage.current.getBoundingClientRect();
+        if (Math.hypot(e.clientX - s.left - this.x, e.clientY - s.top - (this.y - 18)) > 56) return;
+        this.lastShoo = Date.now();
+        const here = { x: this.x, y: this.y };
+        const c = this.choose((p) => { const r = p.el.getBoundingClientRect(); return Math.hypot(r.left - s.left - here.x, r.top - s.top - here.y) < 450; }) || this.choose();
+        if (c) this.perchAt(c);
+      },
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1792,48 +1792,24 @@ dialog.lock::backdrop { background: #14110e; }
 @media (prefers-reduced-motion: reduce) { .lock-dots.shake { animation: none; } }
 .lock-key[hidden] { display: grid; visibility: hidden; }
 
-/* ---------- the canary and its cage ---------- */
-.canary { position: fixed; left: 0; top: 0; z-index: 26; width: 42px; height: 36px; pointer-events: none; will-change: transform; filter: drop-shadow(-2px 3px 2px rgb(28 24 20 / 0.3)); }
-.canary svg { display: block; width: 100%; height: 100%; overflow: visible; transform-origin: 50% 100%; transition: transform 200ms; }
-.canary.left svg { transform: scaleX(-1); }
-.canary .wing, .canary .head, .canary .legs { transform-box: view-box; transition: transform 250ms, opacity 150ms; }
-.canary .wing { transform-origin: 17px 13px; }
-.canary .head { transform-origin: 21px 11px; }
-.canary .eye-shut { opacity: 0; }
-.canary.flying .wing { animation: flap 130ms ease-in-out infinite alternate; }
-.canary.flying .legs { opacity: 0; }
-@keyframes flap { from { transform: scaleY(1); } to { transform: scaleY(-0.7) translateY(-2px); } }
-.canary.hop { animation: hop 420ms ease-out; }
-@keyframes hop { 40% { translate: 0 -6px; } }
-.canary.tilt .head { transform: rotate(-16deg); }
-.canary.preen .head { transform: rotate(38deg) translate(-3px, 3px); }
-.canary.sleep .head { transform: rotate(50deg) translate(-5px, 3px); }
-.canary.sleep .eye { opacity: 0; }
-.canary.sleep .eye-shut { opacity: 1; }
-.canary.bob .head { animation: bob 480ms ease-in-out infinite; }
-@keyframes bob { 50% { transform: translateY(2px) rotate(8deg); } }
-.canary.peck svg { animation: peck 260ms ease-in-out 3; }
-.canary.left.peck svg { animation-name: peck-left; }
-@keyframes peck { 50% { transform: rotate(22deg); } }
-@keyframes peck-left { 50% { transform: scaleX(-1) rotate(22deg); } }
-.canary.happy { animation: happy 350ms ease-out 4; }
-@keyframes happy { 45% { translate: 0 -10px; } }
+/* ---------- the canary and its cage (Claude Design's rig and cage layers, drawn by public/canary/) ---------- */
+.canary { position: fixed; left: 0; top: 0; z-index: 26; width: 42px; height: 36px; pointer-events: none; will-change: transform; user-select: none; }
+.canary.home { position: absolute; inset: 0; z-index: auto; }
+.feather { position: fixed; left: 0; top: 0; z-index: 26; width: 10px; pointer-events: none; }
 .mb-tray .marker.pecked { animation: wiggle 300ms ease-in-out 2; }
 @keyframes wiggle { 30% { rotate: -4deg; } 70% { rotate: 3deg; } }
-/* home: a brass cage (cage-closed.png / cage-open.png, the same framing) on the bookcase's bottom shelf.
-   The canary sits on the perch behind the bars: 35.5% up the closed cage, 31% up the open one. */
+/* home: back bars, perch, the canary, front bars, the night cloth; 830 × 1450 framing, 98px wide on the shelf */
 .case-foot-row:has(.cage) { flex-wrap: wrap; row-gap: 4px; }
 .case-foot-row:has(.cage) .tagline { order: -1; flex: 1 0 100%; padding: 0 0 2px; text-align: center; }
-.cage { position: relative; flex: none; width: 98px; aspect-ratio: 830 / 1450; margin-left: auto; filter: drop-shadow(-4px 6px 6px rgb(0 0 0 / 0.5)); }
-.cage-img { position: absolute; inset: 0; z-index: 2; width: 100%; height: 100%; pointer-events: none; transition: opacity 350ms; }
-.cage-img.open { opacity: 0; }
-.cage.open .cage-img.open { opacity: 1; }
-.cage.open .cage-img.shut { opacity: 0; }
-.cage-slot { position: absolute; z-index: 1; left: calc(55.2% - 21px); bottom: 35.5%; width: 42px; height: 36px; transition: bottom 350ms; }
-.cage.open .cage-slot { bottom: 31.2%; }
-.canary.home { position: absolute; inset: 0; transform: none !important; z-index: auto; }
-/* the door: click it to shut the canary in or let it out (over the door, wherever it is) */
-.cage-door { position: absolute; z-index: 3; left: 34%; top: 50%; width: 37%; height: 27%; padding: 0; border: 0; border-radius: 2px; background: transparent; cursor: pointer; }
-.cage.open .cage-door { left: 3%; top: 54%; width: 26%; }
+.cage { position: relative; flex: none; width: 98px; aspect-ratio: 830 / 1450; margin-left: auto; }
+.cage-layer { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+#cage-back { z-index: 1; filter: drop-shadow(-6px 8px 10px rgb(28 24 20 / 0.28)); }
+#cage-perch { z-index: 2; }
+.cage-slot { position: absolute; z-index: 3; width: 42px; height: 36px; }
+#cage-front { z-index: 4; }
+#cage-cover { z-index: 5; opacity: 0; transform: translateY(-21%); transition: opacity 1.2s ease, transform 1.4s cubic-bezier(.3,.7,.3,1); }
+.cage.covered #cage-cover { opacity: 1; transform: none; }
+/* the door: click it to shut the canary in or let it out (the panel sits at x 340–580, y 735–1090 of 830 × 1450) */
+.cage-door { position: absolute; z-index: 6; left: 41%; top: 50.5%; width: 29%; height: 24.5%; padding: 0; border: 0; border-radius: 2px; background: transparent; cursor: pointer; }
+.cage.open .cage-door { left: 16%; width: 25%; }
 .cage-door:focus-visible { outline: 2px solid var(--terra); outline-offset: 2px; }
-@media (prefers-reduced-motion: reduce) { .canary, .canary svg, .canary .head, .canary .wing { animation: none !important; } }
