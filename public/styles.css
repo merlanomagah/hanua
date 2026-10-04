@@ -247,24 +247,21 @@ button:disabled { opacity: 0.5; cursor: progress; }
 .lamp-off .lamp-date text { fill: var(--ink-4); }
 
 /* retro flip clock in a walnut case */
-/* the wall clocks hang above the greeting shelf: here in black, Sydney and Suva in white (Mel, 5 Oct 2026: the eye goes
-   to the black one). Each hangs on a wire from a nail and floats off the wall, lit from the top left */
-.clocks { position: relative; z-index: 2; display: flex; justify-content: center; align-items: flex-end; gap: clamp(16px, 2.2vw, 34px);
-  align-self: stretch; padding: 22px 4% 0 calc(4% + var(--lamp-w, 98px)); margin-bottom: clamp(18px, 2vw, 28px); }
+/* the wall clocks: four of them in a row above the greeting shelf, like pieces of wall art, all the same size: here in
+   black, Sydney, Suva and Los Angeles in white (Mel, 5 Oct 2026: the eye goes to the black one). The row starts at the
+   shelf's left end and fills its width; the cards are sized from the row's width so four always fit */
+.clocks { position: relative; z-index: 2; display: flex; justify-content: space-between; align-items: flex-end; gap: 16px;
+  align-self: stretch; padding: 22px 0 0; margin-bottom: clamp(18px, 2vw, 28px); container-type: inline-size; }
 .wall-clock {
-  --card-w: clamp(12px, 1.05vw, 16px); --card-h: calc(var(--card-w) * 1.45);
-  position: relative; flex: none; padding: 7px 8px 17px; border-radius: 5px;
+  --card-w: clamp(11px, calc((100cqi - 176px) / 19), 23px); --card-h: calc(var(--card-w) * 1.45);
+  position: relative; flex: none; padding: 9px 10px 18px; border-radius: 5px;
   background: linear-gradient(180deg, #FCFAF6, #ECE6DC); box-shadow: inset 0 1px 0 #fff, inset 0 -2px 0 rgb(28 24 20 / 0.1), 0 0 0 1px rgb(28 24 20 / 0.08);
-  filter: drop-shadow(-7px 12px 10px rgb(28 24 20 / 0.26));
+  filter: drop-shadow(-4px 7px 8px rgb(28 24 20 / 0.24));
 }
-.wall-clock.here { --card-w: clamp(16px, 1.45vw, 23px); padding: 9px 10px 18px; background: linear-gradient(180deg, #2a241f, #15110e); box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.12), inset 0 -3px 0 rgb(0 0 0 / 0.4); }
-.wc-hang { position: absolute; left: 50%; bottom: 100%; width: 46%; max-width: 52px; height: 16px; transform: translateX(-50%); pointer-events: none;
-  background:
-    linear-gradient(to top right, transparent calc(50% - 0.6px), #7A6B55 calc(50% - 0.6px) calc(50% + 0.6px), transparent calc(50% + 0.6px)) left / 50% 100% no-repeat,
-    linear-gradient(to top left, transparent calc(50% - 0.6px), #7A6B55 calc(50% - 0.6px) calc(50% + 0.6px), transparent calc(50% + 0.6px)) right / 50% 100% no-repeat; }
-.wc-hang::after { content: ""; position: absolute; left: 50%; top: -3px; width: 6px; height: 6px; margin-left: -3px; border-radius: 50%; background: #42382C; box-shadow: 0 1px 1px rgb(0 0 0 / 0.3); }
+.wall-clock.here { background: linear-gradient(180deg, #2a241f, #15110e); box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.12), inset 0 -3px 0 rgb(0 0 0 / 0.4); }
+.away .flip-date { background: #DDD6CB; box-shadow: inset 0 1px 3px rgb(28 24 20 / 0.25); }
 .wc-others { display: none; }
-.wc-city { position: absolute; left: 10px; bottom: 4px; font: 7px var(--mono); letter-spacing: 0.18em; color: var(--ink-3); white-space: nowrap; }
+.wc-city { position: absolute; left: 10px; bottom: 4px; font: 7px var(--mono); letter-spacing: 0.12em; color: var(--ink-3); white-space: nowrap; }
 .here .wc-city { color: var(--glow); opacity: 0.85; }
 .away .flip-face { background: #DDD6CB; box-shadow: inset 0 1px 3px rgb(28 24 20 / 0.25); }
 .away .flip { color: var(--ink); }
@@ -272,7 +269,7 @@ button:disabled { opacity: 0.5; cursor: progress; }
 .away .flip .bottom, .away .flip .back { background: linear-gradient(180deg, #F1ECE4, #E9E3D9); }
 .away .flip::after { background: rgb(28 24 20 / 0.18); }
 .away .flip-ampm { color: var(--ink-4); }
-.lamp-off .wall-clock.away { filter: drop-shadow(-7px 12px 10px rgb(28 24 20 / 0.26)) brightness(0.9); }
+.lamp-off .wall-clock.away { filter: drop-shadow(-4px 7px 8px rgb(28 24 20 / 0.24)) brightness(0.9); }
 .flip-face { display: flex; gap: 5px; padding: 4px; border-radius: 3px; background: var(--ink); box-shadow: inset 0 2px 4px rgb(0 0 0 / 0.6); }
 .flip-pair { display: flex; gap: 2px; }
 .flip { position: relative; width: var(--card-w); height: var(--card-h); perspective: 160px; font: 500 calc(var(--card-h) * 0.78) / var(--card-h) var(--ui); font-variant-numeric: tabular-nums; color: var(--cream); text-align: center; }
@@ -497,9 +494,9 @@ button:disabled { opacity: 0.5; cursor: progress; }
 .cal-slide > .wall-left { display: none; }
 .cal-measure .day, .cal-measure .cal-head h2 { transition: none !important; }
 .cal-growing .day .peek { position: absolute !important; opacity: 0 !important; transition: none !important; }
-.cal-growing .deco-shelf { display: none; }
+.cal-growing .player-shelf { display: none; }
 .cal-slide > .wall-right { flex-basis: 100%; }
-.cal-wide .deco-shelf { display: none; }
+.cal-wide .player-shelf { display: none; }
 .cal-wide .dow span { padding-left: 10px; }
 .cal-wide .day { min-height: 112px; padding: 8px 10px 10px; gap: 4px; }
 .cal-wide .day .dots { display: none; }
@@ -1787,7 +1784,7 @@ dialog h3 { margin: 0 0 4px; font: italic 300 32px/1.1 var(--display); }
   .now-playing { margin-bottom: 26px; }
   .greet-text { gap: 8px; }
   .greet-text .eyebrow { font-size: 9px; letter-spacing: 0.16em; }
-  .greet-text h1 { font-size: clamp(20px, 24cqi, 40px); white-space: normal; }
+  .greet-text h1 { font-size: clamp(20px, 24cqi, 40px); } /* one line here too: fitGreeting shrinks it so ", Mel." stays beside the words */
   /* the shelf is busy on a phone: the plant tucks over the shelf's end and the can in front of it */
   .greet-row { --plant-w: 60px; }
   .shelf-plant { margin-right: -7%; margin-left: 22px; }
@@ -1966,14 +1963,14 @@ dialog.lock::backdrop { background: #14110e; }
 .cage-door:focus-visible { outline: 2px solid var(--terra); outline-offset: 2px; }
 
 /* ---------- the greeting: a different language every 10 seconds, ", Mel." stays put ---------- */
-/* every greeting for the hour sits in the same place; the box takes the width of the one showing and ", Mel." glides
-   along with it, so nothing jumps (the line is sized for the longest, so the shelf never moves) */
-.greet-word { display: inline-grid; vertical-align: baseline; transition: width 900ms ease; }
-.greet-word > span { grid-area: 1 / 1; justify-self: start; white-space: nowrap; opacity: 0; filter: blur(6px); transform: translateY(0.12em); transition: opacity 900ms ease, filter 900ms ease, transform 900ms ease; }
+/* every greeting for the hour sits in the same place, as wide as the longest, each lined up to end at the comma:
+   ", Mel." never moves and only the words change (Mel, 5 Oct 2026) */
+.greet-word { display: inline-grid; vertical-align: baseline; }
+.greet-word > span { grid-area: 1 / 1; justify-self: end; white-space: nowrap; opacity: 0; filter: blur(6px); transform: translateY(0.12em); transition: opacity 900ms ease, filter 900ms ease, transform 900ms ease; }
 .greet-word > span.on { opacity: 1; filter: none; transform: none; }
 .greet-word > span:lang(zh), .greet-word > span:lang(ja), .greet-word > span:lang(ko) { font-style: normal; font-weight: 300; font-size: 0.8em; align-self: end; padding-bottom: 0.06em; }
-.greet-name { white-space: nowrap; }
-@media (prefers-reduced-motion: reduce) { .greet-word { transition: none; } .greet-word > span { transition: opacity 300ms; filter: none; transform: none; } }
+.greet-name { white-space: nowrap; color: var(--terra); }
+@media (prefers-reduced-motion: reduce) { .greet-word > span { transition: opacity 300ms; filter: none; transform: none; } }
 
 /* the words going round the lamp's dome: the soft copy shows only near the horizon */
 .lamp-date .ring-soft { fill: var(--ink-4); }
@@ -2041,3 +2038,23 @@ dialog.lock::backdrop { background: #14110e; }
   .ww-sill { left: -20px; right: -20px; padding: 0 26px; font-size: 8px; }
   .ww-place { display: none; }
 }
+
+/* ---- the shelves under the calendar: books on one, the record player on its own shelf below ---- */
+.books-shelf { margin-top: 28px; }
+.player-shelf .deco-row { justify-content: flex-end; }
+.player-shelf .record-player { margin: 0 4% 2px; }
+
+/* ---- the rail runs on behind the bookcase to the left edge of the screen, so it reads as one piece ---- */
+@media (min-width: 901px) {
+  .topshelf::before { content: ""; position: absolute; top: 0; bottom: -1px; right: 100%; width: 100vw; pointer-events: none;
+    background: inherit; -webkit-backdrop-filter: inherit; backdrop-filter: inherit; border-bottom: inherit; box-shadow: inherit; }
+  .shelf { z-index: 13; background: linear-gradient(180deg, transparent 0 46px, var(--page) 46px); }
+}
+
+/* ---- the plant's drop: by the top right of the leaves until it's been watered today ---- */
+.plant-drop { position: absolute; z-index: 6; right: calc(4% + var(--plant-w) * 0.02); bottom: calc(var(--plant-w) * 0.98); width: 11px; height: auto; pointer-events: none;
+  fill: #8ec3e6; filter: drop-shadow(-1px 2px 2px rgb(28 24 20 / 0.25)); animation: drop-bob 2.6s ease-in-out infinite; }
+.plant-drop .shine { fill: none; stroke: #fff; stroke-width: 1.6; stroke-linecap: round; opacity: 0.8; }
+.plant-drop[hidden] { display: none; }
+@keyframes drop-bob { 50% { transform: translateY(-3px); } }
+@media (prefers-reduced-motion: reduce) { .plant-drop { animation: none; } }

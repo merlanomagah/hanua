@@ -17,6 +17,7 @@ export async function loadPlant() {
 
 export function renderPlant(grown = false) {
   const s = plantState(watered, todayStr());
+  $("plant-drop").toggleAttribute("hidden", s.wateredToday); // a drop by the leaves until it's been watered today (an svg: no .hidden)
   const shelf = document.querySelector(".greet-shelf");
   shelf.dataset.health = s.health;
   const can = $("can");

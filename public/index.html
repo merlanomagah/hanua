@@ -169,7 +169,7 @@
           <div class="wall-row">
             <div class="wall-left">
               <div class="greet-shelf">
-                <!-- three wall clocks above the shelf: here (black) and, in white, Sydney and Suva -->
+                <!-- four clocks on the wall above the shelf, like wall art: here (black) and, in white, Sydney, Suva and Los Angeles -->
                 <div class="clocks">
                   <div class="wall-clock here" id="clock" role="img" aria-label="Clock">
                     <div class="flip-face">
@@ -185,6 +185,7 @@
                   </div>
                   <div class="wall-clock away" data-zone="Australia/Sydney" data-city="Sydney" role="img"></div>
                   <div class="wall-clock away" data-zone="Pacific/Fiji" data-city="Suva" role="img"></div>
+                  <div class="wall-clock away" data-zone="America/Los_Angeles" data-city="Los Angeles" role="img"></div>
                   <!-- on a phone only the black clock hangs; the other two are a line of small type under it -->
                   <span class="wc-others" id="wc-others" aria-hidden="true"></span>
                 </div>
@@ -233,6 +234,8 @@
                   </button>
                   <!-- the plant: it grows along the shelf with every day it's watered -->
                   <img src="assets/obj/plant.png" alt="" class="shelf-plant" id="shelf-plant">
+                  <!-- a drop of water by the leaves until it's been watered today -->
+                  <svg class="plant-drop" id="plant-drop" viewBox="0 0 20 28" aria-hidden="true" hidden><path d="M10 1C10 1 2 12 2 18a8 8 0 0 0 16 0C18 12 10 1 10 1z"/><path class="shine" d="M6.5 17.5a4 4 0 0 0 2.5 4"/></svg>
                 </div>
                 <div class="float-shelf" aria-hidden="true">
                   <svg class="vine" id="vine" aria-hidden="true"></svg>
@@ -304,9 +307,20 @@
                 </div>
               </figure>
 
-              <div class="deco-shelf">
+              <!-- the books' shelf widens with the calendar when it zooms (the books keep their size and ride along) -->
+              <div class="deco-shelf books-shelf">
                 <div class="deco-row">
                   <img src="assets/obj/books.png" alt="" class="deco-books">
+                </div>
+                <div class="float-shelf" aria-hidden="true">
+                  <img src="assets/shelf/bookend.png" alt="" class="bracket left">
+                  <img src="assets/shelf/bookend.png" alt="" class="bracket right">
+                  <img src="assets/shelf/plank.png" alt="" class="plank">
+                </div>
+              </div>
+              <!-- the record player on a shelf of its own, below the books -->
+              <div class="deco-shelf player-shelf">
+                <div class="deco-row">
                   <button type="button" class="record-player" id="record-player" aria-label="Open the record player"></button>
                 </div>
                 <div class="float-shelf" aria-hidden="true">

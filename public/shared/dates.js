@@ -32,7 +32,7 @@ export function weekKey(s) {
 }
 
 // The wall clocks: the time in another place, and how far ahead or behind the Mac's own time it is.
-// { hour, minute, weekday ("MON"), dayShift (-1, 0, 1 against here), ahead (hours, e.g. -2 or 0.5) }
+// { hour, minute, weekday ("MON"), day (5), month ("OCT"), dayShift (-1, 0, 1 against here), ahead (hours, e.g. -2 or 0.5) }
 export function timeIn(timeZone, date = new Date()) {
   const parts = Object.fromEntries(new Intl.DateTimeFormat("en-NZ", {
     timeZone, hourCycle: "h23", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", weekday: "short",
@@ -41,7 +41,8 @@ export function timeIn(timeZone, date = new Date()) {
   const here = Date.UTC(date.getFullYear(), date.getMonth(), date.getDate(), date.getHours(), date.getMinutes());
   const dayThere = Date.UTC(+parts.year, +parts.month - 1, +parts.day), dayHere = Date.UTC(date.getFullYear(), date.getMonth(), date.getDate());
   return {
-    hour: +parts.hour, minute: +parts.minute, weekday: parts.weekday.toUpperCase(),
+    hour: +parts.hour, minute: +parts.minute, weekday: parts.weekday.toUpperCase(), day: +parts.day,
+    month: ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"][+parts.month - 1],
     dayShift: Math.round((dayThere - dayHere) / 86_400_000), ahead: Math.round((there - here) / 1_800_000) / 2,
   };
 }

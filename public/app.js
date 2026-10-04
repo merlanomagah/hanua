@@ -166,12 +166,13 @@ export function flipTo(card, digit, animate) {
   setTimeout(() => { bottom.firstChild.textContent = digit; card.classList.remove("flipping"); }, 620);
 }
 
-// The two clocks for elsewhere (Sydney and Suva, white) get the same flip cards as the one for here (black),
-// and every clock hangs on a wire from a nail.
-for (const c of document.querySelectorAll(".wall-clock")) c.prepend(h("span", { className: "wc-hang", ariaHidden: "true" }));
+// The clocks for elsewhere (Sydney, Suva, Los Angeles: white) get the same flip cards as the one for here (black):
+// the time, and the day and date there underneath.
 for (const c of document.querySelectorAll(".wall-clock.away")) {
   const pair = () => h("span", { className: "flip-pair" }, h("span", { className: "flip" }), h("span", { className: "flip" }));
-  c.append(h("div", { className: "flip-face" }, pair(), pair()), h("span", { className: "flip-ampm" }), h("span", { className: "wc-city" }));
+  c.append(h("div", { className: "flip-face" }, pair(), pair()),
+    h("div", { className: "flip-date" }, h("span", { className: "flip word" }), h("span", { className: "flip num" }), h("span", { className: "flip word" })),
+    h("span", { className: "flip-ampm" }), h("span", { className: "wc-city" }));
 }
 const hereZone = Intl.DateTimeFormat().resolvedOptions().timeZone || "";
 const hereCity = (hereZone.split("/").pop() || "Here").replace(/_/g, " ");
@@ -182,14 +183,18 @@ function renderAwayClocks() {
     const t = timeIn(c.dataset.zone);
     const digits = `${pad(t.hour % 12 || 12)}${pad(t.minute)}`;
     const shown = awayShown.get(c) || [];
-    c.querySelectorAll(".flip").forEach((card, i) => {
+    c.querySelectorAll(".flip-face .flip").forEach((card, i) => {
       if (shown[i] !== digits[i]) flipTo(card, i === 0 && digits[0] === "0" ? "" : digits[i], shown[i] !== undefined);
     });
-    awayShown.set(c, [...digits]);
+    const date = [t.weekday, pad(t.day), t.month];
+    c.querySelectorAll(".flip-date .flip").forEach((card, i) => {
+      if (shown[4 + i] !== date[i]) flipTo(card, date[i], shown[4 + i] !== undefined);
+    });
+    awayShown.set(c, [...digits, ...date]);
     c.querySelector(".flip-ampm").textContent = t.hour < 12 ? "AM" : "PM";
     others.push(`${c.dataset.city} ${t.hour % 12 || 12}:${pad(t.minute)} ${t.hour < 12 ? "am" : "pm"}`);
     const behind = aheadText(t.ahead);
-    c.querySelector(".wc-city").textContent = `${c.dataset.city} · ${behind}${t.dayShift ? ` · ${t.weekday}` : ""}`.toUpperCase();
+    c.querySelector(".wc-city").textContent = `${c.dataset.city} ${behind}`.toUpperCase();
     c.ariaLabel = `${c.dataset.city}: ${t.hour % 12 || 12}:${pad(t.minute)} ${t.hour < 12 ? "am" : "pm"}${t.ahead ? `, ${Math.abs(t.ahead)} ${Math.abs(t.ahead) === 1 ? "hour" : "hours"} ${t.ahead < 0 ? "behind" : "ahead"}` : ""}`;
   }
   return others;
@@ -517,7 +522,7 @@ export async function zoomCalendar(on = !calWide) {
     row.classList.remove("cal-growing");
     unpin();
     moves.forEach((m) => m.cancel());
-    if (!on) row.querySelector(".deco-shelf")?.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 320, easing: "ease-out" });
+    if (!on) row.querySelector(".player-shelf")?.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 320, easing: "ease-out" });
   }
   window.dispatchEvent(new Event("resize")); // the canary leaves anything that just went away
   zooming = false;
@@ -1372,8 +1377,9 @@ const isoWeek = (d) => {
 // Southern Hemisphere seasons (Aotearoa and Sydney)
 const season = (d) => ["SUMMER", "AUTUMN", "WINTER", "SPRING"][Math.floor(((d.getMonth() + 1) % 12) / 3)];
 
-// The greeting: a different language every 10 seconds, the words fading into each other; ", Mel." stays.
-// Every greeting for the hour sits in the same spot (CSS grid), so the line keeps one width and nothing moves.
+// The greeting: a different language every 10 seconds, the words fading into each other; ", Mel." never moves.
+// Every greeting for the hour sits in the same spot (CSS grid) as wide as the longest, each lined up to end at the
+// comma, so only the words change: long ones reach back towards the lamp, short ones sit by the name.
 let greetWhen = "", greetIndex = 0;
 function renderGreeting(hour) {
   const when = timeOfDay(hour);
@@ -1393,23 +1399,15 @@ function nextGreeting() {
   words[greetIndex].classList.remove("on");
   greetIndex = (greetIndex + 1) % words.length;
   words[greetIndex].classList.add("on");
-  sizeGreetWord();
-}
-// the word's box takes the width of the greeting showing, so ", Mel." sits right after it
-function sizeGreetWord() {
-  const box = $("greet-word"), on = box.querySelector(".on");
-  if (on) box.style.width = `${on.offsetWidth}px`;
 }
 // keep the line on one row: if the longest greeting is too wide for the gap, the whole line gets a little smaller
+// the line is sized so the longest greeting and ", Mel." fit the gap with a little room to spare
 function fitGreeting() {
   const h1 = $("greet");
   h1.style.fontSize = "";
-  if (getComputedStyle(h1).whiteSpace === "nowrap") {
-    const widest = Math.max(0, ...[...$("greet-word").children].map((s) => s.offsetWidth));
-    const room = h1.parentElement.clientWidth, need = widest + h1.querySelector(".greet-name").offsetWidth;
-    if (need > room && room > 0) h1.style.fontSize = `${parseFloat(getComputedStyle(h1).fontSize) * (room / need) * 0.98}px`;
-  }
-  sizeGreetWord();
+  if (getComputedStyle(h1).whiteSpace !== "nowrap") return;
+  const room = h1.parentElement.clientWidth * 0.94, need = h1.scrollWidth;
+  if (need > room && room > 0) h1.style.fontSize = `${parseFloat(getComputedStyle(h1).fontSize) * (room / need)}px`;
 }
 setInterval(nextGreeting, GREET_EVERY_MS);
 addEventListener("resize", fitGreeting);

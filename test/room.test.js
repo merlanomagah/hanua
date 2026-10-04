@@ -64,6 +64,8 @@ test("wall clocks: Sydney and Suva against Auckland, across daylight saving", ()
   const syd = timeIn("Australia/Sydney", at), suva = timeIn("Pacific/Fiji", at);
   assert.deepEqual([syd.hour, syd.minute], [7, 0]);
   assert.deepEqual([suva.hour, suva.minute], [8, 0]);
+  const la = timeIn("America/Los_Angeles", at); // PDT, -7: still Monday 5 Oct there
+  assert.deepEqual([la.hour, la.weekday, la.day, la.month], [13, "MON", 5, "OCT"]);
   const akl = timeIn("Pacific/Auckland", at);
   assert.equal(syd.ahead - akl.ahead, -2);
   assert.equal(suva.ahead - akl.ahead, -1);
