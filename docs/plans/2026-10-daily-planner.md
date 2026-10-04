@@ -1,6 +1,6 @@
 # Panel brief: Daily planner on the desk
 
-*First run of the Hanua Panel (test, 4 Oct 2026). Waiting on Mel's answers; nothing built.*
+*First run of the Hanua Panel (test, 4 Oct 2026). **Parked** by Mel the same day: all three recommendations in section 3 agreed (Tasks first, goal Tasks only, carried items stay with days-ago). Build from this brief once Move to Sydney has Tasks; see `docs/panel/parked.md`.*
 
 **Request (as the problem):** Mel wants to choose what she'll do today inside Hanua, have that choice kept in Notion, and see each morning what she meant to do yesterday but didn't.
 **Lane:** Large · **Seats:** all 11 core + guests Agile coach, Bula voice (Data steward, Frontend engineer and Test lead ran as separate agents)
