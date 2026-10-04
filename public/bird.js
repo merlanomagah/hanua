@@ -12,7 +12,7 @@ import { $, reducedMotion, store } from "./lib.js";
 import { ORDER, POSES, frameSVG } from "./canary/rig.js";
 import { CH, CW, CX, DOOR_FRAMES, PERCH_Y, cageSVG } from "./canary/cage.js";
 
-const W = 42, H = 36; // the bird on screen; its feet are at the bottom middle
+const W = 56, H = 48; // the bird on screen (Corn; a third bigger since 5 Oct 2026, to scale with the cage and plant); its feet are at the bottom middle
 const url = (svg) => "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
 // Where it can land: the top of each thing, x between two fractions of its width, y a fraction down from its top
 const PERCHES = [

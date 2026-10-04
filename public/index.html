@@ -35,9 +35,8 @@
         </div>
         <nav class="books" id="books"></nav>
         <div class="case-fill"></div>
-        <div class="case-foot" aria-hidden="true">
+        <div class="case-foot">
           <div class="case-foot-row">
-            <img src="assets/shelf/bookend.png" alt="" class="bookend">
             <span class="tagline">Plan with purpose.<br>Live with others in mind.</span>
             <!-- the canary's cage: close the door and it stays in -->
             <div class="cage" id="cage">
@@ -67,12 +66,14 @@
           <button type="button" class="ts-btn" id="ts-feed" data-tip="Feed: add anything (⌘S)" aria-label="Open the Feed"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
           <button type="button" class="ts-btn" id="ts-music" data-tip="Record player" aria-label="Open the record player"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="2"/></svg></button>
           <button type="button" class="ts-btn" id="ts-sleep" data-tip="Sleep: hide everything (⌃L)" aria-label="Put Hanua to sleep"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg></button>
+          <span class="ts-div" aria-hidden="true"></span>
+          <!-- Focus: a small home / work switch; at work only work things show -->
+          <button type="button" class="ts-switch" id="ts-focus" role="switch" aria-checked="false" data-tip="At home: everything shows (⌃F for work)" aria-label="At work">
+            <svg class="sw-home" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 11V8a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v3"/><path d="M3 12a2 2 0 0 1 4 0v2h10v-2a2 2 0 0 1 4 0v5H3z"/><path d="M5 17v2M19 17v2"/></svg>
+            <span class="sw-track" aria-hidden="true"><span class="sw-knob"></span></span>
+            <svg class="sw-work" viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="8" width="17" height="11" rx="1.5"/><path d="M9 8V6.5A1.5 1.5 0 0 1 10.5 5h3A1.5 1.5 0 0 1 15 6.5V8"/><path d="M3.5 13h17"/></svg>
+          </button>
         </nav>
-        <!-- Focus: flip the sign to "At work" and only work things show -->
-        <button type="button" class="ts-sign" id="ts-focus" aria-pressed="false" data-tip="At home: everything shows (⌃F for work)" aria-label="At home: everything shows. Switch to at work">
-          <span class="sign-strings" aria-hidden="true"></span>
-          <span class="sign-board"><span class="sign-face">At home</span></span>
-        </button>
         <div class="ts-centre">
           <button type="button" class="ts-earn" id="ts-earn" data-tip="Open the treat shop" aria-label="Earnings: open the treat shop">
             <span class="coin" aria-hidden="true"><img src="assets/obj/coin.png" alt=""><b>H</b></span>
@@ -228,9 +229,12 @@
                   <span class="ask-label">CLAUDE</span>
                   <span class="divider" aria-hidden="true"></span>
                   <input id="ask-input" type="text" autocomplete="off" aria-label="Ask Claude" placeholder="Ask about anything on your wall…">
+                  <button type="button" class="ask-icon" id="ask-clear" aria-label="Clear" data-tip="Clear (Esc)" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+                  <!-- speak instead of typing (Safari's own speech-to-text; hidden where it isn't there, and at work) -->
+                  <button type="button" class="ask-icon" id="ask-mic" aria-label="Speak your question" aria-pressed="false" data-tip="Speak" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/></svg></button>
                   <button type="submit">ASK</button>
                 </form>
-                <div class="answer" id="ask-answer" hidden></div>
+                <div class="answer" id="ask-answer" hidden><p class="answer-text" id="ask-text"></p><button type="button" class="ask-icon answer-x" id="ask-close" aria-label="Close the answer" data-tip="Close"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
               </div>
 
               <div class="notes" id="notes" aria-label="Pinned notes"></div>

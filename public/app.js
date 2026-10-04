@@ -997,10 +997,9 @@ $("ts-music").addEventListener("click", () => { closeOverlays(); openTurntable()
 // At work only work things are on screen (see focus in lib.js). Remembered between visits.
 export function applyFocus() {
   const sign = $("ts-focus");
-  sign.setAttribute("aria-pressed", String(focus.on));
-  sign.querySelector(".sign-face").textContent = focus.on ? "At work" : "At home";
+  // a switch: on = at work (its label stays "At work"; the tip says what that means)
+  sign.setAttribute("aria-checked", String(focus.on));
   sign.dataset.tip = focus.on ? "At work: only work things show (⌃F)" : "At home: everything shows (⌃F for work)";
-  sign.ariaLabel = focus.on ? "At work: only work things show. Switch to at home" : "At home: everything shows. Switch to at work";
   $("app").classList.toggle("focus", focus.on);
 }
 export function setFocus(on) {
@@ -1015,10 +1014,6 @@ export function setFocus(on) {
   applyScreen(false);
   applyRemote();
   renderAll();
-  const sign = $("ts-focus");
-  sign.classList.remove("flip");
-  void sign.offsetWidth;
-  sign.classList.add("flip");
 }
 $("ts-focus").addEventListener("click", () => setFocus(!focus.on));
 const typing = (t) => t?.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t?.tagName || "");
@@ -1058,6 +1053,8 @@ export function renderMusic() {
   $("np-artist").textContent = music.state === "unknown"
     ? "Allow Hanua to control Music"
     : active ? [music.artist, music.playlist].filter(Boolean).join(" · ") : "Pick a record, or press play";
+  // the strip keeps one width, so a long title ends in …; the whole thing shows on hover
+  $("now-playing").querySelector(".np-text").title = `${$("np-track").textContent} — ${$("np-artist").textContent}`;
   $("np-icon").setAttribute("d", playing ? PAUSE_ICON : PLAY_ICON);
   $("np-play").ariaLabel = playing ? "Pause" : "Play";
   $("np-prev").disabled = $("np-next").disabled = !active;
@@ -1166,19 +1163,53 @@ $("turntable").addEventListener("click", (e) => { if (e.target === $("turntable"
 
 // ---------- ask across everything ----------
 
-$("ask-form").addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const question = $("ask-input").value.trim();
+const askInput = $("ask-input"), answer = $("ask-answer");
+const askShow = () => { $("ask-clear").hidden = !askInput.value && answer.hidden; };
+function askSay(kind, text) {
+  answer.hidden = false; answer.className = `answer ${kind}`.trim(); $("ask-text").textContent = text; askShow();
+}
+async function askNow() {
+  const question = askInput.value.trim();
   if (!question) return;
-  const answer = $("ask-answer");
-  answer.hidden = false; answer.className = "answer loading"; answer.textContent = "Claude is reading your wall…";
+  askSay("loading", "Claude is reading your wall…");
   try {
     const res = await api("/api/ask", { question });
-    answer.className = "answer"; answer.textContent = res.answer;
+    askSay("", res.answer);
   } catch (err) {
-    answer.className = "answer error"; answer.textContent = err.message;
+    askSay("error", err.message);
   }
-});
+}
+$("ask-form").addEventListener("submit", (e) => { e.preventDefault(); askNow(); });
+// clear: the ✕ in the field (or Esc) empties the question and puts the answer away; the answer's own ✕ just closes it
+function askClear() { stopListening(); askInput.value = ""; answer.hidden = true; askShow(); askInput.focus(); }
+$("ask-clear").addEventListener("click", askClear);
+$("ask-close").addEventListener("click", () => { answer.hidden = true; askShow(); askInput.focus(); });
+askInput.addEventListener("input", askShow);
+askInput.addEventListener("keydown", (e) => { if (e.key === "Escape" && (askInput.value || !answer.hidden)) { e.preventDefault(); askClear(); } });
+
+// speak a question: the browser's own speech-to-text (Safari sends it to Apple, like Mac Dictation). Asks when you stop talking
+const Speech = window.SpeechRecognition || window.webkitSpeechRecognition;
+let listener = null;
+function stopListening() { listener?.stop(); }
+if (Speech) {
+  const mic = $("ask-mic");
+  mic.hidden = false;
+  mic.addEventListener("click", () => {
+    if (listener) return stopListening();
+    const rec = new Speech();
+    rec.lang = navigator.language || "en-NZ"; rec.interimResults = true; rec.continuous = false;
+    let heard = "";
+    rec.onresult = (e) => { heard = [...e.results].map((r) => r[0].transcript).join(""); askInput.value = heard; askShow(); };
+    rec.onerror = (e) => { if (e.error === "not-allowed" || e.error === "service-not-allowed") toast("Hanua needs the microphone: allow it in Safari's settings for this site."); };
+    rec.onend = () => {
+      listener = null; mic.classList.remove("on"); mic.setAttribute("aria-pressed", "false"); mic.dataset.tip = "Speak";
+      if (heard.trim()) askNow();
+    };
+    listener = rec;
+    mic.classList.add("on"); mic.setAttribute("aria-pressed", "true"); mic.dataset.tip = "Listening… click to stop";
+    rec.start();
+  });
+}
 
 // ---------- to the desk ----------
 
