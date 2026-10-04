@@ -34,7 +34,7 @@ Read this first if you're picking Hanua up in a new session or a different Claud
 
 **Open items for Mel:** connect the Treat shop database if not done and add rewards; fill the Notion books and goals with real data; run Pūtea and check the TV's Expenses / Income field names (`server/money.js` guesses the payee field).
 
-**Open questions from the first brief, never answered:** are the five books the right databases; is the purpose's draft "working sentence" right; keep or remove the count badges on the Work and Calendar spines.
+**First brief questions (answered 4 Oct 2026):** the five books stay; the purpose's working sentence is confirmed; the count badges on the Work and Calendar spines wait until the books have real data, then Mel decides keep or remove.
 
 **Testing:** `.claude/launch.json` has a `sample` server (port 3001, keys blank, sample data) for the browser preview; never test writes against the real Notion. Check 1440, 1024 and 375 widths.
 
