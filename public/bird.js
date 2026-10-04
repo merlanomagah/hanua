@@ -18,6 +18,9 @@ const url = (svg) => "data:image/svg+xml;charset=utf-8," + encodeURIComponent(sv
 const PERCHES = [
   { sel: ".greet-row .lamp-img", x: [0.4, 0.6], y: 0.2, w: 3 },
   { sel: "#clock", x: [0.2, 0.8], y: 0, w: 3 },
+  { sel: ".wall-clock.away", x: [0.25, 0.75], y: 0, w: 2 },
+  { sel: ".weather-window", x: [0.08, 0.92], y: -0.07, w: 2 },
+  { sel: ".ww-sill", x: [0.1, 0.9], y: 0.12, w: 2 },
   { sel: "#shelf-plant", x: [0.35, 0.6], y: 0.06, w: 2, name: "plant" },
   { sel: "#can", x: [0.3, 0.45], y: 0.08, w: 1 },
   { sel: ".cal-card", x: [0.12, 0.88], y: 0, w: 2 },

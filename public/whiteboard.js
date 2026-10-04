@@ -37,6 +37,7 @@ export async function loadWhiteboard() {
 
 // the days down the side, today's row marked, and the week's name
 export function renderWhiteboard() {
+  queueMicrotask(() => document.dispatchEvent(new Event("hanua:menu"))); // today's meals on the desk follow the board
   const covered = focus.on;
   $("mb-cover").hidden = !covered;
   $("menu-board").classList.toggle("covered", covered);

@@ -247,15 +247,32 @@ button:disabled { opacity: 0.5; cursor: progress; }
 .lamp-off .lamp-date text { fill: var(--ink-4); }
 
 /* retro flip clock in a walnut case */
-.flip-clock {
-  --card-w: clamp(15px, 1.25vw, 21px); --card-h: calc(var(--card-w) * 1.45);
-  position: relative; flex: none; align-self: flex-end; margin-bottom: 6px; padding: 9px 10px 16px; border-radius: 5px;
-  background: url("assets/shelf/plank.png") center / 260% 100%; box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.15), inset 0 -3px 0 rgb(0 0 0 / 0.25);
-  filter: drop-shadow(-5px 7px 8px rgb(28 24 20 / 0.32));
+/* the wall clocks hang above the greeting shelf: here in black, Sydney and Suva in white (Mel, 5 Oct 2026: the eye goes
+   to the black one). Each hangs on a wire from a nail and floats off the wall, lit from the top left */
+.clocks { position: relative; z-index: 2; display: flex; justify-content: center; align-items: flex-end; gap: clamp(16px, 2.2vw, 34px);
+  align-self: stretch; padding: 22px 4% 0 calc(4% + var(--lamp-w, 98px)); margin-bottom: clamp(18px, 2vw, 28px); }
+.wall-clock {
+  --card-w: clamp(12px, 1.05vw, 16px); --card-h: calc(var(--card-w) * 1.45);
+  position: relative; flex: none; padding: 7px 8px 17px; border-radius: 5px;
+  background: linear-gradient(180deg, #FCFAF6, #ECE6DC); box-shadow: inset 0 1px 0 #fff, inset 0 -2px 0 rgb(28 24 20 / 0.1), 0 0 0 1px rgb(28 24 20 / 0.08);
+  filter: drop-shadow(-7px 12px 10px rgb(28 24 20 / 0.26));
 }
-.flip-clock::before, .flip-clock::after { content: ""; position: absolute; bottom: -5px; width: 12px; height: 6px; border-radius: 0 0 2px 2px; background: var(--ink-2); }
-.flip-clock::before { left: 14%; }
-.flip-clock::after { right: 14%; }
+.wall-clock.here { --card-w: clamp(16px, 1.45vw, 23px); padding: 9px 10px 18px; background: linear-gradient(180deg, #2a241f, #15110e); box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.12), inset 0 -3px 0 rgb(0 0 0 / 0.4); }
+.wc-hang { position: absolute; left: 50%; bottom: 100%; width: 46%; max-width: 52px; height: 16px; transform: translateX(-50%); pointer-events: none;
+  background:
+    linear-gradient(to top right, transparent calc(50% - 0.6px), #7A6B55 calc(50% - 0.6px) calc(50% + 0.6px), transparent calc(50% + 0.6px)) left / 50% 100% no-repeat,
+    linear-gradient(to top left, transparent calc(50% - 0.6px), #7A6B55 calc(50% - 0.6px) calc(50% + 0.6px), transparent calc(50% + 0.6px)) right / 50% 100% no-repeat; }
+.wc-hang::after { content: ""; position: absolute; left: 50%; top: -3px; width: 6px; height: 6px; margin-left: -3px; border-radius: 50%; background: #42382C; box-shadow: 0 1px 1px rgb(0 0 0 / 0.3); }
+.wc-others { display: none; }
+.wc-city { position: absolute; left: 10px; bottom: 4px; font: 7px var(--mono); letter-spacing: 0.18em; color: var(--ink-3); white-space: nowrap; }
+.here .wc-city { color: var(--glow); opacity: 0.85; }
+.away .flip-face { background: #DDD6CB; box-shadow: inset 0 1px 3px rgb(28 24 20 / 0.25); }
+.away .flip { color: var(--ink); }
+.away .flip .half, .away .flip .leaf { background: linear-gradient(180deg, #FFFFFF, #F4F0E9); }
+.away .flip .bottom, .away .flip .back { background: linear-gradient(180deg, #F1ECE4, #E9E3D9); }
+.away .flip::after { background: rgb(28 24 20 / 0.18); }
+.away .flip-ampm { color: var(--ink-4); }
+.lamp-off .wall-clock.away { filter: drop-shadow(-7px 12px 10px rgb(28 24 20 / 0.26)) brightness(0.9); }
 .flip-face { display: flex; gap: 5px; padding: 4px; border-radius: 3px; background: var(--ink); box-shadow: inset 0 2px 4px rgb(0 0 0 / 0.6); }
 .flip-pair { display: flex; gap: 2px; }
 .flip { position: relative; width: var(--card-w); height: var(--card-h); perspective: 160px; font: 500 calc(var(--card-h) * 0.78) / var(--card-h) var(--ui); font-variant-numeric: tabular-nums; color: var(--cream); text-align: center; }
@@ -1761,7 +1778,11 @@ dialog h3 { margin: 0 0 4px; font: italic 300 32px/1.1 var(--display); }
   .board-lamp { width: 50px; right: 12px; }
   .board-head { padding-right: 64px; }
   .lamp-date text { font-size: 56px; letter-spacing: 0.1em; }
-  .flip-clock { --card-w: 14px; padding: 6px 6px 12px; }
+  .clocks { padding: 18px 0 0; gap: 10px; }
+  .wall-clock.here { --card-w: 14px; padding: 6px 6px 16px; }
+  .wall-clock.away { display: none; }
+  .clocks { flex-direction: column; align-items: center; gap: 8px; }
+  .wc-others { display: block; font: 8px var(--mono); letter-spacing: 0.16em; color: var(--ink-3); }
   .flip-face { gap: 4px; padding: 3px; }
   .now-playing { margin-bottom: 26px; }
   .greet-text { gap: 8px; }
@@ -1943,3 +1964,80 @@ dialog.lock::backdrop { background: #14110e; }
 .cage-door { position: absolute; z-index: 6; left: 41%; top: 50.5%; width: 29%; height: 24.5%; padding: 0; border: 0; border-radius: 2px; background: transparent; cursor: pointer; }
 .cage.open .cage-door { left: 16%; width: 25%; }
 .cage-door:focus-visible { outline: 2px solid var(--terra); outline-offset: 2px; }
+
+/* ---------- the greeting: a different language every 10 seconds, ", Mel." stays put ---------- */
+/* every greeting for the hour sits in the same place; the box takes the width of the one showing and ", Mel." glides
+   along with it, so nothing jumps (the line is sized for the longest, so the shelf never moves) */
+.greet-word { display: inline-grid; vertical-align: baseline; transition: width 900ms ease; }
+.greet-word > span { grid-area: 1 / 1; justify-self: start; white-space: nowrap; opacity: 0; filter: blur(6px); transform: translateY(0.12em); transition: opacity 900ms ease, filter 900ms ease, transform 900ms ease; }
+.greet-word > span.on { opacity: 1; filter: none; transform: none; }
+.greet-word > span:lang(zh), .greet-word > span:lang(ja), .greet-word > span:lang(ko) { font-style: normal; font-weight: 300; font-size: 0.8em; align-self: end; padding-bottom: 0.06em; }
+.greet-name { white-space: nowrap; }
+@media (prefers-reduced-motion: reduce) { .greet-word { transition: none; } .greet-word > span { transition: opacity 300ms; filter: none; transform: none; } }
+
+/* the words going round the lamp's dome: the soft copy shows only near the horizon */
+.lamp-date .ring-soft { fill: var(--ink-4); }
+
+/* ---------- the kitchen: swipe left from the wall (the goals board is to the right) ---------- */
+.kitchen-pane {
+  position: absolute; z-index: 2; top: 36px; left: clamp(28px, 5vw, 72px); right: clamp(28px, 5vw, 72px);
+  transform: translateX(105%); opacity: 0; transition: transform 520ms cubic-bezier(.65,0,.35,1), opacity 520ms;
+}
+.kitchen-in { max-width: 1240px; margin: 0 auto; display: flex; flex-direction: column; }
+.wall.on-kitchen .kitchen-pane { position: relative; top: 0; left: 0; right: 0; transform: none; opacity: 1; }
+.wall.on-kitchen .wall-in { position: absolute; top: 36px; left: clamp(28px, 5vw, 72px); right: clamp(28px, 5vw, 72px); transform: translateX(-105%); opacity: 0; pointer-events: none; }
+.kitchen-pane .edge-tab.left { left: calc(-1 * clamp(28px, 5vw, 72px)); }
+#to-kitchen { right: calc(-1 * clamp(28px, 5vw, 72px)); }
+.kitchen-pane .menu-board { margin-top: 0; }
+.kitchen-pane .to-desk { margin-top: 40px; }
+
+/* the window: a painted wooden frame whose two bars split the day into morning, midday and evening */
+.weather-window { position: relative; margin: 26px 14px 66px; }
+.ww-glass { position: relative; height: clamp(150px, 16vw, 230px); overflow: hidden; background: #b9cddd; }
+.ww-sky { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+/* a faint reflection on the glass */
+.ww-glass::after { content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(115deg, rgb(255 255 255 / 0) 30%, rgb(255 255 255 / 0.16) 38%, rgb(255 255 255 / 0) 46%, rgb(255 255 255 / 0) 64%, rgb(255 255 255 / 0.1) 68%, rgb(255 255 255 / 0) 72%); }
+.ww-frame { position: absolute; inset: -14px; pointer-events: none; border: 14px solid #EFE8DC; border-radius: 3px;
+  box-shadow: inset 0 0 0 1px rgb(28 24 20 / 0.12), inset 3px 4px 8px rgb(28 24 20 / 0.28), -10px 16px 22px -10px rgb(28 24 20 / 0.4), 0 0 0 1px rgb(28 24 20 / 0.08); }
+.ww-frame i { position: absolute; top: 0; bottom: 0; width: 10px; margin-left: -5px; background: linear-gradient(90deg, #E2D9CB, #F3EDE3 40%, #E6DED1); box-shadow: -3px 0 6px rgb(28 24 20 / 0.18); }
+.ww-frame i:first-child { left: 33.333%; }
+.ww-frame i:last-child { left: 66.667%; }
+.ww-panes { position: absolute; inset: 0; display: grid; grid-template-columns: repeat(3, 1fr); }
+.ww-pane { position: relative; display: flex; flex-direction: column; justify-content: flex-end; gap: 2px; padding: 12px 16px 12px 20px; color: #FFFDF8;
+  text-shadow: 0 1px 2px rgb(20 26 34 / 0.55), 0 0 12px rgb(20 26 34 / 0.35); }
+/* a soft shade under the words so they read against any sky */
+.ww-pane::before { content: ""; position: absolute; inset: 40% 0 0; z-index: -1; background: linear-gradient(180deg, rgb(20 26 34 / 0), rgb(20 26 34 / 0.38)); }
+.ww-pane { isolation: isolate; }
+.ww-pane .ww-label { font: 9px var(--mono); letter-spacing: 0.2em; text-transform: uppercase; opacity: 0.92; }
+.ww-pane .ww-temp { display: flex; align-items: baseline; gap: 8px; font: 300 clamp(28px, 3vw, 42px)/1 var(--display); }
+.ww-pane .ww-temp em { font-style: normal; font-size: 0.55em; }
+.ww-pane .ww-words { font: italic 15px/1.2 var(--display); }
+.ww-pane.past { opacity: 0.72; }
+.ww-now { position: absolute; top: 0; bottom: 0; width: 0; border-left: 1px dashed rgb(255 253 248 / 0.7); pointer-events: none; }
+.ww-now span { position: absolute; top: 8px; left: 5px; padding: 2px 5px; border-radius: 2px; background: rgb(28 24 20 / 0.45); color: #FFFDF8; font: 8px var(--mono); letter-spacing: 0.2em; }
+.ww-sill { position: absolute; left: -34px; right: -34px; top: calc(100% + 14px); height: 30px; display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 0 44px; background: url("assets/shelf/plank.png") center / 100% 100%; filter: drop-shadow(-6px 10px 9px rgb(28 24 20 / 0.35));
+  font: 9px var(--mono); letter-spacing: 0.18em; text-transform: uppercase; color: #F3E6D6; text-shadow: 0 1px 1px rgb(0 0 0 / 0.5); }
+.ww-summary { text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.weather-window.unavailable .ww-sky { filter: grayscale(0.6); }
+
+/* today's meals on the desk, a slip of paper: so the menu isn't forgotten now it's in the kitchen */
+.meal-slip { position: absolute; left: clamp(28px, 4.5vw, 64px); bottom: 116px; display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 14px; max-width: min(640px, calc(100% - 56px));
+  padding: 10px 16px; border: 0; border-radius: 2px; cursor: pointer; text-align: left; transform: rotate(-0.8deg);
+  background: #FBF8F1; box-shadow: 6px 10px 14px -6px rgb(28 24 20 / 0.45); color: var(--ink-2); font: italic 16px var(--display); }
+.meal-slip b { font: 9px var(--mono); font-style: normal; letter-spacing: 0.18em; color: var(--terra); }
+.meal-slip span small { font: 8px var(--mono); font-style: normal; letter-spacing: 0.14em; color: var(--ink-4); margin-right: 5px; }
+.meal-slip:hover { transform: rotate(-0.8deg) translateY(-2px); }
+
+@media (max-width: 600px) {
+  .kitchen-pane, .wall.on-kitchen .wall-in { left: 16px; right: 16px; top: 20px; }
+  .kitchen-pane .edge-tab.left { left: -16px; }
+  #to-kitchen { right: -16px; }
+  .weather-window { margin: 18px 10px 56px; }
+  .ww-glass { height: 170px; }
+  .ww-pane { padding: 8px 6px 8px 8px; }
+  .ww-pane .ww-words { font-size: 12px; }
+  .ww-sill { left: -20px; right: -20px; padding: 0 26px; font-size: 8px; }
+  .ww-place { display: none; }
+}

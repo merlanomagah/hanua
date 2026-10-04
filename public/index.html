@@ -62,6 +62,7 @@
           <button type="button" class="ts-btn" id="ts-home" data-tip="Home: the wall" aria-label="Home"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg></button>
           <button type="button" class="ts-btn" id="ts-desk" data-tip="The desk: today" aria-label="Go to the desk"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 9h18"/><path d="M5 9v10M19 9v10"/><path d="M8 5h8v4H8z"/></svg></button>
           <button type="button" class="ts-btn" id="ts-goals" data-tip="Goals board" aria-label="Goals board"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="0.8" fill="currentColor"/></svg></button>
+          <button type="button" class="ts-btn" id="ts-kitchen" data-tip="Kitchen: weather and the menu" aria-label="Kitchen"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11h16v2a7 7 0 0 1-7 7h-2a7 7 0 0 1-7-7z"/><path d="M2 11h20"/><path d="M9 7c0-1.5 1-1.5 1-3M14 7c0-1.5 1-1.5 1-3"/></svg></button>
           <button type="button" class="ts-btn" id="ts-library" data-tip="Library" aria-label="Open the library"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4v16M9 4v16M13 6l4 14"/><path d="M3 20h18"/></svg></button>
           <button type="button" class="ts-btn" id="ts-feed" data-tip="Feed: add anything (⌘S)" aria-label="Open the Feed"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
           <button type="button" class="ts-btn" id="ts-music" data-tip="Record player" aria-label="Open the record player"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="2"/></svg></button>
@@ -160,6 +161,7 @@
 
         <div class="wall-in" id="wall-in">
           <button type="button" class="edge-tab left" id="to-board" title="Swipe right, or click, for your goals"><span>GOALS</span><span aria-hidden="true">›</span></button>
+          <button type="button" class="edge-tab right" id="to-kitchen" title="Swipe left, or click, for the kitchen"><span>KITCHEN</span><span aria-hidden="true">‹</span></button>
           <div class="wall-top">
             <div class="status" id="status"></div>
           </div>
@@ -167,27 +169,9 @@
           <div class="wall-row">
             <div class="wall-left">
               <div class="greet-shelf">
-                <div class="greet-row">
-                  <div class="lamp-wrap">
-                  <button class="lamp" id="lamp" type="button">
-                    <span class="lamp-glow" aria-hidden="true"></span>
-                    <img src="assets/obj/lamp-off.png" alt="Lamp" class="lamp-img">
-                    <img src="assets/obj/lamp-on.png" alt="" class="lamp-img lamp-lit">
-                    <!-- today's date, curved over the dome of the shade (viewBox matches the lamp image) -->
-                    <svg class="lamp-date" viewBox="0 0 484 640" aria-hidden="true">
-                      <path id="dome-arc" d="M -40 236 A 282 270 0 0 1 524 236" fill="none"/>
-                      <text><textPath href="#dome-arc" startOffset="50%" text-anchor="middle" id="arc-date"></textPath></text>
-                    </svg>
-                  </button>
-                  <!-- pull cord: switches every light in Hanua -->
-                  <button type="button" class="pull-cord" aria-label="Pull to switch all the lights" aria-pressed="true"><span class="cord-string"></span><span class="cord-bead"></span></button>
-                  </div>
-                  <div class="greet-text">
-                    <span class="sr-only" id="today-label"></span>
-                    <h1 id="greet">Good morning.</h1>
-                  </div>
-                  <!-- retro flip clock -->
-                  <div class="flip-clock" role="img" aria-label="Clock" id="clock">
+                <!-- three wall clocks above the shelf: here (black) and, in white, Sydney and Suva -->
+                <div class="clocks">
+                  <div class="wall-clock here" id="clock" role="img" aria-label="Clock">
                     <div class="flip-face">
                       <span class="flip-pair"><span class="flip" id="fd0"></span><span class="flip" id="fd1"></span></span>
                       <span class="flip-pair"><span class="flip" id="fd2"></span><span class="flip" id="fd3"></span></span>
@@ -197,6 +181,40 @@
                       <span class="flip word" id="fdd"></span><span class="flip num" id="fdn"></span><span class="flip word" id="fdm"></span>
                     </div>
                     <span class="flip-ampm" id="flip-ampm"></span>
+                    <span class="wc-city" id="wc-here"></span>
+                  </div>
+                  <div class="wall-clock away" data-zone="Australia/Sydney" data-city="Sydney" role="img"></div>
+                  <div class="wall-clock away" data-zone="Pacific/Fiji" data-city="Suva" role="img"></div>
+                  <!-- on a phone only the black clock hangs; the other two are a line of small type under it -->
+                  <span class="wc-others" id="wc-others" aria-hidden="true"></span>
+                </div>
+                <div class="greet-row">
+                  <div class="lamp-wrap">
+                  <button class="lamp" id="lamp" type="button">
+                    <span class="lamp-glow" aria-hidden="true"></span>
+                    <img src="assets/obj/lamp-off.png" alt="Lamp" class="lamp-img">
+                    <img src="assets/obj/lamp-on.png" alt="" class="lamp-img lamp-lit">
+                    <!-- week, season and today's weather going slowly round the dome: the top half shows, the bottom half is
+                         behind the lamp, and the words soften as they reach the horizon (viewBox matches the lamp image) -->
+                    <svg class="lamp-date" viewBox="0 0 484 640" aria-hidden="true">
+                      <defs>
+                        <path id="dome-ring" d=""/>
+                        <linearGradient id="ring-sharp" gradientUnits="userSpaceOnUse" x1="0" y1="-60" x2="0" y2="236"><stop offset="0.62" stop-color="#fff"/><stop offset="0.86" stop-color="#fff" stop-opacity="0"/></linearGradient>
+                        <linearGradient id="ring-soft" gradientUnits="userSpaceOnUse" x1="0" y1="-60" x2="0" y2="236"><stop offset="0.6" stop-color="#fff" stop-opacity="0"/><stop offset="0.8" stop-color="#fff"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
+                        <mask id="ring-mask-sharp" maskUnits="userSpaceOnUse" x="-120" y="-120" width="724" height="760"><rect x="-120" y="-120" width="724" height="356" fill="url(#ring-sharp)"/></mask>
+                        <mask id="ring-mask-soft" maskUnits="userSpaceOnUse" x="-120" y="-120" width="724" height="760"><rect x="-120" y="-120" width="724" height="356" fill="url(#ring-soft)"/></mask>
+                        <filter id="ring-blur" x="-10%" y="-10%" width="120%" height="120%"><feGaussianBlur stdDeviation="2.4"/></filter>
+                      </defs>
+                      <text class="ring-soft" mask="url(#ring-mask-soft)" filter="url(#ring-blur)"><textPath href="#dome-ring" class="ring-words"></textPath></text>
+                      <text class="ring-sharp" mask="url(#ring-mask-sharp)"><textPath href="#dome-ring" class="ring-words" id="arc-date"></textPath></text>
+                    </svg>
+                  </button>
+                  <!-- pull cord: switches every light in Hanua -->
+                  <button type="button" class="pull-cord" aria-label="Pull to switch all the lights" aria-pressed="true"><span class="cord-string"></span><span class="cord-bead"></span></button>
+                  </div>
+                  <div class="greet-text">
+                    <span class="sr-only" id="today-label"></span>
+                    <h1 id="greet"><span class="greet-word" id="greet-word">Good morning</span><span class="greet-name">, Mel.</span></h1>
                   </div>
                   <!-- the watering can: drag it over the plant and hold, or click, to water it -->
                   <button type="button" class="can" id="can" aria-label="Water the plant">
@@ -300,7 +318,26 @@
             </div>
           </div>
 
-          <!-- the week's menu, across the whole wall: typed into the boxes; the days fill in by themselves -->
+
+          <div class="to-desk">
+            <button type="button" id="to-desk"><span>TO THE DESK</span><span class="arrow">↓</span></button>
+          </div>
+        </div>
+
+        <!-- Swipe left (or the Kitchen tab) for the kitchen: a window on today's weather, and the week's menu under it -->
+        <div class="kitchen-pane" id="kitchen-pane" aria-label="Kitchen" inert>
+          <button type="button" class="edge-tab left" id="kitchen-to-wall" title="Swipe right, or click, for the wall"><span>WALL</span><span aria-hidden="true">›</span></button>
+          <div class="kitchen-in">
+            <figure class="weather-window" id="weather-window" aria-labelledby="ww-summary">
+              <div class="ww-glass">
+                <canvas class="ww-sky" id="ww-sky" aria-hidden="true"></canvas>
+                <div class="ww-panes" id="ww-panes"></div>
+                <span class="ww-now" id="ww-now" hidden><span>NOW</span></span>
+              </div>
+              <div class="ww-frame" aria-hidden="true"><i></i><i></i></div>
+              <figcaption class="ww-sill"><span class="ww-place" id="ww-place"></span><span class="ww-summary" id="ww-summary"></span></figcaption>
+            </figure>
+          <!-- the week's menu, under the window: typed into the boxes; the days fill in by themselves -->
           <section class="menu-board" id="menu-board" aria-label="This week's menu">
             <div class="mb-frame">
               <header class="mb-head">
@@ -329,9 +366,9 @@
               </div>
             </div>
           </section>
-
-          <div class="to-desk">
-            <button type="button" id="to-desk"><span>TO THE DESK</span><span class="arrow">↓</span></button>
+            <div class="to-desk">
+              <button type="button" id="kitchen-to-desk"><span>TO THE DESK</span><span class="arrow">↓</span></button>
+            </div>
           </div>
         </div>
       </section>
@@ -342,6 +379,8 @@
         <article class="notepad" id="todo"></article>
         <article class="agenda" id="agenda"></article>
         <article class="receipt" id="week"></article>
+        <!-- today's meals, from the menu in the kitchen -->
+        <button type="button" class="meal-slip" id="meal-slip" title="Open the kitchen" hidden></button>
 
         <div class="scatter" aria-hidden="true">
           <img src="assets/obj/sticky-pad.png" alt="" class="sticky-pad">

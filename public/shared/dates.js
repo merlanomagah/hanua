@@ -30,3 +30,24 @@ export function weekKey(s) {
   const d = parseDay(s);
   return ymd(d) === s && d.getDay() === 1 ? s : null;
 }
+
+// The wall clocks: the time in another place, and how far ahead or behind the Mac's own time it is.
+// { hour, minute, weekday ("MON"), dayShift (-1, 0, 1 against here), ahead (hours, e.g. -2 or 0.5) }
+export function timeIn(timeZone, date = new Date()) {
+  const parts = Object.fromEntries(new Intl.DateTimeFormat("en-NZ", {
+    timeZone, hourCycle: "h23", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", weekday: "short",
+  }).formatToParts(date).map((p) => [p.type, p.value]));
+  const there = Date.UTC(+parts.year, +parts.month - 1, +parts.day, +parts.hour, +parts.minute);
+  const here = Date.UTC(date.getFullYear(), date.getMonth(), date.getDate(), date.getHours(), date.getMinutes());
+  const dayThere = Date.UTC(+parts.year, +parts.month - 1, +parts.day), dayHere = Date.UTC(date.getFullYear(), date.getMonth(), date.getDate());
+  return {
+    hour: +parts.hour, minute: +parts.minute, weekday: parts.weekday.toUpperCase(),
+    dayShift: Math.round((dayThere - dayHere) / 86_400_000), ahead: Math.round((there - here) / 1_800_000) / 2,
+  };
+}
+// "−2 h", "+1 h", "same time", "−3½ h"
+export function aheadText(ahead) {
+  if (!ahead) return "same time";
+  const n = Math.abs(ahead), whole = Math.floor(n);
+  return `${ahead < 0 ? "−" : "+"}${whole || ""}${n % 1 ? "½" : ""} h`;
+}

@@ -1,4 +1,4 @@
-// ---------- goals pin board: swipe right to slide the wall aside ----------
+// ---------- goals pin board: swipe right to slide the wall aside (left is the kitchen) ----------
 import { dayOf, daysBetween, todayStr, ymd } from "../shared/dates.js";
 import { LEVELS, dateConflicts, isGoalDone, levelIndex, lineageIn, treeOrder, visibleGoals } from "../shared/goals.js";
 import { GUIDE, WIP_LIMIT } from "../coach.js";
@@ -23,6 +23,8 @@ export const CARD_TILTS = ["-1.2deg", "0.9deg", "-0.5deg", "1.5deg", "-1.6deg", 
 export let onBoard = false;
 export function showBoard(on) {
   if (on === onBoard) return;
+  // the kitchen (on the wall's other side) steps out of the way first
+  if (on) document.dispatchEvent(new Event("hanua:board"));
   onBoard = on;
   if (on) { noteView(boardView); renderBoard(); }
   $("wall").classList.toggle("on-board", on);
@@ -37,30 +39,7 @@ export function showBoard(on) {
 $("to-board").addEventListener("click", () => showBoard(true));
 $("to-wall").addEventListener("click", () => showBoard(false));
 
-// Trackpad: two fingers moving right shows the board, left brings the wall back.
-export let swipeX = 0, swipeTimer = 0, swipeLock = 0;
-$("wall").addEventListener("wheel", (e) => {
-  if (Math.abs(e.deltaX) <= Math.abs(e.deltaY) || document.querySelector("dialog[open]")) return;
-  e.preventDefault();
-  if (Date.now() < swipeLock) return;
-  swipeX += e.deltaX;
-  clearTimeout(swipeTimer);
-  swipeTimer = setTimeout(() => { swipeX = 0; }, 250);
-  if (Math.abs(swipeX) < 70) return;
-  showBoard(swipeX < 0);
-  swipeX = 0;
-  swipeLock = Date.now() + 700;
-}, { passive: false });
-
-// Touch: a finger dragged sideways across the wall.
-export let touch0 = null;
-$("wall").addEventListener("touchstart", (e) => { touch0 = e.touches.length === 1 ? { x: e.touches[0].clientX, y: e.touches[0].clientY } : null; }, { passive: true });
-$("wall").addEventListener("touchend", (e) => {
-  if (!touch0) return;
-  const dx = e.changedTouches[0].clientX - touch0.x, dy = e.changedTouches[0].clientY - touch0.y;
-  touch0 = null;
-  if (Math.abs(dx) > 70 && Math.abs(dx) > Math.abs(dy) * 1.5 && !e.target.closest(".goal-card, .pin-list")) showBoard(dx > 0);
-});
+// Swiping between the board, the wall and the kitchen lives in public/kitchen.js (one pane at a time).
 
 // ---- board state ----
 // Views: "backlog" (every goal in one indented list), "kanban" the Board, "timeline" the Timeline.

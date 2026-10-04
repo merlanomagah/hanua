@@ -1,5 +1,6 @@
 import "./lock.js"; // the sleep screen goes up before anything else
-import { dayOf, daysBetween, lastLightSwitch, pad, parseDay, timeOf, todayStr, ymd } from "./shared/dates.js";
+import { aheadText, dayOf, daysBetween, lastLightSwitch, pad, parseDay, timeIn, timeOf, todayStr, ymd } from "./shared/dates.js";
+import { GREET_EVERY_MS, GREET_NAME, greetingsAt, timeOfDay } from "./shared/greetings.js";
 import { isGoalDone, onCalendar } from "./shared/goals.js";
 import { $, ago, api, area, fmtDay, focus, focusGoals, h, hiddenInFocus, isDone, isNarrow, longDate, money, num, records, reducedMotion, state, store, toast, updatedLine } from "./lib.js";
 import { goalById, moveGoal, onBoard, renderBoard, showBoard } from "./goals/board.js";
@@ -10,6 +11,8 @@ import { renderTopShelf, toggleEarnings } from "./shelf.js";
 import { loadPlant } from "./plant.js";
 import { loadWhiteboard, renderWhiteboard } from "./whiteboard.js";
 import "./menu-plan.js"; // Plan the week ✦ on the menu board
+import { onKitchen, renderMealSlip, showKitchen } from "./kitchen.js"; // swipe left: the weather window and the menu
+import { weatherLine } from "./weather-window.js";
 import "./bird.js"; // the canary: just for life
 
 // Which Notion area plays which part on the page (ids from config/areas.json)
@@ -163,7 +166,37 @@ export function flipTo(card, digit, animate) {
   setTimeout(() => { bottom.firstChild.textContent = digit; card.classList.remove("flipping"); }, 620);
 }
 
+// The two clocks for elsewhere (Sydney and Suva, white) get the same flip cards as the one for here (black),
+// and every clock hangs on a wire from a nail.
+for (const c of document.querySelectorAll(".wall-clock")) c.prepend(h("span", { className: "wc-hang", ariaHidden: "true" }));
+for (const c of document.querySelectorAll(".wall-clock.away")) {
+  const pair = () => h("span", { className: "flip-pair" }, h("span", { className: "flip" }), h("span", { className: "flip" }));
+  c.append(h("div", { className: "flip-face" }, pair(), pair()), h("span", { className: "flip-ampm" }), h("span", { className: "wc-city" }));
+}
+const hereZone = Intl.DateTimeFormat().resolvedOptions().timeZone || "";
+const hereCity = (hereZone.split("/").pop() || "Here").replace(/_/g, " ");
+const awayShown = new WeakMap();
+function renderAwayClocks() {
+  const others = [];
+  for (const c of document.querySelectorAll(".wall-clock.away")) {
+    const t = timeIn(c.dataset.zone);
+    const digits = `${pad(t.hour % 12 || 12)}${pad(t.minute)}`;
+    const shown = awayShown.get(c) || [];
+    c.querySelectorAll(".flip").forEach((card, i) => {
+      if (shown[i] !== digits[i]) flipTo(card, i === 0 && digits[0] === "0" ? "" : digits[i], shown[i] !== undefined);
+    });
+    awayShown.set(c, [...digits]);
+    c.querySelector(".flip-ampm").textContent = t.hour < 12 ? "AM" : "PM";
+    others.push(`${c.dataset.city} ${t.hour % 12 || 12}:${pad(t.minute)} ${t.hour < 12 ? "am" : "pm"}`);
+    const behind = aheadText(t.ahead);
+    c.querySelector(".wc-city").textContent = `${c.dataset.city} · ${behind}${t.dayShift ? ` · ${t.weekday}` : ""}`.toUpperCase();
+    c.ariaLabel = `${c.dataset.city}: ${t.hour % 12 || 12}:${pad(t.minute)} ${t.hour < 12 ? "am" : "pm"}${t.ahead ? `, ${Math.abs(t.ahead)} ${Math.abs(t.ahead) === 1 ? "hour" : "hours"} ${t.ahead < 0 ? "behind" : "ahead"}` : ""}`;
+  }
+  return others;
+}
+
 export function renderClock() {
+  $("wc-others").textContent = renderAwayClocks().join("  ·  ").toUpperCase();
   const t = new Date();
   const hr12 = t.getHours() % 12 || 12;
   const digits = `${pad(hr12)}${pad(t.getMinutes())}`;
@@ -178,7 +211,8 @@ export function renderClock() {
     if (clockShown[4 + i] !== date[i]) flipTo($(id), date[i], clockShown[4 + i] !== undefined);
     clockShown[4 + i] = date[i];
   });
-  $("clock").ariaLabel = `Clock showing ${t.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}, ${t.toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" })}`;
+  $("wc-here").textContent = hereCity.toUpperCase();
+  $("clock").ariaLabel = `${hereCity}: clock showing ${t.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}, ${t.toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" })}`;
 }
 
 // ---------- wall: money monitor and its remote ----------
@@ -888,6 +922,7 @@ document.addEventListener("keydown", (e) => {
   else if (calWide) zoomCalendar(false);
   else if (!$("ts-panel").hidden) toggleEarnings(false);
   else if (onBoard) showBoard(false);
+  else if (onKitchen) showKitchen(false);
 });
 
 // ---------- library view: the bookcase across the middle of the screen ----------
@@ -983,7 +1018,7 @@ export function closeOverlays() {
   if (!$("library").hidden) closeLibrary();
   if ($("turntable").classList.contains("open")) closeTurntable();
 }
-$("ts-home").addEventListener("click", () => { closeOverlays(); showBoard(false); window.scrollTo({ top: 0, behavior: reducedMotion ? "auto" : "smooth" }); });
+$("ts-home").addEventListener("click", () => { closeOverlays(); showBoard(false); showKitchen(false); window.scrollTo({ top: 0, behavior: reducedMotion ? "auto" : "smooth" }); });
 $("ts-desk").addEventListener("click", () => {
   closeOverlays();
   showBoard(false);
@@ -1214,6 +1249,9 @@ if (Speech) {
 // ---------- to the desk ----------
 
 $("to-desk").addEventListener("click", lookDown);
+$("kitchen-to-desk").addEventListener("click", lookDown);
+// the To the desk button on the pane that's showing (the wall's or the kitchen's)
+const deskBtn = () => [...document.querySelectorAll(".to-desk button")].find((b) => !b.closest("[inert]")) || $("to-desk");
 
 // Look down at the desk: a quick glide with the room tipping slightly, like turning your head down,
 // rather than a long scroll. From To the desk, the top shelf's desk button, or a flick down at the bottom of the wall.
@@ -1245,7 +1283,7 @@ export function lookDown() {
 let flick = 0, flickTimer = 0;
 window.addEventListener("wheel", (e) => {
   if (e.deltaY <= 0 || looking || Math.abs(e.deltaX) > Math.abs(e.deltaY) || document.querySelector("dialog[open]")) { flick = 0; return; }
-  const edge = $("desk-edge").getBoundingClientRect().top, btn = $("to-desk").getBoundingClientRect();
+  const edge = $("desk-edge").getBoundingClientRect().top, btn = deskBtn().getBoundingClientRect();
   if (!(btn.top < innerHeight && btn.bottom > 0 && edge > innerHeight - 40)) { flick = 0; return; }
   flick += e.deltaY;
   clearTimeout(flickTimer);
@@ -1258,7 +1296,7 @@ window.addEventListener("touchend", (e) => {
   if (!touchFlick || looking) return;
   const dy = touchFlick.y - e.changedTouches[0].clientY, dt = performance.now() - touchFlick.t;
   touchFlick = null;
-  const edge = $("desk-edge").getBoundingClientRect().top, btn = $("to-desk").getBoundingClientRect();
+  const edge = $("desk-edge").getBoundingClientRect().top, btn = deskBtn().getBoundingClientRect();
   if (dy > 80 && dt < 250 && btn.top < innerHeight && btn.bottom > 0 && edge > innerHeight - 40) lookDown();
 });
 
@@ -1334,13 +1372,88 @@ const isoWeek = (d) => {
 // Southern Hemisphere seasons (Aotearoa and Sydney)
 const season = (d) => ["SUMMER", "AUTUMN", "WINTER", "SPRING"][Math.floor(((d.getMonth() + 1) % 12) / 3)];
 
+// The greeting: a different language every 10 seconds, the words fading into each other; ", Mel." stays.
+// Every greeting for the hour sits in the same spot (CSS grid), so the line keeps one width and nothing moves.
+let greetWhen = "", greetIndex = 0;
+function renderGreeting(hour) {
+  const when = timeOfDay(hour);
+  const english = greetingsAt(hour)[0].text;
+  $("greet").ariaLabel = `${english}, ${GREET_NAME}.`;
+  if (when === greetWhen) return;
+  greetWhen = when;
+  const list = greetingsAt(hour);
+  greetIndex %= list.length;
+  $("greet-word").ariaHidden = "true";
+  $("greet-word").replaceChildren(...list.map((g, i) => h("span", { lang: g.lang, title: g.name, textContent: g.text, className: i === greetIndex ? "on" : "" })));
+  fitGreeting();
+}
+function nextGreeting() {
+  const words = $("greet-word").children;
+  if (words.length < 2 || document.visibilityState !== "visible") return;
+  words[greetIndex].classList.remove("on");
+  greetIndex = (greetIndex + 1) % words.length;
+  words[greetIndex].classList.add("on");
+  sizeGreetWord();
+}
+// the word's box takes the width of the greeting showing, so ", Mel." sits right after it
+function sizeGreetWord() {
+  const box = $("greet-word"), on = box.querySelector(".on");
+  if (on) box.style.width = `${on.offsetWidth}px`;
+}
+// keep the line on one row: if the longest greeting is too wide for the gap, the whole line gets a little smaller
+function fitGreeting() {
+  const h1 = $("greet");
+  h1.style.fontSize = "";
+  if (getComputedStyle(h1).whiteSpace === "nowrap") {
+    const widest = Math.max(0, ...[...$("greet-word").children].map((s) => s.offsetWidth));
+    const room = h1.parentElement.clientWidth, need = widest + h1.querySelector(".greet-name").offsetWidth;
+    if (need > room && room > 0) h1.style.fontSize = `${parseFloat(getComputedStyle(h1).fontSize) * (room / need) * 0.98}px`;
+  }
+  sizeGreetWord();
+}
+setInterval(nextGreeting, GREET_EVERY_MS);
+addEventListener("resize", fitGreeting);
+
+// The words round the lamp go slowly round its dome like a ticker: they rise from behind the lamp on the right, cross
+// over the top (readable, never upside down) and sink behind it on the left; near the horizon they soften (two copies of
+// the text: a sharp one masked to the top, a blurred one masked to the band by the horizon). Still with reduced motion.
+const RING_LOOPS = 4, RING_SPEED = 55; // viewBox units a second: about 11 px a second on screen
+let ringC = 0, ringLen = 0, ringOff = 0, ringLast = 0, ringWords = "";
+function setRingWords(text) {
+  const words = `${text} · `;
+  if (words === ringWords) return;
+  ringWords = words;
+  const ring = $("dome-ring");
+  if (!ringC) {
+    ring.setAttribute("d", `M -40 236 ${"A 282 270 0 0 1 524 236 A 282 270 0 0 1 -40 236 ".repeat(RING_LOOPS)}`);
+    ringC = ring.getTotalLength() / RING_LOOPS;
+  }
+  document.querySelectorAll(".ring-words").forEach((t) => { t.textContent = words; });
+  ringLen = $("arc-date").parentNode.getComputedTextLength?.() || words.length * 33;
+  // start (and, with reduced motion, stay) with the words centred over the top of the dome
+  ringOff = ringC + (((ringC * 0.25 - ringLen / 2) % ringC) + ringC) % ringC;
+  placeRing();
+}
+function placeRing() { document.querySelectorAll(".ring-words").forEach((t) => t.setAttribute("startOffset", ringOff)); }
+function turnRing(now) {
+  requestAnimationFrame(turnRing);
+  const dt = Math.min(0.1, (now - (ringLast || now)) / 1000);
+  ringLast = now;
+  if (!ringC || reducedMotion || $("wall-in").inert) return;
+  ringOff -= RING_SPEED * dt;
+  if (ringOff < ringC) ringOff += ringC;
+  placeRing();
+}
+requestAnimationFrame(turnRing);
+document.addEventListener("hanua:weather", () => renderHeader());
+
 export function renderHeader() {
   const now = new Date();
   const hr = now.getHours();
-  $("greet").textContent = hr >= 21 || hr < 4 ? "Good night." : hr < 12 ? "Good morning." : hr < 18 ? "Good afternoon." : "Good evening.";
+  renderGreeting(hr);
   $("today-label").textContent = longDate(now);
   // the clock shows the day and date, so the curve over the lamp shows the week of the year and the season
-  $("arc-date").textContent = `WEEK ${isoWeek(now)} · ${season(now)}`;
+  setRingWords([`WEEK ${isoWeek(now)}`, season(now), weatherLine()].filter(Boolean).join(" · "));
   const { notion, claude } = state.status;
   const live = state.areas.filter((a) => a.live).length;
   $("status").replaceChildren(
@@ -1361,6 +1474,7 @@ export function renderAll() {
   renderWeek();
   renderTopShelf();
   renderWhiteboard();
+  renderMealSlip();
   if (onBoard) renderBoard();
 }
 

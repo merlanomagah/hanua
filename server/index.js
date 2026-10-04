@@ -13,6 +13,7 @@ import { rollUp } from "../public/shared/goals.js";
 import { weekKey } from "../public/shared/dates.js";
 import { MEALS, menuShape } from "../public/shared/menu.js";
 import { lockStatus, setPin, checkPin } from "./lock.js";
+import { getWeather } from "./weather.js";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const config = JSON.parse(await readFile(path.join(root, "config/areas.json"), "utf8"));
@@ -132,6 +133,8 @@ async function readTastes() {
   }
 }
 app.get("/api/menu/tastes", async (_req, res) => res.json(await readTastes()));
+// The kitchen window: today's and tomorrow's weather (Open-Meteo, cached 30 min; sample weather without WEATHER_PLACE)
+app.get("/api/weather", async (_req, res) => res.json(await getWeather()));
 // Three ideas around a protein, for one meal. Suggestions only: Mel picks, and the board is only changed in the page.
 app.post("/api/menu/ideas", async (req, res, next) => {
   const { meal, day, protein, planned } = req.body ?? {};
