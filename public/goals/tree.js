@@ -3,8 +3,8 @@ import { dayOf, todayStr } from "../shared/dates.js";
 import { LEVELS, levelIndex } from "../shared/goals.js";
 import { $, fmtDay, h, reducedMotion } from "../lib.js";
 import { STATE_CLASS, actButton, goalById, kidsOf, renderBoard, rootChoices, setSpiderRoot, spiderRoot } from "./board.js";
-import { openPlan } from "./plan.js";
 import { openGoal } from "./form.js";
+import { openPlan } from "./plan.js";
 export function spNode(g, depth) {
   const lvl = (g.level || "Task").toLowerCase();
   const st = STATE_CLASS[(g.status || "new").toLowerCase()] || "new";

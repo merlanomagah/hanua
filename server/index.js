@@ -4,10 +4,12 @@ import Anthropic from "@anthropic-ai/sdk";
 import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
-import { notionEnabled, queryArea, getSchema, toNotionProperties, clearedProperties, createPage, updatePage, archivePage, NotionError } from "./notion.js";
+import { notionEnabled, queryArea, getSchema, toNotionProperties, createPage, updatePage, archivePage, NotionError } from "./notion.js";
 import { claudeEnabled, ask, draftEntry, coachGoal, suggestChildren } from "./claude.js";
 import { getMoney } from "./money.js";
 import { musicStatus, musicAction, playPlaylist } from "./music.js";
+import { toGoal, goalProperties, goalOptions } from "./goals.js";
+import { rollUp } from "../public/shared/goals.js";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const config = JSON.parse(await readFile(path.join(root, "config/areas.json"), "utf8"));
@@ -117,81 +119,62 @@ app.post("/api/areas/:id/records/:recordId/done", async (req, res, next) => {
 });
 
 // ---------- goals (the pin board): an ADO-style hierarchy, Epic > Feature > PBI > Task ----------
-// Notion is their home. Each goal links to its Parent; progress rolls up from children here, never stored.
+// Notion is their home. Each goal links to its Parent; progress rolls up from children (public/shared/goals.js), never stored.
 
-const GOAL_FORM = ["title", "level", "status", "area", "due", "start", "why", "doneWhen", "description", "parent", "priority", "effort", "progress", "completed", "felt"];
-const goalColumn = { title: "title", level: "level", status: "status", area: "area", due: "date", start: "start", why: "why", doneWhen: "doneWhen", description: "description", parent: "parent", priority: "priority", effort: "effort", progress: "amount", completed: "completed", felt: "felt" };
+const goalRow = (r) => toGoal(r, goalsArea.fields);
 
-function toGoal(r) {
-  const f = goalsArea.fields, v = r.fields || {};
-  const first = (x) => (Array.isArray(x) ? x[0] ?? null : x ?? null);
-  return {
-    id: r.id, url: r.url, title: r.title, due: r.date, status: r.status,
-    level: v[f.level] ?? null, area: v[f.area] ?? null, description: v[f.description] ?? "", why: v[f.why] ?? "", doneWhen: v[f.doneWhen] ?? "",
-    parent: first(v[f.parent]), priority: v[f.priority] ?? null, effort: v[f.effort] ?? null, start: v[f.start] ?? null, completed: v[f.completed] ?? null, felt: v[f.felt] ?? null,
-    progressSet: typeof r.amount === "number" ? Math.round(r.amount * 100) : null,
-  };
+// Writes keep the cached rows in step (Notion sends each saved row back), so the next read doesn't go to Notion.
+function patchCache(area, change) {
+  const hit = cache.get(area.id);
+  if (hit) hit.records = change(hit.records);
 }
+const putRecord = (area, record) => patchCache(area, (rows) => (rows.some((r) => r.id === record.id) ? rows.map((r) => (r.id === record.id ? record : r)) : [record, ...rows]));
 
-// Progress and effort roll up the tree: a parent's progress is the average of its children's.
-function rollUp(goals) {
-  const kids = new Map();
-  for (const g of goals) if (g.parent) kids.set(g.parent, [...(kids.get(g.parent) || []), g]);
-  const done = (g) => /^done/i.test(g.status || "");
-  const seen = new Set();
-  function walk(g) {
-    if (seen.has(g.id)) return g; // guards against a loop of parents
-    seen.add(g.id);
-    const children = (kids.get(g.id) || []).map(walk);
-    g.children = children.map((c) => c.id);
-    g.childDone = children.filter(done).length;
-    g.progress = done(g) ? 100
-      : children.length ? Math.round(children.reduce((s, c) => s + c.progress, 0) / children.length)
-      : g.progressSet ?? 0;
-    const childEffort = children.reduce((s, c) => s + (c.effortTotal || 0), 0);
-    g.effortTotal = children.length && childEffort ? childEffort : g.effort ?? null;
-    return g;
-  }
-  goals.forEach(walk);
-  return goals;
-}
-
-// The pin board's form -> Notion columns. Fields sent empty are cleared in Notion; fields not sent are left alone.
-function goalProperties(schema, values = {}) {
-  const f = goalsArea.fields;
-  const set = [], clear = [];
-  for (const key of GOAL_FORM) {
-    if (!(key in values)) continue;
-    const column = f[goalColumn[key]];
-    let value = values[key];
-    if (key === "progress" && value !== "" && value != null) value = Math.min(100, Math.max(0, Number(value))) / 100;
-    if (value === "" || value == null) clear.push(column);
-    else set.push({ name: column, value: String(value).trim() });
-  }
-  return { ...clearedProperties(schema, clear.filter((c) => c !== f.title)), ...toNotionProperties(schema, set) };
-}
-
-app.get("/api/goals", async (_req, res) => {
+app.get("/api/goals", async (req, res) => {
   if (!goalsArea) return res.json({ goals: [], live: false, notionUrl: null });
-  const base = { live: isLive(goalsArea), notionUrl: notionUrl(goalsArea), guideUrl: goalsArea.guideUrl || null, coach: claudeEnabled() };
+  const live = isLive(goalsArea);
+  const base = { live, notionUrl: notionUrl(goalsArea), guideUrl: goalsArea.guideUrl || null, coach: claudeEnabled() };
   try {
-    res.json({ ...base, goals: rollUp((await recordsFor(goalsArea)).map(toGoal)) });
+    const [records, schema] = await Promise.all([recordsFor(goalsArea, { fresh: req.query.fresh === "1" }), live ? getSchema(goalsArea).catch(() => null) : null]);
+    res.json({ ...base, goals: rollUp(records.map(goalRow)), options: schema ? goalOptions(schema, goalsArea.fields) : null, fetchedAt: live ? cache.get(goalsArea.id)?.at ?? Date.now() : Date.now() });
   } catch (err) {
     res.json({ ...base, goals: [], error: err.message });
   }
 });
 
+async function createGoal(values) {
+  if (!values?.title?.trim()) throw Object.assign(new Error("Give the goal a name."), { status: 400 });
+  const record = await createPage(goalsArea, goalProperties(await getSchema(goalsArea), values, goalsArea.fields));
+  putRecord(goalsArea, record);
+  return goalRow(record);
+}
+
 app.post("/api/goals", async (req, res, next) => {
   if (!goalsArea || !isLive(goalsArea)) return res.json({ ok: true, live: false });
-  if (!req.body?.values?.title?.trim()) return res.status(400).json({ error: "Give the goal a name." });
   try {
-    const schema = await getSchema(goalsArea);
-    const record = await createPage(goalsArea, goalProperties(schema, req.body.values));
-    cache.delete(goalsArea.id);
-    res.json({ ok: true, live: true, goal: toGoal(record) });
+    res.json({ ok: true, live: true, goal: await createGoal(req.body?.values) });
   } catch (err) {
+    if (err.status === 400) return res.status(400).json({ error: err.message });
     next(err);
   }
+});
+
+// Several goals at once (Plan). Two at a time to stay inside Notion's rate limit; a result for every row,
+// so a refusal part-way says exactly which ones were added.
+app.post("/api/goals/batch", async (req, res) => {
+  const items = Array.isArray(req.body?.items) ? req.body.items.slice(0, 25) : [];
+  if (!goalsArea || !isLive(goalsArea)) return res.json({ ok: true, live: false, results: items.map(() => ({ ok: true })) });
+  const results = new Array(items.length);
+  let next = 0;
+  const worker = async () => {
+    while (next < items.length) {
+      const i = next++;
+      try { results[i] = { ok: true, goal: await createGoal(items[i]) }; }
+      catch (err) { results[i] = { ok: false, error: err.message }; }
+    }
+  };
+  await Promise.all([worker(), worker()]);
+  res.json({ ok: results.every((r) => r.ok), live: true, results });
 });
 
 // Ask Claude to review a goal before saving. Returns suggestions only; nothing is written.
@@ -223,7 +206,11 @@ app.post("/api/goals/:id/delete", async (req, res, next) => {
   if (!goalsArea || !isLive(goalsArea)) return res.json({ ok: true, live: false });
   try {
     await archivePage(req.params.id);
-    cache.delete(goalsArea.id);
+    // Notion unlinks its children; the cached rows follow suit
+    const { parent: P, children: C } = goalsArea.fields;
+    const unlink = (v) => (Array.isArray(v) ? v.filter((id) => id !== req.params.id) : v);
+    patchCache(goalsArea, (rows) => rows.filter((r) => r.id !== req.params.id)
+      .map((r) => ({ ...r, fields: { ...r.fields, ...(P in (r.fields || {}) ? { [P]: unlink(r.fields[P]) } : {}), ...(C in (r.fields || {}) ? { [C]: unlink(r.fields[C]) } : {}) } })));
     res.json({ ok: true, live: true });
   } catch (err) {
     next(err);
@@ -233,10 +220,9 @@ app.post("/api/goals/:id/delete", async (req, res, next) => {
 app.post("/api/goals/:id", async (req, res, next) => {
   if (!goalsArea || !isLive(goalsArea)) return res.json({ ok: true, live: false });
   try {
-    const schema = await getSchema(goalsArea);
-    await updatePage(req.params.id, goalProperties(schema, req.body?.values));
-    cache.delete(goalsArea.id);
-    res.json({ ok: true, live: true });
+    const record = await updatePage(req.params.id, goalProperties(await getSchema(goalsArea), req.body?.values, goalsArea.fields), goalsArea.fields);
+    putRecord(goalsArea, record);
+    res.json({ ok: true, live: true, goal: goalRow(record) });
   } catch (err) {
     next(err);
   }

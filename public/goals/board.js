@@ -1,13 +1,14 @@
 // ---------- goals pin board: swipe right to slide the wall aside ----------
 import { dayOf, daysBetween, todayStr } from "../shared/dates.js";
-import { LEVELS, isGoalDone, levelIndex, lineageIn, rollUp, treeOrder } from "../shared/goals.js";
+import { LEVELS, isGoalDone, levelIndex, lineageIn, treeOrder } from "../shared/goals.js";
 import { GUIDE, WIP_LIMIT } from "../coach.js";
-import { $, api, fmtDay, h, reducedMotion, state, store, toast } from "../lib.js";
-import { layoutSpider, renderSpider } from "./tree.js";
-import { renderTimeline, scrollTimelineToToday } from "./timeline.js";
-import { openPlan } from "./plan.js";
+import { $, fmtDay, h, reducedMotion, state, store, toast } from "../lib.js";
+import { removeGoal, statusOptions, updateGoal } from "./store.js";
 import { askFelt, openGoal } from "./form.js";
+import { openPlan } from "./plan.js";
 import { reviewDue } from "./review.js";
+import { renderTimeline, scrollTimelineToToday } from "./timeline.js";
+import { layoutSpider, renderSpider } from "./tree.js";
 import { coinText, dollars, epicValue, renderTopShelf } from "../shelf.js";
 import { renderCalendar } from "../app.js";
 
@@ -104,7 +105,7 @@ export function renderBoard() {
   const cols = boardView === "spider" ? [renderSpider()]
     : boardView === "timeline" ? [renderTimeline()]
     : boardView === "kanban"
-    ? GOAL_STATUS.map((st) => {
+    ? statusOptions(GOAL_STATUS).map((st) => {
         const list = goals.filter((g) => g.level === boardLevel && (g.status || "New") === st).sort(treeOrder(goals));
         // Personal Kanban: cap what's in progress, so things get finished
         const over = st === "Active" && list.length > WIP_LIMIT;
@@ -204,9 +205,7 @@ export function confirmDelete(g) {
   $("confirm-note").textContent = `${state.goals.live ? "It moves to Notion's trash, where you can restore it for 30 days." : "Sample goals: this only removes it from this page."}${kids ? ` Its ${kids} ${LEVELS[levelIndex(g.level) + 1]?.plural || "children"} stay, but lose their link to it.` : ""}`;
   confirmAction = async () => {
     try {
-      const res = await api(`/api/goals/${g.id}/delete`, {});
-      if (res.live) state.goals = await api("/api/goals");
-      else { state.goals.goals = state.goals.goals.filter((x) => x.id !== g.id).map((x) => (x.parent === g.id ? { ...x, parent: null } : x)); recalcSample(); }
+      const res = await removeGoal(g);
       if (focusGoal === g.id) focusGoal = null;
       toast(res.live ? "Moved to Notion's trash" : "Removed (sample goals)");
       renderBoard();
@@ -262,12 +261,11 @@ export async function moveGoal(g, status, undoing = false) {
   const before = g.status || "New";
   // the Completed date feeds the weekly review: set on Done, cleared if it moves back
   const completed = status === "Done" ? todayStr() : before === "Done" ? "" : undefined;
-  g.status = status;
-  renderBoard();
+  const values = completed === undefined ? { status } : { status, completed };
   try {
-    const res = await api(`/api/goals/${g.id}`, { values: { status, completed } });
-    if (res.live) state.goals = await api("/api/goals");
-    else { if (completed !== undefined) g.completed = completed || null; recalcSample(); }
+    const saving = updateGoal(g, values);
+    renderBoard();
+    const res = await saving;
     renderBoard();
     if (status === "Done" && !undoing) askFelt(goalById(g.id) || g);
     const active = state.goals.goals.filter((x) => x.level === g.level && x.status === "Active").length;
@@ -275,15 +273,9 @@ export async function moveGoal(g, status, undoing = false) {
     const earned = status === "Done" ? coinText(g) : "";
     if (!undoing) toast(`“${g.title}” moved to ${status}${res.live ? "" : " (sample, not saved to Notion)"}.${earned}${wip}`, Boolean(wip), { label: "Undo", run: () => moveGoal(goalById(g.id) || g, before, true) });
   } catch (err) {
-    g.status = before;
     renderBoard();
     toast(err.message, true);
   }
-}
-
-// Sample goals: roll progress up locally, the way the server does for real ones.
-export function recalcSample() {
-  rollUp(state.goals.goals);
 }
 
 document.querySelectorAll("[data-view]").forEach((b) => b.addEventListener("click", () => {

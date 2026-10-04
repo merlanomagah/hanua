@@ -3,7 +3,8 @@ import { dayOf, daysBetween, todayStr, ymd } from "../shared/dates.js";
 import { LEVELS, isGoalDone } from "../shared/goals.js";
 import { WIP_LIMIT } from "../coach.js";
 import { $, api, fmtDay, h, longDate, state, toast } from "../lib.js";
-import { onBoard, recalcSample, renderBoard } from "./board.js";
+import { createGoal } from "./store.js";
+import { onBoard, renderBoard } from "./board.js";
 import { leafGoals, sized } from "./form.js";
 import { renderNotes } from "../app.js";
 
@@ -112,9 +113,7 @@ export function renderReview() {
       add.disabled = true;
       const values = { title: title.value.trim(), level: "Task", parent: parent.value, status: "New", due: ymd(sundayOf(new Date())) };
       try {
-        const res = await api("/api/goals", { values });
-        if (res.live) state.goals = await api("/api/goals");
-        else { state.goals.goals.push({ id: `local-${Date.now()}`, url: null, ...values }); recalcSample(); }
+        const res = await createGoal(values);
         toast(res.live ? "Task added to Notion ✓" : "Task added here only (sample goals)");
         if (onBoard) renderBoard();
         renderReview();

@@ -3,7 +3,8 @@ import { dayOf, todayStr } from "../shared/dates.js";
 import { LEVELS, donePoints, isGoalDone, levelIndex } from "../shared/goals.js";
 import { GUIDE, SIZES, SIZE_QUESTIONS, coachChecks, suggestSize } from "../coach.js";
 import { $, api, h, state, toast } from "../lib.js";
-import { GOAL_AREAS, GOAL_STATUS, boardLevel, boardView, goalById, recalcSample, renderBoard, setFocusGoal, toggleNewMenu } from "./board.js";
+import { areaOptions, createGoal, statusOptions, updateGoal } from "./store.js";
+import { GOAL_AREAS, GOAL_STATUS, boardLevel, boardView, goalById, renderBoard, setFocusGoal, toggleNewMenu } from "./board.js";
 import { coinText } from "../shelf.js";
 export let editingGoal = null;
 export function fillSelect(sel, options, value, blank = "—") {
@@ -28,9 +29,9 @@ export function openGoal(g, preset = {}) {
   f.title.value = v.title || "";
   fillSelect(f.level, LEVELS.map((l) => ({ value: l.name, label: `${l.name} · ${l.when}` })), level);
   fillParents(level, v.parent || "");
-  fillSelect(f.status, GOAL_STATUS, v.status || "New");
+  fillSelect(f.status, statusOptions(GOAL_STATUS), v.status || "New");
   fillSelect(f.priority, [1, 2, 3, 4].map((p) => ({ value: String(p), label: `P${p}${p === 1 ? " · highest" : p === 4 ? " · lowest" : ""}` })), v.priority ? String(v.priority) : "");
-  fillSelect(f.area, GOAL_AREAS, v.area || "");
+  fillSelect(f.area, areaOptions(GOAL_AREAS), v.area || "");
   f.effort.value = v.effort ?? "";
   f.start.value = dayOf(v.start || "");
   f.due.value = dayOf(v.due || "");
@@ -181,9 +182,7 @@ document.querySelectorAll("[data-felt]").forEach((b) => b.addEventListener("clic
   $("felt-dialog").close();
   if (!g) return;
   try {
-    const res = await api(`/api/goals/${g.id}`, { values: { felt } });
-    if (res.live) state.goals = await api("/api/goals");
-    else g.felt = felt;
+    await updateGoal(g, { felt });
     toast(felt === "About right" ? "Nice estimate ✓" : `Noted: felt ${felt.toLowerCase()}. Next time you'll know.`);
   } catch (err) { toast(err.message, true); }
 }));
@@ -297,19 +296,9 @@ $("goal-dialog").addEventListener("close", async () => {
   else if (wasDone && values.status !== "Done") values.completed = "";
   if (!values.title) return toast("Give the goal a name.", true);
   try {
-    const res = await api(g ? `/api/goals/${g.id}` : "/api/goals", { values });
-    if (res.live) {
-      toast(g ? "Saved to Notion ✓" : `${values.level} added to Notion ✓`);
-      state.goals = await api("/api/goals");
-      if (!g && res.goal) setFocusGoal(res.goal.id);
-    } else {
-      // sample data: change it on this page only
-      const local = { ...values, completed: values.completed ?? g?.completed ?? null, priority: values.priority ? Number(values.priority) : null, effort: values.effort ? Number(values.effort) : null, progressSet: values.progress ? Number(values.progress) : null };
-      if (g) Object.assign(g, local);
-      else state.goals.goals.push({ id: `local-${Date.now()}`, url: null, ...local });
-      recalcSample();
-      toast("Saved here only (sample goals, so Notion isn't changed)");
-    }
+    const res = g ? await updateGoal(g, values) : await createGoal(values);
+    if (!g) setFocusGoal(res.goal.id);
+    toast(!res.live ? "Saved here only (sample goals, so Notion isn't changed)" : g ? "Saved to Notion ✓" : `${values.level} added to Notion ✓`);
     renderBoard();
     if (g && values.status === "Done" && !wasDone) { askFelt(goalById(g.id)); toast(`Done ✓${coinText(g)}`); }
   } catch (err) {

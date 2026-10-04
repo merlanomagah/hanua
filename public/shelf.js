@@ -1,12 +1,13 @@
 // ---------- coins, goal jars and the treat shop ----------
 // Coins are worked out from finished goals (by level, never by guessed size) minus what you've bought.
 import { dayOf, todayStr, ymd } from "./shared/dates.js";
-import { isGoalDone, levelIndex } from "./shared/goals.js";
+import { coinValue, isGoalDone, levelIndex } from "./shared/goals.js";
 import { $, api, fmtDay, h, money, state, toast } from "./lib.js";
 import { goalById, lineage, onBoard } from "./goals/board.js";
 import { mondayOf, sundayOf } from "./goals/review.js";
 
-export const coinsFor = (g) => state.shop.coinsPerLevel?.[g.level] || 0;
+// by level, with a PBI's Tasks capped at the PBI's own value (public/shared/goals.js coinValue)
+export const coinsFor = (g) => coinValue(g, state.goals.goals, state.shop.coinsPerLevel);
 export const toDollars = (coins) => coins / (state.shop.coinsPerDollar || 10);
 export const dollars = (coins) => money(toDollars(coins), toDollars(coins) % 1 ? 2 : 0);
 export const coinText = (g) => (coinsFor(g) ? ` +${coinsFor(g)} coins (${dollars(coinsFor(g))}) in the treat fund.` : "");

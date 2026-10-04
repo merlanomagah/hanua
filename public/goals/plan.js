@@ -3,7 +3,8 @@ import { dayOf } from "../shared/dates.js";
 import { LEVELS, donePoints, isGoalDone, levelIndex } from "../shared/goals.js";
 import { SIZES } from "../coach.js";
 import { $, api, h, state, toast } from "../lib.js";
-import { kidsOf, recalcSample, renderBoard, setFocusGoal } from "./board.js";
+import { createGoals } from "./store.js";
+import { kidsOf, renderBoard, setFocusGoal } from "./board.js";
 import { sized } from "./form.js";
 export let planParent = null;
 export const planLevel = () => LEVELS[levelIndex(planParent?.level) + 1];
@@ -107,27 +108,14 @@ $("plan-dialog").addEventListener("close", async () => {
   const rows = planValues();
   if (!rows.length) return;
   const base = { level: lvl.name, parent: p.id, status: "New", area: p.area || "" };
-  let made = 0;
   try {
-    if (state.goals.live) {
-      for (const r of rows) {
-        await api("/api/goals", { values: { ...base, title: r.title, due: r.due, effort: r.effort, why: lvl.name === "Task" ? "" : r.why, doneWhen: r.doneWhen } });
-        made++;
-      }
-      state.goals = await api("/api/goals");
-    } else {
-      rows.forEach((r, i) => state.goals.goals.push({
-        id: `local-${Date.now()}-${i}`, url: null, ...base, area: base.area || null, title: r.title, due: r.due || null, start: null,
-        effort: r.effort ? Number(r.effort) : null, why: r.why, doneWhen: r.doneWhen, description: "", priority: null, completed: null, felt: null, progressSet: null,
-      }));
-      made = rows.length;
-      recalcSample();
-    }
+    const { created, failed, live } = await createGoals(rows.map((r) => ({ ...base, title: r.title, due: r.due, effort: r.effort, why: lvl.name === "Task" ? "" : r.why, doneWhen: r.doneWhen })));
     setFocusGoal(p.id);
-    toast(`${made} ${made === 1 ? lvl.name : lvl.plural} added under “${p.title}”${state.goals.live ? " ✓" : " (sample, not saved to Notion)"}`);
+    const n = created.length;
+    if (failed.length) toast(`${n} of ${rows.length} added. Not added: ${failed.map((f) => `“${f.values.title}” (${f.error})`).join(", ")}`, true);
+    else toast(`${n} ${n === 1 ? lvl.name : lvl.plural} added under “${p.title}”${live ? " ✓" : " (sample, not saved to Notion)"}`);
   } catch (err) {
-    toast(made ? `${made} of ${rows.length} added, then: ${err.message}` : err.message, true);
-    if (made) state.goals = await api("/api/goals").catch(() => state.goals);
+    toast(err.message, true);
   }
   renderBoard();
 });

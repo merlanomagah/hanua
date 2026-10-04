@@ -10,7 +10,8 @@ export class NotionError extends Error {
   }
 }
 
-async function call(path, { method = "GET", body } = {}) {
+// Notion allows about 3 requests a second. When it says "slow down" (429), wait as long as it asks and try once more.
+async function call(path, { method = "GET", body } = {}, retried = false) {
   const res = await fetch(`${BASE}${path}`, {
     method,
     headers: {
@@ -21,6 +22,11 @@ async function call(path, { method = "GET", body } = {}) {
     body: body ? JSON.stringify(body) : undefined,
   });
   const json = await res.json().catch(() => ({}));
+  if (res.status === 429 && !retried) {
+    const wait = Math.min(5, Number(res.headers.get("retry-after")) || 1);
+    await new Promise((r) => setTimeout(r, wait * 1000));
+    return call(path, { method, body }, true);
+  }
   if (!res.ok) throw new NotionError(res.status, json.message || res.statusText);
   return json;
 }
@@ -114,7 +120,13 @@ export async function queryArea(area, limit = 50) {
 }
 
 // Property name -> type, so Claude knows what it can fill in.
+// Column types and options rarely change, so each database's schema is kept for 10 minutes
+// rather than asked for on every write.
+const schemas = new Map();
+const SCHEMA_MS = 10 * 60_000;
 export async function getSchema(area) {
+  const hit = schemas.get(area.notionDatabaseId);
+  if (hit && Date.now() - hit.at < SCHEMA_MS) return hit.schema;
   const db = await call(`/databases/${area.notionDatabaseId}`);
   const schema = {};
   for (const [name, p] of Object.entries(db.properties)) {
@@ -123,6 +135,7 @@ export async function getSchema(area) {
     if (p.type === "multi_select") entry.options = p.multi_select.options.map((o) => o.name);
     schema[name] = entry;
   }
+  schemas.set(area.notionDatabaseId, { at: Date.now(), schema });
   return schema;
 }
 
@@ -187,8 +200,9 @@ export function clearedProperties(schema, names) {
   return out;
 }
 
-export async function updatePage(pageId, properties) {
-  await call(`/pages/${pageId}`, { method: "PATCH", body: { properties } });
+// Notion sends the updated page back, so the caller gets the saved row without reading the database again.
+export async function updatePage(pageId, properties, fields = {}) {
+  return normalisePage(await call(`/pages/${pageId}`, { method: "PATCH", body: { properties } }), fields);
 }
 
 export async function createPage(area, properties) {

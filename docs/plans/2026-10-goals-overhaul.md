@@ -31,11 +31,11 @@ Written 4 Oct 2026, from the Solutions Architect / UX / Dev review of the goals 
 
 The order is set so that nothing gets built twice. The foundations go first because every later feature writes through them.
 
-### Phase 1: Foundations (no visible change)
+### Phase 1: Foundations (no visible change) — done 4 Oct 2026
 
 | Step | What | Why it goes first |
 |---|---|---|
-| 1.1 | Split `public/app.js` into modules: `lib.js` (helpers, state, api, toast), `goals/core.js` (pure logic), `goals/store.js`, `goals/board.js` (Hierarchy, Board, cards), `goals/tree.js`, `goals/timeline.js`, `goals/plan.js`, `goals/form.js` (form, coach, sizing), `goals/review.js`, `shop.js`. No build step; plain ES modules. (#5) | Every later step edits these files. Splitting later would mean editing code twice. |
+| 1.1 | Split `public/app.js` into modules: `lib.js` (helpers, state, api, toast), `goals/core.js` (pure logic), `goals/store.js`, `goals/board.js` (Hierarchy, Board, cards), `goals/tree.js`, `goals/timeline.js`, `goals/plan.js`, `goals/form.js` (form, coach, sizing), `goals/review.js`, `shelf.js` (coins, top shelf, shop). Pure date and goal rules in `public/shared/` (dates.js, goals.js). No build step; plain ES modules. (#5) | Every later step edits these files. Splitting later would mean editing code twice. |
 | 1.2 | `goals/core.js`, a single source shared by the server and the page: `LEVELS`, `rollUp`, `treeOrder`, `lineage`, `goalSpan`, `donePoints`, `epicValue`, `coinsFor` **with the PBI cap**, and `dateConflicts` (child due after its parent). The server imports it, and `recalcSample` goes. (#2, #8, #9) | Coins, roll-up and dates are used by the desk, shop, tree and timeline. Building them once here means the later phases just use them. |
 | 1.3 | Server: write routes return the saved goal (Notion's update already sends the page back); new `POST /api/goals/batch` (2 at a time, a result per row); schema cached 10 min; one retry on 429 in `call()`; `GET /api/goals` also returns `options` from the schema and `fetchedAt`; `?fresh=1` skips the cache. (#1, #4, #10, #22) | Quick edits, desk ticking and Plan all depend on these. |
 | 1.4 | `goals/store.js`: `create`, `createMany`, `update`, `remove`, `refresh`. It applies the returned goal to the page and rolls up locally, handles sample and real the same way, and replaces the 8 separate branches. Undo is built in. (#3) | One write path for every feature after this. |

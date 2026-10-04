@@ -1,0 +1,94 @@
+// The shared goals rules (public/shared/goals.js), used by both the page and the server.
+import { test } from "node:test";
+import assert from "node:assert/strict";
+import { rollUp, treeOrder, lineageIn, goalSpan, dateConflicts, coinValue, donePoints, levelIndex } from "../public/shared/goals.js";
+import { addDays, daysBetween } from "../public/shared/dates.js";
+
+const goal = (id, level, extra = {}) => ({ id, level, title: id, status: "New", parent: null, ...extra });
+const tree = () => [
+  goal("E", "Epic"),
+  goal("F", "Feature", { parent: "E" }),
+  goal("P", "PBI", { parent: "F" }),
+  goal("T1", "Task", { parent: "P", status: "Done", effort: 2 }),
+  goal("T2", "Task", { parent: "P", effort: 3 }),
+];
+
+test("progress and effort roll up from the children", () => {
+  const goals = rollUp(tree());
+  const byId = Object.fromEntries(goals.map((g) => [g.id, g]));
+  assert.equal(byId.P.progress, 50);
+  assert.equal(byId.P.childDone, 1);
+  assert.deepEqual(byId.P.children, ["T1", "T2"]);
+  assert.equal(byId.P.effortTotal, 5);
+  assert.equal(byId.E.progress, 50);
+  assert.equal(byId.T1.progress, 100);
+});
+
+test("a typed progress only counts for a goal with no children", () => {
+  const [solo] = rollUp([goal("S", "Task", { progressSet: 40 })]);
+  assert.equal(solo.progress, 40);
+});
+
+test("a loop of parents doesn't hang", () => {
+  const goals = rollUp([goal("A", "Feature", { parent: "B" }), goal("B", "Feature", { parent: "A" })]);
+  assert.equal(goals.length, 2);
+});
+
+test("tree order puts children right after their parents", () => {
+  const goals = [goal("T2", "Task", { parent: "P" }), goal("P", "PBI", { parent: "E" }), goal("X", "Epic"), goal("E", "Epic", { priority: 1 })];
+  const sorted = [...goals].sort(treeOrder(goals)).map((g) => g.id);
+  assert.deepEqual(sorted, ["E", "P", "T2", "X"]);
+});
+
+test("lineage is the goal, its parents and its children", () => {
+  assert.deepEqual([...lineageIn(tree(), "F")].sort(), ["E", "F", "P", "T1", "T2"]);
+  assert.deepEqual([...lineageIn(tree(), "T1")].sort(), ["E", "F", "P", "T1"]);
+});
+
+test("a goal with only a due date gets an estimated start", () => {
+  const s = goalSpan(goal("F", "Feature", { due: "2026-12-31" }));
+  assert.equal(s.end, "2026-12-31");
+  assert.equal(s.start, addDays("2026-12-31", -60));
+  assert.ok(s.guessStart && !s.guessEnd);
+  const real = goalSpan(goal("T", "Task", { start: "2026-10-01", due: "2026-10-03" }));
+  assert.deepEqual(real, { start: "2026-10-01", end: "2026-10-03", guessStart: false, guessEnd: false });
+});
+
+test("date conflicts: due after the parent, or starting before it", () => {
+  const goals = [goal("F", "Feature", { start: "2026-10-01", due: "2026-11-30" }),
+    goal("P1", "PBI", { parent: "F", due: "2026-12-05" }), goal("P2", "PBI", { parent: "F", start: "2026-09-20", due: "2026-10-20" }),
+    goal("P3", "PBI", { parent: "F", due: "2026-11-01" }), goal("P4", "PBI", { parent: "F", due: "2026-12-30", status: "Done" })];
+  const c = dateConflicts(goals);
+  assert.equal(c.get("P1")[0].kind, "late");
+  assert.equal(c.get("P2")[0].kind, "early");
+  assert.ok(!c.has("P3"));
+  assert.ok(!c.has("P4"), "finished goals aren't flagged");
+});
+
+test("coins: a PBI's Tasks together earn at most the PBI's value", () => {
+  const per = { Epic: 1000, Feature: 250, PBI: 50, Task: 10 };
+  const tasks = Array.from({ length: 7 }, (_, i) => goal(`T${i}`, "Task", { parent: "P", status: i < 6 ? "Done" : "New", completed: `2026-10-0${i + 1}`, due: "2026-10-20" }));
+  const goals = [goal("P", "PBI", { parent: "F" }), ...tasks, goal("S", "Task"), goal("U", "Task", { parent: "F" })];
+  const pay = tasks.map((t) => coinValue(t, goals, per));
+  assert.deepEqual(pay, [10, 10, 10, 10, 10, 0, 0], "the first five finished are paid, then the cap is reached");
+  assert.equal(coinValue(goals.find((g) => g.id === "S"), goals, per), 10, "stand-alone Tasks pay as before");
+  assert.equal(coinValue(goals.find((g) => g.id === "U"), goals, per), 10, "Tasks under a Feature aren't capped");
+  assert.equal(coinValue(goals[0], goals, per), 50, "the PBI itself still pays");
+});
+
+test("coins: unfinished Tasks fill the cap in due-date order", () => {
+  const per = { PBI: 50, Task: 10 };
+  const goals = [goal("P", "PBI"), ...[5, 1, 4, 2, 3, 6].map((d) => goal(`T${d}`, "Task", { parent: "P", due: `2026-10-0${d}` }))];
+  assert.equal(coinValue(goals.find((g) => g.id === "T6"), goals, per), 0);
+  assert.equal(coinValue(goals.find((g) => g.id === "T1"), goals, per), 10);
+});
+
+test("done-when points lose their bullets", () => {
+  assert.deepEqual(donePoints({ doneWhen: "- First\n•  Second\n\n* Third\nPlain" }), ["First", "Second", "Third", "Plain"]);
+});
+
+test("dates", () => {
+  assert.equal(addDays("2026-12-30", 3), "2027-01-02");
+  assert.equal(daysBetween("2026-10-01", "2026-11-01"), 31);
+  assert.equal(levelIndex("PBI"), 2);
+});

@@ -1,7 +1,8 @@
 // ---- Timeline: every goal as a bar from its start to its due date, grouped the way the hierarchy is ----
 import { addDays, dayOf, daysBetween, parseDay, todayStr, ymd } from "../shared/dates.js";
 import { goalSpan, treeOrder } from "../shared/goals.js";
-import { $, api, fmtDay, h, state, toast } from "../lib.js";
+import { $, fmtDay, h, state, toast } from "../lib.js";
+import { updateGoal } from "./store.js";
 import { STATE_CLASS, goalById, kidsOf, renderBoard, tlLevelPicker, tlLevels, tlRoot } from "./board.js";
 import { openGoal } from "./form.js";
 export function renderTimeline() {
@@ -153,17 +154,17 @@ export async function setGoalDates(g, values, undoing = false) {
   const focusBar = () => { if (refocus) $("cork-cols").querySelector(`.tl-bar[data-id="${CSS.escape(g.id)}"]`)?.focus({ preventScroll: true }); };
   if ("start" in values) before.start = dayOf(g.start);
   if ("due" in values) before.due = dayOf(g.due);
-  Object.assign(g, Object.fromEntries(Object.entries(values).map(([k, v]) => [k, v || null])));
-  renderBoard();
-  focusBar();
   try {
-    const res = await api(`/api/goals/${g.id}`, { values });
-    if (res.live) { state.goals = await api("/api/goals"); renderBoard(); focusBar(); }
+    const saving = updateGoal(g, values);
+    renderBoard();
+    focusBar();
+    const res = await saving;
+    renderBoard();
+    focusBar();
     const now = goalSpan(goalById(g.id) || g);
     if (!undoing) toast(`“${g.title}”: ${fmtDay(now.start, { day: "numeric", month: "short" })} → ${fmtDay(now.end, { day: "numeric", month: "short" })}${res.live ? "" : " (sample, not saved to Notion)"}.`, false,
       { label: "Undo", run: () => setGoalDates(goalById(g.id) || g, before, true) });
   } catch (err) {
-    Object.assign(g, Object.fromEntries(Object.entries(before).map(([k, v]) => [k, v || null])));
     renderBoard();
     toast(err.message, true);
   }
