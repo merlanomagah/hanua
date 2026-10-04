@@ -389,19 +389,18 @@
       </section>
 
       <!-- Looking down at the desk: today -->
+      <!-- The desk: one slide down from the wall (or the kitchen), for planning the day (Mel, 5 Oct 2026) -->
+      <div class="desk-pane" id="desk-pane">
       <div class="desk-edge" id="desk-edge" aria-hidden="true"></div>
       <section class="desk" aria-label="Today">
-        <article class="notepad" id="todo"></article>
-        <article class="agenda" id="agenda"></article>
-        <article class="receipt" id="week"></article>
+        <div class="desk-up"><button type="button" id="desk-up"><span class="arrow" aria-hidden="true">↑</span>THE WALL</button></div>
+        <!-- the notebook: Focus, Key tasks, General and Work, typed on drawn lines -->
+        <article class="notepad planner" id="todo" aria-label="Today's plan"></article>
+        <!-- the agenda on an iPad lying flat: swipe, or ‹ ›, for other days -->
+        <article class="ipad" id="agenda" aria-label="Agenda" tabindex="0"></article>
         <!-- today's meals, from the menu in the kitchen -->
         <button type="button" class="meal-slip" id="meal-slip" title="Open the kitchen" hidden></button>
-
-        <div class="scatter" aria-hidden="true">
-          <img src="assets/obj/sticky-pad.png" alt="" class="sticky-pad">
-          <img src="assets/obj/pencil.png" alt="" class="pencil">
-          <img src="assets/obj/clips.png" alt="" class="clips">
-        </div>
+        <img src="assets/obj/sticky-pad.png" alt="" class="sticky-pad" aria-hidden="true">
         <img src="assets/obj/cup.png" alt="" class="cup" aria-hidden="true">
         <!-- the same lamp on the desk; its cord switches every light -->
         <div class="lamp-wrap desk-lamp">
@@ -414,6 +413,7 @@
         </div>
         <div class="desk-dim" aria-hidden="true"></div>
       </section>
+      </div>
 
     </main>
   </div>

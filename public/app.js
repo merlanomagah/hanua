@@ -1,11 +1,10 @@
 import "./lock.js"; // the sleep screen goes up before anything else
 import { aheadText, dayOf, daysBetween, lastLightSwitch, pad, parseDay, timeIn, timeOf, todayStr, ymd } from "./shared/dates.js";
 import { GREET_EVERY_MS, GREET_NAME, greetingsAt, timeOfDay } from "./shared/greetings.js";
-import { isGoalDone, onCalendar } from "./shared/goals.js";
+import { onCalendar } from "./shared/goals.js";
 import { $, ago, api, area, fmtDay, focus, focusGoals, h, hiddenInFocus, isDone, isNarrow, longDate, money, num, records, reducedMotion, state, store, toast, updatedLine } from "./lib.js";
-import { goalById, moveGoal, onBoard, renderBoard, showBoard } from "./goals/board.js";
+import { onBoard, renderBoard, showBoard } from "./goals/board.js";
 import { openGoal } from "./goals/form.js";
-import { openQuick } from "./goals/quick.js";
 import { openReview, reviewDue } from "./goals/review.js";
 import { renderTopShelf, toggleEarnings } from "./shelf.js";
 import { loadPlant } from "./plant.js";
@@ -14,6 +13,7 @@ import "./menu-plan.js"; // Plan the week ✦ on the menu board
 import { onKitchen, renderMealSlip, showKitchen } from "./kitchen.js"; // swipe left: the weather window and the menu
 import { weatherLine } from "./weather-window.js";
 import "./bird.js"; // the canary: just for life
+import { loadDesk, onDesk, renderAgenda, renderTodo, showDesk } from "./planner.js"; // the desk: notebook and iPad
 
 // Which Notion area plays which part on the page (ids from config/areas.json)
 export const ROLE = { tasks: "work", events: "calendar", notes: "learning", people: "relationships" };
@@ -339,7 +339,6 @@ $("remote-power").addEventListener("click", () => {
   store("room-money", moneyHidden ? "hidden" : "shown");
   setScreen(!moneyHidden);
   applyRemote();
-  renderWeek();
   if (activeBook === "money") closeBook();
 });
 
@@ -625,60 +624,7 @@ export function renderNotes() {
   }));
 }
 
-// ---------- desk: notepad checklist ----------
-
-export const PAD_LINES = 18; // ruled lines left on the notepad below the heading
-
-export function renderTodo() {
-  const today = todayStr();
-  const work = records(ROLE.tasks)
-    .filter((r) => (!isDone(r) && (!r.date || dayOf(r.date) <= today)) || (isDone(r) && dayOf(r.date) === today))
-    .map((r) => ({ r, title: r.title, date: r.date, done: isDone(r) }));
-  // goal Tasks due today or earlier (and any finished today) share the list: one place to tick things off
-  const goalTasks = focusGoals(state.goals.goals)
-    .filter((g) => g.level === "Task" && (isGoalDone(g) ? dayOf(g.completed) === today : g.due && dayOf(g.due) <= today))
-    .map((g) => ({ g, title: g.title, date: g.due, done: isGoalDone(g) }));
-  const tasks = [...work, ...goalTasks].sort((a, b) => Number(a.done) - Number(b.done) || (a.date || "9").localeCompare(b.date || "9"));
-  const shown = tasks.length > PAD_LINES ? tasks.slice(0, PAD_LINES - 1) : tasks;
-  const list = h("ul", { className: "todo" });
-  if (!tasks.length) list.append(h("li", {}, h("span", { className: "empty", textContent: "Nothing due today. Enjoy it." })));
-  for (const item of shown) {
-    const { r, g, title, done } = item;
-    const late = item.date && dayOf(item.date) < today && !done;
-    const check = h("button", { type: "button", className: "check", ariaLabel: `Mark ${title} ${done ? "not done" : "done"}`, innerHTML: '<svg viewBox="0 0 16 16"><path d="M3 8.5l3 3 7-7"/></svg>' });
-    let li;
-    if (g) {
-      // a goal Task: its name opens quick edit; the note says which goal it serves
-      const parent = goalById(g.parent);
-      const name = h("button", { type: "button", className: "t", textContent: title, title: `${title}: change state or due date` });
-      name.dataset.act = "quick";
-      name.addEventListener("click", () => openQuick(g, name));
-      li = h("li", { className: `goal-task${done ? " done" : ""}` }, check, name,
-        h("span", { className: `m g${late ? " late" : ""}`, title: parent ? `For “${parent.title}”` : "A goal Task", textContent: late ? `Overdue · ${fmtDay(item.date, { day: "numeric", month: "short" })}` : parent ? parent.title : "Goal" }));
-      // finishing it here is the same as on the board: coins, "how big did it feel", Undo
-      check.addEventListener("click", () => { li.classList.toggle("done", !done); moveGoal(g, done ? "Active" : "Done"); });
-    } else {
-      li = h("li", { className: done ? "done" : "" }, check,
-        h("span", { className: "t", textContent: title, title }),
-        h("span", { className: `m${late ? " late" : ""}`, textContent: late ? `Overdue · ${fmtDay(r.date, { day: "numeric", month: "short" })}` : r.status || "To do" }));
-      check.addEventListener("click", () => toggleTask(r, li));
-    }
-    list.append(li);
-  }
-  if (shown.length < tasks.length) {
-    const more = h("li", {}, h("button", { type: "button", className: "more", style: "border:0;background:none;padding:0;cursor:pointer", textContent: `+ ${tasks.length - shown.length} more in your Work book${goalTasks.length ? " and goals" : ""}` }));
-    more.firstChild.addEventListener("click", () => openBook(ROLE.tasks, bookEl(ROLE.tasks)));
-    list.append(more);
-  }
-  const open = tasks.filter((t) => !t.done).length;
-  $("todo").replaceChildren(
-    h("img", { src: "assets/obj/notepad.png", alt: "" }),
-    h("div", { className: "pad-lines" },
-      h("h2", { className: "pad-title", style: "margin:0", textContent: "Today's list" }),
-      h("div", { className: "pad-sub", textContent: `${open} to do · from your Work book${goalTasks.length ? " and goals" : ""}` }),
-      list),
-  );
-}
+// ---------- desk: ticking a Work book task (the notebook lives in planner.js) ----------
 
 export async function toggleTask(r, li) {
   const done = !isDone(r);
@@ -694,82 +640,6 @@ export async function toggleTask(r, li) {
     li.classList.toggle("done", !done);
     toast(err.message, true);
   }
-}
-
-// ---------- desk: agenda ----------
-
-export function renderAgenda() {
-  const today = todayStr();
-  const now = new Date();
-  const nowHM = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
-  const items = records(ROLE.events).filter((r) => dayOf(r.date) === today)
-    .sort((a, b) => (timeOf(a.date) || "00:00").localeCompare(timeOf(b.date) || "00:00"));
-  const list = h("ol", { className: "slots" });
-  let nowPlaced = false;
-  for (const r of items) {
-    const t = timeOf(r.date);
-    if (!nowPlaced && t && t > nowHM) { list.append(h("li", { className: "now-line" }, h("span", { textContent: `NOW ${nowHM}` }))); nowPlaced = true; }
-    const inner = [h("span", { className: "t", textContent: r.title }), r.status && !r.busy ? h("span", { className: "k", textContent: r.status }) : null];
-    // a personal event at work is just "Busy": nothing to open
-    const open = r.busy ? h("span", { className: "slot-open busy" }, ...inner) : h("button", { type: "button", className: "slot-open", title: "Open in your Calendar book" }, ...inner);
-    if (!r.busy) open.addEventListener("click", () => openBook(ROLE.events, bookEl(ROLE.events), r.id));
-    list.append(h("li", { className: `slot${t && t < nowHM ? " past" : ""}` },
-      h("time", { textContent: t || "All day" }),
-      open,
-      r.url ? h("a", { className: "slot-out", href: r.url, target: "_blank", rel: "noopener", title: "Open in Notion", ariaLabel: `Open ${r.title} in Notion`, textContent: "↗" }) : null));
-  }
-  if (items.length && !nowPlaced) list.append(h("li", { className: "now-line" }, h("span", { textContent: `NOW ${nowHM}` })));
-  $("agenda").replaceChildren(
-    h("div", { className: "band", ariaHidden: "true" }),
-    h("div", { className: "inner" },
-      h("h2", { textContent: "Agenda" }),
-      h("div", { className: "date", textContent: longDate(now) }),
-      h("div", { className: "body" },
-        items.length ? list : h("p", { className: "empty", style: "margin:0", textContent: "No meetings today." }))),
-  );
-}
-
-// ---------- desk: week receipt ----------
-
-export function renderWeek() {
-  const m = state.money;
-  if (!m) return;
-  if (moneyOff()) {
-    return $("week").replaceChildren(
-      h("div", { className: "paper hidden-paper" },
-        h("div", { className: "r-head", textContent: "THIS WEEK" }),
-        h("div", { className: "r-hidden", textContent: focus.on ? "Hidden at work" : "Hidden with the remote" }),
-        h("div", { className: "r-foot", textContent: focus.on ? "FLIP THE SIGN TO AT HOME TO SHOW" : "PRESS ⏻ ON THE REMOTE TO SHOW" })),
-      h("div", { className: "tear", ariaHidden: "true" }));
-  }
-  const w = m.week;
-  const scale = Math.max(w.usual / 0.86, w.spent * 1.05, 1);
-  const maxDay = Math.max(...w.days.map((d) => d.spent), 1);
-  const today = todayStr();
-  const avg = w.spent / 7;
-  const top = w.days.reduce((a, b) => (b.spent > a.spent ? b : a), w.days[0]);
-  const short = { day: "numeric", month: "short" };
-  $("week").replaceChildren(
-    h("div", { className: "paper" },
-      h("div", { className: "r-head", textContent: "THIS WEEK" }),
-      h("div", { className: "r-range", textContent: `${fmtDay(w.days[0].date, short)} – ${fmtDay(w.days[6].date, short)}` }),
-      h("div", { className: "r-big", textContent: money(w.spent) }),
-      h("div", { className: "week-bar" },
-        Object.assign(h("b", { className: w.spent > w.usual ? "over" : "" }), { style: `width:${(w.spent / scale) * 100}%` }),
-        Object.assign(h("i", { title: `Usual week ${money(w.usual)}` }), { style: `left:${(w.usual / scale) * 100}%` })),
-      h("div", { className: "week-legend" },
-        h("span", { textContent: w.spent <= w.usual ? `${money(w.usual - w.spent)} under usual` : `${money(w.spent - w.usual)} over usual` }),
-        h("span", { textContent: `Usual ${money(w.usual)}` })),
-      h("div", { className: "days" }, w.days.map((d) => Object.assign(
-        h("i", { className: d.date === today ? "today" : "", title: `${fmtDay(d.date)} · ${money(d.spent, 2)}` }),
-        { style: `height:${Math.max(4, (d.spent / maxDay) * 100)}%` }))),
-      h("div", { className: "dl" }, w.days.map((d) => h("span", { textContent: parseDay(d.date).toLocaleDateString(undefined, { weekday: "narrow" }) }))),
-      h("div", { className: "r-rows" },
-        h("div", { className: "r-row" }, h("span", { textContent: "Daily average" }), h("span", { textContent: money(avg, 2) })),
-        h("div", { className: "r-row" }, h("span", { textContent: `Biggest day (${fmtDay(top.date, { weekday: "short" })})` }), h("span", { textContent: money(top.spent, 2) }))),
-      h("div", { className: "r-foot", textContent: m.live ? "PŪTEA · AKAHU · LIVE" : "SAMPLE · START PŪTEA FOR LIVE" })),
-    h("div", { className: "tear", ariaHidden: "true" }),
-  );
 }
 
 // ---------- the open book ----------
@@ -1026,11 +896,11 @@ export function closeOverlays() {
   if (!$("library").hidden) closeLibrary();
   if ($("turntable").classList.contains("open")) closeTurntable();
 }
-$("ts-home").addEventListener("click", () => { closeOverlays(); showBoard(false); showKitchen(false); window.scrollTo({ top: 0, behavior: reducedMotion ? "auto" : "smooth" }); });
+$("ts-home").addEventListener("click", () => { closeOverlays(); showBoard(false); showKitchen(false); showDesk(false); window.scrollTo({ top: 0, behavior: reducedMotion ? "auto" : "smooth" }); });
 $("ts-desk").addEventListener("click", () => {
   closeOverlays();
   showBoard(false);
-  lookDown();
+  showDesk(!onDesk);
 });
 $("ts-goals").addEventListener("click", () => { closeOverlays(); showBoard(!onBoard); renderTopShelf(); });
 $("ts-library").addEventListener("click", () => { closeOverlays(); openLibrary(); });
@@ -1254,60 +1124,6 @@ if (Speech) {
   });
 }
 
-// ---------- to the desk ----------
-
-$("to-desk").addEventListener("click", lookDown);
-$("kitchen-to-desk").addEventListener("click", lookDown);
-// the To the desk button on the pane that's showing (the wall's or the kitchen's)
-const deskBtn = () => [...document.querySelectorAll(".to-desk button")].find((b) => !b.closest("[inert]")) || $("to-desk");
-
-// Look down at the desk: a quick glide with the room tipping slightly, like turning your head down,
-// rather than a long scroll. From To the desk, the top shelf's desk button, or a flick down at the bottom of the wall.
-let looking = false;
-export function lookDown() {
-  const top = $("desk-edge").getBoundingClientRect().top + window.scrollY - $("topshelf").offsetHeight;
-  if (reducedMotion) return window.scrollTo({ top });
-  if (looking) return;
-  looking = true;
-  const from = window.scrollY, dist = top - from, start = performance.now();
-  const ms = Math.min(720, 360 + Math.abs(dist) / 5);
-  const parts = [document.querySelector(".wall"), $("desk-edge"), document.querySelector(".desk")];
-  const ease = (p) => (p < 0.5 ? 4 * p ** 3 : 1 - (-2 * p + 2) ** 3 / 2);
-  const step = (now) => {
-    const p = Math.min(1, (now - start) / ms);
-    window.scrollTo(0, from + dist * ease(p));
-    // the tilt swells in the middle of the move and settles to flat; each part tips about the middle of the screen
-    const tilt = Math.sin(Math.PI * p) * 6, mid = window.scrollY + innerHeight / 2;
-    for (const el of parts) {
-      el.style.transformOrigin = `50% ${mid - (el.getBoundingClientRect().top + window.scrollY)}px`;
-      el.style.transform = p < 1 ? `perspective(1600px) rotateX(${tilt}deg)` : "";
-    }
-    if (p < 1) requestAnimationFrame(step);
-    else { looking = false; for (const el of parts) el.style.transformOrigin = ""; }
-  };
-  requestAnimationFrame(step);
-}
-// A quick flick down while the bottom of the wall is in view (and the desk isn't yet) looks down.
-let flick = 0, flickTimer = 0;
-window.addEventListener("wheel", (e) => {
-  if (e.deltaY <= 0 || looking || Math.abs(e.deltaX) > Math.abs(e.deltaY) || document.querySelector("dialog[open]")) { flick = 0; return; }
-  const edge = $("desk-edge").getBoundingClientRect().top, btn = deskBtn().getBoundingClientRect();
-  if (!(btn.top < innerHeight && btn.bottom > 0 && edge > innerHeight - 40)) { flick = 0; return; }
-  flick += e.deltaY;
-  clearTimeout(flickTimer);
-  flickTimer = setTimeout(() => { flick = 0; }, 160);
-  if (flick > 240) { flick = 0; e.preventDefault(); lookDown(); }
-}, { passive: false });
-let touchFlick = null;
-window.addEventListener("touchstart", (e) => { touchFlick = e.touches.length === 1 ? { y: e.touches[0].clientY, t: performance.now() } : null; }, { passive: true });
-window.addEventListener("touchend", (e) => {
-  if (!touchFlick || looking) return;
-  const dy = touchFlick.y - e.changedTouches[0].clientY, dt = performance.now() - touchFlick.t;
-  touchFlick = null;
-  const edge = $("desk-edge").getBoundingClientRect().top, btn = deskBtn().getBoundingClientRect();
-  if (dy > 80 && dt < 250 && btn.top < innerHeight && btn.bottom > 0 && edge > innerHeight - 40) lookDown();
-});
-
 // ---------- feed ----------
 
 export let pendingDraft = null;
@@ -1473,7 +1289,6 @@ export function renderAll() {
   renderNotes();
   renderTodo();
   renderAgenda();
-  renderWeek();
   renderTopShelf();
   renderWhiteboard();
   renderMealSlip();
@@ -1502,6 +1317,7 @@ setInterval(() => { if (document.visibilityState === "visible") refreshMusic(); 
 renderMoneyScreen();
 load();
 loadPlant();
+loadDesk();
 loadWhiteboard();
 setInterval(renderClock, 1000);
 // keep the "now" line, greeting and today's date current

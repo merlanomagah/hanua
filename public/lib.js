@@ -50,11 +50,12 @@ export const records = (id) => {
   if (hiddenInFocus(id)) return [];
   return id === "calendar" ? list.map(busy) : list;
 };
+// a goal is Work when its Area (or its nearest ancestor's) is Work; byId: Map of every goal by id
+export const isWorkGoal = (g, byId, depth = 0) => (g.area ? isWork(g.area) : Boolean(g.parent) && depth < 8 && byId.has(g.parent) && isWorkGoal(byId.get(g.parent), byId, depth + 1));
 export function focusGoals(list) {
   if (!focus.on) return list;
   const byId = new Map(list.map((g) => [g.id, g]));
-  const work = (g, depth = 0) => (g.area ? isWork(g.area) : Boolean(g.parent) && depth < 8 && byId.has(g.parent) && work(byId.get(g.parent), depth + 1));
-  return list.filter((g) => work(g));
+  return list.filter((g) => isWorkGoal(g, byId));
 }
 export const isDone = (r) => /^(done|complete|reached)/i.test(r.status || "");
 

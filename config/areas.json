@@ -132,5 +132,6 @@
   },
   "menu": {
     "guideUrl": "https://www.notion.so/3ef16603f0bd81de96e2d015f720ddca"
-  }
+  },
+  "planner": { "promptsUrl": "https://www.notion.so/3ef16603f0bd81ccb238d0d7654ad168" }
 }

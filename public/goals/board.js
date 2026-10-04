@@ -12,7 +12,8 @@ import { reviewDue } from "./review.js";
 import { renderTimeline, scrollTimelineToToday } from "./timeline.js";
 import { renderBacklog } from "./backlog.js";
 import { coinText, dollars, epicValue, renderTopShelf } from "../shelf.js";
-import { renderCalendar, renderTodo } from "../app.js";
+import { renderCalendar } from "../app.js";
+import { renderTodo } from "../planner.js";
 
 // Status and Area options come from the Goals database in Notion (sent with /api/goals); these are the fallbacks.
 export const GOAL_STATUS = ["New", "Active", "At risk", "Done"];

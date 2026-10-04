@@ -4,7 +4,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
-import { notionEnabled, queryArea, getSchema, toNotionProperties, createPage, updatePage, archivePage, pageSection, NotionError } from "./notion.js";
+import { notionEnabled, queryArea, getSchema, toNotionProperties, createPage, updatePage, archivePage, pageSection, pageSections, NotionError } from "./notion.js";
 import { claudeEnabled, ask, draftEntry, coachGoal, suggestChildren, suggestMeals } from "./claude.js";
 import { getMoney } from "./money.js";
 import { musicStatus, musicAction, playPlaylist } from "./music.js";
@@ -12,6 +12,7 @@ import { toGoal, goalProperties, goalOptions } from "./goals.js";
 import { rollUp } from "../public/shared/goals.js";
 import { weekKey } from "../public/shared/dates.js";
 import { MEALS, menuShape } from "../public/shared/menu.js";
+import { dayKey, deskShape, stepDay, CARRY_DAYS } from "../public/shared/desk.js";
 import { lockStatus, setPin, checkPin } from "./lock.js";
 import { getWeather } from "./weather.js";
 
@@ -164,6 +165,46 @@ app.put("/api/menu/:week", async (req, res) => {
   res.json(menu);
 });
 
+// The desk's notebook: one small JSON file per day (focus areas, key tasks, General jottings, and Work lines still
+// resting before they go to the Work book). A day comes back with the week before it, so the page can offer
+// yesterday's unfinished jottings again (carriedOver in public/shared/desk.js).
+const deskDir = path.join(roomDir, "desk");
+// The quiet prompt under each heading, from the Notion page "Hanua planner prompts" (Bula copy stays out of the
+// public repo). Cached 5 min; with Notion off, or the page not connected, the headings show on their own.
+let promptsCache = null;
+app.get("/api/desk/prompts", async (_req, res) => {
+  const url = config.planner?.promptsUrl;
+  const id = /([0-9a-f]{32})(?:[?#]|$)/i.exec(url || "")?.[1];
+  if (!notionEnabled() || !id) return res.json({ prompts: {}, url: url || null });
+  if (promptsCache && Date.now() - promptsCache.at < 300_000) return res.json(promptsCache.value);
+  try {
+    const sections = await pageSections(id);
+    const value = { prompts: Object.fromEntries(Object.entries(sections).map(([k, v]) => [k.toLowerCase(), v[0] || ""])), url };
+    promptsCache = { at: Date.now(), value };
+    res.json(value);
+  } catch (err) {
+    res.json({ prompts: {}, url, error: err.status === 404 || err.status === 403
+      ? "Hanua can't see the planner prompts yet: in Notion, open “Hanua planner prompts”, then ••• → Connections → add Hanua."
+      : `Couldn't read the planner prompts (${err.message}).` });
+  }
+});
+app.get("/api/desk/:day", async (req, res) => {
+  const day = dayKey(req.params.day);
+  if (!day) return res.status(400).json({ error: "Which day?" });
+  const read = async (d) => deskShape(await readJson(path.join(deskDir, `${d}.json`), {}));
+  const earlier = {};
+  for (let i = 1; i <= CARRY_DAYS; i++) { const d = stepDay(day, -i); earlier[d] = await read(d); }
+  res.set("Cache-Control", "no-store").json({ day: await read(day), earlier });
+});
+app.put("/api/desk/:day", async (req, res) => {
+  const day = dayKey(req.params.day);
+  if (!day) return res.status(400).json({ error: "That day's notes couldn't be saved" });
+  const desk = deskShape(req.body);
+  await mkdir(deskDir, { recursive: true });
+  await writeFile(path.join(deskDir, `${day}.json`), JSON.stringify(desk, null, 2) + "\n");
+  res.json(desk);
+});
+
 app.get("/api/status", (_req, res) => {
   res.json({ notion: notionEnabled(), claude: claudeEnabled() });
 });
@@ -200,6 +241,42 @@ app.get("/api/areas/:id", async (req, res, next) => {
 app.get("/api/money", async (_req, res, next) => {
   try {
     res.json(await getMoney());
+  } catch (err) {
+    next(err);
+  }
+});
+
+// A new row in a book from a line typed on the desk (the Work list): title, due today, not started.
+// The desk only sends it after five quiet minutes on that line, and offers Undo (which moves it to Notion's trash).
+app.post("/api/areas/:id/records", async (req, res, next) => {
+  const area = findArea(req.params.id);
+  const title = String(req.body?.title || "").replace(/\s+/g, " ").trim().slice(0, 200);
+  const due = dayKey(req.body?.due);
+  if (!area) return res.status(404).json({ error: "Unknown area" });
+  if (!title) return res.status(400).json({ error: "Nothing to add." });
+  const { title: titleField, date: dateField, status: statusField } = area.fields || {};
+  if (!isLive(area)) {
+    return res.json({ live: false, record: { id: `sample-${area.id}-new-${Date.now()}`, url: null, title, date: due, status: "Not started", fields: {} } });
+  }
+  try {
+    const schema = await getSchema(area);
+    const values = [{ name: titleField, value: title }];
+    if (dateField && due) values.push({ name: dateField, value: due });
+    if (statusField) values.push({ name: statusField, value: "Not started" });
+    const record = await createPage(area, toNotionProperties(schema, values));
+    putRecord(area, record);
+    res.json({ live: true, record });
+  } catch (err) {
+    next(err);
+  }
+});
+app.post("/api/areas/:id/records/:recordId/delete", async (req, res, next) => {
+  const area = findArea(req.params.id);
+  if (!area || !isLive(area)) return res.json({ ok: true, live: false });
+  try {
+    await archivePage(req.params.recordId);
+    patchCache(area, (rows) => rows.filter((r) => r.id !== req.params.recordId));
+    res.json({ ok: true, live: true });
   } catch (err) {
     next(err);
   }

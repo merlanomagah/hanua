@@ -231,7 +231,7 @@ button:disabled { opacity: 0.5; cursor: progress; }
 .board-pane::before { content: ""; position: absolute; inset: 0; z-index: 1; pointer-events: none; background: var(--ink); opacity: 0; transition: opacity 600ms; }
 .lamp-off .board-pane::before { opacity: 0.34; }
 /* the same lamp on the desk and on top of the goals board frame */
-.desk-lamp { position: absolute; z-index: 4; right: calc(var(--pad-r) + 6px); top: 190px; width: clamp(84px, 8vw, 108px); }
+.desk-lamp { position: absolute; z-index: 4; right: var(--pad-r); top: 70px; width: clamp(80px, 7vw, 104px); }
 .desk-lamp .lamp-glow, .board-lamp .lamp-glow { width: 300px; height: 300px; }
 .board-lamp { position: absolute; z-index: 4; right: 22px; bottom: calc(100% + 10px); width: clamp(58px, 6vw, 78px); }
 .board-head { padding-right: clamp(96px, 9vw, 120px); }
@@ -670,7 +670,7 @@ button:disabled { opacity: 0.5; cursor: progress; }
 .to-desk button:hover { color: var(--terra); }
 .to-desk .arrow { font-size: 14px; }
 
-/* ---------- desk ---------- */
+/* ---------- desk: one slide down from the wall, for planning the day (5 Oct 2026) ---------- */
 .desk-edge {
   height: 26px; position: relative; z-index: 1;
   background: linear-gradient(180deg, #C79A72 0%, #A87650 35%, #7A4E30 100%);
@@ -678,65 +678,129 @@ button:disabled { opacity: 0.5; cursor: progress; }
 }
 .desk {
   --pad-r: clamp(24px, 4vw, 52px);
-  position: relative; min-height: 100vh; display: grid; gap: 44px; align-items: start;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
-  padding: 56px calc(var(--pad-r) + 130px) 140px clamp(28px, 4.5vw, 64px);
+  /* real sizes: a 15 × 21 cm notebook beside an iPad Pro 13" (21.5 × 28 cm), so the iPad is about 1.4 × as wide */
+  --pad-w: clamp(280px, 26vw, 400px);
+  --ipad-w: min(calc(var(--pad-w) * 1.43), calc((100vh - var(--rail-h) - 130px) * 0.768));
+  position: relative; box-sizing: border-box; min-height: calc(100vh - var(--rail-h));
+  display: grid; grid-template-columns: var(--pad-w) minmax(0, var(--ipad-w)) minmax(0, 1fr); grid-template-rows: auto auto 1fr;
+  column-gap: clamp(28px, 3.5vw, 56px); row-gap: 22px; align-items: start; align-content: start;
+  padding: 64px var(--pad-r) 40px clamp(28px, 4.5vw, 64px);
+  /* one oak top, sized once to cover the desk: no tiles, no seams (Mel, 5 Oct 2026) */
   background-color: #A87650;
   background-image:
     radial-gradient(90% 70% at 40% 20%, rgb(255 240 220 / 0.22), rgb(0 0 0 / 0) 70%),
     linear-gradient(180deg, rgb(0 0 0 / 0.12), rgb(0 0 0 / 0) 12%),
     url("assets/desk.png");
-  background-size: 100% 100%, 100% 100%, 1400px auto;
-  background-repeat: no-repeat, no-repeat, repeat;
-  background-position: 0 0, 0 0, center top;
+  background-size: 100% 100%, 100% 100%, cover;
+  background-repeat: no-repeat;
+  background-position: 0 0, 0 0, center;
   /* the lamp's glow spills past the right edge; trim it there so the page never scrolls sideways */
   overflow-x: clip;
 }
+/* wide desks keep a column at the right for the lamp; narrower ones give it to the iPad and stand the lamp at the bottom right */
+@media (min-width: 1181px) { .desk { grid-template-columns: var(--pad-w) minmax(0, var(--ipad-w)) minmax(96px, 1fr); } }
+@media (min-width: 901px) and (max-width: 1180px) { .desk-lamp { top: auto; bottom: 40px; } }
+/* back up to the wall */
+.desk-up { position: absolute; z-index: 2; top: 14px; left: 0; right: 0; display: flex; justify-content: center; pointer-events: none; }
+.desk-up button {
+  pointer-events: auto; display: flex; align-items: center; gap: 8px; min-height: 32px; padding: 0 10px; border: 0; border-radius: 3px; background: transparent; cursor: pointer;
+  font: 10px var(--mono); letter-spacing: 0.2em; color: rgb(250 247 242 / 0.8); text-shadow: 0 1px 2px rgb(0 0 0 / 0.4); transition: color 200ms;
+}
+.desk-up button:hover { color: var(--cream); }
+/* the desk as its own pane: the wall slides up and away, the desk slides up into view, like the kitchen and goals */
+.room { overflow: clip; }
+@media (min-width: 901px) {
+  .wall, .desk-pane { transition: transform 560ms cubic-bezier(.65,0,.35,1), opacity 560ms; }
+  .desk-pane { position: absolute; z-index: 3; left: 0; right: 0; top: 0; transform: translateY(100vh); opacity: 0; pointer-events: none; }
+  .desk-edge { display: none; }
+  .room.on-desk .desk-pane { position: relative; transform: none; opacity: 1; pointer-events: auto; }
+  .room.on-desk .wall { position: absolute; left: 0; right: 0; top: 0; transform: translateY(-45%); opacity: 0; pointer-events: none; }
+}
+@media (max-width: 900px) { .desk-up { display: none; } }
+@media (prefers-reduced-motion: reduce) { .wall, .desk-pane { transition: none; } }
 
-/* on wide desks the notepad gets a bigger share, so the list isn't cramped */
-@media (min-width: 1280px) { .desk { grid-template-columns: 1.35fr 1fr 1fr; } }
-
-/* notepad: text sits on the printed ruled lines (container-query units track the image) */
-.notepad { position: relative; transform: rotate(-1.5deg); container-type: inline-size; filter: drop-shadow(6px 14px 12px rgb(28 24 20 / 0.4)); }
-.notepad > img { width: 100%; height: auto; }
-.pad-lines { position: absolute; inset: 0; padding: 11cqw 10cqw 0 7cqw; display: flex; flex-direction: column; }
-.pad-title { font: italic 400 6.5cqw/6.3cqw var(--display); height: 6.3cqw; }
-.pad-sub { font: 2.4cqw/4.52cqw var(--mono); height: 4.52cqw; letter-spacing: 0.16em; color: var(--ink-4); text-transform: uppercase; }
-.todo { list-style: none; padding: 0; margin: 4.52cqw 0 0; }
-.todo li { display: flex; align-items: center; gap: 2cqw; height: 4.52cqw; min-width: 0; }
-.todo .empty, .todo .more { font: italic 4cqw/4.52cqw var(--display); color: var(--muted); }
-.todo .more { font-size: 3.4cqw; }
-.check {
-  position: relative; flex: none; width: 2.8cqw; height: 2.8cqw; padding: 0; border: 1px solid var(--ink-3); border-radius: 2px;
+/* ---- the notebook: the picture gives the spiral and card; the page and its lines are drawn, so typed text sits
+   in the middle of every line by construction (one --line sets each row's height and the rule spacing) ---- */
+.planner { position: relative; grid-column: 1; grid-row: 1; transform: rotate(-1deg); container-type: inline-size; filter: drop-shadow(6px 14px 12px rgb(28 24 20 / 0.4)); }
+.planner > img { width: 100%; height: auto; }
+.pl-page {
+  --line: clamp(22px, 6.6cqw, 27px);
+  --paper: #FBFAF7; --rule: #D9DEE4;
+  position: absolute; top: 7.2%; left: 3.8%; right: 3.4%; bottom: 3%; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none;
+  padding: var(--line) 7% var(--line) 9%; box-sizing: border-box;
+  background: var(--paper) repeating-linear-gradient(180deg, transparent 0 calc(var(--line) - 1px), var(--rule) calc(var(--line) - 1px) var(--line)) local;
+}
+.pl-page::-webkit-scrollbar { display: none; }
+.pl-head { display: flex; align-items: center; gap: 10px; height: var(--line); min-width: 0; }
+.pl-head h3 { flex: none; margin: 0; font: italic 500 calc(var(--line) * 0.78)/var(--line) var(--display); color: var(--terra); }
+.pl-prompt { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: italic 400 calc(var(--line) * 0.52)/var(--line) var(--display); color: var(--ink-4); }
+.pl-list { list-style: none; margin: 0; padding: 0; }
+.pl-line { display: flex; align-items: center; gap: 8px; height: var(--line); min-width: 0; }
+.pl-num, .pl-bullet { flex: none; width: 12px; font: 10px var(--mono); color: var(--ink-4); text-align: center; }
+.pl-bullet { font: 14px var(--display); }
+.pl-input {
+  flex: 1; min-width: 0; height: var(--line); margin: 0; padding: 0; border: 0; border-radius: 0; background: transparent; -webkit-appearance: none; appearance: none;
+  font: 400 calc(var(--line) * 0.7) var(--display); color: var(--ink); line-height: normal;
+}
+.pl-input::placeholder { color: var(--faint); font-style: italic; }
+.pl-input:focus { outline: none; background: linear-gradient(90deg, rgb(196 96 42 / 0.06), transparent 80%); }
+.planner .check {
+  position: relative; flex: none; width: calc(var(--line) * 0.5); height: calc(var(--line) * 0.5); padding: 0; border: 1px solid var(--ink-3); border-radius: 2px;
   background: transparent; cursor: pointer; display: grid; place-items: center;
 }
-.check::before { content: ""; position: absolute; inset: -10px; } /* bigger tap target */
-.check svg { width: 100%; height: 100%; stroke: var(--green); stroke-width: 3; fill: none; stroke-dasharray: 20; stroke-dashoffset: 20; transition: stroke-dashoffset 300ms ease; }
-.todo li.done .check svg { stroke-dashoffset: 0; }
-.todo .t { position: relative; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 4cqw/4.52cqw var(--display); color: var(--ink); }
-.todo .t::after { content: ""; position: absolute; left: 0; top: 55%; height: 1px; width: 0; background: var(--ink); transition: width 350ms ease; }
-.todo li.done .t { color: var(--muted); }
-.todo li.done .t::after { width: 100%; }
-.todo .m { flex: none; margin-left: auto; font: 1.9cqw var(--mono); letter-spacing: 0.08em; color: var(--muted); text-transform: uppercase; white-space: nowrap; }
-.todo .m.late { color: var(--terra); }
-/* goal Tasks on the notepad: the name opens quick edit; a small gold mark and the goal it serves on the right */
-.todo button.t { border: 0; background: none; padding: 0; text-align: left; cursor: pointer; }
-.todo button.t:hover, .todo button.t:focus-visible { color: var(--terra); }
-.todo .goal-task .t { flex: 0 1 auto; }
-.todo .m.g { flex: 0 1 auto; max-width: 34%; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-.todo .m.g::before { content: "◆ "; color: #C9962F; }
-
-/* agenda card */
-.agenda {
-  position: relative; transform: rotate(0.6deg); background: var(--cream); border-radius: 2px; overflow: hidden;
-  box-shadow: 0 1px 1px rgb(28 24 20 / 0.1), 8px 18px 26px -12px rgb(28 24 20 / 0.5);
+.planner .check::before { content: ""; position: absolute; inset: -8px; }
+.planner .check:disabled { opacity: 0.35; cursor: default; }
+.planner .check svg { width: 100%; height: 100%; stroke: var(--green); stroke-width: 3; fill: none; stroke-dasharray: 20; stroke-dashoffset: 20; transition: stroke-dashoffset 300ms ease; }
+.planner .check.on svg, .planner .done .check svg { stroke-dashoffset: 0; }
+.planner .t {
+  position: relative; flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 0; border: 0; background: none; text-align: left;
+  font: 400 calc(var(--line) * 0.7)/var(--line) var(--display); color: var(--ink);
 }
-.agenda .band { height: 30px; background: linear-gradient(180deg, var(--green-dark), #243F34); border-bottom: 1px dashed rgb(216 237 232 / 0.4); box-shadow: inset 0 -6px 0 -5px rgb(0 0 0 / 0.3); }
-.agenda .inner { padding: 24px 28px 34px; }
-.agenda h2 { margin: 0; font: italic 400 32px/1.2 var(--display); }
-.agenda .date { font: 9px var(--mono); letter-spacing: 0.16em; color: var(--ink-4); margin-top: 4px; text-transform: uppercase; }
-.agenda .body { margin-top: 22px; padding-top: 16px; border-top: 1px solid var(--hair); }
-.agenda .empty { font: italic 18px var(--display); color: var(--muted); }
+.planner button.t { cursor: pointer; }
+.planner button.t:hover, .planner button.t:focus-visible { color: var(--terra); }
+.planner .done .t, .planner .done .pl-input { color: var(--muted); text-decoration: line-through; text-decoration-color: var(--ink-3); }
+.planner .m { flex: none; margin-left: auto; max-width: 40%; overflow: hidden; text-overflow: ellipsis; font: 8px var(--mono); letter-spacing: 0.08em; color: var(--muted); text-transform: uppercase; white-space: nowrap; }
+.planner .m.late { color: var(--terra); }
+.planner .m.g::before { content: "◆ "; color: #C9962F; }
+.planner .pl-wait { color: var(--faint); }
+.pl-line.carried .t { color: var(--ink-4); font-style: italic; }
+.pl-from { flex: none; font: 8px var(--mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--faint); }
+.pl-acts { flex: none; margin-left: auto; display: flex; gap: 2px; }
+.pl-act { padding: 2px 5px; border: 0; border-radius: 2px; background: transparent; cursor: pointer; font: 8px var(--mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--terra); }
+.pl-act:hover { background: rgb(196 96 42 / 0.1); }
+.pl-covered { margin: var(--line) 0 0; height: var(--line); font: italic 13px/var(--line) var(--display); color: var(--ink-4); }
+
+/* ---- the iPad, lying flat and seen from above: drawn in code, the agenda on its screen ---- */
+.ipad {
+  position: relative; grid-column: 2; grid-row: 1 / span 3; width: 100%; aspect-ratio: 21.5 / 28; box-sizing: border-box; padding: 4%;
+  border-radius: 6.5% / 5%; background: linear-gradient(150deg, #44423e, #1d1c1a 38%, #121110);
+  box-shadow: inset 0 0 0 1.5px #5d5a55, inset 0 0 0 3px #0b0a09, 10px 24px 32px -12px rgb(28 24 20 / 0.6), 2px 5px 8px rgb(0 0 0 / 0.3);
+  transform: rotate(1.4deg); container-type: inline-size; outline-offset: 6px;
+}
+.ip-camera { position: absolute; top: 1.7%; left: calc(50% - 3px); width: 6px; height: 6px; border-radius: 50%; background: radial-gradient(circle at 40% 35%, #3d4757, #0d0f13 70%); }
+.ip-screen {
+  position: relative; height: 100%; box-sizing: border-box; display: flex; flex-direction: column; overflow: hidden; padding: 0 6cqw 4cqw;
+  border-radius: 3% / 2.3%; background: var(--cream); box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.5);
+}
+/* a soft reflection across the glass */
+.ip-screen::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(118deg, rgb(255 255 255 / 0.22), rgb(255 255 255 / 0) 34%, rgb(255 255 255 / 0) 70%, rgb(255 255 255 / 0.08)); }
+.ip-status { display: flex; justify-content: space-between; padding-top: 2.6cqw; font: 9px var(--mono); letter-spacing: 0.08em; color: var(--ink-4); }
+.ip-head { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 10px; margin-top: 5cqw; padding-bottom: 4cqw; border-bottom: 1px solid var(--ink); }
+.ip-title { display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center; min-width: 0; }
+.ip-title h2 { margin: 0; font: italic 300 clamp(26px, 8.4cqw, 44px)/1 var(--display); letter-spacing: -0.02em; }
+.ip-date { font: 9px var(--mono); letter-spacing: 0.2em; color: var(--ink-4); text-transform: uppercase; }
+.ip-nav { width: 34px; height: 34px; border: 1px solid var(--border); border-radius: 3px; background: transparent; cursor: pointer; font-size: 18px; color: var(--ink-3); }
+.ip-nav:hover { background: var(--page); color: var(--ink); }
+.ip-back { display: flex; justify-content: center; margin-top: 10px; }
+.ip-today { padding: 3px 8px; border: 1px solid var(--terra); border-radius: 3px; background: transparent; color: var(--terra); cursor: pointer; font: 9px var(--mono); letter-spacing: 0.12em; text-transform: uppercase; }
+.ip-body { flex: 1; min-height: 0; overflow-y: auto; margin-top: 3cqw; padding-top: 6px; scrollbar-width: thin; }
+.ip-body .empty { margin: 14px 0 0; font: italic 18px var(--display); color: var(--muted); }
+.ip-list { list-style: none; padding: 0; margin: 0; position: relative; }
+.ip-list .slot time::before { content: ""; display: inline-block; width: 6px; height: 6px; margin-right: 7px; border-radius: 50%; background: var(--dot, var(--green)); vertical-align: 1px; }
+.ip-list .slot { grid-template-columns: 70px 1fr; }
+.ip-dots { display: flex; justify-content: center; gap: 6px; padding-top: 3cqw; }
+.ip-dots i { width: 5px; height: 5px; border-radius: 50%; background: var(--border-2); }
+.ip-dots i.on { background: var(--ink-3); }
 .slots { list-style: none; padding: 0; margin: -10px 0 0; position: relative; }
 .slot { position: relative; display: grid; grid-template-columns: 54px 1fr; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--hair); align-items: baseline; }
 .slot:last-child { border-bottom: 0; }
@@ -752,35 +816,10 @@ button:disabled { opacity: 0.5; cursor: progress; }
 .now-line { position: relative; height: 0; border-top: 1px solid var(--terra); margin: 4px 0; }
 .now-line span { position: absolute; left: 0; top: -8px; font: 500 9px var(--mono); color: var(--cream); background: var(--terra); border-radius: 2px; padding: 1px 5px; letter-spacing: 0.1em; }
 
-/* weekly spending on a thermal receipt */
-.receipt { position: relative; transform: rotate(1.8deg); filter: drop-shadow(6px 14px 14px rgb(28 24 20 / 0.35)); }
-.receipt .paper { background: var(--cream); padding: 26px 24px 18px; font-family: var(--mono); color: var(--ink); }
-.receipt .tear { height: 10px; background-image: linear-gradient(135deg, var(--cream) 50%, rgb(0 0 0 / 0) 50%), linear-gradient(225deg, var(--cream) 50%, rgb(0 0 0 / 0) 50%); background-size: 10px 10px; background-repeat: repeat-x; }
-.r-head { text-align: center; font-size: 11px; letter-spacing: 0.28em; font-weight: 500; }
-.r-range { text-align: center; font-size: 10px; color: var(--muted); margin-top: 4px; }
-.r-big { text-align: center; font-size: 40px; font-weight: 500; letter-spacing: -0.02em; margin: 14px 0; }
-.week-bar { position: relative; height: 5px; background: var(--hair); border-radius: 3px; }
-.week-bar b { position: absolute; left: 0; top: 0; bottom: 0; background: var(--green); border-radius: 3px; transition: width 600ms ease; }
-.week-bar b.over { background: var(--terra); }
-.week-bar i { position: absolute; top: -5px; width: 1px; height: 15px; background: var(--ink); }
-.week-legend { display: flex; justify-content: space-between; gap: 12px; white-space: nowrap; line-height: 1.4; font-size: 10px; color: var(--ink-4); margin-top: 8px; }
-.days { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); align-items: end; gap: 10px; height: 96px; margin-top: 22px; padding-bottom: 6px; border-bottom: 1px dashed var(--border-2); }
-.days i { display: block; background: var(--border-2); border-radius: 1px; transition: background 200ms; }
-.days i.today { background: var(--green); }
-.days i:hover { background: var(--ink-3); }
-.dl { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 10px; margin-top: 6px; }
-.dl span { text-align: center; font-size: 9px; color: var(--muted); }
-.r-rows { display: flex; flex-direction: column; gap: 6px; margin-top: 16px; padding: 12px 0; border-top: 1px dashed var(--border-2); border-bottom: 1px dashed var(--border-2); font-size: 11px; }
-.r-row { display: flex; justify-content: space-between; gap: 12px; line-height: 1.4; white-space: nowrap; }
-.r-foot { text-align: center; font-size: 9px; letter-spacing: 0.14em; color: var(--muted); margin-top: 12px; }
 
-/* desk objects */
-.scatter { grid-column: 1 / -1; position: relative; height: 220px; pointer-events: none; }
-.scatter img { position: absolute; height: auto; }
-.sticky-pad { left: 2%; top: 20px; width: 120px; transform: rotate(-7deg); filter: drop-shadow(5px 10px 8px rgb(28 24 20 / 0.35)); }
-.pencil { left: 24%; top: 150px; width: min(240px, 30%); transform: rotate(-6deg); filter: drop-shadow(4px 8px 5px rgb(28 24 20 / 0.35)); }
-.clips { left: 58%; top: 30px; width: 110px; transform: rotate(12deg); filter: drop-shadow(2px 4px 3px rgb(28 24 20 / 0.35)); }
-.cup { position: absolute; top: 40px; right: var(--pad-r); width: 124px; height: auto; pointer-events: none; filter: drop-shadow(8px 14px 12px rgb(28 24 20 / 0.45)); }
+/* desk objects: a sticky pad and the cup under the notebook, the lamp at the right */
+.sticky-pad { grid-column: 1; grid-row: 2; justify-self: start; width: 112px; height: auto; margin-left: 6px; transform: rotate(-7deg); filter: drop-shadow(5px 10px 8px rgb(28 24 20 / 0.35)); pointer-events: none; }
+.cup { grid-column: 1; grid-row: 2; justify-self: end; width: 124px; height: auto; margin-right: 10px; pointer-events: none; filter: drop-shadow(8px 14px 12px rgb(28 24 20 / 0.45)); }
 
 /* ---------- the top shelf: quick actions, the Feed, and what you've earned ---------- */
 .topshelf {
@@ -1756,11 +1795,14 @@ dialog h3 { margin: 0 0 4px; font: italic 300 32px/1.1 var(--display); }
   .shelf-row { margin-top: 14px; }
   .case-fill, .case-foot { display: none; }
   .topshelf { flex-wrap: wrap; gap: 8px 10px; }
-  .desk { padding: 44px 20px 120px; }
-  .cup { width: 84px; top: 8px; right: 12px; }
-  /* narrow desks have no side gutter: the lamp stands beside the cup above the notepad */
-  .desk { padding-top: 120px; }
-  .desk-lamp { top: 6px; right: 108px; width: 76px; }
+  /* narrow desks: one column, the notebook first, then the iPad; the lamp stands at the top right */
+  .desk { grid-template-columns: minmax(0, 1fr); grid-template-rows: none; padding: 120px 20px 80px; min-height: 0; }
+  .planner { width: min(100%, 440px); justify-self: center; }
+  .ipad { grid-column: 1; grid-row: auto; width: min(100%, 520px); justify-self: center; }
+  .sticky-pad, .cup { grid-column: 1; grid-row: auto; }
+  .cup { width: 84px; position: absolute; top: 18px; left: 20px; margin: 0; }
+  .sticky-pad { display: none; }
+  .desk-lamp { top: 6px; right: 20px; width: 76px; }
   .open-book { grid-template-columns: 1fr; height: calc(100vh - 48px); }
   .open-book .page.left { display: none; }
   .open-book .page.right { border-radius: 2px; }
@@ -1777,7 +1819,7 @@ dialog h3 { margin: 0 0 4px; font: italic 300 32px/1.1 var(--display); }
   .greet-row { padding: 0 2%; gap: 4px; }
   .lamp-wrap { width: 76px; }
   .pull-cord { --len: 26px; }
-  .desk-lamp { width: 64px; right: 100px; top: 10px; }
+  .desk-lamp { width: 64px; }
   .board-lamp { width: 50px; right: 12px; }
   .board-head { padding-right: 64px; }
   .lamp-date text { font-size: 56px; letter-spacing: 0.1em; }
@@ -1833,7 +1875,6 @@ dialog h3 { margin: 0 0 4px; font: italic 300 32px/1.1 var(--display); }
   .ep-epic { grid-template-columns: 1fr auto; }
   .ep-track { grid-column: 1 / -1; grid-row: 2; }
   [data-tip]::after { display: none; }
-  .scatter { height: 160px; }
   .cork { padding: 18px 10px 20px; }
   .cork-cols { grid-template-columns: 1fr; gap: 22px; }
   .board-pane { padding: 20px 16px 120px; }
@@ -2022,7 +2063,7 @@ dialog.lock::backdrop { background: #14110e; }
 .weather-window.unavailable .ww-sky { filter: grayscale(0.6); }
 
 /* today's meals on the desk, a slip of paper: so the menu isn't forgotten now it's in the kitchen */
-.meal-slip { position: absolute; left: clamp(28px, 4.5vw, 64px); bottom: 116px; display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 14px; max-width: min(640px, calc(100% - 56px));
+.meal-slip { position: relative; grid-column: 1; grid-row: 3; justify-self: start; display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 14px; max-width: min(640px, calc(100% - 56px));
   padding: 10px 16px; border: 0; border-radius: 2px; cursor: pointer; text-align: left; transform: rotate(-0.8deg);
   background: #FBF8F1; box-shadow: 6px 10px 14px -6px rgb(28 24 20 / 0.45); color: var(--ink-2); font: italic 16px var(--display); }
 .meal-slip b { font: 9px var(--mono); font-style: normal; letter-spacing: 0.18em; color: var(--terra); }
@@ -2073,3 +2114,5 @@ dialog.lock::backdrop { background: #14110e; }
 .plant-drop[hidden] { display: none; }
 @keyframes drop-bob { 50% { transform: translateY(-3px); } }
 @media (prefers-reduced-motion: reduce) { .plant-drop { animation: none; } }
+
+@media (max-width: 900px) { .meal-slip { grid-row: auto; justify-self: center; max-width: 100%; } }
