@@ -39,7 +39,7 @@ const where = (hits) => hits.slice(0, 3).map((x) => `${DAY_NAMES[x.day]} ${x.mea
 
 // Each habit: what it looks for, the warm line when it's there, and the idea when it isn't
 const HABITS = [
-  { id: "fish", test: FISH, good: (h) => `Fish or seafood: ${where(h)}`, idea: "Room for fish this week? Once or twice a week is good for your heart: salmon, tinned sardines on toast, a prawn stir fry." },
+  { id: "fish", test: FISH, good: (h) => `Fish or seafood: ${where(h)}`, idea: "Room for fish this week? About twice a week is good for your heart: salmon, tinned sardines on toast, a prawn stir fry." },
   { id: "legumes", test: LEGUMES, good: (h) => `Beans, lentils or tofu: ${where(h)}`, idea: "Try one meal built on beans, lentils or tofu: a dahl, chickpea curry or bean chilli. Cheap, filling and full of fibre." },
   { id: "wholegrain", test: WHOLEGRAIN, good: (h) => `Wholegrains: ${where(h)}`, idea: "Swap in a wholegrain somewhere: porridge or muesli for breakfast, brown rice or wholemeal wraps later on." },
   { id: "veg", test: VEG, min: 5, good: (h) => `Veg showing up in ${h.length} meals`, idea: "Half the plate as veg is the easiest win: add a salad, a side of greens or frozen veg to a few more meals." },

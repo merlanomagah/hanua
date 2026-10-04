@@ -370,7 +370,7 @@ export function renderCalendar() {
       inMonth ? h("span", { className: "peek", ariaHidden: "true" },
         h("b", { textContent: fmtDay(key, { weekday: "short", day: "numeric", month: "short" }) }),
         dayItems.length
-          ? sortByTime(dayItems).slice(0, 4).map((x) => h("span", {}, h("em", { textContent: timeOf(x.date) || (x.goal ? x.kind : x.kind === "Due" ? "Due" : "All day") }), x.title))
+          ? sortByTime(dayItems).slice(0, 4).map((x) => h("span", { style: `--dot:${x.color}` }, h("em", { className: timeOf(x.date) ? "time" : "kind", textContent: timeOf(x.date) || (x.goal ? x.kind : x.kind === "Due" ? "Due" : "All day") }), x.title))
           : h("span", { className: "quiet", textContent: "Nothing scheduled" }),
         dayItems.length > 4 ? h("span", { className: "quiet", textContent: `+ ${dayItems.length - 4} more` }) : null) : null,
     );
@@ -387,10 +387,18 @@ export function renderCalendar() {
   $("calendar").replaceChildren(
     h("div", { className: "cal-head" },
       calNav("‹", "Previous month", -1),
-      h("h2", { textContent: now.toLocaleDateString(undefined, { month: "long" }) }),
+      h("h2", {}, (() => {
+        // the month's name zooms the calendar out over the wall, and back (Mel, 6 Oct 2026)
+        const b = h("button", { type: "button", className: "cal-month", id: "cal-month", textContent: now.toLocaleDateString(undefined, { month: "long" }),
+          title: calWide ? "Back to the wall" : "See the month bigger" });
+        b.setAttribute("aria-expanded", String(calWide));
+        b.addEventListener("click", () => zoomCalendar());
+        return b;
+      })()),
       calNav("›", "Next month", 1),
       h("span", { className: "cal-year" }, String(now.getFullYear()),
-        calOffset ? (() => { const b = h("button", { type: "button", className: "cal-today", textContent: "Today" }); b.addEventListener("click", () => { calOffset = 0; selectedDay = todayStr(); renderCalendar(); }); return b; })() : null)),
+        calOffset ? (() => { const b = h("button", { type: "button", className: "cal-today", textContent: "Today" }); b.addEventListener("click", () => { calOffset = 0; selectedDay = todayStr(); renderCalendar(); }); return b; })() : null,
+        calWide ? (() => { const b = h("button", { type: "button", className: "cal-close", textContent: "✕", ariaLabel: "Back to the wall", title: "Back to the wall (Esc)" }); b.addEventListener("click", () => zoomCalendar(false)); return b; })() : null)),
     h("div", { className: "dow", ariaHidden: "true" }, ["M", "T", "W", "T", "F", "S", "S"].map((d) => h("span", { textContent: d }))),
     grid,
     h("div", { className: "cal-foot" },
@@ -404,6 +412,47 @@ export function renderCalendar() {
       : "",
   );
 }
+
+// ---------- wall: the calendar zoomed out over the wall ----------
+// The left column (greeting shelf down to the TV and the menu) slides off to the left, and the calendar grows
+// from where it hung to the wall's width, with each day's titles written in its square. Click the month again,
+// ✕ or Esc to put it back. When the wall is stacked in one column (narrower screens) the squares just grow.
+export let calWide = false;
+let zooming = false;
+const phone = () => matchMedia("(max-width: 600px)").matches; // the calendar is the screen's width already
+const wallRow = () => $("calendar").closest(".wall-row");
+const sideBySide = () => { const l = wallRow().querySelector(".wall-left").getBoundingClientRect(), r = wallRow().querySelector(".wall-right").getBoundingClientRect(); return l.width > 0 && r.left > l.right - 1; };
+// an animation's end, or its duration if the page isn't drawing (a hidden window can stall animations)
+const settle = (anim, ms) => Promise.race([anim.finished.catch(() => {}), new Promise((r) => setTimeout(r, ms + 80))]);
+export async function zoomCalendar(on = !calWide) {
+  if (on === calWide || zooming || (on && phone())) return;
+  zooming = true;
+  const row = wallRow(), left = row.querySelector(".wall-left"), slide = on ? sideBySide() : row.classList.contains("cal-slide");
+  const card = () => document.querySelector(".cal-card");
+  const animate = !reducedMotion;
+  const first = card().getBoundingClientRect();
+  if (on && slide && animate) await settle(left.animate([{ transform: "none", opacity: 1 }, { transform: "translateX(-40%)", opacity: 0 }], { duration: 260, easing: "cubic-bezier(.4,0,1,1)", fill: "forwards" }), 260);
+  calWide = on;
+  row.classList.toggle("cal-wide", on);
+  row.classList.toggle("cal-slide", on && slide);
+  left.inert = on && slide;
+  left.getAnimations().forEach((a) => a.cancel());
+  renderCalendar();
+  $("cal-month").focus({ preventScroll: true });
+  window.dispatchEvent(new Event("resize")); // the canary leaves anything that just went away
+  if (animate) {
+    const last = card().getBoundingClientRect();
+    const grow = card().animate([
+      { transformOrigin: "top left", transform: `translate(${first.left - last.left}px, ${first.top - last.top}px) scale(${first.width / last.width}, ${first.height / last.height})` },
+      { transformOrigin: "top left", transform: "none" },
+    ], { duration: 380, easing: "cubic-bezier(.2,.8,.2,1)" });
+    if (!on && slide) left.animate([{ transform: "translateX(-40%)", opacity: 0 }, { transform: "none", opacity: 1 }], { duration: 340, delay: 120, easing: "cubic-bezier(.2,.8,.2,1)", fill: "backwards" });
+    await settle(grow, 380);
+  }
+  zooming = false;
+}
+// a window made narrow enough to stack the wall puts the calendar back
+addEventListener("resize", () => { if (calWide && !zooming && wallRow().classList.contains("cal-slide") && isNarrow()) zoomCalendar(false); });
 
 export const sortByTime = (list) => [...list].sort((a, b) => (timeOf(a.date) || "00:00").localeCompare(timeOf(b.date) || "00:00"));
 
@@ -799,6 +848,7 @@ document.addEventListener("keydown", (e) => {
   if (!$("reader").hidden) closeBook();
   else if (!$("library").hidden) closeLibrary();
   else if ($("turntable").classList.contains("open")) closeTurntable();
+  else if (calWide) zoomCalendar(false);
   else if (!$("ts-panel").hidden) toggleEarnings(false);
   else if (onBoard) showBoard(false);
 });

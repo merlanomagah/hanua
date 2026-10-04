@@ -443,6 +443,32 @@ button:disabled { opacity: 0.5; cursor: progress; }
 .upcoming .t { font: 18px/1.2 var(--display); color: var(--ink); }
 .upcoming .tag { font: 9px var(--mono); color: var(--faint); letter-spacing: 0.1em; text-transform: uppercase; }
 
+/* the month's name is the zoom button; zoomed, the left column steps aside and the days show their titles */
+.cal-month { padding: 0; border: 0; background: none; font: inherit; letter-spacing: inherit; color: inherit; cursor: zoom-in; border-radius: 2px; }
+.cal-month:hover { color: var(--terra); }
+.cal-month:focus-visible, .cal-close:focus-visible { outline: 2px solid var(--terra); outline-offset: 4px; }
+.cal-close { margin-left: 10px; width: 26px; height: 26px; padding: 0; border: 1px solid var(--border); border-radius: 2px; background: var(--page); color: var(--ink-3); cursor: pointer; font: 12px var(--ui); vertical-align: middle; }
+.cal-close:hover { color: var(--ink); border-color: var(--ink-4); }
+.cal-wide .cal-month { cursor: zoom-out; }
+.cal-slide > .wall-left { display: none; }
+.cal-slide > .wall-right { flex-basis: 100%; }
+.cal-wide .deco-shelf { display: none; }
+.cal-wide .dow span { padding-left: 10px; }
+.cal-wide .day { height: auto; min-height: 112px; padding: 8px 10px 10px; gap: 4px; }
+.cal-wide .day .dots { display: none; }
+.cal-wide .day .peek { position: static; z-index: auto; width: 100%; padding: 0; gap: 3px; opacity: 1; transform: none; transition: none; pointer-events: none;
+  background: none; color: var(--ink); box-shadow: none; border-radius: 0; font: 14px/1.2 var(--display); animation: peek-in 220ms 300ms both; }
+.cal-wide .day .peek > span { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; padding-left: 6px; border-left: 2px solid var(--dot, var(--green)); overflow-wrap: anywhere; }
+.cal-wide .day .peek > span.quiet { border: 0; padding: 0; }
+.cal-wide .day .peek em.kind { display: none; }
+.cal-wide .day .peek b, .cal-wide .day .peek .quiet:only-of-type { display: none; }
+.cal-wide .day .peek em { color: var(--ink-4); font-size: 9px; }
+.cal-wide .day.edge .peek, .cal-wide .day:not(.other):hover .peek { transform: none; }
+.cal-wide .cal-head h2 { font-size: 52px; }
+@keyframes peek-in { from { opacity: 0; } }
+@media (max-width: 600px) { .cal-month { cursor: default; } .cal-month:hover { color: inherit; } }
+@media (prefers-reduced-motion: reduce) { .cal-wide .day .peek { animation: none; } }
+
 /* books and plant on a shelf */
 .deco-shelf { position: relative; z-index: 4; }
 .deco-row { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; padding: 0 7%; margin-bottom: -7px; position: relative; z-index: 1; }
