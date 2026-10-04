@@ -118,3 +118,13 @@ test("When? picks end on the period's last day, and never after the parent's due
   assert.equal(whenPickOf("PBI", "2026-10-20", "2026-10-05"), "exact");
   assert.equal(whenPickOf("Task", "", "2026-10-05"), "");
 });
+
+test("the lights switch off at 9 pm and on at 4 am, each once", async () => {
+  const { lastLightSwitch } = await import("../public/shared/dates.js");
+  const at = (h, m = 0) => new Date(2026, 9, 5, h, m);
+  assert.deepEqual(lastLightSwitch(at(20, 59)), { key: "2026-10-05 on", on: true });
+  assert.deepEqual(lastLightSwitch(at(21)), { key: "2026-10-05 off", on: false });
+  assert.deepEqual(lastLightSwitch(at(23, 30)), { key: "2026-10-05 off", on: false });
+  assert.deepEqual(lastLightSwitch(at(2)), { key: "2026-10-04 off", on: false }); // still last night's switch
+  assert.deepEqual(lastLightSwitch(at(4)), { key: "2026-10-05 on", on: true });
+});

@@ -1,5 +1,5 @@
 import "./lock.js"; // the sleep screen goes up before anything else
-import { dayOf, daysBetween, pad, parseDay, timeOf, todayStr, ymd } from "./shared/dates.js";
+import { dayOf, daysBetween, lastLightSwitch, pad, parseDay, timeOf, todayStr, ymd } from "./shared/dates.js";
 import { isGoalDone } from "./shared/goals.js";
 import { $, ago, api, area, fmtDay, focus, focusGoals, h, hiddenInFocus, isDone, isNarrow, longDate, money, num, records, reducedMotion, state, store, toast, updatedLine } from "./lib.js";
 import { goalById, moveGoal, onBoard, renderBoard, showBoard } from "./goals/board.js";
@@ -90,6 +90,18 @@ export function toggleLights() {
   renderLamp();
 }
 document.querySelectorAll(".lamp").forEach((b) => b.addEventListener("click", toggleLights));
+
+// Off at 9 pm, on at 4 am, by themselves. Each switch happens once (remembered as room-lamp-auto),
+// so pulling the cord afterwards wins until the next one. Checked on load and every minute.
+export function autoLights() {
+  const { key, on } = lastLightSwitch();
+  if (store("room-lamp-auto") === key) return;
+  store("room-lamp-auto", key);
+  if (lampOn === on) return;
+  lampOn = on;
+  store("room-lamp", on ? "on" : "off");
+  renderLamp();
+}
 
 // The pull cord: click it, or drag the bead down and let go. It springs back either way.
 document.querySelectorAll(".pull-cord").forEach((cord) => {
@@ -1182,6 +1194,7 @@ export async function load() {
 }
 
 renderLamp();
+autoLights();
 renderClock();
 renderRecordPlayer();
 refreshMusic();
@@ -1191,4 +1204,4 @@ renderMoneyScreen();
 load();
 setInterval(renderClock, 1000);
 // keep the "now" line, greeting and today's date current
-setInterval(() => { renderHeader(); renderAgenda(); }, 60_000);
+setInterval(() => { renderHeader(); renderAgenda(); autoLights(); }, 60_000);
