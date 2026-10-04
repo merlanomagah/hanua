@@ -79,6 +79,7 @@ function normalisePage(page, fields = {}) {
   return {
     id: page.id,
     url: page.url,
+    edited: page.last_edited_time ?? null,
     title: propValue(props[titleKey]) || "Untitled",
     date: propValue(props[fields.date]) ?? null,
     amount: propValue(props[fields.amount]) ?? null,

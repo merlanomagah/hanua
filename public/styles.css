@@ -530,12 +530,17 @@ button:disabled { opacity: 0.5; cursor: progress; }
 .agenda .body { margin-top: 22px; padding-top: 16px; border-top: 1px solid var(--hair); }
 .agenda .empty { font: italic 18px var(--display); color: var(--muted); }
 .slots { list-style: none; padding: 0; margin: -10px 0 0; position: relative; }
-.slot { display: grid; grid-template-columns: 54px 1fr; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--hair); align-items: baseline; }
+.slot { position: relative; display: grid; grid-template-columns: 54px 1fr; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--hair); align-items: baseline; }
 .slot:last-child { border-bottom: 0; }
 .slot time { font: 11px var(--mono); color: var(--muted); font-variant-numeric: tabular-nums; }
 .slot .t { font: 19px/1.2 var(--display); }
 .slot .k { display: block; font: 9px var(--mono); color: var(--faint); letter-spacing: 0.1em; text-transform: uppercase; margin-top: 2px; }
 .slot.past .t { color: var(--muted); }
+.slot-open { border: 0; background: none; padding: 0; text-align: left; color: inherit; cursor: pointer; min-width: 0; }
+.slot-open:hover .t, .slot-open:focus-visible .t { color: var(--terra); }
+/* sits on the small status line, so titles keep the full width */
+.slot-out { position: absolute; right: 0; bottom: 8px; font: 12px var(--mono); color: var(--faint); text-decoration: none; padding: 2px 3px; }
+.slot-out:hover, .slot-out:focus-visible { color: var(--terra); }
 .now-line { position: relative; height: 0; border-top: 1px solid var(--terra); margin: 4px 0; }
 .now-line span { position: absolute; left: 0; top: -8px; font: 500 9px var(--mono); color: var(--cream); background: var(--terra); border-radius: 2px; padding: 1px 5px; letter-spacing: 0.1em; }
 
@@ -774,6 +779,10 @@ button:disabled { opacity: 0.5; cursor: progress; }
 .entry .m { grid-column: 1 / -1; font: 10px var(--mono); color: var(--muted); letter-spacing: 0.04em; }
 .entry a { color: var(--terra); text-decoration: none; }
 .entry a:hover { text-decoration: underline; }
+/* the entry a pinned note or agenda item pointed at */
+.entry.focus { background: rgb(196 96 42 / 0.08); box-shadow: inset 3px 0 0 var(--terra); padding-left: 10px; animation: entry-glow 1.6s ease-out; }
+@keyframes entry-glow { from { background: rgb(196 96 42 / 0.2); } }
+@media (prefers-reduced-motion: reduce) { .entry.focus { animation: none; } }
 .page .empty { font: italic 18px var(--display); color: var(--muted); padding: 12px 0; }
 .page .error { color: var(--terra-hover); padding: 12px 0; }
 
