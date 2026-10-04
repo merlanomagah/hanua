@@ -2,7 +2,7 @@
 // The days and dates fill in by themselves; each week is saved on this Mac as you type, and past weeks are kept
 // (‹ and ›). Eating well ✦ opens gentle tips matched against what's typed (rules: public/shared/menu.js).
 // At work it's covered: the menu is personal.
-// A probe (5 Oct 2026; drawing swapped for typing 6 Oct after Mel found it finicky): if no week gets filled in
+// A probe (5 Oct 2026; drawing swapped for typing the same day after Mel found it finicky): if no week gets filled in
 // by about 26 Oct, it goes on the cut list.
 import { addDays, parseDay, todayStr, weekStart } from "./shared/dates.js";
 import { DAYS, MEALS, PLATE, menuShape, menuTips } from "./shared/menu.js";

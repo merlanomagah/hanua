@@ -166,7 +166,7 @@ button:disabled { opacity: 0.5; cursor: progress; }
 
 .wall-row { display: flex; flex-wrap: wrap; align-items: stretch; gap: 48px 64px; margin-top: 4px; }
 .wall-left { flex: 1.4 1 520px; min-width: 0; display: flex; flex-direction: column; gap: 44px; padding-top: 34px; margin-top: calc(-1 * var(--lift, 0px)); }
-/* the greeting's curved date lines up with the status pills (Mel, 6 Oct 2026): lifted by the pills' row and the gap */
+/* the greeting's curved date lines up with the status pills (Mel, 5 Oct 2026): lifted by the pills' row and the gap */
 @media (min-width: 601px) { .wall-left { --lift: 54px; } }
 .wall-right { flex: 1 1 360px; min-width: 0; display: flex; flex-direction: column; gap: 40px; }
 

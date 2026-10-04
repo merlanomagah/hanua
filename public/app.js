@@ -388,7 +388,7 @@ export function renderCalendar() {
     h("div", { className: "cal-head" },
       calNav("‹", "Previous month", -1),
       h("h2", {}, (() => {
-        // the month's name zooms the calendar out over the wall, and back (Mel, 6 Oct 2026)
+        // the month's name zooms the calendar out over the wall, and back (Mel, 5 Oct 2026)
         const b = h("button", { type: "button", className: "cal-month", id: "cal-month", textContent: now.toLocaleDateString(undefined, { month: "long" }),
           title: calWide ? "Back to the wall" : "See the month bigger" });
         b.setAttribute("aria-expanded", String(calWide));

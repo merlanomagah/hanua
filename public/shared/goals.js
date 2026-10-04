@@ -13,7 +13,7 @@ export const levelIndex = (name) => LEVELS.findIndex((l) => l.name === name);
 export const isGoalDone = (g) => /^done/i.test(g?.status || "");
 
 // Which goals go on the wall calendar: open Tasks and PBIs with a due date. Epic and Feature dates are a rough
-// "by when", not a day to plan around, and cluttered the month (Mel, 6 Oct 2026); they stay on the Timeline.
+// "by when", not a day to plan around, and cluttered the month (Mel, 5 Oct 2026); they stay on the Timeline.
 export const CALENDAR_LEVELS = ["PBI", "Task"];
 export const onCalendar = (g) => Boolean(g?.due) && !isGoalDone(g) && (!g.level || CALENDAR_LEVELS.includes(g.level));
 
