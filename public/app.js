@@ -44,24 +44,6 @@ const area = (id) => state.areas.find((a) => a.id === id);
 const records = (id) => area(id)?.records ?? [];
 const isDone = (r) => /^(done|complete|reached)/i.test(r.status || "");
 
-// The newest Notion edit across a book's rows, and how long ago that was in words
-function lastEdited(id) {
-  return records(id).reduce((max, r) => (r.edited && new Date(r.edited) > new Date(max || 0) ? r.edited : max), null);
-}
-function ago(iso) {
-  if (!iso) return "";
-  const mins = Math.round((Date.now() - new Date(iso)) / 60_000);
-  if (mins < 2) return "just now";
-  if (mins < 60) return `${mins} minutes ago`;
-  const hrs = Math.round(mins / 60);
-  if (hrs < 24) return `${hrs} hour${hrs === 1 ? "" : "s"} ago`;
-  const days = daysBetween(ymd(new Date(iso)), todayStr());
-  if (days <= 1) return "yesterday";
-  if (days < 14) return `${days} days ago`;
-  return `on ${new Date(iso).toLocaleDateString(undefined, { day: "numeric", month: "short" })}`;
-}
-const updatedLine = (id) => { const e = lastEdited(id); return e ? `updated ${ago(e)}` : ""; };
-
 function store(key, value) {
   try {
     if (value === undefined) return localStorage.getItem(key);
@@ -112,7 +94,7 @@ function renderShelf() {
     h("div", { className: "shelf-books" }, group.map((b) => {
       const spine = SPINES[b.id];
       const badge = badgeFor(b);
-      const el = h("button", { className: `book${spine ? "" : " plain"}${b.id === activeBook ? " active" : ""}`, type: "button", title: [b.label, b.money ? "" : updatedLine(b.id)].filter(Boolean).join(" · "), ariaLabel: `Open ${b.label}` },
+      const el = h("button", { className: `book${spine ? "" : " plain"}${b.id === activeBook ? " active" : ""}`, type: "button", title: b.label, ariaLabel: `Open ${b.label}` },
         h("span", { className: "b-label" },
           h("span", { className: "b-title", textContent: b.label }),
           h("span", { className: "b-vol", textContent: ROMAN[books.indexOf(b)] ?? "" })),
@@ -520,14 +502,14 @@ function renderNotes() {
   const today = todayStr();
   const notes = [];
   for (const r of records(ROLE.notes).slice(0, 4)) {
-    notes.push({ text: r.title, meta: `Learning · ${fmtDay(r.date, { day: "numeric", month: "short" })}`, book: ROLE.notes, rid: r.id });
+    notes.push({ text: r.title, meta: `Learning · ${fmtDay(r.date, { day: "numeric", month: "short" })}`, book: ROLE.notes });
   }
   for (const r of records(ROLE.people)) {
     const gap = r.date ? daysBetween(r.date, today) : null;
-    if (gap !== null && gap >= 21) notes.push({ text: `Catch up with ${r.title}`, meta: `${gap} days since you spoke`, book: ROLE.people, rid: r.id });
+    if (gap !== null && gap >= 21) notes.push({ text: `Catch up with ${r.title}`, meta: `${gap} days since you spoke`, book: ROLE.people });
   }
   for (const r of records(ROLE.tasks)) {
-    if (/blocked/i.test(r.status || "")) notes.push({ text: `${r.title} is blocked`, meta: "Work · needs a nudge", book: ROLE.tasks, rid: r.id });
+    if (/blocked/i.test(r.status || "")) notes.push({ text: `${r.title} is blocked`, meta: "Work · needs a nudge", book: ROLE.tasks });
   }
   if (reviewDue()) notes.unshift({ text: "Weekly review due", meta: "Goals · ten minutes", run: () => { showBoard(true); openReview(); } });
   const box = $("notes");
@@ -537,11 +519,11 @@ function renderNotes() {
       h("span", { textContent: "Your notes will pin here." })));
   }
   box.replaceChildren(...notes.slice(0, 8).map((n, i) => {
-    const el = h("button", { type: "button", className: "note", title: n.run ? "" : "Open in its book" },
+    const el = h("button", { type: "button", className: "note" },
       h("span", { className: "meta", textContent: n.meta }),
       h("span", { className: "text", textContent: n.text }));
     el.style.cssText = `--nc:${NOTE_COLORS[i % NOTE_COLORS.length]};--r:${NOTE_TILTS[i % NOTE_TILTS.length]}`;
-    el.addEventListener("click", () => (n.run ? n.run() : openBook(n.book, bookEl(n.book), n.rid)));
+    el.addEventListener("click", () => (n.run ? n.run() : openBook(n.book, bookEl(n.book))));
     return el;
   }));
 }
@@ -612,13 +594,9 @@ function renderAgenda() {
   for (const r of items) {
     const t = timeOf(r.date);
     if (!nowPlaced && t && t > nowHM) { list.append(h("li", { className: "now-line" }, h("span", { textContent: `NOW ${nowHM}` }))); nowPlaced = true; }
-    const open = h("button", { type: "button", className: "slot-open", title: "Open in your Calendar book" },
-      h("span", { className: "t", textContent: r.title }), r.status ? h("span", { className: "k", textContent: r.status }) : null);
-    open.addEventListener("click", () => openBook(ROLE.events, bookEl(ROLE.events), r.id));
     list.append(h("li", { className: `slot${t && t < nowHM ? " past" : ""}` },
       h("time", { textContent: t || "All day" }),
-      open,
-      r.url ? h("a", { className: "slot-out", href: r.url, target: "_blank", rel: "noopener", title: "Open in Notion", ariaLabel: `Open ${r.title} in Notion`, textContent: "↗" }) : null));
+      h("span", {}, h("span", { className: "t", textContent: r.title }), r.status ? h("span", { className: "k", textContent: r.status }) : null)));
   }
   if (items.length && !nowPlaced) list.append(h("li", { className: "now-line" }, h("span", { textContent: `NOW ${nowHM}` })));
   $("agenda").replaceChildren(
@@ -687,7 +665,7 @@ function bookPages(id) {
   const left = [
     h("p", { className: "eyebrow", textContent: a.live ? "Live from Notion" : "Sample data" }),
     h("h2", { id: "book-title", textContent: a.label }),
-    h("p", { className: "sub", textContent: a.error || [`${a.records.length} entries`, updatedLine(id)].filter(Boolean).join(" · ") }),
+    h("p", { className: "sub", textContent: a.error || `${a.records.length} entries` }),
     h("div", { className: "stats" },
       [[a.records.length, "entries"], [recent, "within 30 days"], [open, "still open"], [a.records[0]?.date ? fmtDay(a.records[0].date, { day: "numeric", month: "short" }) : "—", "latest"]]
         .map(([v, l]) => h("div", { className: "stat" }, h("b", { textContent: v }), h("span", { textContent: l })))),
@@ -696,15 +674,11 @@ function bookPages(id) {
   const right = [
     h("h3", { textContent: "Entries" }),
     a.records.length
-      ? h("ul", { className: "entries" }, a.records.map((r) => {
-          const li = h("li", { className: "entry" },
-            h("span", { className: "t", textContent: r.title }),
-            typeof r.amount === "number" ? h("span", { className: `v ${r.amount < 0 ? "neg" : ""}`, textContent: r.amount.toLocaleString() }) : h("span"),
-            h("span", { className: "m" }, [r.date ? fmtDay(r.date) + (timeOf(r.date) ? " " + timeOf(r.date) : "") : null, r.status].filter(Boolean).join(" · "),
-              r.url ? h("span", {}, " · ", h("a", { href: r.url, target: "_blank", rel: "noopener", textContent: "Open in Notion ↗" })) : null));
-          li.dataset.rid = r.id;
-          return li;
-        }))
+      ? h("ul", { className: "entries" }, a.records.map((r) => h("li", { className: "entry" },
+          h("span", { className: "t", textContent: r.title }),
+          typeof r.amount === "number" ? h("span", { className: `v ${r.amount < 0 ? "neg" : ""}`, textContent: r.amount.toLocaleString() }) : h("span"),
+          h("span", { className: "m" }, [r.date ? fmtDay(r.date) + (timeOf(r.date) ? " " + timeOf(r.date) : "") : null, r.status].filter(Boolean).join(" · "),
+            r.url ? h("span", {}, " · ", h("a", { href: r.url, target: "_blank", rel: "noopener", textContent: "Open in Notion ↗" })) : null))))
       : h("p", { className: "empty", textContent: "Blank pages. Use the Feed bar to write the first entry." }),
   ];
   return { left, right };
@@ -766,8 +740,7 @@ function setActive(id) {
   document.querySelectorAll(".book").forEach((b) => b.classList.toggle("active", b.dataset.id === id));
 }
 
-// focusId: a record to scroll to and mark, e.g. from a pinned note or the agenda
-async function openBook(id, fromEl, focusId = null) {
+async function openBook(id, fromEl) {
   if (openEl || !(id === "money" ? state.money : area(id))) return;
   const book = shelfBooks().find((b) => b.id === id);
   const { left, right } = bookPages(id);
@@ -780,12 +753,6 @@ async function openBook(id, fromEl, focusId = null) {
   setActive(id);
   document.body.style.overflow = "hidden";
   requestAnimationFrame(() => $("reader").classList.add("dim"));
-  // marked before the opening animation, so it never waits on it
-  const entry = focusId && [...ob.querySelectorAll(".entry")].find((li) => li.dataset.rid === focusId);
-  if (entry) {
-    entry.classList.add("focus");
-    entry.scrollIntoView({ block: "center" });
-  }
 
   if (fromEl && !reducedMotion) {
     // grow the open book out of the spine you clicked
@@ -796,7 +763,7 @@ async function openBook(id, fromEl, focusId = null) {
       { transform: "none", opacity: 1 },
     ], { duration: 420, easing: "cubic-bezier(.2,.8,.2,1)" }).finished;
   }
-  (entry?.querySelector("a") || $("reader-close")).focus({ preventScroll: true });
+  $("reader-close").focus({ preventScroll: true });
 }
 
 async function closeBook() {
@@ -845,7 +812,7 @@ function bookSummary(b) {
   if (!a) return "";
   if (a.error) return "Couldn't reach Notion";
   const n = a.records.length;
-  return [n ? `${n} entr${n === 1 ? "y" : "ies"}` : "No entries yet", a.live ? "live from Notion" : "sample", updatedLine(b.id)].filter(Boolean).join(" · ");
+  return `${n ? `${n} entr${n === 1 ? "y" : "ies"}` : "No entries yet"} · ${a.live ? "live from Notion" : "sample"}`;
 }
 
 function renderLibrary() {

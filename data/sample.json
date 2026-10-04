@@ -3,8 +3,7 @@
     {
       "title": "Send client deck v2",
       "date": "2026-10-03",
-      "status": "In progress",
-      "edited": "2026-10-03T09:40"
+      "status": "In progress"
     },
     {
       "title": "Reply to Priya's budget email",
@@ -36,8 +35,7 @@
     {
       "title": "Stand-up",
       "date": "2026-10-03T08:30",
-      "status": "Work",
-      "edited": "2026-10-02T18:05"
+      "status": "Work"
     },
     {
       "title": "Client review",
@@ -75,8 +73,7 @@
       "title": "Run",
       "date": "2026-10-02",
       "amount": 35,
-      "status": "Cardio",
-      "edited": "2026-09-29T07:30"
+      "status": "Cardio"
     },
     {
       "title": "Yoga",
@@ -95,8 +92,7 @@
     {
       "title": "Lead with the decision, then the context",
       "date": "2026-10-02",
-      "status": "Done",
-      "edited": "2026-09-26T20:15"
+      "status": "Done"
     },
     {
       "title": "Notion API: databases vs data sources",
@@ -118,8 +114,7 @@
     {
       "title": "Sam",
       "date": "2026-09-12",
-      "status": "Close friends",
-      "edited": "2026-09-12T12:00"
+      "status": "Close friends"
     },
     {
       "title": "Aunty Lani",
