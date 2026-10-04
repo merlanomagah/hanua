@@ -943,9 +943,15 @@ $("wall").addEventListener("touchend", (e) => {
 });
 
 // ---- board state ----
-let boardView = store("goals-view") === "kanban" ? "kanban" : "tree";
+// Views: "tree" is the Hierarchy columns, "kanban" the Board, "spider" the Tree diagram, "timeline" the Timeline.
+const BOARD_VIEWS = ["tree", "kanban", "spider", "timeline"];
+let boardView = BOARD_VIEWS.includes(store("goals-view")) ? store("goals-view") : "tree";
 let boardLevel = LEVELS.some((l) => l.name === store("goals-level")) ? store("goals-level") : "Task";
 let focusGoal = null;
+let spiderRoot = store("goals-root") || null; // the goal in the centre of the Tree view
+let tlRoot = store("goals-tl-root") || ""; // "" = every goal on the Timeline
+let tlLevels = new Set((store("goals-tl-levels") || LEVELS.map((l) => l.name).join(",")).split(",").filter((n) => LEVELS.some((l) => l.name === n)));
+if (!tlLevels.size) tlLevels = new Set(LEVELS.map((l) => l.name));
 const goalById = (id) => state.goals.goals.find((g) => g.id === id);
 const isGoalDone = (g) => /^done/i.test(g.status || "");
 
@@ -983,14 +989,20 @@ function renderBoard() {
   document.querySelectorAll("[data-view]").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.view === boardView)));
   document.querySelectorAll("[data-level]").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.level === boardLevel)));
   $("level-seg").hidden = boardView !== "kanban";
+  fillRootPicker();
   $("review-open").classList.toggle("due", reviewDue());
   $("review-open").title = reviewDue() ? "Your weekly review is due" : `Last review ${fmtDay(state.reviews.reviews[0]?.date)}`;
-  $("goal-add").textContent = boardView === "kanban" ? `+ New ${boardLevel}` : "+ New Epic";
+  $("goal-add").textContent = boardView === "kanban" ? `+ New ${boardLevel}` : "+ New ▾";
+  $("goal-add").setAttribute("aria-haspopup", boardView === "kanban" ? "false" : "menu");
   $("cork").classList.toggle("kanban", boardView === "kanban");
+  $("cork").classList.toggle("view-spider", boardView === "spider");
+  $("cork").classList.toggle("view-timeline", boardView === "timeline");
   if (focusGoal && !goalById(focusGoal)) focusGoal = null;
   const thread = focusGoal ? lineage(focusGoal) : null;
   let n = 0;
-  const cols = boardView === "kanban"
+  const cols = boardView === "spider" ? [renderSpider()]
+    : boardView === "timeline" ? [renderTimeline()]
+    : boardView === "kanban"
     ? GOAL_STATUS.map((st) => {
         const list = goals.filter((g) => g.level === boardLevel && (g.status || "New") === st).sort(treeOrder(goals));
         // Personal Kanban: cap what's in progress, so things get finished
@@ -1011,6 +1023,8 @@ function renderBoard() {
       });
   $("cork-cols").replaceChildren(...cols);
   $("cork-cols").querySelectorAll(".pin-list").forEach((l) => l.addEventListener("scroll", drawThreads, { passive: true }));
+  if (boardView === "spider") layoutSpider();
+  if (boardView === "timeline") scrollTimelineToToday();
   renderTopShelf();
   renderCalendar();
   // the wall stretches to fit a long board (phones stack the columns)
@@ -1053,7 +1067,7 @@ function goalCard(g, i, thread) {
     g.level === "Epic" ? (() => { const v = epicValue(g); return h("span", { className: "g-value", textContent: `${dollars(v.earned)} of ${dollars(v.target)}` }); })() : null,
     focusGoal === g.id ? h("span", { className: "g-actions" },
       actButton("edit", "Edit"),
-      childLevel ? actButton("child", `+ ${childLevel.name}`) : null,
+      childLevel ? actButton("plan", `Plan ${childLevel.plural}`) : null,
       g.url ? h("a", { className: "g-act", href: g.url, target: "_blank", rel: "noopener", textContent: "Notion ↗" }) : null) : null,
     st === "done" ? h("span", { className: "g-stamp", textContent: "Done" }) : null,
     actButton("delete", "×"));
@@ -1066,7 +1080,7 @@ function goalCard(g, i, thread) {
     const act = e.target.closest("[data-act]")?.dataset.act;
     if (act === "edit") return openGoal(g);
     if (act === "delete") return confirmDelete(g);
-    if (act === "child") return openGoal(null, { level: childLevel.name, parent: g.id, area: g.area });
+    if (act === "plan") return openPlan(g);
     if (e.target.closest("a")) return;
     focusGoal = focusGoal === g.id ? null : g.id;
     renderBoard();
@@ -1129,7 +1143,7 @@ function drawThreads() {
     svg.append(path);
   }
 }
-window.addEventListener("resize", () => { if (onBoard) drawThreads(); });
+window.addEventListener("resize", () => { if (onBoard) { drawThreads(); if (boardView === "spider") layoutSpider(); } });
 
 // Kanban: drop a card on a column to change its state. Saves straight away, with Undo.
 function dropZone(col, status) {
@@ -1187,6 +1201,8 @@ function recalcSample() {
 document.querySelectorAll("[data-view]").forEach((b) => b.addEventListener("click", () => {
   boardView = b.dataset.view;
   store("goals-view", boardView);
+  // a goal picked on the board opens the Tree at that goal
+  if (boardView === "spider" && focusGoal) setSpiderRoot(LEVELS[levelIndex(goalById(focusGoal)?.level) + 1] ? focusGoal : goalById(focusGoal)?.parent || focusGoal);
   renderBoard();
 }));
 document.querySelectorAll("[data-level]").forEach((b) => b.addEventListener("click", () => {
@@ -1195,7 +1211,449 @@ document.querySelectorAll("[data-level]").forEach((b) => b.addEventListener("cli
   renderBoard();
 }));
 $("cork").addEventListener("click", (e) => {
-  if (focusGoal && !e.target.closest(".goal-card")) { focusGoal = null; renderBoard(); }
+  if (focusGoal && boardView !== "spider" && boardView !== "timeline" && !e.target.closest(".goal-card")) { focusGoal = null; renderBoard(); }
+});
+
+// ---- picking the goal for the Tree and Timeline views ----
+const kidsOf = (id) => state.goals.goals.filter((c) => c.parent === id).sort(treeOrder(state.goals.goals));
+// Top-level goals worth looking at: Epics, and anything stand-alone that has goals under it
+function rootChoices() {
+  const goals = state.goals.goals;
+  return goals.filter((g) => (!g.parent || !goalById(g.parent)) && (g.level === "Epic" || g.children?.length)).sort(treeOrder(goals));
+}
+function setSpiderRoot(id) {
+  spiderRoot = id || null;
+  store("goals-root", spiderRoot || "");
+}
+function fillRootPicker() {
+  const sel = $("goal-root");
+  sel.hidden = boardView !== "spider" && boardView !== "timeline";
+  if (sel.hidden) return;
+  const roots = rootChoices();
+  const opts = roots.map((g) => h("option", { value: g.id, textContent: `${g.level === "Epic" ? "" : `${g.level}: `}${g.title}` }));
+  if (boardView === "timeline") {
+    sel.replaceChildren(h("option", { value: "", textContent: "All goals" }), ...opts);
+    if (tlRoot && !goalById(tlRoot)) tlRoot = "";
+    sel.value = tlRoot;
+  } else {
+    // the Tree shows the Epic a drilled-in goal belongs to
+    if (!goalById(spiderRoot)) setSpiderRoot(roots[0]?.id);
+    let top = goalById(spiderRoot);
+    for (const seen = new Set(); top?.parent && goalById(top.parent) && !seen.has(top.id); top = goalById(top.parent)) seen.add(top.id);
+    sel.replaceChildren(...(opts.length ? opts : [h("option", { value: "", textContent: "No Epics yet" })]));
+    sel.value = top?.id || "";
+  }
+}
+$("goal-root").addEventListener("change", (e) => {
+  if (boardView === "timeline") { tlRoot = e.target.value; store("goals-tl-root", tlRoot); }
+  else setSpiderRoot(e.target.value);
+  renderBoard();
+});
+// Timeline: which levels get a row (at least one stays on)
+function tlLevelPicker() {
+  return h("div", { className: "tl-filter" }, h("span", { className: "cp-label", textContent: "Show" }),
+    h("div", { className: "seg", ariaLabel: "Levels on the timeline" }, LEVELS.map((l) => {
+      const b = h("button", { type: "button", textContent: l.plural });
+      b.setAttribute("aria-pressed", String(tlLevels.has(l.name)));
+      b.addEventListener("click", () => {
+        if (tlLevels.has(l.name)) { if (tlLevels.size > 1) tlLevels.delete(l.name); } else tlLevels.add(l.name);
+        store("goals-tl-levels", [...tlLevels].join(","));
+        renderBoard();
+      });
+      return b;
+    })));
+}
+
+// ---- Tree: one goal in the middle, what sits under it spreading out both ways. Click a branch to drill in ----
+function spNode(g, depth) {
+  const lvl = (g.level || "Task").toLowerCase();
+  const st = STATE_CLASS[(g.status || "new").toLowerCase()] || "new";
+  const kids = g.children?.length || 0;
+  const below = LEVELS[levelIndex(g.level) + 1];
+  const late = g.due && st !== "done" && dayOf(g.due) < todayStr();
+  const meta = [g.status || "New", kids ? `${g.childDone}/${kids} ${below?.plural || ""}`.trim() : null,
+    g.due ? `${late ? "was due" : "due"} ${fmtDay(g.due, { day: "numeric", month: "short" })}` : null].filter(Boolean).join(" · ");
+  const parts = [
+    h("span", { className: "sp-type" }, g.level || "Task", depth === 2 && kids ? h("span", { className: "sp-more", textContent: ` +${kids}` }) : null),
+    h("span", { className: "sp-title", textContent: g.title }),
+    h("span", { className: "g-bar" }, Object.assign(h("i"), { style: `width:${g.progress ?? 0}%` })),
+    h("span", { className: `sp-meta${late ? " late" : ""}`, textContent: meta }),
+  ];
+  if (depth === 0) {
+    const el = h("div", { className: `sp-node lv lvl-${lvl} ${st} d0` }, ...parts,
+      h("span", { className: "g-actions" },
+        actButton("edit", "Edit"),
+        below ? actButton("plan", `Plan ${below.plural}`) : null,
+        g.url ? h("a", { className: "g-act", href: g.url, target: "_blank", rel: "noopener", textContent: "Notion ↗" }) : null));
+    el.addEventListener("click", (e) => {
+      const act = e.target.closest("[data-act]")?.dataset.act;
+      if (act === "edit") openGoal(g);
+      if (act === "plan") openPlan(g);
+    });
+    el.dataset.id = g.id;
+    return el;
+  }
+  const el = h("button", { type: "button", className: `sp-node lv lvl-${lvl} ${st} d${depth}`,
+    title: below ? `Open “${g.title}” to see its ${below.plural}` : `Review “${g.title}”` }, ...parts);
+  el.dataset.id = g.id;
+  el.addEventListener("click", () => {
+    if (!below) return openGoal(g);
+    setSpiderRoot(g.id);
+    renderBoard();
+  });
+  el.addEventListener("dblclick", () => openGoal(g));
+  return el;
+}
+
+function renderSpider() {
+  const roots = rootChoices();
+  if (!goalById(spiderRoot)) setSpiderRoot(roots[0]?.id);
+  const wrap = h("div", { className: "sp-wrap" });
+  const root = goalById(spiderRoot);
+  if (!root) {
+    wrap.append(h("p", { className: "pin-empty sp-empty", textContent: "No Epics yet. Press + New and start with a big goal for the year." }));
+    return wrap;
+  }
+  // the path from the Epic down to the goal in the middle, so you can zoom back out
+  const trail = [];
+  for (let g = root, seen = new Set(); g && !seen.has(g.id); g = goalById(g.parent)) { seen.add(g.id); trail.unshift(g); }
+  const crumb = (g) => {
+    const b = h("button", { type: "button", className: "sp-crumb", textContent: g.title });
+    b.addEventListener("click", () => { setSpiderRoot(g.id); renderBoard(); });
+    return b;
+  };
+  const out = h("button", { type: "button", className: "g-act sp-out", textContent: "‹ Zoom out" });
+  out.addEventListener("click", () => { setSpiderRoot(root.parent); renderBoard(); });
+  const crumbs = h("nav", { className: "sp-crumbs", ariaLabel: "Where you are" },
+    trail.length > 1 ? out : null,
+    ...trail.flatMap((g, i) => [i ? h("span", { className: "sp-sep", textContent: "›" }) : null,
+      i < trail.length - 1 ? crumb(g) : h("span", { className: "sp-here", textContent: `${g.level}: ${g.title}` })]));
+  const stage = h("div", { className: `sp-stage${reducedMotion ? "" : " enter"}` });
+  stage.append(document.createElementNS("http://www.w3.org/2000/svg", "svg"), spNode(root, 0));
+  const kids = kidsOf(root.id);
+  for (const c of kids) {
+    stage.append(spNode(c, 1));
+    for (const gc of kidsOf(c.id)) stage.append(Object.assign(spNode(gc, 2), { _parent: c.id }));
+  }
+  const below = LEVELS[levelIndex(root.level) + 1];
+  if (!kids.length) {
+    const plan = h("button", { type: "button", className: "sp-node sp-ghost d1", textContent: below ? `+ Plan the ${below.plural}` : "Tasks are the smallest level" });
+    if (below) plan.addEventListener("click", () => openPlan(root));
+    else plan.disabled = true;
+    stage.append(plan);
+  }
+  stage.querySelector("svg").classList.add("sp-lines");
+  wrap.append(crumbs, stage);
+  return wrap;
+}
+
+// Positions the Tree once it's on the page: children split left and right of the centre,
+// each with its own children further out, and curved lines between them. Medium widths grow to the right only;
+// narrow screens stack it as an outline.
+function layoutSpider() {
+  const stage = $("cork-cols").querySelector(".sp-stage");
+  if (!stage) return;
+  const svg = stage.querySelector("svg");
+  svg.replaceChildren();
+  const W = stage.clientWidth;
+  const stacked = W < 540, oneSide = !stacked && W < 900;
+  stage.classList.toggle("stacked", stacked);
+  stage.classList.toggle("one-side", oneSide);
+  const nodes = [...stage.querySelectorAll(".sp-node")];
+  if (stacked) { nodes.forEach((n) => { n.style.left = n.style.top = ""; }); stage.style.height = ""; return; }
+  const rootEl = stage.querySelector(".d0");
+  const kids = nodes.filter((n) => n.classList.contains("d1"));
+  const gk = (k) => nodes.filter((n) => n._parent === k.dataset.id);
+  const GAP = 12, BLOCK = 22, PAD = 30;
+  const blockH = (k) => Math.max(k.offsetHeight, gk(k).reduce((s, n) => s + n.offsetHeight, 0) + GAP * Math.max(0, gk(k).length - 1));
+  // split the branches so both sides weigh about the same, keeping their order
+  const total = kids.reduce((s, k) => s + blockH(k), 0);
+  let acc = 0;
+  const right = [], left = [];
+  kids.forEach((k, i) => { (oneSide || i === 0 || acc + blockH(k) / 2 <= total / 2 ? right : left).push(k); acc += blockH(k); });
+  const sideH = (list) => list.reduce((s, k) => s + blockH(k), 0) + BLOCK * Math.max(0, list.length - 1);
+  const avail = stage.parentElement.clientHeight - stage.offsetTop;
+  const H = Math.max(avail, rootEl.offsetHeight + PAD * 2, sideH(right) + PAD * 2, sideH(left) + PAD * 2);
+  stage.style.height = `${H}px`;
+  const cy = H / 2;
+  const place = (el, cx, top) => { el.style.left = `${cx - el.offsetWidth / 2}px`; el.style.top = `${top}px`; };
+  place(rootEl, oneSide ? rootEl.offsetWidth / 2 : W / 2, cy - rootEl.offsetHeight / 2);
+  const NS = "http://www.w3.org/2000/svg";
+  const line = (a, b, dir, lvl) => {
+    const ra = { x: a.offsetLeft, y: a.offsetTop, w: a.offsetWidth, h: a.offsetHeight };
+    const rb = { x: b.offsetLeft, y: b.offsetTop, w: b.offsetWidth, h: b.offsetHeight };
+    const x1 = dir > 0 ? ra.x + ra.w : ra.x, y1 = ra.y + ra.h / 2;
+    const x2 = dir > 0 ? rb.x : rb.x + rb.w, y2 = rb.y + rb.h / 2;
+    const mx = (x1 + x2) / 2;
+    const p = document.createElementNS(NS, "path");
+    p.setAttribute("d", `M${x1},${y1} C${mx},${y1} ${mx},${y2} ${x2},${y2}`);
+    p.setAttribute("class", `lvl-${lvl}`);
+    svg.append(p);
+  };
+  for (const [list, dir] of [[right, 1], [left, -1]]) {
+    let y = cy - sideH(list) / 2;
+    for (const k of list) {
+      const bh = blockH(k), kids2 = gk(k);
+      place(k, oneSide ? W * 0.5 : W / 2 + dir * W * 0.215, y + bh / 2 - k.offsetHeight / 2);
+      let gy = y + (bh - (kids2.reduce((s, n) => s + n.offsetHeight, 0) + GAP * Math.max(0, kids2.length - 1))) / 2;
+      for (const n of kids2) { place(n, oneSide ? W - n.offsetWidth / 2 : W / 2 + dir * W * 0.39, gy); gy += n.offsetHeight + GAP; }
+      y += bh + BLOCK;
+    }
+  }
+  svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+  svg.setAttribute("width", W);
+  svg.setAttribute("height", H);
+  for (const [list, dir] of [[right, 1], [left, -1]]) {
+    for (const k of list) {
+      line(rootEl, k, dir, k.className.match(/lvl-(\w+)/)?.[1]);
+      for (const n of gk(k)) line(k, n, dir, n.className.match(/lvl-(\w+)/)?.[1]);
+    }
+  }
+}
+
+// ---- Timeline: every goal as a bar from its start to its due date, grouped the way the hierarchy is ----
+// A goal with only a due date gets an estimated start this many days before (shown faded)
+const TL_SPAN = { Epic: 180, Feature: 60, PBI: 21, Task: 5 };
+const addDays = (iso, n) => { const d = parseDay(iso); d.setDate(d.getDate() + n); return ymd(d); };
+function goalSpan(g) {
+  let start = dayOf(g.start), end = dayOf(g.due), guessStart = false, guessEnd = false;
+  const len = TL_SPAN[g.level] || TL_SPAN.Task;
+  if (!start && end) { start = addDays(end, -len); guessStart = true; }
+  if (start && !end) { end = addDays(start, len); guessEnd = true; }
+  if (end < start) end = start;
+  return { start, end, guessStart, guessEnd };
+}
+function renderTimeline() {
+  const goals = state.goals.goals;
+  let list = goals.filter((g) => tlLevels.has(g.level || "Task"));
+  if (tlRoot && goalById(tlRoot)) {
+    const ids = new Set([tlRoot]);
+    const down = (id) => kidsOf(id).forEach((c) => { if (!ids.has(c.id)) { ids.add(c.id); down(c.id); } });
+    down(tlRoot);
+    list = list.filter((g) => ids.has(g.id));
+  }
+  list.sort(treeOrder(goals));
+  const dated = list.filter((g) => g.start || g.due);
+  const undated = list.filter((g) => !g.start && !g.due);
+  const box = h("div", { className: "tl-wrap" }, tlLevelPicker());
+  if (!dated.length) {
+    box.append(h("p", { className: "pin-empty", textContent: list.length ? "None of these goals have dates yet. Give them a start or due date and they'll appear here." : "No goals at these levels yet." }));
+  } else {
+    const spans = new Map(dated.map((g) => [g.id, goalSpan(g)]));
+    const today = todayStr();
+    const lo = [...spans.values()].reduce((m, s) => (s.start < m ? s.start : m), today);
+    const hi = [...spans.values()].reduce((m, s) => (s.end > m ? s.end : m), today);
+    // whole months either side, and at least three months on screen
+    const first = parseDay(lo); first.setDate(1);
+    const last = parseDay(hi); last.setMonth(last.getMonth() + 1, 0);
+    if ((last - first) / 86_400_000 < 89) last.setTime(new Date(first.getFullYear(), first.getMonth() + 3, 0).getTime());
+    const from = ymd(first), days = daysBetween(from, ymd(last)) + 1;
+    const narrow = $("cork-cols").clientWidth < 760;
+    const LABEL = narrow ? 130 : 250;
+    const dayW = Math.max(narrow ? 4 : 3, ($("cork-cols").clientWidth - LABEL - 24) / days);
+    const x = (iso) => daysBetween(from, iso) * dayW;
+    const months = [];
+    for (let d = new Date(first); d <= last; d.setMonth(d.getMonth() + 1)) {
+      const iso = ymd(d), end = new Date(d.getFullYear(), d.getMonth() + 1, 0);
+      months.push(h("span", { className: "tl-month", style: `left:${x(iso)}px;width:${(daysBetween(iso, ymd(end)) + 1) * dayW}px`,
+        textContent: d.toLocaleDateString(undefined, d.getMonth() === 0 || !months.length ? { month: "short", year: "numeric" } : { month: "short" }) }));
+    }
+    const depthOf = (g) => { let n = 0; for (let p = goalById(g.parent), seen = new Set(); p && !seen.has(p.id); p = goalById(p.parent)) { seen.add(p.id); if (tlLevels.has(p.level)) n++; } return n; };
+    const rows = dated.map((g) => {
+      const s = spans.get(g.id);
+      const lvl = (g.level || "Task").toLowerCase();
+      const st = STATE_CLASS[(g.status || "new").toLowerCase()] || "new";
+      const late = g.due && st !== "done" && dayOf(g.due) < today;
+      const label = h("button", { type: "button", className: "tl-label", style: `padding-left:${10 + depthOf(g) * 14}px`, title: `Review “${g.title}”` },
+        h("span", { className: "sp-type", textContent: g.level || "Task" }), h("span", { className: "tl-name", textContent: g.title }));
+      const left = x(s.start), w = Math.max(dayW, (daysBetween(s.start, s.end) + 1) * dayW);
+      const bar = h("button", {
+        type: "button", className: `tl-bar ${st}${late ? " late" : ""}${s.guessStart ? " guess-start" : ""}${s.guessEnd ? " guess-end" : ""}`,
+        style: `left:${left}px;width:${w}px`,
+        title: `${g.level}: ${g.title}\n${fmtDay(s.start)} → ${fmtDay(s.end)}${s.guessStart ? " (no start date: estimated)" : ""}${s.guessEnd ? " (no due date: estimated)" : ""}\n${g.status || "New"} · ${g.progress ?? 0}%`,
+      }, Object.assign(h("i"), { style: `width:${g.progress ?? 0}%` }), w >= 110 ? h("span", { textContent: g.title }) : null);
+      // a short bar has its name beside it
+      const beside = w < 110 ? h("span", { className: "tl-beside", style: `left:${left + w + 6}px`, textContent: g.title }) : null;
+      label.addEventListener("click", () => openGoal(g));
+      bar.addEventListener("click", () => openGoal(g));
+      return h("div", { className: `tl-row lv lvl-${lvl}` }, label, h("div", { className: "tl-track" }, bar, beside));
+    });
+    const width = days * dayW;
+    const grid = h("div", { className: "tl-grid", style: `--label:${LABEL}px;width:${LABEL + width}px` },
+      h("div", { className: "tl-head" }, h("span", { className: "tl-corner", textContent: `${dated.length} goal${dated.length === 1 ? "" : "s"}` }), h("div", { className: "tl-months" }, months)),
+      h("div", { className: "tl-body" },
+        h("div", { className: "tl-lines", ariaHidden: "true" }, months.map((m) => h("i", { style: `left:${m.style.left}` }))),
+        today >= from && today <= ymd(last) ? h("span", { className: "tl-today", style: `left:calc(var(--label) + ${x(today) + dayW / 2}px)` }) : null,
+        rows));
+    box.append(h("div", { className: "tl" }, grid));
+  }
+  if (undated.length) {
+    box.append(h("div", { className: "tl-undated" },
+      h("span", { className: "cp-label", textContent: `No dates yet (${undated.length})` }),
+      undated.map((g) => {
+        const b = h("button", { type: "button", className: `tl-chip lv lvl-${(g.level || "Task").toLowerCase()}`, textContent: g.title, title: `Add dates to “${g.title}”` });
+        b.addEventListener("click", () => openGoal(g));
+        return b;
+      })));
+  }
+  return box;
+}
+// open the Timeline with today in view
+function scrollTimelineToToday() {
+  const tl = $("cork-cols").querySelector(".tl"), mark = tl?.querySelector(".tl-today");
+  if (tl && mark) tl.scrollLeft = Math.max(0, mark.offsetLeft - tl.clientWidth / 3);
+}
+
+// ---- + New: a stand-alone goal at any level (to build out under a goal, pick it and press Plan) ----
+function toggleNewMenu(open) {
+  const menu = $("new-menu");
+  open ??= menu.hidden;
+  menu.hidden = !open;
+  $("goal-add").setAttribute("aria-expanded", String(open));
+  if (open) menu.querySelector("button")?.focus();
+}
+$("new-menu").replaceChildren(...LEVELS.map((l) => {
+  const b = h("button", { type: "button", role: "menuitem" }, h("b", { textContent: `+ ${l.name}` }), h("span", { textContent: l.when }));
+  b.addEventListener("click", () => { toggleNewMenu(false); openGoal(null, { level: l.name }); });
+  return b;
+}));
+document.addEventListener("click", (e) => { if (!$("new-menu").hidden && !e.target.closest(".add-wrap")) toggleNewMenu(false); });
+$("new-menu").addEventListener("keydown", (e) => {
+  if (e.key === "Escape") { toggleNewMenu(false); $("goal-add").focus(); }
+  if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+    e.preventDefault();
+    const items = [...$("new-menu").querySelectorAll("button")], i = items.indexOf(document.activeElement);
+    items[(i + (e.key === "ArrowDown" ? 1 : items.length - 1)) % items.length].focus();
+  }
+});
+
+// ---- Plan: build out the level below a goal, several at once, each linked to it ----
+const donePoints = (g) => (g?.doneWhen || "").split("\n").map((l) => l.replace(/^[ \t]*[-•*][ \t]*/, "").trim()).filter(Boolean);
+let planParent = null;
+const planLevel = () => LEVELS[levelIndex(planParent?.level) + 1];
+
+function planRow(hint, preset = {}) {
+  const lvl = planLevel();
+  const title = h("input", { name: "t", value: preset.title || "", placeholder: hint ? `For “${hint}”` : `${lvl.name} title`, autocomplete: "off", ariaLabel: `${lvl.name} title` });
+  const due = h("input", { type: "date", name: "d", ariaLabel: "Due" });
+  if (planParent.due) due.max = dayOf(planParent.due);
+  const size = sized(lvl.name) ? h("select", { name: "s", ariaLabel: "Size in points" }, h("option", { value: "", textContent: "—" }), SIZES.map((x) => h("option", { value: x.pts, textContent: x.pts, title: x.feel }))) : null;
+  const del = h("button", { type: "button", className: "plan-del", ariaLabel: "Remove this row", textContent: "×" });
+  const row = h("li", { className: "plan-row" }, title, due, size, del,
+    preset.why || preset.doneWhen ? h("span", { className: "plan-extra", textContent: "Why and done-when from Claude included ✓" }) : null);
+  row.dataset.why = preset.why || "";
+  row.dataset.done = preset.doneWhen || "";
+  title.addEventListener("keydown", (e) => {
+    if (e.key !== "Enter") return;
+    e.preventDefault(); // Enter adds the next row rather than saving
+    const next = row.nextElementSibling || $("plan-rows").appendChild(planRow());
+    next.querySelector("input").focus();
+    updatePlanCount();
+  });
+  del.addEventListener("click", () => { row.remove(); if (!$("plan-rows").children.length) $("plan-rows").append(planRow()); updatePlanCount(); });
+  return row;
+}
+function planValues() {
+  return [...$("plan-rows").children].map((r) => ({
+    title: r.querySelector('[name="t"]').value.trim(), due: r.querySelector('[name="d"]').value,
+    effort: r.querySelector('[name="s"]')?.value || "", why: r.dataset.why, doneWhen: r.dataset.done,
+  })).filter((r) => r.title);
+}
+function updatePlanCount() {
+  const n = planValues().length, lvl = planLevel();
+  $("plan-save").textContent = n ? `Add ${n} ${n === 1 ? lvl.name : lvl.plural}${state.goals.live ? " to Notion" : ""}` : "Add";
+  $("plan-save").disabled = !n;
+}
+$("plan-rows").addEventListener("input", updatePlanCount);
+$("plan-more").addEventListener("click", () => { const r = planRow(); $("plan-rows").append(r); r.querySelector("input").focus(); updatePlanCount(); });
+
+function openPlan(parent) {
+  planParent = parent;
+  const lvl = planLevel();
+  if (!lvl) return;
+  const kids = kidsOf(parent.id);
+  const points = donePoints(parent);
+  $("plan-heading").textContent = kids.length ? `More ${lvl.plural}` : `Build out the ${lvl.plural}`;
+  $("plan-note").textContent = `${lvl.plural} for “${parent.title}”: each about ${lvl.when.toLowerCase()}'s work. ${state.goals.live ? "Nothing is added to Notion until you press Add." : "Sample goals: they're added on this page only, not in Notion."}`;
+  $("plan-size-col").hidden = !sized(lvl.name);
+  $("plan-form").classList.toggle("unsized", !sized(lvl.name));
+  $("plan-parent").replaceChildren(
+    h("span", { className: "eyebrow", textContent: `From the ${parent.level}` }),
+    h("b", { className: "cp-title", textContent: parent.title }),
+    parent.why ? h("p", { className: "cp-why", textContent: parent.why }) : h("p", { className: "cp-missing", textContent: `This ${parent.level} has no why yet.` }),
+    points.length
+      ? h("div", {}, h("span", { className: "cp-label", textContent: "Done when" }), h("ul", { className: "cp-points" }, points.map((p) => h("li", { textContent: p }))))
+      : h("p", { className: "cp-missing", textContent: `No “done when” on the ${parent.level} yet. Adding one makes it easier to see which ${lvl.plural} you need.` }),
+    h("div", {}, h("span", { className: "cp-label", textContent: `${lvl.plural} so far (${kids.length})` }),
+      kids.length ? h("ul", { className: "cp-kids" }, kids.map((k) => h("li", { className: isGoalDone(k) ? "done" : "", textContent: k.title }))) : h("p", { className: "cp-missing", textContent: "None yet: these will be the first." })),
+    h("p", { className: "cp-ask", textContent: `If every ${lvl.name} were done, would “${parent.title}” be done?` }));
+  // one row per "done when" point to start from (at least three), or two more when some exist already
+  const hints = kids.length ? [null, null] : points.length ? points.slice(0, 8) : [null, null, null];
+  while (hints.length < 3 && !kids.length) hints.push(null);
+  $("plan-rows").replaceChildren(...hints.map((p) => planRow(p)));
+  $("plan-gaps").replaceChildren();
+  $("plan-ideas").hidden = !state.goals.coach;
+  $("plan-ideas").disabled = false;
+  $("plan-after").textContent = `Each ${lvl.name} can get its own${lvl.name === "Task" ? "" : " why and"} done-when afterwards: pick it on the board and press Edit, where the coach helps.`;
+  updatePlanCount();
+  $("plan-dialog").showModal();
+  $("plan-rows").querySelector("input").focus();
+}
+
+$("plan-ideas").addEventListener("click", async () => {
+  const p = planParent, lvl = planLevel();
+  const btn = $("plan-ideas");
+  btn.disabled = true;
+  $("plan-gaps").replaceChildren(h("p", { className: "coach-reply loading", textContent: "Claude is looking for gaps…" }));
+  try {
+    const r = await api("/api/goals/ideas", {
+      parent: { level: p.level, title: p.title, why: p.why, doneWhen: p.doneWhen, notes: p.description },
+      children: [...kidsOf(p.id).map((k) => k.title), ...planValues().map((v) => v.title)], level: lvl.name,
+    });
+    // ideas fill the empty rows first, then add new ones
+    for (const idea of r.ideas) {
+      const empty = [...$("plan-rows").children].find((row) => !row.querySelector('[name="t"]').value.trim());
+      const row = planRow(null, idea);
+      if (empty) empty.replaceWith(row); else $("plan-rows").append(row);
+    }
+    $("plan-gaps").replaceChildren(h("p", { className: "cp-gaps", textContent: r.gaps }), h("p", { className: "coach-small", textContent: "Ideas only. Change or remove any of them; nothing is added until you press Add." }));
+    updatePlanCount();
+  } catch (err) {
+    $("plan-gaps").replaceChildren(h("p", { className: "coach-reply error", textContent: err.message }));
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+$("plan-dialog").addEventListener("close", async () => {
+  if ($("plan-dialog").returnValue !== "save") return;
+  const p = planParent, lvl = planLevel();
+  const rows = planValues();
+  if (!rows.length) return;
+  const base = { level: lvl.name, parent: p.id, status: "New", area: p.area || "" };
+  let made = 0;
+  try {
+    if (state.goals.live) {
+      for (const r of rows) {
+        await api("/api/goals", { values: { ...base, title: r.title, due: r.due, effort: r.effort, why: lvl.name === "Task" ? "" : r.why, doneWhen: r.doneWhen } });
+        made++;
+      }
+      state.goals = await api("/api/goals");
+    } else {
+      rows.forEach((r, i) => state.goals.goals.push({
+        id: `local-${Date.now()}-${i}`, url: null, ...base, area: base.area || null, title: r.title, due: r.due || null, start: null,
+        effort: r.effort ? Number(r.effort) : null, why: r.why, doneWhen: r.doneWhen, description: "", priority: null, completed: null, felt: null, progressSet: null,
+      }));
+      made = rows.length;
+      recalcSample();
+    }
+    focusGoal = p.id;
+    toast(`${made} ${made === 1 ? lvl.name : lvl.plural} added under “${p.title}”${state.goals.live ? " ✓" : " (sample, not saved to Notion)"}`);
+  } catch (err) {
+    toast(made ? `${made} of ${rows.length} added, then: ${err.message}` : err.message, true);
+    if (made) state.goals = await api("/api/goals").catch(() => state.goals);
+  }
+  renderBoard();
 });
 
 // ---- the goal form: review, edit, or add (Notion only changes on Save) ----
@@ -1393,7 +1851,7 @@ function renderCoachParent(v) {
   box.hidden = false;
   const kids = state.goals.goals.filter((g) => g.parent === parent.id && g.id !== v.id);
   const pg = GUIDE[parent.level] || GUIDE.Task;
-  const points = (parent.doneWhen || "").split("\n").map((l) => l.replace(/^[ \t]*[-•*][ \t]*/, "").trim()).filter(Boolean);
+  const points = donePoints(parent);
   if (ideasFor === parent.id && box.dataset.for === parent.id) return; // keep ideas showing while typing
   box.dataset.for = parent.id;
   const ideasBtn = state.goals.coach ? h("button", { type: "button", className: "g-act", textContent: `Ideas for missing ${v.level}s` }) : null;
@@ -1475,7 +1933,7 @@ $("coach-ask").addEventListener("click", async () => {
   }
 });
 $("goal-form").elements.progress.addEventListener("input", (e) => { $("goal-form").elements.progressOut.value = `${e.target.value}%`; });
-$("goal-add").addEventListener("click", () => openGoal(null, { level: boardView === "kanban" ? boardLevel : "Epic" }));
+$("goal-add").addEventListener("click", () => (boardView === "kanban" ? openGoal(null, { level: boardLevel }) : toggleNewMenu()));
 $("goal-dialog").addEventListener("close", async () => {
   if ($("goal-dialog").returnValue !== "save") return;
   const f = $("goal-form").elements;

@@ -82,7 +82,11 @@
               <div class="seg" role="tablist" aria-label="Board view">
                 <button type="button" role="tab" data-view="tree" aria-selected="true">Hierarchy</button>
                 <button type="button" role="tab" data-view="kanban" aria-selected="false">Board</button>
+                <button type="button" role="tab" data-view="spider" aria-selected="false">Tree</button>
+                <button type="button" role="tab" data-view="timeline" aria-selected="false">Timeline</button>
               </div>
+              <!-- Tree and Timeline: which goal to look at (Timeline can show everything) -->
+              <select class="b-select" id="goal-root" aria-label="Show goal" hidden></select>
               <div class="seg" id="level-seg" role="tablist" aria-label="Level" hidden>
                 <button type="button" role="tab" data-level="Epic">Epics</button>
                 <button type="button" role="tab" data-level="Feature">Features</button>
@@ -90,7 +94,11 @@
                 <button type="button" role="tab" data-level="Task">Tasks</button>
               </div>
               <button type="button" class="b-btn ghost review-btn" id="review-open">Weekly review</button>
-              <button type="button" class="b-btn" id="goal-add">+ New Epic</button>
+              <span class="add-wrap">
+                <button type="button" class="b-btn" id="goal-add" aria-haspopup="menu" aria-expanded="false">+ New ▾</button>
+                <!-- a stand-alone goal at any level; to build out under a goal, pick it and press Plan -->
+                <span class="new-menu" id="new-menu" role="menu" hidden></span>
+              </span>
               <a class="b-link" id="goals-guide" target="_blank" rel="noopener" hidden>Guide ↗</a>
               <a class="b-link" id="goals-notion" target="_blank" rel="noopener" hidden>Notion ↗</a>
             </div>
@@ -447,6 +455,31 @@
       <button type="submit">ADD</button>
     </form>
     <p class="spot-hint">Type anything: “Paid $64 for groceries”, “Dentist next Tuesday 10am”, “Learned: …”. Claude drafts a Notion entry; you check it before it's saved. <kbd>Esc</kbd> to close.</p>
+  </dialog>
+
+  <!-- plan the level below a goal: several children in one go, each linked to it -->
+  <dialog id="plan-dialog" class="plan-dialog">
+    <form method="dialog" id="plan-form">
+      <h3 id="plan-heading">Build out</h3>
+      <p class="draft-note" id="plan-note"></p>
+      <div class="plan-layout">
+        <aside class="coach-parent plan-parent" id="plan-parent"></aside>
+        <div class="plan-main">
+          <div class="plan-cols" aria-hidden="true"><span>Title</span><span>Due</span><span id="plan-size-col">Size</span><span></span></div>
+          <ol class="plan-rows" id="plan-rows"></ol>
+          <div class="plan-tools">
+            <button type="button" class="g-act" id="plan-more">+ Another</button>
+            <button type="button" class="g-act" id="plan-ideas">Ideas from Claude</button>
+          </div>
+          <div class="coach-ideas" id="plan-gaps"></div>
+          <p class="coach-small" id="plan-after"></p>
+        </div>
+      </div>
+      <div class="dialog-actions">
+        <button value="cancel" type="submit" class="ghost" formnovalidate>Cancel</button>
+        <button value="save" type="submit" id="plan-save">Add</button>
+      </div>
+    </form>
   </dialog>
 
   <!-- asks before anything is deleted -->
