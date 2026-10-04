@@ -26,7 +26,7 @@ The reasoning behind Hanua lives in [Hanua OS](https://app.notion.com/p/3ee16603
 5. A preference stated or something deliberately cut → Preferences (and its cut list). A new image → full-size original in `prototypes/room-dashboard/assets/`, resized copy in `public/assets/`, and a row in the image library.
 6. At the end of every new room, run the promotion check (unpromoted Learning Log rows up; Playbook patterns not adopted, offered as proposals) and update Hanua OS's row in the OS Registry with the sweep date.
 
-## Where we left off (4 Oct 2026, evening)
+## Where we left off (4 Oct 2026, late evening)
 
 Read this first if you're picking Hanua up in a new session or a different Claude account. Fuller context: the Hanua OS Context page and the latest Session Diary rows in Notion.
 
@@ -34,7 +34,9 @@ Read this first if you're picking Hanua up in a new session or a different Claud
 
 **Notion databases** (all on the "Hanua" page; each must be connected to the Hanua integration via ••• → Connections): the five books, Goals, Weekly reviews, Treat shop. Goals guide page: "Goals guide: Agile for life".
 
-**Open items for Mel:** connect the Treat shop database if not done and add rewards; fill the Notion books and goals with real data; run Pūtea and check the TV's Expenses / Income field names (`server/money.js` guesses the payee field).
+**Latest session (4 Oct, late):** the Hanua Panel (`.claude/skills/panel/`; every change request goes through it, see Workflow); its first run parked the daily planner (`docs/plans/2026-10-daily-planner.md`, agreed, waiting for Move to Sydney Tasks); then Focus mode (At home / At work sign) and the sleep screen (PIN / Touch ID), both built through the panel. Not yet tried in Safari: Touch ID on localhost and the ⌃F / ⌃L shortcuts (tested in the Chromium preview only). Offered to Mel, not yet decided: four Jump Craft Panel learnings from the Brain Playbook (Cynefin check in the Gate, premortem first, the panel as a stand-in for peer review not an approval gate, detectors before reviewers).
+
+**Open items for Mel:** first Safari open asks for a new PIN (accept Use Touch ID if offered); add work Epics with Area Work and mark work events Type = Work so Focus has something to show; connect the Treat shop database if not done and add rewards; fill the Notion books and goals with real data; run Pūtea and check the TV's Expenses / Income field names (`server/money.js` guesses the payee field).
 
 **Goals in progress:** the Move to Sydney Epic has its first seven Features (added with Plan on 4 Oct). Next: Plan PBIs under each, add start and due dates, then Tasks. Mel's first real saves after the overhaul were the first live run of the new Notion paths (saved row returned, batch create, Status/Area from the schema); if anything misbehaves, look at `server/index.js` /api/goals routes and `public/goals/store.js` first. Check with Mel whether the Goals (Notion) Map row's "Last confirmed" date was cleared by mistake on 4 Oct.
 
