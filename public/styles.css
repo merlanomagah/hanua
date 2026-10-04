@@ -585,19 +585,20 @@ button:disabled { opacity: 0.5; cursor: progress; }
 
 /* ---- the menu whiteboard: across the wall under the TV and the record-player shelf, meals typed in marker ink ---- */
 .menu-board { margin-top: 56px; filter: drop-shadow(-8px 14px 16px rgb(28 24 20 / 0.3)); }
-.mb-frame { padding: 12px 12px 0; border-radius: 4px; background: linear-gradient(160deg, #e9e7e2, #b9b6ae 55%, #d6d3cc); box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.8), inset 0 -1px 0 rgb(0 0 0 / 0.15); }
+/* the frame in the black wall clock's warm charcoal (Mel, 6 Oct 2026), so the writing on it is cream */
+.mb-frame { padding: 12px 12px 0; border-radius: 4px; background: linear-gradient(160deg, #3a312a, #1f1a16 55%, #2a241f); box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.12), inset 0 -1px 0 rgb(0 0 0 / 0.4); }
 .mb-head { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 14px; padding: 2px 6px 10px; }
-.mb-title { font: italic 300 26px/1 var(--display); color: var(--ink); }
-.mb-hat { align-self: center; width: 26px; height: 26px; margin-right: -8px; color: var(--ink); }
+.mb-title { font: italic 300 26px/1 var(--display); color: var(--cream); }
+.mb-hat { align-self: center; width: 26px; height: 26px; margin-right: -8px; color: var(--cream); }
 .mb-ico { display: inline-flex; flex: none; width: 16px; height: 16px; }
 .mb-ico svg, .mb-hat svg { width: 100%; height: 100%; }
 .mb-hat .mb-ico { width: 26px; height: 26px; }
 .mb-nav .mb-plan { margin-right: 8px; padding: 0 12px; border-color: var(--terra); background: var(--terra); color: var(--cream); }
 .mb-nav .mb-plan:hover { background: var(--terra-hover); }
-.mb-week { font: 10px var(--mono); letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-3); }
-.mb-drawn { font: 9px var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-3); }
+.mb-week { font: 10px var(--mono); letter-spacing: 0.16em; text-transform: uppercase; color: rgb(250 247 242 / 0.72); }
+.mb-drawn { font: 9px var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: rgb(250 247 242 / 0.72); }
 .mb-nav { margin-left: auto; display: flex; gap: 4px; }
-.mb-nav button { height: 26px; min-width: 26px; padding: 0 8px; border: 1px solid rgb(28 24 20 / 0.18); border-radius: 2px; background: rgb(255 255 255 / 0.55); color: var(--ink); cursor: pointer; font: 10px var(--mono); letter-spacing: 0.12em; text-transform: uppercase; }
+.mb-nav button { height: 26px; min-width: 26px; padding: 0 8px; border: 1px solid rgb(28 24 20 / 0.18); border-radius: 2px; background: rgb(250 247 242 / 0.9); color: var(--ink); cursor: pointer; font: 10px var(--mono); letter-spacing: 0.12em; text-transform: uppercase; }
 .mb-nav button:hover { background: #fff; }
 .mb-surface { position: relative; border-radius: 2px; overflow: hidden;
   background: linear-gradient(115deg, #fdfdfb 0%, #f4f4f0 40%, #fbfbf8 55%, #eeeeea 100%); box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.08), inset 0 2px 6px rgb(0 0 0 / 0.08); }
@@ -623,7 +624,11 @@ button:disabled { opacity: 0.5; cursor: progress; }
 .mb-tips h3 { margin: 0 0 6px; font: 9px var(--mono); letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-3); }
 .mb-tips h3 + ul + h3 { margin-top: 12px; }
 .mb-tips ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; font: 13px/1.4 var(--ui); color: var(--ink-2); }
-.mb-plate b { font-weight: 600; color: var(--ink); }
+/* the plate as bullet points: the part in bold on its own line, what goes in it underneath */
+.mb-plate ul { gap: 8px; }
+.mb-plate li { position: relative; padding-left: 16px; }
+.mb-plate li::before { content: ""; position: absolute; left: 2px; top: 0.55em; width: 6px; height: 6px; border-radius: 50%; background: var(--terra); }
+.mb-plate b { display: block; font-weight: 600; color: var(--ink); }
 .mb-today { grid-column: 1 / -1; display: flex; gap: 12px; align-items: flex-start; padding: 0 0 12px; border-bottom: 1px dashed var(--hair); }
 .mb-today > .mb-ico { width: 30px; height: 30px; color: var(--terra); }
 .mb-today p { margin: 2px 0 2px; font: italic 19px/1.3 var(--display); color: var(--ink); }
@@ -635,7 +640,7 @@ button:disabled { opacity: 0.5; cursor: progress; }
 .mb-guide { display: inline-block; margin-top: 12px; font: 9px var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--terra); }
 /* the tray along the bottom: two markers and an eraser lying on it, for the look (and the canary) */
 .mb-tray { display: flex; align-items: flex-end; gap: 14px; height: 30px; margin: 10px -12px 0; padding: 0 22px 5px; border-radius: 0 0 4px 4px;
-  background: linear-gradient(180deg, #cfccc5, #a9a59c); box-shadow: inset 0 2px 3px rgb(0 0 0 / 0.18); }
+  background: linear-gradient(180deg, #2a241f, #15110e); box-shadow: inset 0 2px 3px rgb(0 0 0 / 0.5); }
 .mb-tray .marker, .mb-tray .eraser { position: relative; filter: drop-shadow(0 2px 1px rgb(0 0 0 / 0.3)); }
 .marker { width: 86px; height: 14px; }
 .marker i { position: absolute; inset: 0; border-radius: 3px 7px 7px 3px; background: linear-gradient(180deg, #fff, #dcdcd6); }
@@ -647,8 +652,8 @@ button:disabled { opacity: 0.5; cursor: progress; }
 .eraser i { position: absolute; inset: 0 0 5px; border-radius: 3px; background: linear-gradient(180deg, #4a4f5c, #2f333d); }
 .eraser::after { content: ""; position: absolute; left: 2px; right: 2px; bottom: 0; height: 6px; border-radius: 0 0 2px 2px; background: #d9d2c3; }
 .mb-gap { flex: 1; }
-.mb-small { align-self: center; height: 22px; padding: 0 8px; border: 0; border-radius: 2px; background: transparent; color: var(--ink-3); cursor: pointer; font: 9px var(--mono); letter-spacing: 0.16em; text-transform: uppercase; }
-.mb-small:hover, .mb-small[aria-expanded="true"] { background: rgb(255 255 255 / 0.5); color: var(--ink); }
+.mb-small { align-self: center; height: 22px; padding: 0 8px; border: 0; border-radius: 2px; background: transparent; color: rgb(250 247 242 / 0.75); cursor: pointer; font: 9px var(--mono); letter-spacing: 0.16em; text-transform: uppercase; }
+.mb-small:hover, .mb-small[aria-expanded="true"] { background: rgb(250 247 242 / 0.14); color: var(--cream); }
 .mb-tray button:focus-visible, .mb-nav button:focus-visible { outline: 2px solid var(--terra); outline-offset: 2px; }
 @media (max-width: 760px) {
   .mb-grid { grid-template-columns: 52px repeat(3, minmax(0, 1fr)); }
@@ -790,6 +795,9 @@ button:disabled { opacity: 0.5; cursor: progress; }
   .room.desk-leave.desk-start .wall { transform: translateY(-100vh); }
   .room.desk-leave.desk-start .desk-pane { transform: translateY(var(--desk-y, 0px)); }
   .desk-edge { display: none; }
+  /* the desk waits a screen below the top of the room; on a pane taller than the screen (the kitchen with Eating
+     well open) that is inside the pane, so it hides once it has slid away, and shows the moment it is called */
+  .room:not(.on-desk):not(.desk-leave) .desk-pane { visibility: hidden; }
 }
 @media (max-width: 900px) { .desk-up { display: none; } }
 @media (prefers-reduced-motion: reduce) { .wall, .desk-pane { transition: none; } }
@@ -1096,6 +1104,19 @@ button:disabled { opacity: 0.5; cursor: progress; }
 .page h2 { font: italic 300 44px/1 var(--display); letter-spacing: -0.02em; margin: 8px 0 6px; }
 .page h3 { font: italic 400 24px var(--display); margin: 0 0 6px; padding-bottom: 8px; border-bottom: 1px solid var(--ink); }
 .page .sub { font: italic 18px var(--display); color: var(--muted); margin: 0 0 18px; }
+/* taking a book off the shelf: the closed book's cover, swinging open on its spine (openBook in app.js) */
+.open-book.opening { clip-path: inset(-80px -80px -80px 50%); }
+.book-cover { position: fixed; z-index: 21; pointer-events: none; transform-origin: left center; transform-style: preserve-3d; border-radius: 2px 4px 4px 2px; }
+.bc-front, .bc-back { position: absolute; inset: 0; -webkit-backface-visibility: hidden; backface-visibility: hidden; border-radius: inherit; }
+.bc-front { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px;
+  background: linear-gradient(90deg, rgb(0 0 0 / 0.28) 0 14px, rgb(255 255 255 / 0.08) 15px, rgb(0 0 0 / 0) 26px), linear-gradient(160deg, rgb(255 255 255 / 0.1), rgb(0 0 0 / 0.18)), var(--c);
+  box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.2); }
+.bc-front::before, .bc-front::after { content: ""; position: absolute; left: 44px; right: 30px; height: 1px; background: rgb(250 247 242 / 0.4); }
+.bc-front::before { top: 28px; } .bc-front::after { bottom: 28px; }
+.bc-title { font: italic 300 clamp(36px, 5vw, 58px)/1 var(--display); color: var(--cream); letter-spacing: -0.02em; padding-left: 14px; }
+.bc-mark { font: 9px var(--mono); letter-spacing: 0.3em; text-transform: uppercase; color: rgb(250 247 242 / 0.6); padding-left: 14px; }
+.bc-back { transform: rotateY(180deg); display: grid; padding: 10px; background: var(--c); }
+.bc-back .page { overflow: hidden; }
 .reader-close {
   position: absolute; top: -14px; right: -14px; z-index: 2; width: 44px; height: 44px; border-radius: 50%; border: 0;
   background: var(--cream); font-size: 1.4rem; cursor: pointer; box-shadow: 0 4px 12px rgb(0 0 0 / 0.3); transition: transform 0.2s;
@@ -1110,6 +1131,28 @@ button:disabled { opacity: 0.5; cursor: progress; }
 .page-ask input:focus { border-bottom-color: var(--ink); }
 .page .answer { margin: 12px 0 0; }
 .entries { list-style: none; padding: 0; margin: 0; }
+/* the Money book: month pages turned with ‹ ›, bars for where it went */
+.money-month { display: flex; align-items: center; gap: 10px; margin: 0 0 16px; font: italic 18px var(--display); color: var(--muted); }
+.money-month span { flex: 1; text-align: center; }
+.mb-turn { width: 30px; height: 30px; border: 1px solid var(--border); border-radius: 2px; background: transparent; color: var(--ink); font: 18px/1 var(--display); cursor: pointer; }
+.mb-turn:hover:not(:disabled) { background: rgb(28 24 20 / 0.06); }
+.mb-turn:disabled { opacity: 0.3; cursor: default; }
+.money-note { margin: -4px 0 16px; padding: 10px 12px; border-left: 2px solid var(--terra); background: rgb(196 96 42 / 0.07); font: 13px/1.45 var(--ui); color: var(--ink-2); }
+.stat.good b { color: var(--green); }
+.stat.over b { color: var(--terra); }
+.money-big { display: grid; gap: 2px; margin: 0 0 18px; }
+.money-big b { font: 400 21px/1.2 var(--display); }
+.money-big small { font: 10px var(--mono); letter-spacing: 0.04em; color: var(--muted); }
+.money-open { display: inline-block; margin-top: 18px; font: 10px var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--terra); }
+.page h3 + .mrows, .page h3 + .entries { margin-bottom: 22px; }
+.mrows { list-style: none; padding: 0; margin: 0 0 22px; }
+.mrow { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; padding: 9px 2px; border-bottom: 1px solid var(--hair); }
+.mrow .t { font: 18px/1.2 var(--display); overflow-wrap: anywhere; }
+.mrow .v { font: 12px var(--mono); text-align: right; font-variant-numeric: tabular-nums; }
+.mrow .track { grid-column: 1 / -1; position: relative; height: 3px; border-radius: 1px; background: rgb(28 24 20 / 0.07); }
+.mrow .fill { position: absolute; inset: 0 auto 0 0; border-radius: 1px; background: var(--green); }
+.mrows.places .fill { background: var(--terra); opacity: 0.75; }
+.mrow .m { grid-column: 1 / -1; font: 10px var(--mono); color: var(--muted); letter-spacing: 0.04em; }
 .entry { display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; padding: 11px 2px; border-bottom: 1px solid var(--hair); }
 .entry .t { font: 19px/1.25 var(--display); overflow-wrap: anywhere; }
 .entry .v { font: 12px var(--mono); text-align: right; font-variant-numeric: tabular-nums; }

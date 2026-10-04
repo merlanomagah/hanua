@@ -679,34 +679,114 @@ export function bookPages(id) {
   return { left, right };
 }
 
+// The month the Money book is turned to (‹ ›); back to this month when the book is put away.
+let moneyView = null;
+const moneyMonths = new Map();
+const monthKey = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+const shiftMonth = (key, n) => { const [y, m] = key.split("-").map(Number); return monthKey(new Date(y, m - 1 + n, 1)); };
+const monthName = (key) => { const [y, m] = key.split("-").map(Number); return new Date(y, m - 1, 1).toLocaleDateString(undefined, { month: "long", year: "numeric" }); };
+
+// Where the money comes from, and what to do when it isn't coming
+function moneySource(m, view) {
+  if (!m.live || !view.live) {
+    return m.reason === "closed"
+      ? { eyebrow: "Sample · Pūtea is closed", note: "Pūtea is closed, so these are sample figures. Open Pūtea+ and your own will come through within a few minutes." }
+      : { eyebrow: "Sample data", note: "Pūtea couldn't be read just now, so these are sample figures." };
+  }
+  const synced = m.lastSync ? ` · synced ${ago(m.lastSync)}` : "";
+  if (m.setup && (!m.setup.akahu || !m.setup.accounts)) {
+    return { eyebrow: "Pūtea is open · no bank yet", note: "Pūtea is open but no bank is connected yet. In Pūtea+: Settings → Bank Sync (Akahu), paste your two tokens, then Sync Now." };
+  }
+  return { eyebrow: `Live from Pūtea${synced}` };
+}
+
+const bar = (name, total, max, meta) => h("li", { className: "mrow" },
+  h("span", { className: "t", textContent: name }),
+  h("span", { className: "v", textContent: money(total, 2) }),
+  h("span", { className: "track" }, Object.assign(h("span", { className: "fill" }), { style: `width:${max ? Math.max(2, (total / max) * 100) : 0}%` })),
+  meta ? h("span", { className: "m", textContent: meta }) : null);
+
 export function moneyPages() {
   const m = state.money;
   if (moneyOff()) {
     return {
       left: [h("p", { className: "eyebrow", textContent: "Hidden" }), h("h2", { id: "book-title", textContent: "Money" }),
-        h("p", { className: "sub", textContent: "Money is hidden with the remote. Press its power button to show it again." })],
+        h("p", { className: "sub", textContent: focus.on ? "Put away while you're at work." : "Money is hidden with the remote. Press its power button to show it again." })],
       right: [h("p", { className: "empty", textContent: "These pages are face down for now." })],
     };
   }
+  const view = moneyView || { key: m.month.ym, month: m.month, live: m.live };
+  const mo = view.month;
+  const thisMonth = view.key === m.month.ym;
+  const src = moneySource(m, view);
+  const change = mo.prevExpenses ? Math.round(((mo.expenses - mo.prevExpenses) / mo.prevExpenses) * 100) : null;
+  const turn = (n, label) => h("button", { type: "button", className: "mb-turn", ariaLabel: label, textContent: n < 0 ? "‹" : "›", onclick: () => turnMoney(n), disabled: n > 0 && thisMonth });
   const left = [
-    h("p", { className: "eyebrow", textContent: m.live ? "Live from Pūtea" : "Sample data" }),
+    h("p", { className: "eyebrow", textContent: src.eyebrow }),
     h("h2", { id: "book-title", textContent: "Money" }),
-    h("p", { className: "sub", textContent: "Read from your Akahu accounts through Pūtea" }),
+    h("div", { className: "money-month" }, turn(-1, "The month before"), h("span", { textContent: monthName(view.key) + (thisMonth ? " · so far" : "") }), turn(1, "The month after")),
+    src.note ? h("p", { className: "money-note", textContent: src.note }) : null,
     h("div", { className: "stats" },
-      [[money(m.month.expenses), "this month"], [money(m.month.prevExpenses), "last month"], [money(m.week.spent), "this week"], [money(m.week.usual), "usual week"]]
-        .map(([v, l]) => h("div", { className: "stat" }, h("b", { textContent: v }), h("span", { textContent: l })))),
+      [[money(mo.income), "in"], [money(mo.expenses), "out"],
+       [money(Math.abs(mo.net)), mo.net >= 0 ? "kept" : "more out than in", mo.net >= 0 ? "good" : "over"],
+       [change === null ? "—" : `${change > 0 ? "+" : ""}${change}%`, "out vs the month before", change > 0 ? "over" : change < 0 ? "good" : ""]]
+        .map(([v, l, cls]) => h("div", { className: `stat ${cls || ""}` }, h("b", { textContent: v }), h("span", { textContent: l })))),
+    mo.biggest ? h("p", { className: "money-big" }, h("span", { className: "eyebrow", textContent: "Biggest single spend" }),
+      h("b", { textContent: `${mo.biggest.name} · ${money(mo.biggest.amount, 2)}` }),
+      h("small", { textContent: [fmtDay(mo.biggest.date, { day: "numeric", month: "short" }), mo.biggest.category].filter(Boolean).join(" · ") })) : null,
     askForm(null, "money"),
+    m.live && m.puteaUrl ? h("a", { className: "money-open", href: m.puteaUrl, target: "_blank", rel: "noopener", textContent: "Open Pūtea ↗" }) : null,
   ];
+  const catMax = Math.max(0, ...mo.categories.map((c) => c.total));
+  const placeMax = Math.max(0, ...mo.places.map((p) => p.total));
   const right = [
-    h("h3", { textContent: "Where it went this month" }),
-    h("ul", { className: "entries" }, m.month.categories.map((c) => h("li", { className: "entry" },
-      h("span", { className: "t", textContent: c.name }), h("span", { className: "v neg", textContent: money(c.total, 2) })))),
-    h("h3", { textContent: "The last seven days", style: "margin-top:22px" }),
-    h("ul", { className: "entries" }, [...m.week.days].reverse().map((d) => h("li", { className: "entry" },
-      h("span", { className: "t", textContent: fmtDay(d.date, { weekday: "long", day: "numeric", month: "short" }) }),
-      h("span", { className: "v", textContent: money(d.spent, 2) })))),
+    h("h3", { textContent: "Where it went" }),
+    mo.categories.length ? h("ul", { className: "mrows" }, mo.categories.map((c) => bar(c.name, c.total, catMax, c.count ? `${c.count} payment${c.count === 1 ? "" : "s"}` : ""))) : h("p", { className: "empty", textContent: "Nothing spent this month." }),
+    mo.places.length ? h("h3", { textContent: "Top places" }) : null,
+    mo.places.length ? h("ul", { className: "mrows places" }, mo.places.map((p) => bar(p.name, p.total, placeMax, p.count > 1 ? `${p.count} times` : ""))) : null,
+    thisMonth && m.subscriptions?.length ? h("h3", { textContent: "Subscriptions" }) : null,
+    thisMonth && m.subscriptions?.length ? h("ul", { className: "entries" }, m.subscriptions.map((x) => h("li", { className: "entry" },
+      h("span", { className: "t", textContent: x.name }), h("span", { className: "v", textContent: `${money(x.monthly, 2)} / mo` }),
+      h("span", { className: "m", textContent: [x.frequency, x.last ? `last ${fmtDay(x.last, { day: "numeric", month: "short" })}` : ""].filter(Boolean).join(" · ") })))) : null,
+    mo.recentExpenses.length ? h("h3", { textContent: thisMonth ? "Lately" : "Last of the month" }) : null,
+    mo.recentExpenses.length ? h("ul", { className: "entries" }, mo.recentExpenses.map((t) => h("li", { className: "entry" },
+      h("span", { className: "t", textContent: t.name }), h("span", { className: "v neg", textContent: money(t.amount, 2) }),
+      h("span", { className: "m", textContent: [fmtDay(t.date, { weekday: "short", day: "numeric", month: "short" }), t.category].filter(Boolean).join(" · ") })))) : null,
   ];
   return { left, right };
+}
+
+// ‹ › turn the Money book a month at a time, like turning pages
+async function turnMoney(n) {
+  const m = state.money;
+  const from = moneyView?.key || m.month.ym;
+  const key = shiftMonth(from, n);
+  if (key > m.month.ym) return;
+  if (key === m.month.ym) moneyView = null;
+  else {
+    if (!moneyMonths.has(key)) {
+      try { moneyMonths.set(key, await api(`/api/money/${key}`)); } catch (err) { return toast(err.message, true); }
+    }
+    const got = moneyMonths.get(key);
+    moneyView = { key, month: got.month, live: got.live };
+  }
+  if (activeBook !== "money") return;
+  fillPages(moneyPages());
+  const pages = [$("page-left"), $("page-right")];
+  if (!reducedMotion) pages.forEach((p) => p.animate([{ opacity: 0, transform: `translateX(${n < 0 ? -14 : 14}px)` }, { opacity: 1, transform: "none" }], { duration: 260, easing: "cubic-bezier(.2,.8,.2,1)" }));
+  $("page-left").querySelector(".mb-turn:not(:disabled)")?.focus({ preventScroll: true });
+}
+
+// Pūtea may be opened after Hanua: look again now and then, and when the Money book opens
+export async function refreshMoney() {
+  try {
+    state.money = await api("/api/money");
+    moneyMonths.clear();
+    renderMoneyScreen();
+    if (!openEl) renderShelf(); // not while a book is out: its gap on the shelf would fill in
+    if (activeBook === "money" && !moneyView && !opening) fillPages(moneyPages());
+    renderHeader();
+  } catch { /* keep what's showing */ }
 }
 
 export function askForm(areaId, label) {
@@ -735,16 +815,56 @@ export function setActive(id) {
   document.querySelectorAll(".book").forEach((b) => b.classList.toggle("active", b.dataset.id === id));
 }
 
+// Both pages of the open book (a phone shows them as one); pages may leave out parts with null
+function fillPages({ left, right }) {
+  left = left.filter(Boolean); right = right.filter(Boolean);
+  $("page-left").replaceChildren(...left);
+  $("page-right").replaceChildren(...(isNarrow() ? [...left, h("div", { style: "height:18px" }), ...right] : right));
+}
+
+// ---------- taking a book off the shelf ----------
+// Wide screens: the spine slides forward off its shelf, the book comes to the middle showing its cover,
+// then the cover swings open on its spine. Any click skips ahead; closing runs it backwards, quicker.
+const PULL = 180, FLY = 380, SWING = 480;
+let bookAnims = [], hurry = false, opening = null;
+const run = (el, frames, opts) => {
+  const a = el.animate(frames, { fill: "forwards", ...opts, duration: hurry ? 0 : opts.duration });
+  bookAnims.push(a);
+  return a.finished.catch(() => {});
+};
+function skipBookAnims() { hurry = true; bookAnims.forEach((a) => { try { a.finish(); } catch { /* done */ } }); }
+
+// A closed book: the cover board in the book's colour; its inside is a copy of the left page,
+// so when the cover lands open it is that page
+function bookCover(book, rect) {
+  const inside = $("page-left").cloneNode(true);
+  inside.removeAttribute("id");
+  inside.querySelectorAll("[id]").forEach((el) => el.removeAttribute("id"));
+  const c = h("div", { className: "book-cover", ariaHidden: "true" },
+    h("div", { className: "bc-front" }, h("span", { className: "bc-title", textContent: book.label }), h("span", { className: "bc-mark", textContent: "Hanua" })),
+    h("div", { className: "bc-back" }, inside));
+  c.style.cssText = `--c:${book.color};left:${rect.left}px;top:${rect.top}px;width:${rect.width}px;height:${rect.height}px`;
+  document.body.append(c);
+  inside.scrollTop = $("page-left").scrollTop;
+  return c;
+}
+const halfOf = (r, side) => ({ left: side === "right" ? r.left + r.width / 2 : r.left, top: r.top, width: r.width / 2, height: r.height });
+const toSpine = (spine, half) =>
+  `perspective(1800px) translate(${spine.left - half.left}px, ${spine.top - half.top}px) scale(${spine.width / half.width}, ${spine.height / half.height})`;
+const PULLED = [{ transform: "none", filter: "none" }, { transform: "translate(6px, -10px) scale(1.06)", filter: "drop-shadow(6px 10px 8px rgb(0 0 0 / 0.35))" }];
+const pageTurnable = (fromEl) => fromEl && !reducedMotion && !isNarrow() && fromEl.isConnected;
+
 // focusId: a record to scroll to and mark, e.g. from a pinned note or the agenda
 export async function openBook(id, fromEl, focusId = null) {
   if (openEl || !(id === "money" ? state.money : area(id))) return;
   if (hiddenInFocus(id)) return toast("That book is put away while you're at work.");
+  if (id === "money") { moneyView = null; refreshMoney(); }
   const book = shelfBooks().find((b) => b.id === id);
-  const { left, right } = bookPages(id);
-  $("page-left").replaceChildren(...left);
-  $("page-right").replaceChildren(...(isNarrow() ? [...left, h("div", { style: "height:18px" }), ...right] : right));
+  fillPages(bookPages(id));
   const ob = $("open-book");
   ob.style.setProperty("--c", book.color);
+  const turnable = pageTurnable(fromEl);
+  if (turnable) ob.style.visibility = "hidden";
   $("reader").hidden = false;
   openEl = fromEl || true;
   setActive(id);
@@ -757,8 +877,33 @@ export async function openBook(id, fromEl, focusId = null) {
     entry.scrollIntoView({ block: "center" });
   }
 
-  if (fromEl && !reducedMotion) {
-    // grow the open book out of the spine you clicked
+  if (turnable) {
+    bookAnims = []; hurry = false;
+    let done; opening = new Promise((r) => { done = r; });
+    const spine = fromEl.getBoundingClientRect();
+    const r = ob.getBoundingClientRect();
+    const half = halfOf(r, "right");
+    // 1. pull it forward off the shelf
+    await run(fromEl, PULLED, { duration: PULL, easing: "cubic-bezier(.3,.7,.4,1)" });
+    fromEl.style.visibility = "hidden"; // its gap stays on the shelf while it's out
+    // 2. bring it to the middle, turning to show its cover
+    const cover = bookCover(book, half);
+    await run(cover, [
+      { transform: toSpine(spine, half) + " rotateY(-70deg)", boxShadow: "0 0 0 rgb(0 0 0 / 0)" },
+      { transform: "perspective(1800px) rotateY(-14deg)", offset: 0.7 },
+      { transform: "perspective(1800px) rotateY(0deg)", boxShadow: "0 40px 70px -30px rgb(0 0 0 / 0.7)" },
+    ], { duration: FLY, easing: "cubic-bezier(.2,.8,.2,1)" });
+    // 3. open the cover on its spine; the right page is already there underneath
+    ob.style.visibility = "";
+    ob.classList.add("opening");
+    await run(cover, [{ transform: "perspective(1800px) rotateY(0deg)" }, { transform: "perspective(1800px) rotateY(-180deg)" }],
+      { duration: SWING, easing: "cubic-bezier(.45,.05,.25,1)" });
+    ob.classList.remove("opening");
+    cover.remove();
+    bookAnims = []; hurry = false;
+    opening = null; done();
+  } else if (fromEl && !reducedMotion) {
+    // phones: grow the open page out of the spine
     const from = fromEl.getBoundingClientRect();
     const to = ob.getBoundingClientRect();
     await ob.animate([
@@ -766,15 +911,48 @@ export async function openBook(id, fromEl, focusId = null) {
       { transform: "none", opacity: 1 },
     ], { duration: 420, easing: "cubic-bezier(.2,.8,.2,1)" }).finished;
   }
-  (entry?.querySelector("a") || $("reader-close")).focus({ preventScroll: true });
+  if (openEl) (entry?.querySelector("a") || $("reader-close")).focus({ preventScroll: true });
 }
 
-export async function closeBook() {
+// One close at a time: Esc can reach this from more than one listener
+let closing = null;
+export function closeBook() {
+  if (!closing) closing = shelveBook().finally(() => { closing = null; });
+  return closing;
+}
+async function shelveBook() {
   if (!openEl && $("reader").hidden) return;
+  if (opening) { skipBookAnims(); await opening; }
   const ob = $("open-book");
   const fromEl = openEl instanceof Element ? openEl : null;
+  const book = shelfBooks().find((b) => b.id === activeBook);
   $("reader").classList.remove("dim");
-  if (fromEl && !reducedMotion && fromEl.isConnected) {
+  if (book && pageTurnable(fromEl)) {
+    bookAnims = []; hurry = false;
+    fromEl.getAnimations().forEach((a) => a.cancel()); // measure the spine where it stands
+    const spine = fromEl.getBoundingClientRect();
+    fromEl.style.visibility = "hidden";
+    const r = ob.getBoundingClientRect();
+    const half = halfOf(r, "right");
+    // close the cover over the right page, then put the book back where it came from
+    const cover = bookCover(book, half);
+    cover.style.transform = "perspective(1800px) rotateY(-180deg)";
+    ob.classList.add("opening");
+    await run(cover, [{ transform: "perspective(1800px) rotateY(-180deg)" }, { transform: "perspective(1800px) rotateY(0deg)" }],
+      { duration: 300, easing: "cubic-bezier(.5,0,.6,1)" });
+    ob.style.visibility = "hidden";
+    await run(cover, [
+      { transform: "perspective(1800px) rotateY(0deg)" },
+      { transform: toSpine(spine, half) + " rotateY(-70deg)" },
+    ], { duration: 300, easing: "cubic-bezier(.5,0,.75,0)" });
+    cover.remove();
+    fromEl.style.visibility = "";
+    await run(fromEl, [...PULLED].reverse(), { duration: 160, easing: "ease-out" });
+    fromEl.getAnimations().forEach((a) => a.cancel());
+    ob.classList.remove("opening");
+    ob.style.visibility = "";
+    bookAnims = []; hurry = false;
+  } else if (fromEl && !reducedMotion && fromEl.isConnected) {
     const to = fromEl.getBoundingClientRect();
     const from = ob.getBoundingClientRect();
     await ob.animate([
@@ -782,14 +960,24 @@ export async function closeBook() {
       { transform: `translate(${to.left - from.left}px, ${to.top - from.top}px) scale(${to.width / from.width}, ${to.height / from.height})`, opacity: 0.4 },
     ], { duration: 320, easing: "cubic-bezier(.5,0,.75,0)" }).finished;
   }
+  if (fromEl) { fromEl.style.visibility = ""; fromEl.getAnimations?.().forEach((a) => a.cancel()); }
+  document.querySelectorAll(".book-cover").forEach((c) => c.remove());
+  ob.classList.remove("opening");
+  ob.style.visibility = "";
   $("reader").hidden = true;
   document.body.style.overflow = $("library").hidden ? "" : "hidden";
   openEl = null;
+  if (activeBook === "money" && moneyView) moneyView = null;
   setActive(null);
   fromEl?.dispatchEvent(new Event("bookclosed"));
   fromEl?.focus({ preventScroll: true });
 }
 
+// a click anywhere while a book is coming out skips to it lying open
+// (and that click doesn't then put the book straight back)
+let skipped = false;
+$("reader").addEventListener("pointerdown", () => { skipped = !!opening; if (skipped) skipBookAnims(); }, true);
+$("reader").addEventListener("click", (e) => { if (skipped) { skipped = false; e.stopImmediatePropagation(); } }, true);
 $("reader-close").addEventListener("click", closeBook);
 $("reader").addEventListener("click", (e) => { if (e.target === $("reader")) closeBook(); });
 $("money-screen").addEventListener("click", () => { if (screenShows()) openBook("money", bookEl("money")); });
@@ -1268,7 +1456,7 @@ export function renderHeader() {
   const live = state.areas.filter((a) => a.live).length;
   $("status").replaceChildren(
     h("span", { className: `pill${notion && live ? " on" : ""}`, textContent: notion ? `Notion ${live}/${state.areas.length}` : "Notion · sample" }),
-    h("span", { className: `pill${state.money?.live ? " on" : ""}`, textContent: state.money?.live ? "Pūtea live" : "Pūtea · sample" }),
+    h("span", { className: `pill${state.money?.live ? " on" : ""}`, textContent: !state.money?.live ? (state.money?.reason === "closed" ? "Pūtea closed · sample" : "Pūtea · sample") : state.money.setup && !state.money.setup.accounts ? "Pūtea · no bank yet" : "Pūtea live" }),
     h("span", { className: `pill${claude ? " on" : ""}`, textContent: claude ? "Claude on" : "Claude off" }),
   );
 }
@@ -1307,6 +1495,8 @@ renderRecordPlayer();
 refreshMusic();
 // keep the song name current (only while Hanua's tab is showing)
 setInterval(() => { if (document.visibilityState === "visible") refreshMusic(); }, 5000);
+// money: Pūtea may have been opened (or synced) since Hanua loaded
+setInterval(() => { if (document.visibilityState === "visible") refreshMoney(); }, 5 * 60_000);
 renderMoneyScreen();
 load();
 loadPlant();

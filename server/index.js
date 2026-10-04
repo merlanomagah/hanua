@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { notionEnabled, queryArea, getSchema, toNotionProperties, createPage, updatePage, archivePage, pageSection, pageSections, NotionError } from "./notion.js";
 import { claudeEnabled, ask, draftEntry, coachGoal, suggestChildren, suggestMeals } from "./claude.js";
-import { getMoney } from "./money.js";
+import { getMoney, getMoneyMonth, isMonthKey } from "./money.js";
 import { musicStatus, musicAction, playPlaylist } from "./music.js";
 import { toGoal, goalProperties, goalOptions } from "./goals.js";
 import { rollUp } from "../public/shared/goals.js";
@@ -250,6 +250,16 @@ app.get("/api/areas/:id", async (req, res, next) => {
 app.get("/api/money", async (_req, res, next) => {
   try {
     res.json(await getMoney());
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Another month for the Money book's ‹ › pages (read from Pūtea, never kept).
+app.get("/api/money/:ym", async (req, res, next) => {
+  if (!isMonthKey(req.params.ym)) return res.status(400).json({ error: "Months look like 2026-10" });
+  try {
+    res.json(await getMoneyMonth(req.params.ym));
   } catch (err) {
     next(err);
   }

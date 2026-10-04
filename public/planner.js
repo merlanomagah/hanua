@@ -42,7 +42,10 @@ export function showDesk(on) {
   if (document.activeElement?.closest?.(on ? "#wall" : "#desk-pane")) (on ? $("desk-up") : $("to-desk")).focus({ preventScroll: true });
   // the canary leaves perches that just went away, once the slide has finished
   clearTimeout(deskTimer);
-  deskTimer = setTimeout(() => window.dispatchEvent(new Event("resize")), reducedMotion ? 0 : 620);
+  deskTimer = setTimeout(() => {
+    if (!onDesk) room.classList.remove("desk-leave"); // slid away: now it can hide (styles.css)
+    window.dispatchEvent(new Event("resize"));
+  }, reducedMotion ? 0 : 620);
   document.dispatchEvent(new CustomEvent("hanua:desk", { detail: on }));
 }
 function fitPanes() {
