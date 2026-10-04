@@ -1008,8 +1008,10 @@ button.g-state:hover, button.g-state:focus-visible { background: var(--hair); co
   font: 500 11px var(--mono); letter-spacing: 0.2em; text-transform: uppercase; opacity: 0.7;
 }
 /* red string between pins */
-.threads { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 3; pointer-events: none; overflow: visible; }
-.threads path { fill: none; stroke: #A3261C; stroke-width: 2; stroke-linecap: round; filter: drop-shadow(1px 3px 2px rgb(0 0 0 / 0.35)); }
+/* goals just added: a short warm glow so you can see where they landed */
+.goal-card.fresh, .sp-node.fresh { animation: fresh-glow 2.4s ease-out; }
+@keyframes fresh-glow { 0%, 30% { box-shadow: 0 0 0 3px var(--terra-soft), 0 0 22px 4px rgb(234 170 132 / 0.7); } }
+@media (prefers-reduced-motion: reduce) { .goal-card.fresh, .sp-node.fresh { animation: none; box-shadow: 0 0 0 3px var(--terra-soft); } }
 /* Kanban columns tinted by state */
 
 .toast.has-action { pointer-events: auto; display: flex; align-items: center; gap: 14px; }

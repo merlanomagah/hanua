@@ -4,7 +4,7 @@ import { LEVELS, donePoints, isGoalDone, levelIndex } from "../shared/goals.js";
 import { SIZES } from "../coach.js";
 import { $, api, h, state, toast } from "../lib.js";
 import { createGoals } from "./store.js";
-import { kidsOf, renderBoard, setFocusGoal } from "./board.js";
+import { flashGoals, kidsOf, renderBoard, setFocusGoal } from "./board.js";
 import { sized } from "./form.js";
 export let planParent = null;
 export const planLevel = () => LEVELS[levelIndex(planParent?.level) + 1];
@@ -110,7 +110,9 @@ $("plan-dialog").addEventListener("close", async () => {
   const base = { level: lvl.name, parent: p.id, status: "New", area: p.area || "" };
   try {
     const { created, failed, live } = await createGoals(rows.map((r) => ({ ...base, title: r.title, due: r.due, effort: r.effort, why: lvl.name === "Task" ? "" : r.why, doneWhen: r.doneWhen })));
-    setFocusGoal(p.id);
+    // let go of the picked parent, so nothing is dimmed: the new goals glow instead
+    setFocusGoal(null);
+    flashGoals(created.map((g) => g.id));
     const n = created.length;
     if (failed.length) toast(`${n} of ${rows.length} added. Not added: ${failed.map((f) => `“${f.values.title}” (${f.error})`).join(", ")}`, true);
     else {

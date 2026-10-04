@@ -4,7 +4,7 @@ import { LEVELS, donePoints, isGoalDone, levelIndex } from "../shared/goals.js";
 import { GUIDE, SIZES, SIZE_QUESTIONS, coachChecks, suggestSize } from "../coach.js";
 import { $, api, fmtDay, h, state, toast } from "../lib.js";
 import { areaOptions, createGoal, statusOptions, updateGoal } from "./store.js";
-import { GOAL_AREAS, GOAL_STATUS, boardLevel, boardView, goalById, renderBoard, setFocusGoal, toggleNewMenu } from "./board.js";
+import { GOAL_AREAS, GOAL_STATUS, boardLevel, boardView, flashGoals, goalById, renderBoard, toggleNewMenu } from "./board.js";
 import { coinText } from "../shelf.js";
 export let editingGoal = null;
 export function fillSelect(sel, options, value, blank = "—") {
@@ -300,7 +300,7 @@ $("goal-dialog").addEventListener("close", async () => {
   if (!values.title) return toast("Give the goal a name.", true);
   try {
     const res = g ? await updateGoal(g, values) : await createGoal(values);
-    if (!g) setFocusGoal(res.goal.id);
+    flashGoals([g ? g.id : res.goal.id]);
     toast(!res.live ? "Saved here only (sample goals, so Notion isn't changed)" : g ? "Saved to Notion ✓" : `${values.level} added to Notion ✓`);
     renderBoard();
     if (g && values.status === "Done" && !wasDone) { askFelt(goalById(g.id)); toast(`Done ✓${coinText(g)}`); }

@@ -2,7 +2,7 @@
 import { dayOf, todayStr } from "../shared/dates.js";
 import { LEVELS, levelIndex } from "../shared/goals.js";
 import { $, fmtDay, h, reducedMotion } from "../lib.js";
-import { STATE_CLASS, actButton, boardView, conflictNote, goalById, isShown, kidsOf, onBoard, renderBoard, rootChoices, setSpiderRoot, spiderRoot } from "./board.js";
+import { STATE_CLASS, actButton, boardView, conflictNote, goalById, isFresh, isShown, kidsOf, onBoard, renderBoard, rootChoices, setSpiderRoot, spiderRoot } from "./board.js";
 import { openGoal } from "./form.js";
 import { openPlan } from "./plan.js";
 import { openQuick } from "./quick.js";
@@ -26,7 +26,7 @@ export function spNode(g, depth) {
       warn ? h("span", { className: "g-warn", title: warn, ariaLabel: warn, textContent: "⚠" }) : null),
   ];
   if (depth === 0) {
-    const el = h("div", { className: `sp-node lv lvl-${lvl} ${st} d0` }, ...parts,
+    const el = h("div", { className: `sp-node lv lvl-${lvl} ${st} d0${isFresh(g.id) ? " fresh" : ""}` }, ...parts,
       h("span", { className: "g-actions" },
         actButton("edit", "Edit"),
         below ? actButton("plan", `Plan ${below.plural}`) : null,
@@ -41,7 +41,7 @@ export function spNode(g, depth) {
     return el;
   }
   // a branch: click to drill in. It holds its own buttons, so it's a focusable box rather than a <button>.
-  const el = h("div", { className: `sp-node lv lvl-${lvl} ${st} d${depth}`, tabIndex: 0, role: "button",
+  const el = h("div", { className: `sp-node lv lvl-${lvl} ${st} d${depth}${isFresh(g.id) ? " fresh" : ""}`, tabIndex: 0, role: "button",
     title: below ? `Open “${g.title}” to see its ${below.plural}` : `Review “${g.title}”`, ariaLabel: `${g.level}: ${g.title}, ${g.status || "New"}` }, ...parts,
     depth === 1 && below ? (() => { const b = actButton("plan", `+ ${below.plural}`); b.classList.add("sp-plan"); b.title = `Plan ${below.plural} for “${g.title}”`; return b; })() : null);
   el.dataset.id = g.id;

@@ -83,7 +83,7 @@ The order is set so that nothing gets built twice. The foundations go first beca
 | Adding Refresh / Show done to a toolbar that's then redesigned | The toolbar is 2.1, before both. |
 | Timeline changed twice (zoom, then conflicts) | Both are in 2.7. |
 | Updating docs and Notion after every phase | Once, in Phase 4. Commit messages carry the detail between phases. |
-| Improving the red string | Not touched; Hierarchy stays as it is until the usage decision. |
+| Improving the red string | Not touched in the pass; cut afterwards (4 Oct) when Mel saw it tangle after Plan. |
 
 ## Not in this pass
 

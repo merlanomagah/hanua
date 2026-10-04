@@ -68,6 +68,20 @@ export let boardView = BOARD_VIEWS.includes(store("goals-view")) ? store("goals-
 export let boardLevel = LEVELS.some((l) => l.name === store("goals-level")) ? store("goals-level") : "Task";
 export let focusGoal = null;
 export const setFocusGoal = (id) => { focusGoal = id; };
+// Goals just added glow for a moment and scroll into view in their column (rather than dimming everything else)
+let fresh = new Set();
+export function flashGoals(ids) {
+  fresh = new Set(ids);
+  setTimeout(() => { fresh = new Set(); document.querySelectorAll(".fresh").forEach((el) => el.classList.remove("fresh")); }, 2600);
+}
+export const isFresh = (id) => fresh.has(id);
+function revealFresh() {
+  const card = [...$("cork-cols").querySelectorAll(".fresh")][0];
+  const list = card?.closest(".pin-list, .sp-wrap, .tl");
+  if (!card || !list) return;
+  const off = card.getBoundingClientRect().top - list.getBoundingClientRect().top;
+  if (off < 0 || off > list.clientHeight - 60) list.scrollTop += off - 16;
+}
 export let spiderRoot = store("goals-root") || null; // the goal in the centre of the Tree view
 export let tlRoot = store("goals-tl-root") || ""; // "" = every goal on the Timeline
 export let tlLevels = new Set((store("goals-tl-levels") || LEVELS.map((l) => l.name).join(",")).split(",").filter((n) => LEVELS.some((l) => l.name === n)));
@@ -161,7 +175,6 @@ export function renderBoard() {
           h("div", { className: "pin-list" }, list.length ? list.map((g) => goalCard(g, n++, thread)) : h("p", { className: "pin-empty", textContent: lvl.name === "Epic" ? "Start with a big goal for the year" : "Nothing pinned" })));
       });
   $("cork-cols").replaceChildren(...cols);
-  $("cork-cols").querySelectorAll(".pin-list").forEach((l) => l.addEventListener("scroll", drawThreads, { passive: true }));
   if (boardView === "spider") layoutSpider();
   if (boardView === "timeline") scrollTimelineToToday();
   renderTopShelf();
@@ -169,7 +182,7 @@ export function renderBoard() {
   renderTodo();
   // the wall stretches to fit a long board (phones stack the columns)
   $("wall").style.minHeight = onBoard ? `${$("board-pane").offsetHeight}px` : "";
-  requestAnimationFrame(drawThreads);
+  revealFresh();
 }
 
 export function actButton(act, label) {
@@ -186,7 +199,7 @@ export function goalCard(g, i, thread) {
   const parent = goalById(g.parent);
   const kids = g.children?.length || 0;
   const el = h("article", {
-    className: `goal-card lvl-${lvl} ${st}${thread ? (thread.has(g.id) ? " lit" : " dim") : ""}${focusGoal === g.id ? " focus" : ""}`,
+    className: `goal-card lvl-${lvl} ${st}${thread ? (thread.has(g.id) ? " lit" : " dim") : ""}${focusGoal === g.id ? " focus" : ""}${isFresh(g.id) ? " fresh" : ""}`,
     tabIndex: 0, ariaLabel: `${g.level || "Task"}: ${g.title}, ${g.status || "New"}`,
   },
     h("span", { className: "g-top" },
@@ -258,34 +271,7 @@ export function confirmDelete(g) {
 $("confirm-no").addEventListener("click", () => { confirmAction = null; $("confirm-dialog").close(); });
 $("confirm-yes").addEventListener("click", () => { const run = confirmAction; confirmAction = null; $("confirm-dialog").close(); run?.(); });
 
-// Red string, pin to pin, between a picked goal and its parents and children.
-export function drawThreads() {
-  const svg = $("threads");
-  svg.replaceChildren();
-  if (!focusGoal || !onBoard) return;
-  const ids = lineage(focusGoal);
-  const box = $("cork").getBoundingClientRect();
-  svg.setAttribute("viewBox", `0 0 ${box.width} ${box.height}`);
-  const pin = (id) => {
-    const card = $("cork-cols").querySelector(`.goal-card[data-id="${CSS.escape(id)}"]`);
-    if (!card) return null;
-    const r = card.getBoundingClientRect(), list = card.closest(".pin-list").getBoundingClientRect();
-    if (r.bottom < list.top || r.top > list.bottom) return null; // scrolled out of view
-    return { x: r.left + r.width / 2 - box.left, y: r.top - box.top + 2 };
-  };
-  const NS = "http://www.w3.org/2000/svg";
-  for (const id of ids) {
-    const g = goalById(id);
-    if (!g?.parent || !ids.has(g.parent)) continue;
-    const a = pin(g.parent), b = pin(id);
-    if (!a || !b) continue;
-    const sag = Math.min(60, Math.abs(b.x - a.x) * 0.18 + 14);
-    const path = document.createElementNS(NS, "path");
-    path.setAttribute("d", `M${a.x},${a.y} Q${(a.x + b.x) / 2},${Math.max(a.y, b.y) + sag} ${b.x},${b.y}`);
-    svg.append(path);
-  }
-}
-window.addEventListener("resize", () => { if (onBoard) { drawThreads(); if (boardView === "spider") layoutSpider(); } });
+window.addEventListener("resize", () => { if (onBoard && boardView === "spider") layoutSpider(); });
 
 // Kanban: drop a card on a column to change its state. Saves straight away, with Undo.
 export function dropZone(col, status) {
