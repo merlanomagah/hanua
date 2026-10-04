@@ -5,6 +5,7 @@
 **Reads:** Preferences (How Hanua should work), Learning Log watch items, the coins/treat shop rules in CLAUDE.md.
 
 **Checklist**
+0. How does Mel do this today, outside Hanua, and what is that habit quietly doing for her? Don't design it away without knowing.
 1. Does it make opening Hanua faster or more rewarding, or is it one more thing to look at?
 2. Does it fit a moment in Mel's day or week (morning desk, weekly review), or does it need its own habit?
 3. Can it be gamed, or does it reward the wrong thing (Goodhart; the PBI coin cap is the precedent)?

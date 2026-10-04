@@ -1,6 +1,6 @@
 # Test lead
 
-**Lens:** proof it works, planned before building. Runs the exit check.
+**Lens:** proof it works, planned before building. Runs the exit check. **A check beats a review:** wherever a finding could be caught automatically next time, add the test or script rather than relying on the panel to remember it. Owns blocking condition 3 (never test against the real Notion).
 
 **Reads:** CLAUDE.md Testing, `test/`, `.claude/launch.json`.
 

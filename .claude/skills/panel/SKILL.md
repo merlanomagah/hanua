@@ -7,7 +7,15 @@ description: The Hanua Panel. Run this FIRST, before touching anything, whenever
 
 Every change request to Hanua passes through this panel before any file, Notion schema or image is touched. The point: bigger picture, function and experience all get considered **once, up front**, so nothing is built just because it was asked for, and nothing is built twice.
 
-Mel chose this on 4 Oct 2026: option C (hybrid), the full roster for now (revise on evidence), automatic on every request, with a "worth it?" check first.
+Mel chose this on 4 Oct 2026: option C (hybrid), the full roster for now (revise on evidence), automatic on every request, with a "worth it?" check first. The same evening she added four lessons from the Brain Playbook's Jump Craft Panel (4 Sep 2026): the knowable-in-advance check and the today-outside-Hanua question in the Gate, the premortem before the seats, and the panel's role below.
+
+## What the panel is, and isn't
+
+Hanua has one owner and no colleagues, so the panel is **the second pair of eyes she doesn't have**. It is not an approval hoop: research on change approval (DORA) found that a review layer acting as a gate slows work without making it safer. So:
+
+- It **advises**; Mel decides. Only the short list of blocking conditions in Step 5 can stop a change, and each one is checkable.
+- **A check beats a review.** Wherever a finding could be caught automatically (a test in `npm test`, a script), the Test lead prefers adding that check over asking the panel to watch for it next time.
+- Keep it short. A seat with nothing to add says "pass".
 
 ## What counts as a change request
 
@@ -34,6 +42,8 @@ Chair and Sceptic only, a few lines, shown to Mel. Ask:
 3. Is it polish ahead of plumbing (Learning Log "Patterns worth watching")?
 4. Is it already on the cut list (Preferences) or in `docs/panel/parked.md`?
 5. Could something that exists already do it, or could something be removed instead?
+6. **Can anyone know in advance whether this will help?** Some questions are answerable by thinking (how should the data be stored?). Others only show after trying (will Mel actually use it? will it feel right every day?). Expert opinion is the wrong tool for the second kind: no seat can know. If the core question is of that kind, say so and send it to **Probe it** below.
+7. **How does Mel do this today, outside Hanua?** What would the change replace, and what is that habit quietly doing for her? (On 4 Oct 2026 the answer to the lock request was "I lock the Mac when I step away", which turned a lock into an honest curtain.) Ask her if it isn't known.
 
 Outcomes:
 
@@ -43,6 +53,7 @@ Outcomes:
 | **Worth it, smaller** | Say the smaller version, then Triage that (Mel can overrule) |
 | **Not now** | Say why in two lines and what would earn it. Ask Mel: park it, or go ahead anyway? Parked → a row in `docs/panel/parked.md`. Mel always has the final word |
 | **Already exists** | Show her where it is. No build |
+| **Probe it** | Whether it helps can only be learned by using it. Skip the full panel: build the smallest reversible version (Small lane seats only), name what will show whether it's used (and where that evidence will appear, e.g. the weekly review), and when to look again. A full panel can follow once the probe has an answer |
 
 The **Fix** lane skips the Gate: broken things get fixed.
 
@@ -59,6 +70,8 @@ Seats are in `seats/` (one file each: lens, checklist, what to read). Read the f
 
 ## Step 4. Assessment
 
+**Premortem first (Medium and Large).** Before any seat speaks, write 3–5 reasons in the past tense: *"It's three weeks later. This failed, or Mel stopped using it. Why?"* Past tense is the point: it makes it fine to name the thing everyone privately suspects, and it finds causes better than asking "what could go wrong". Then the seats work as diagnosticians: each says which of those failures its lens owns and what the brief does about it, before adding anything new. A failure no seat owns is a gap to name in the brief.
+
 Each seat that sits gives:
 
 - **Verdict:** go / reshape / not now / pass ("pass" = nothing to add; encouraged, don't pad)
@@ -71,7 +84,18 @@ Each seat that sits gives:
 
 ## Step 5. Settle conflicts
 
-The Chair settles disagreements in this order: the purpose sentence → confidence tiers → Preferences (Settled beats Living) → the cheaper, more reversible option. **Privacy and safety** and the **Data steward** can block (keys, real-Notion tests, writes without Mel's confirm, holding data Hanua should point to); a block is resolved by reshaping, not by overruling. Taste and real trade-offs go to Mel as a question, never settled silently.
+The Chair settles disagreements in this order: the purpose sentence → confidence tiers → Preferences (Settled beats Living) → the cheaper, more reversible option. Taste and real trade-offs go to Mel as a question, never settled silently.
+
+**Blocking conditions.** Only these stop a change, and each is a yes/no check. A block is resolved by reshaping the change, not by overruling. Everything else is advice.
+
+| # | Blocks if… | Raised by |
+|---|---|---|
+| 1 | A key or secret could reach git or the page | Privacy and safety |
+| 2 | Something would be written to Notion without Mel confirming it first | Data steward |
+| 3 | A test or check would run against the real Notion | Test lead |
+| 4 | Hanua would keep its own copy of data that lives elsewhere (signpost rule) | Data steward |
+| 5 | Personal or money data would show while Hanua is At work or asleep | Privacy and safety |
+| 6 | Something would be deleted outright instead of going to Notion's trash | Privacy and safety |
 
 ## Step 6. The brief
 

@@ -1,6 +1,6 @@
 # Data steward (Notion and information architecture)
 
-**Lens:** where the data lives, and that Hanua points to it rather than holding it. **Can block.**
+**Lens:** where the data lives, and that Hanua points to it rather than holding it. **Can block** on blocking conditions 2 and 4 in `SKILL.md` Step 5 (writes without Mel confirming; Hanua keeping its own copy); everything else is advice.
 
 **Reads:** Map (Reads from / Writes to, Owned by, Last confirmed), `config/areas.json`, `server/notion.js`, `server/goals.js`, the Notion database schemas involved.
 
