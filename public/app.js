@@ -424,31 +424,66 @@ const wallRow = () => $("calendar").closest(".wall-row");
 const sideBySide = () => { const l = wallRow().querySelector(".wall-left").getBoundingClientRect(), r = wallRow().querySelector(".wall-right").getBoundingClientRect(); return l.width > 0 && r.left > l.right - 1; };
 // an animation's end, or its duration if the page isn't drawing (a hidden window can stall animations)
 const settle = (anim, ms) => Promise.race([anim.finished.catch(() => {}), new Promise((r) => setTimeout(r, ms + 80))]);
+// One movement each way (Mel, 5 Oct 2026): opening, the left column glides off to the left as the calendar widens
+// into its space; closing, the calendar narrows back and the column glides in behind it. The calendar's real width
+// grows (not a stretched picture), so its text stays crisp and the squares grow with it (CSS transitions on .day).
+const ZOOM = { ms: 520, ease: "cubic-bezier(.33,.1,.25,1)" };
 export async function zoomCalendar(on = !calWide) {
   if (on === calWide || zooming || (on && phone())) return;
   zooming = true;
-  const row = wallRow(), left = row.querySelector(".wall-left"), slide = on ? sideBySide() : row.classList.contains("cal-slide");
-  const card = () => document.querySelector(".cal-card");
-  const animate = !reducedMotion;
-  const first = card().getBoundingClientRect();
-  if (on && slide && animate) await settle(left.animate([{ transform: "none", opacity: 1 }, { transform: "translateX(-40%)", opacity: 0 }], { duration: 260, easing: "cubic-bezier(.4,0,1,1)", fill: "forwards" }), 260);
+  const row = wallRow(), left = row.querySelector(".wall-left"), right = row.querySelector(".wall-right");
+  const slide = on ? sideBySide() : row.classList.contains("cal-slide");
+  const animate = slide && !reducedMotion;
+  const box = (el) => el.getBoundingClientRect();
+  const r0 = box(row), right0 = box(right), h0 = r0.height;
+  // the calendar redraws first (✕, the month button), then the class changes, so the squares' growth is a transition
   calWide = on;
-  row.classList.toggle("cal-wide", on);
-  row.classList.toggle("cal-slide", on && slide);
-  left.inert = on && slide;
-  left.getAnimations().forEach((a) => a.cancel());
   renderCalendar();
-  $("cal-month").focus({ preventScroll: true });
-  window.dispatchEvent(new Event("resize")); // the canary leaves anything that just went away
-  if (animate) {
-    const last = card().getBoundingClientRect();
-    const grow = card().animate([
-      { transformOrigin: "top left", transform: `translate(${first.left - last.left}px, ${first.top - last.top}px) scale(${first.width / last.width}, ${first.height / last.height})` },
-      { transformOrigin: "top left", transform: "none" },
-    ], { duration: 380, easing: "cubic-bezier(.2,.8,.2,1)" });
-    if (!on && slide) left.animate([{ transform: "translateX(-40%)", opacity: 0 }, { transform: "none", opacity: 1 }], { duration: 340, delay: 120, easing: "cubic-bezier(.2,.8,.2,1)", fill: "backwards" });
-    await settle(grow, 380);
+  void row.offsetWidth;
+  const pin = (L) => Object.assign(left.style, { position: "absolute", left: `${L.left - r0.left}px`, top: `${L.top - r0.top}px`, width: `${L.width}px`, margin: "0" });
+  const unpin = () => { left.removeAttribute("style"); right.style.removeProperty("max-width"); right.style.removeProperty("margin-left"); row.style.removeProperty("position"); row.style.removeProperty("min-height"); };
+  let pinned = null;
+  let hEnd = 0;
+  if (on) {
+    if (animate) {
+      pinned = box(left); row.style.position = "relative"; pin(pinned);
+      // the row's height once the squares have grown, measured with their growth switched off for a moment
+      row.classList.add("cal-measure", "cal-wide");
+      hEnd = box(row).height;
+      row.classList.remove("cal-wide");
+      void row.offsetWidth;
+      row.classList.remove("cal-measure");
+      void row.offsetWidth;
+      row.classList.add("cal-growing"); // the titles wait until the squares have grown
+    }
+    row.classList.add("cal-wide");
+    if (!animate) row.classList.toggle("cal-slide", slide);
+  } else {
+    row.classList.remove("cal-wide", "cal-slide");
+    if (animate) { pinned = box(left); row.style.position = "relative"; row.classList.add("cal-growing"); }
   }
+  left.inert = on && slide;
+  $("cal-month").focus({ preventScroll: true });
+  if (animate) {
+    // where the calendar ends up and how tall the row becomes, measured in the final layout (column pinned out of
+    // the row when opening; back in the row when closing, then pinned again for its glide)
+    const r1 = box(right), h1 = box(row).height;
+    const target = { left: r1.left - r0.left, width: r1.width };
+    if (!on) pin(pinned);
+    const moves = [
+      right.animate([{ maxWidth: `${right0.width}px`, marginLeft: `${right0.left - r0.left}px` }, { maxWidth: `${target.width}px`, marginLeft: `${target.left}px` }],
+        { duration: ZOOM.ms, delay: on ? 90 : 0, easing: ZOOM.ease, fill: "both" }),
+      row.animate([{ minHeight: `${h0}px` }, { minHeight: `${on ? hEnd : h1}px` }], { duration: ZOOM.ms, delay: on ? 90 : 0, easing: ZOOM.ease, fill: "both" }),
+      left.animate(on ? [{ transform: "none", opacity: 1 }, { transform: "translateX(-112%)", opacity: 0 }] : [{ transform: "translateX(-112%)", opacity: 0 }, { transform: "none", opacity: 1 }],
+        { duration: ZOOM.ms - 60, delay: on ? 0 : 140, easing: ZOOM.ease, fill: "both" }),
+    ];
+    await settle(moves[0], ZOOM.ms + 140);
+    if (on) row.classList.add("cal-slide");
+    row.classList.remove("cal-growing");
+    unpin();
+    moves.forEach((m) => m.cancel());
+  }
+  window.dispatchEvent(new Event("resize")); // the canary leaves anything that just went away
   zooming = false;
 }
 // a window made narrow enough to stack the wall puts the calendar back

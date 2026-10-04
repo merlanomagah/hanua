@@ -36,19 +36,21 @@ export function renderWhiteboard() {
   drawn.href = `/api/board/${week}`;
   // keep typing where it is when the board redraws (the minute tick re-renders it)
   const active = document.activeElement?.closest?.("#mb-grid") ? document.activeElement.dataset.cell : null;
-  $("mb-grid").replaceChildren(h("span", { className: "mb-corner" }),
-    ...MEALS.map((m) => h("span", { className: "mb-meal", textContent: m })),
+  // each piece carries its place twice: days across the top on the wall (--wc/--wr), days down the side on a phone (--nc/--nr)
+  const at = (wc, wr, nc, nr) => `--wc:${wc};--wr:${wr};--nc:${nc};--nr:${nr}`;
+  $("mb-grid").replaceChildren(h("span", { className: "mb-corner", style: at(1, 1, 1, 1) }),
+    ...MEALS.map((m, j) => h("span", { className: "mb-meal", textContent: m, style: at(1, j + 2, j + 2, 1) })),
     ...DAYS.flatMap((key, i) => {
       const d = addDays(week, i), isToday = d === today;
       return [
-        h("span", { className: `mb-day${isToday ? " today" : ""}` }, h("b", { textContent: fmtDay(d, { weekday: "short" }) }), ` ${parseDay(d).getDate()}`),
-        ...MEALS.map((m) => {
-          const input = h("input", { type: "text", className: `mb-cell${isToday ? " today" : ""}`, value: menu[key][m], title: menu[key][m], maxLength: 120, disabled: covered, autocomplete: "off", spellcheck: true,
-            ariaLabel: `${m}, ${fmtDay(d, { weekday: "long", day: "numeric", month: "long" })}` });
-          input.dataset.cell = `${key}.${m}`;
-          input.addEventListener("input", () => { menu[key][m] = input.title = input.value; scheduleSave(); renderTips(); });
-          input.addEventListener("keydown", (e) => moveFocus(e, i, MEALS.indexOf(m)));
-          return input;
+        h("span", { className: `mb-day${isToday ? " today" : ""}`, style: at(i + 2, 1, 1, i + 2) }, h("b", { textContent: fmtDay(d, { weekday: "short" }) }), ` ${parseDay(d).getDate()}`),
+        ...MEALS.map((m, j) => {
+          const box = h("textarea", { className: `mb-cell${isToday ? " today" : ""}`, value: menu[key][m], title: menu[key][m], rows: 2, maxLength: 120, disabled: covered, autocomplete: "off", spellcheck: true,
+            style: at(i + 2, j + 2, j + 2, i + 2), ariaLabel: `${m}, ${fmtDay(d, { weekday: "long", day: "numeric", month: "long" })}` });
+          box.dataset.cell = `${key}.${m}`;
+          box.addEventListener("input", () => { menu[key][m] = box.title = box.value.replace(/\n/g, " "); scheduleSave(); renderTips(); });
+          box.addEventListener("keydown", (e) => moveFocus(e, i, j));
+          return box;
         }),
       ];
     }));
@@ -57,15 +59,12 @@ export function renderWhiteboard() {
   if (!covered && loaded !== week) loadWeek(week);
 }
 
-// Enter goes down a day (like a spreadsheet), arrows up/down move between days
+// Enter goes to the same meal the next day (Tab goes through the day's meals); a box holds one line of text
 function moveFocus(e, day, meal) {
-  const step = e.key === "Enter" || e.key === "ArrowDown" ? 1 : e.key === "ArrowUp" ? -1 : 0;
-  if (!step || e.isComposing) return;
-  const next = document.querySelector(`#mb-grid [data-cell="${DAYS[day + step]}.${MEALS[meal]}"]`);
-  if (!next) return;
+  if (e.key !== "Enter" || e.isComposing) return;
   e.preventDefault();
-  next.focus();
-  next.select();
+  const next = document.querySelector(`#mb-grid [data-cell="${DAYS[day + (e.shiftKey ? -1 : 1)]}.${MEALS[meal]}"]`);
+  if (next) { next.focus(); next.select(); }
 }
 
 async function loadWeek(w) {

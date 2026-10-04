@@ -267,34 +267,6 @@
                 </div>
               </div>
 
-              <!-- the week's menu: typed into the boxes; the days fill in by themselves -->
-              <section class="menu-board" id="menu-board" aria-label="This week's menu">
-                <div class="mb-frame">
-                  <header class="mb-head">
-                    <span class="mb-title">Menu</span>
-                    <span class="mb-week" id="mb-week"></span>
-                    <a class="mb-drawn" id="mb-drawn" target="_blank" rel="noopener" hidden>The drawing ↗</a>
-                    <span class="mb-nav">
-                      <button type="button" id="mb-prev" aria-label="Last week's menu">‹</button>
-                      <button type="button" id="mb-this">This week</button>
-                      <button type="button" id="mb-next" aria-label="Next week's menu">›</button>
-                    </span>
-                  </header>
-                  <div class="mb-surface">
-                    <div class="mb-grid" id="mb-grid"></div>
-                    <div class="mb-cover" id="mb-cover" hidden><span>Personal</span><small>The menu's put away while you're at work</small></div>
-                  </div>
-                  <div class="mb-tips" id="mb-tips" hidden></div>
-                  <div class="mb-tray">
-                    <span class="marker ink" aria-hidden="true"><i></i></span>
-                    <span class="marker red" aria-hidden="true"><i></i></span>
-                    <span class="eraser" aria-hidden="true"><i></i></span>
-                    <span class="mb-gap"></span>
-                    <button type="button" class="mb-small" id="mb-tips-btn" aria-expanded="false" aria-controls="mb-tips">Eating well ✦</button>
-                    <button type="button" class="mb-small" id="mb-clear">Wipe</button>
-                  </div>
-                </div>
-              </section>
             </div>
 
             <div class="wall-right">
@@ -323,6 +295,35 @@
               </div>
             </div>
           </div>
+
+          <!-- the week's menu, across the whole wall: typed into the boxes; the days fill in by themselves -->
+          <section class="menu-board" id="menu-board" aria-label="This week's menu">
+            <div class="mb-frame">
+              <header class="mb-head">
+                <span class="mb-title">Menu</span>
+                <span class="mb-week" id="mb-week"></span>
+                <a class="mb-drawn" id="mb-drawn" target="_blank" rel="noopener" hidden>The drawing ↗</a>
+                <span class="mb-nav">
+                  <button type="button" id="mb-prev" aria-label="Last week's menu">‹</button>
+                  <button type="button" id="mb-this">This week</button>
+                  <button type="button" id="mb-next" aria-label="Next week's menu">›</button>
+                </span>
+              </header>
+              <div class="mb-surface">
+                <div class="mb-grid" id="mb-grid"></div>
+                <div class="mb-cover" id="mb-cover" hidden><span>Personal</span><small>The menu's put away while you're at work</small></div>
+              </div>
+              <div class="mb-tips" id="mb-tips" hidden></div>
+              <div class="mb-tray">
+                <span class="marker ink" aria-hidden="true"><i></i></span>
+                <span class="marker red" aria-hidden="true"><i></i></span>
+                <span class="eraser" aria-hidden="true"><i></i></span>
+                <span class="mb-gap"></span>
+                <button type="button" class="mb-small" id="mb-tips-btn" aria-expanded="false" aria-controls="mb-tips">Eating well ✦</button>
+                <button type="button" class="mb-small" id="mb-clear">Wipe</button>
+              </div>
+            </div>
+          </section>
 
           <div class="to-desk">
             <button type="button" id="to-desk"><span>TO THE DESK</span><span class="arrow">↓</span></button>

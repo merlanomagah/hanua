@@ -420,8 +420,9 @@ button:disabled { opacity: 0.5; cursor: progress; }
 .dow span { font: 10px var(--mono); letter-spacing: 0.12em; color: var(--faint); padding-left: 8px; }
 .cal-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); border-top: 1px solid var(--hair); border-left: 1px solid var(--hair); }
 .day {
-  position: relative; height: 60px; border: 0; border-right: 1px solid var(--hair); border-bottom: 1px solid var(--hair);
+  position: relative; min-height: 60px; border: 0; border-right: 1px solid var(--hair); border-bottom: 1px solid var(--hair);
   background: transparent; padding: 7px; display: flex; flex-direction: column; align-items: flex-start; gap: 3px; cursor: pointer; font: inherit;
+  transition: min-height 520ms cubic-bezier(.33,.1,.25,1) 90ms, padding 520ms cubic-bezier(.33,.1,.25,1) 90ms;
 }
 .day:hover, .day.sel { background: var(--page); }
 .day.other { cursor: default; }
@@ -451,23 +452,25 @@ button:disabled { opacity: 0.5; cursor: progress; }
 .cal-close:hover { color: var(--ink); border-color: var(--ink-4); }
 .cal-wide .cal-month { cursor: zoom-out; }
 .cal-slide > .wall-left { display: none; }
+.cal-measure .day, .cal-measure .cal-head h2 { transition: none !important; }
+.cal-growing .day .peek { position: absolute !important; opacity: 0 !important; transition: none !important; }
 .cal-slide > .wall-right { flex-basis: 100%; }
 .cal-wide .deco-shelf { display: none; }
 .cal-wide .dow span { padding-left: 10px; }
-.cal-wide .day { height: auto; min-height: 112px; padding: 8px 10px 10px; gap: 4px; }
+.cal-wide .day { min-height: 112px; padding: 8px 10px 10px; gap: 4px; }
 .cal-wide .day .dots { display: none; }
-.cal-wide .day .peek { position: static; z-index: auto; width: 100%; padding: 0; gap: 3px; opacity: 1; transform: none; transition: none; pointer-events: none;
-  background: none; color: var(--ink); box-shadow: none; border-radius: 0; font: 14px/1.2 var(--display); animation: peek-in 220ms 300ms both; }
+.cal-wide .day .peek { position: static; z-index: auto; width: 100%; padding: 0; gap: 3px; opacity: 1; transform: none; transition: opacity 260ms ease-out; pointer-events: none;
+  background: none; color: var(--ink); box-shadow: none; border-radius: 0; font: 14px/1.2 var(--display); }
 .cal-wide .day .peek > span { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; padding-left: 6px; border-left: 2px solid var(--dot, var(--green)); overflow-wrap: anywhere; }
 .cal-wide .day .peek > span.quiet { border: 0; padding: 0; }
 .cal-wide .day .peek em.kind { display: none; }
 .cal-wide .day .peek b, .cal-wide .day .peek .quiet:only-of-type { display: none; }
 .cal-wide .day .peek em { color: var(--ink-4); font-size: 9px; }
 .cal-wide .day.edge .peek, .cal-wide .day:not(.other):hover .peek { transform: none; }
+.cal-head h2 { transition: font-size 520ms cubic-bezier(.33,.1,.25,1) 90ms; }
 .cal-wide .cal-head h2 { font-size: 52px; }
-@keyframes peek-in { from { opacity: 0; } }
 @media (max-width: 600px) { .cal-month { cursor: default; } .cal-month:hover { color: inherit; } }
-@media (prefers-reduced-motion: reduce) { .cal-wide .day .peek { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .cal-wide .day .peek { transition: none; } .day, .cal-head h2 { transition: none; } }
 
 /* books and plant on a shelf */
 .deco-shelf { position: relative; z-index: 4; }
@@ -530,8 +533,8 @@ button:disabled { opacity: 0.5; cursor: progress; }
 .note .meta { font: 9px var(--mono); letter-spacing: 0.14em; color: var(--ink-4); text-transform: uppercase; }
 .note .text { font: 19px/1.25 var(--display); color: var(--ink); text-wrap: pretty; overflow-wrap: anywhere; }
 
-/* ---- the menu whiteboard: under the TV, days down the side, meals typed in marker ink ---- */
-.menu-board { filter: drop-shadow(-8px 14px 16px rgb(28 24 20 / 0.3)); }
+/* ---- the menu whiteboard: across the wall under the TV and the record-player shelf, meals typed in marker ink ---- */
+.menu-board { margin-top: 56px; filter: drop-shadow(-8px 14px 16px rgb(28 24 20 / 0.3)); }
 .mb-frame { padding: 12px 12px 0; border-radius: 4px; background: linear-gradient(160deg, #e9e7e2, #b9b6ae 55%, #d6d3cc); box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.8), inset 0 -1px 0 rgb(0 0 0 / 0.15); }
 .mb-head { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 14px; padding: 2px 6px 10px; }
 .mb-title { font: italic 300 26px/1 var(--display); color: var(--ink); }
@@ -542,17 +545,16 @@ button:disabled { opacity: 0.5; cursor: progress; }
 .mb-nav button:hover { background: #fff; }
 .mb-surface { position: relative; border-radius: 2px; overflow: hidden;
   background: linear-gradient(115deg, #fdfdfb 0%, #f4f4f0 40%, #fbfbf8 55%, #eeeeea 100%); box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.08), inset 0 2px 6px rgb(0 0 0 / 0.08); }
-.mb-grid { display: grid; grid-template-columns: 74px repeat(3, minmax(0, 1fr)); }
-.mb-grid > * { min-width: 0; border-right: 1px solid rgb(35 44 69 / 0.08); border-bottom: 1px solid rgb(35 44 69 / 0.08); }
-.mb-grid > :nth-child(4n) { border-right: 0; }
-.mb-grid > :nth-last-child(-n+4) { border-bottom: 0; }
-.mb-day { display: flex; align-items: center; gap: 5px; padding-left: 10px; font: 11px var(--mono); letter-spacing: 0.1em; color: var(--ink-3); }
+/* days across the top, Breakfast / Lunch / Dinner down the side (a phone turns it round: see below) */
+.mb-grid { display: grid; grid-template-columns: 92px repeat(7, minmax(0, 1fr)); margin: 0 -1px -1px 0; }
+.mb-grid > * { grid-column: var(--wc); grid-row: var(--wr); min-width: 0; border-right: 1px solid rgb(35 44 69 / 0.08); border-bottom: 1px solid rgb(35 44 69 / 0.08); }
+.mb-day { display: flex; align-items: center; justify-content: center; gap: 5px; padding: 8px 4px; font: 11px var(--mono); letter-spacing: 0.1em; color: var(--ink-3); }
 .mb-day b { font-weight: 500; text-transform: uppercase; color: var(--ink); }
 .mb-day.today, .mb-cell.today { background: rgb(184 78 30 / 0.06); }
 .mb-day.today b { color: var(--terra); }
-.mb-meal { padding: 8px 10px 6px; font: italic 15px var(--display); color: var(--ink-4); }
+.mb-meal { display: flex; align-items: center; padding: 0 12px; font: italic 15px var(--display); color: var(--ink-4); }
 /* each box is written in marker ink (the black marker's colour), in the room's display face */
-.mb-cell { width: 100%; height: 38px; padding: 0 10px; border: 0; border-radius: 0; background: transparent; color: #232c45; font: italic 500 18px var(--display); outline: none; text-overflow: ellipsis; }
+.mb-cell { display: block; box-sizing: border-box; width: 100%; height: calc(2.4em + 10px); padding: 9px 10px 0; border: solid rgb(35 44 69 / 0.08); border-width: 0 1px 1px 0; border-radius: 0; background: transparent; color: #232c45; font: italic 500 17px/1.2 var(--display); outline: none; resize: none; overflow: hidden; }
 .mb-cell::placeholder { color: transparent; }
 .mb-cell:hover { background: rgb(35 44 69 / 0.03); }
 .mb-cell:focus { background: rgb(255 255 255 / 0.85); box-shadow: inset 0 -2px 0 var(--terra); }
@@ -587,10 +589,14 @@ button:disabled { opacity: 0.5; cursor: progress; }
 .mb-small { align-self: center; height: 22px; padding: 0 8px; border: 0; border-radius: 2px; background: transparent; color: var(--ink-3); cursor: pointer; font: 9px var(--mono); letter-spacing: 0.16em; text-transform: uppercase; }
 .mb-small:hover, .mb-small[aria-expanded="true"] { background: rgb(255 255 255 / 0.5); color: var(--ink); }
 .mb-tray button:focus-visible, .mb-nav button:focus-visible { outline: 2px solid var(--terra); outline-offset: 2px; }
-@media (max-width: 600px) {
+@media (max-width: 760px) {
   .mb-grid { grid-template-columns: 52px repeat(3, minmax(0, 1fr)); }
-  .mb-day { flex-direction: column; align-items: flex-start; justify-content: center; gap: 0; padding-left: 8px; font-size: 9px; }
-  .mb-cell { padding: 0 6px; font-size: 15px; }
+  .mb-grid > * { grid-column: var(--nc); grid-row: var(--nr); }
+  .mb-meal { padding: 8px 8px 6px; }
+  .mb-day { flex-direction: column; align-items: flex-start; justify-content: center; gap: 0; padding: 0 0 0 8px; font-size: 9px; }
+  .mb-cell { height: calc(2.4em + 7px); padding: 6px 6px 0; font-size: 15px; }
+}
+@media (max-width: 600px) {
   .mb-tips { grid-template-columns: 1fr; }
   .marker { width: 54px; }
   .eraser { width: 40px; }
@@ -1690,7 +1696,7 @@ dialog h3 { margin: 0 0 4px; font: italic 300 32px/1.1 var(--display); }
   .cal-body { padding: 20px 16px 18px; }
   .cal-head h2 { font-size: 36px; }
   .dow span { padding-left: 4px; }
-  .day { height: 46px; padding: 4px; }
+  .day { min-height: 46px; padding: 4px; }
   .day .n { width: 26px; height: 26px; font-size: 16px; }
   .deco-books { margin-top: -60px; }
   .wall-right.has-list .deco-books { margin-top: -18px; }
