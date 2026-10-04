@@ -427,7 +427,7 @@ const settle = (anim, ms) => Promise.race([anim.finished.catch(() => {}), new Pr
 // One movement each way (Mel, 5 Oct 2026): opening, the left column glides off to the left as the calendar widens
 // into its space; closing, the calendar narrows back and the column glides in behind it. The calendar's real width
 // grows (not a stretched picture), so its text stays crisp and the squares grow with it (CSS transitions on .day).
-const ZOOM = { ms: 520, ease: "cubic-bezier(.33,.1,.25,1)" };
+const ZOOM = { ms: 800, ease: "cubic-bezier(.33,.1,.25,1)" };
 export async function zoomCalendar(on = !calWide) {
   if (on === calWide || zooming || (on && phone())) return;
   zooming = true;
@@ -472,16 +472,17 @@ export async function zoomCalendar(on = !calWide) {
     if (!on) pin(pinned);
     const moves = [
       right.animate([{ maxWidth: `${right0.width}px`, marginLeft: `${right0.left - r0.left}px` }, { maxWidth: `${target.width}px`, marginLeft: `${target.left}px` }],
-        { duration: ZOOM.ms, delay: on ? 90 : 0, easing: ZOOM.ease, fill: "both" }),
-      row.animate([{ minHeight: `${h0}px` }, { minHeight: `${on ? hEnd : h1}px` }], { duration: ZOOM.ms, delay: on ? 90 : 0, easing: ZOOM.ease, fill: "both" }),
+        { duration: ZOOM.ms, delay: on ? 140 : 0, easing: ZOOM.ease, fill: "both" }),
+      row.animate([{ minHeight: `${h0}px` }, { minHeight: `${on ? hEnd : h1}px` }], { duration: ZOOM.ms, delay: on ? 140 : 0, easing: ZOOM.ease, fill: "both" }),
       left.animate(on ? [{ transform: "none", opacity: 1 }, { transform: "translateX(-112%)", opacity: 0 }] : [{ transform: "translateX(-112%)", opacity: 0 }, { transform: "none", opacity: 1 }],
-        { duration: ZOOM.ms - 60, delay: on ? 0 : 140, easing: ZOOM.ease, fill: "both" }),
+        { duration: ZOOM.ms - 80, delay: on ? 0 : 220, easing: ZOOM.ease, fill: "both" }),
     ];
-    await settle(moves[0], ZOOM.ms + 140);
+    await settle(moves[0], ZOOM.ms + 220);
     if (on) row.classList.add("cal-slide");
     row.classList.remove("cal-growing");
     unpin();
     moves.forEach((m) => m.cancel());
+    if (!on) row.querySelector(".deco-shelf")?.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 320, easing: "ease-out" });
   }
   window.dispatchEvent(new Event("resize")); // the canary leaves anything that just went away
   zooming = false;
