@@ -26,7 +26,7 @@ The reasoning behind Hanua lives in [Hanua OS](https://app.notion.com/p/3ee16603
 5. A preference stated or something deliberately cut → Preferences (and its cut list). A new image → full-size original in `prototypes/room-dashboard/assets/`, resized copy in `public/assets/`, and a row in the image library.
 6. At the end of every new room, run the promotion check (unpromoted Learning Log rows up; Playbook patterns not adopted, offered as proposals) and update Hanua OS's row in the OS Registry with the sweep date.
 
-## Where we left off (5 Oct 2026, end of day)
+## Where we left off (5 Oct 2026, night)
 
 Read this first if you're picking Hanua up in a new session or a different Claude account. Fuller context: the Hanua OS Context page and the latest Session Diary rows in Notion (5 Oct: "Goals Backlog view…", "Room life…", "The canary redrawn…", "The wall rearranged, a typed menu…", "Plan the week…").
 
@@ -36,8 +36,8 @@ Read this first if you're picking Hanua up in a new session or a different Claud
 
 **Start the next session here:**
 1. Read Context, Decision Model and Preferences in Hanua OS, and the latest Session Diary rows (5 Oct).
-2. Ask Mel how the 5 Oct additions feel in Safari after a day or two: the Backlog (+ and Tab), the plant and can, the typed menu, its tips and Plan the week, the calendar zoom (speed), the canary (all tested only in the Chromium preview). Fix anything that misbehaves (Fix lane).
-3. Check Mel connected the **Eating well guide** page to the Hanua integration (Plan the week shows a note if not), and that **Ask Claude** in Plan the week works in the real Hanua (only one direct call was tested; the sample has no key).
+2. Ask Mel how the latest desk feels in Safari (5 Oct, night: the desk monitor, double-clicking **Plan my day** and typing in its window, adding and taking down **sticky notes**, the agenda sheet's swipe, the light rail, the music card, Touch ID straight away, the slide to the desk). Then how the earlier 5 Oct additions feel: the Backlog (+ and Tab), the plant and can, the typed menu, its tips and Plan the week, the calendar zoom (speed), the canary (all tested only in the Chromium preview). Fix anything that misbehaves (Fix lane).
+3. Check Mel connected the **Hanua planner prompts** page (the planner's quiet Bula lines) and the **Eating well guide** page to the Hanua integration (Plan the week shows a note if not), and that **Ask Claude** in Plan the week works in the real Hanua (only one direct call was tested; the sample has no key).
 4. Mel's request on 5 Oct ended mid-sentence ("Actually maybe…", while describing their tastes); she'll say what it was. Ask if she remembers.
 5. Run every change request through the panel (`/panel`).
 
