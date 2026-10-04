@@ -92,3 +92,11 @@ test("dates", () => {
   assert.equal(daysBetween("2026-10-01", "2026-11-01"), 31);
   assert.equal(levelIndex("PBI"), 2);
 });
+
+test("finished goals hide after two weeks unless Show done is on", async () => {
+  const { visibleGoals } = await import("../public/shared/goals.js");
+  const goals = [goal("A", "Task"), goal("B", "Task", { status: "Done", completed: "2026-10-01" }),
+    goal("C", "Task", { status: "Done", completed: "2026-09-01" }), goal("D", "Task", { status: "Done" })];
+  assert.deepEqual(visibleGoals(goals, { today: "2026-10-04" }).map((g) => g.id), ["A", "B"]);
+  assert.equal(visibleGoals(goals, { today: "2026-10-04", showDone: true }).length, 4);
+});

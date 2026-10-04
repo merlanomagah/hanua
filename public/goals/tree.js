@@ -2,22 +2,28 @@
 import { dayOf, todayStr } from "../shared/dates.js";
 import { LEVELS, levelIndex } from "../shared/goals.js";
 import { $, fmtDay, h, reducedMotion } from "../lib.js";
-import { STATE_CLASS, actButton, goalById, kidsOf, renderBoard, rootChoices, setSpiderRoot, spiderRoot } from "./board.js";
+import { STATE_CLASS, actButton, boardView, conflictNote, goalById, isShown, kidsOf, onBoard, renderBoard, rootChoices, setSpiderRoot, spiderRoot } from "./board.js";
 import { openGoal } from "./form.js";
 import { openPlan } from "./plan.js";
+import { openQuick } from "./quick.js";
 export function spNode(g, depth) {
   const lvl = (g.level || "Task").toLowerCase();
   const st = STATE_CLASS[(g.status || "new").toLowerCase()] || "new";
   const kids = g.children?.length || 0;
   const below = LEVELS[levelIndex(g.level) + 1];
   const late = g.due && st !== "done" && dayOf(g.due) < todayStr();
-  const meta = [g.status || "New", kids ? `${g.childDone}/${kids} ${below?.plural || ""}`.trim() : null,
+  const meta = [kids ? `${g.childDone}/${kids} ${below?.plural || ""}`.trim() : null,
     g.due ? `${late ? "was due" : "due"} ${fmtDay(g.due, { day: "numeric", month: "short" })}` : null].filter(Boolean).join(" · ");
+  const warn = conflictNote(g);
+  // the state is a button: it opens quick edit (state and due date) without drilling in
+  const state = h("button", { type: "button", className: "g-state", title: "Change state or due date" }, h("i"), g.status || "New");
+  state.dataset.act = "quick";
   const parts = [
-    h("span", { className: "sp-type" }, g.level || "Task", depth === 2 && kids ? h("span", { className: "sp-more", textContent: ` +${kids}` }) : null),
+    h("span", { className: "sp-type" }, st === "done" ? "✓ " : "", g.level || "Task", depth === 2 && kids ? h("span", { className: "sp-more", textContent: ` +${kids}` }) : null),
     h("span", { className: "sp-title", textContent: g.title }),
     h("span", { className: "g-bar" }, Object.assign(h("i"), { style: `width:${g.progress ?? 0}%` })),
-    h("span", { className: `sp-meta${late ? " late" : ""}`, textContent: meta }),
+    h("span", { className: `sp-meta${late ? " late" : ""}` }, depth < 2 ? state : null, meta ? h("span", { textContent: meta }) : null,
+      warn ? h("span", { className: "g-warn", title: warn, ariaLabel: warn, textContent: "⚠" }) : null),
   ];
   if (depth === 0) {
     const el = h("div", { className: `sp-node lv lvl-${lvl} ${st} d0` }, ...parts,
@@ -26,21 +32,28 @@ export function spNode(g, depth) {
         below ? actButton("plan", `Plan ${below.plural}`) : null,
         g.url ? h("a", { className: "g-act", href: g.url, target: "_blank", rel: "noopener", textContent: "Notion ↗" }) : null));
     el.addEventListener("click", (e) => {
-      const act = e.target.closest("[data-act]")?.dataset.act;
+      const btn = e.target.closest("[data-act]"), act = btn?.dataset.act;
       if (act === "edit") openGoal(g);
       if (act === "plan") openPlan(g);
+      if (act === "quick") openQuick(g, btn);
     });
     el.dataset.id = g.id;
     return el;
   }
-  const el = h("button", { type: "button", className: `sp-node lv lvl-${lvl} ${st} d${depth}`,
-    title: below ? `Open “${g.title}” to see its ${below.plural}` : `Review “${g.title}”` }, ...parts);
+  // a branch: click to drill in. It holds its own buttons, so it's a focusable box rather than a <button>.
+  const el = h("div", { className: `sp-node lv lvl-${lvl} ${st} d${depth}`, tabIndex: 0, role: "button",
+    title: below ? `Open “${g.title}” to see its ${below.plural}` : `Review “${g.title}”`, ariaLabel: `${g.level}: ${g.title}, ${g.status || "New"}` }, ...parts,
+    depth === 1 && below ? (() => { const b = actButton("plan", `+ ${below.plural}`); b.classList.add("sp-plan"); b.title = `Plan ${below.plural} for “${g.title}”`; return b; })() : null);
   el.dataset.id = g.id;
-  el.addEventListener("click", () => {
+  el.addEventListener("click", (e) => {
+    const btn = e.target.closest("[data-act]");
+    if (btn?.dataset.act === "quick") return openQuick(g, btn);
+    if (btn?.dataset.act === "plan") return openPlan(g);
     if (!below) return openGoal(g);
     setSpiderRoot(g.id);
     renderBoard();
   });
+  el.addEventListener("keydown", (e) => { if ((e.key === "Enter" || e.key === " ") && e.target === el) { e.preventDefault(); el.click(); } });
   el.addEventListener("dblclick", () => openGoal(g));
   return el;
 }
@@ -70,10 +83,11 @@ export function renderSpider() {
       i < trail.length - 1 ? crumb(g) : h("span", { className: "sp-here", textContent: `${g.level}: ${g.title}` })]));
   const stage = h("div", { className: `sp-stage${reducedMotion ? "" : " enter"}` });
   stage.append(document.createElementNS("http://www.w3.org/2000/svg", "svg"), spNode(root, 0));
-  const kids = kidsOf(root.id);
+  // finished goals follow Show done, like the other views
+  const kids = kidsOf(root.id).filter(isShown);
   for (const c of kids) {
     stage.append(spNode(c, 1));
-    for (const gc of kidsOf(c.id)) stage.append(Object.assign(spNode(gc, 2), { _parent: c.id }));
+    for (const gc of kidsOf(c.id).filter(isShown)) stage.append(Object.assign(spNode(gc, 2), { _parent: c.id }));
   }
   const below = LEVELS[levelIndex(root.level) + 1];
   if (!kids.length) {
@@ -150,3 +164,12 @@ export function layoutSpider() {
     }
   }
 }
+
+// Esc steps back out of the Tree, one level at a time (unless a menu or dialog has it)
+document.addEventListener("keydown", (e) => {
+  if (e.key !== "Escape" || e.defaultPrevented || boardView !== "spider" || !onBoard || document.querySelector("dialog[open]")) return;
+  const root = goalById(spiderRoot);
+  if (!root?.parent || !goalById(root.parent)) return;
+  setSpiderRoot(root.parent);
+  renderBoard();
+});

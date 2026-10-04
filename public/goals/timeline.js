@@ -3,11 +3,12 @@ import { addDays, dayOf, daysBetween, parseDay, todayStr, ymd } from "../shared/
 import { goalSpan, treeOrder } from "../shared/goals.js";
 import { $, fmtDay, h, state, toast } from "../lib.js";
 import { updateGoal } from "./store.js";
-import { STATE_CLASS, goalById, kidsOf, renderBoard, tlLevelPicker, tlLevels, tlRoot } from "./board.js";
+import { STATE_CLASS, conflictNote, goalById, kidsOf, renderBoard, shown, tlLevelPicker, tlLevels, tlRoot, tlZoom } from "./board.js";
 import { openGoal } from "./form.js";
+import { openQuick } from "./quick.js";
 export function renderTimeline() {
   const goals = state.goals.goals;
-  let list = goals.filter((g) => tlLevels.has(g.level || "Task"));
+  let list = shown().filter((g) => tlLevels.has(g.level || "Task"));
   if (tlRoot && goalById(tlRoot)) {
     const ids = new Set([tlRoot]);
     const down = (id) => kidsOf(id).forEach((c) => { if (!ids.has(c.id)) { ids.add(c.id); down(c.id); } });
@@ -32,10 +33,20 @@ export function renderTimeline() {
     const from = ymd(first), days = daysBetween(from, ymd(last)) + 1;
     const narrow = $("cork-cols").clientWidth < 760;
     const LABEL = narrow ? 130 : 250;
-    const dayW = Math.max(narrow ? 4 : 3, ($("cork-cols").clientWidth - LABEL - 24) / days);
+    // Fit squeezes the whole span onto the screen; the zooms set a fixed width per day and scroll sideways
+    const fit = Math.max(narrow ? 4 : 3, ($("cork-cols").clientWidth - LABEL - 24) / days);
+    const dayW = { fit, week: 24, month: 7, quarter: 2.4 }[tlZoom] || fit;
     const x = (iso) => daysBetween(from, iso) * dayW;
     const months = [];
-    for (let d = new Date(first); d <= last; d.setMonth(d.getMonth() + 1)) {
+    if (dayW >= 14) {
+      // close in: a column per week, starting Monday
+      const d = new Date(first); d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+      for (; d <= last; d.setDate(d.getDate() + 7)) {
+        const iso = ymd(d);
+        months.push(h("span", { className: "tl-month", style: `left:${x(iso)}px;width:${7 * dayW}px`,
+          textContent: d.toLocaleDateString(undefined, d.getDate() <= 7 || !months.length ? { day: "numeric", month: "short" } : { day: "numeric" }) }));
+      }
+    } else for (let d = new Date(first); d <= last; d.setMonth(d.getMonth() + 1)) {
       const iso = ymd(d), end = new Date(d.getFullYear(), d.getMonth() + 1, 0);
       months.push(h("span", { className: "tl-month", style: `left:${x(iso)}px;width:${(daysBetween(iso, ymd(end)) + 1) * dayW}px`,
         textContent: d.toLocaleDateString(undefined, d.getMonth() === 0 || !months.length ? { month: "short", year: "numeric" } : { month: "short" }) }));
@@ -49,15 +60,20 @@ export function renderTimeline() {
       const label = h("button", { type: "button", className: "tl-label", style: `padding-left:${10 + depthOf(g) * 14}px`, title: `Review “${g.title}”` },
         h("span", { className: "sp-type", textContent: g.level || "Task" }), h("span", { className: "tl-name", textContent: g.title }));
       const left = x(s.start), w = Math.max(dayW, (daysBetween(s.start, s.end) + 1) * dayW);
+      const warn = conflictNote(g);
       const bar = h("button", {
-        type: "button", className: `tl-bar ${st}${late ? " late" : ""}${s.guessStart ? " guess-start" : ""}${s.guessEnd ? " guess-end" : ""}`,
+        type: "button", className: `tl-bar ${st}${late ? " late" : ""}${warn ? " conflict" : ""}${s.guessStart ? " guess-start" : ""}${s.guessEnd ? " guess-end" : ""}`,
         style: `left:${left}px;width:${w}px`,
-        title: `${g.level}: ${g.title}\n${fmtDay(s.start)} → ${fmtDay(s.end)}${s.guessStart ? " (no start date: estimated)" : ""}${s.guessEnd ? " (no due date: estimated)" : ""}\n${g.status || "New"} · ${g.progress ?? 0}%\nDrag to move it; drag an end to change just that date`,
+        title: `${g.level}: ${g.title}\n${fmtDay(s.start)} → ${fmtDay(s.end)}${s.guessStart ? " (no start date: estimated)" : ""}${s.guessEnd ? " (no due date: estimated)" : ""}\n${g.status || "New"} · ${g.progress ?? 0}%${warn ? `\n⚠ ${warn}` : ""}\nDrag to move it; drag an end to change just that date`,
       }, Object.assign(h("i"), { style: `width:${g.progress ?? 0}%` }), w >= 110 ? h("span", { textContent: g.title }) : null,
         ...(w >= 24 ? ["start", "end"].map((end) => { const grip = h("span", { className: `tl-grip ${end}` }); grip.dataset.end = end; return grip; }) : []));
       // a short bar has its name beside it
       const beside = w < 110 ? h("span", { className: "tl-beside", style: `left:${left + w + 6}px`, textContent: g.title }) : null;
-      label.addEventListener("click", () => openGoal(g));
+      // the name opens quick edit (state, due date, and Full edit from there)
+      label.dataset.act = "quick";
+      label.title = `${g.title}: change state or due date`;
+      label.addEventListener("click", () => openQuick(g, label));
+      if (warn) label.append(h("span", { className: "g-warn", title: warn, textContent: "⚠" }));
       bar.dataset.id = g.id;
       dragDates(bar, beside, g, s, dayW);
       return h("div", { className: `tl-row lv lvl-${lvl}` }, label, h("div", { className: "tl-track" }, bar, beside));

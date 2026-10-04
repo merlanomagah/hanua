@@ -150,6 +150,14 @@ export function coachChecks(values, ctx = {}) {
       : { ok: false, text: `Due ${days} days away, which is long for a ${values.level}. Split it, or make it a level up` });
   }
 
+  // dates that can't work inside the parent's (ctx.parentDue / parentStart as YYYY-MM-DD, with display labels)
+  if (values.due && ctx.parentDue && values.due.slice(0, 10) > ctx.parentDue) {
+    out.push({ ok: false, text: `Due after its ${ctx.parentLevel} (${ctx.parentDueLabel || ctx.parentDue}). Bring it earlier, or move the ${ctx.parentLevel}'s date` });
+  }
+  if (values.start && ctx.parentStart && values.start.slice(0, 10) < ctx.parentStart) {
+    out.push({ ok: false, text: `Starts before its ${ctx.parentLevel} does (${ctx.parentStartLabel || ctx.parentStart})` });
+  }
+
   if ((values.level === "Task" || values.level === "PBI") && !values.effort && !ctx.childCount) {
     out.push({ ok: false, text: "Give it a size (use “Help me size it”). Sizing everything is how you learn your pace" });
   }

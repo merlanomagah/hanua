@@ -4,7 +4,7 @@ import { LEVELS, isGoalDone } from "../shared/goals.js";
 import { WIP_LIMIT } from "../coach.js";
 import { $, api, fmtDay, h, longDate, state, toast } from "../lib.js";
 import { createGoal } from "./store.js";
-import { onBoard, renderBoard } from "./board.js";
+import { onBoard, renderBoard, viewUse } from "./board.js";
 import { leafGoals, sized } from "./form.js";
 import { renderNotes } from "../app.js";
 
@@ -136,6 +136,12 @@ export function renderReview() {
   } else {
     const active = goals.filter((g) => g.status === "Active").length;
     top = [h("p", { className: "rv-summary", textContent: `${doneSince.length} done · ${active} active · ${open.filter((g) => /at risk/i.test(g.status || "")).length} at risk${rv.energy ? ` · energy ${rv.energy.toLowerCase()}` : ""}` })];
+    // which board views got opened this week (on this Mac): evidence for keeping or cutting one
+    if (step.key === "tryNext") {
+      const use = viewUse(ymd(mondayOf(new Date())));
+      const names = { tree: "Hierarchy", kanban: "Board", spider: "Tree", timeline: "Timeline" };
+      top.push(h("p", { className: "rv-views", textContent: `Views you opened this week: ${Object.entries(names).map(([k, n]) => `${n} ${use[k] || 0}`).join(" · ")}. One you never open is a candidate to cut.` }));
+    }
   }
   const area = h("textarea", { rows: 3, placeholder: "A line or two is plenty", value: rv[step.key] });
   area.addEventListener("input", () => { rv[step.key] = area.value; });

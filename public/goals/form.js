@@ -2,7 +2,7 @@
 import { dayOf, todayStr } from "../shared/dates.js";
 import { LEVELS, donePoints, isGoalDone, levelIndex } from "../shared/goals.js";
 import { GUIDE, SIZES, SIZE_QUESTIONS, coachChecks, suggestSize } from "../coach.js";
-import { $, api, h, state, toast } from "../lib.js";
+import { $, api, fmtDay, h, state, toast } from "../lib.js";
 import { areaOptions, createGoal, statusOptions, updateGoal } from "./store.js";
 import { GOAL_AREAS, GOAL_STATUS, boardLevel, boardView, goalById, renderBoard, setFocusGoal, toggleNewMenu } from "./board.js";
 import { coinText } from "../shelf.js";
@@ -84,7 +84,10 @@ export function updateCoach() {
   $("coach-what").textContent = guide.what;
   $("coach-eg").textContent = `e.g. ${guide.example}`;
   const childCount = editingGoal?.children?.length || 0;
-  const checks = coachChecks(v, { parentLevel, childCount, openSiblings: v.level === "Epic" || v.parent ? siblings.length : 0, today: todayStr() });
+  const parent = goalById(v.parent);
+  const short = (d) => fmtDay(d, { day: "numeric", month: "short" });
+  const checks = coachChecks(v, { parentLevel, childCount, openSiblings: v.level === "Epic" || v.parent ? siblings.length : 0, today: todayStr(),
+    parentDue: dayOf(parent?.due) || null, parentDueLabel: short(parent?.due), parentStart: dayOf(parent?.start) || null, parentStartLabel: short(parent?.start) });
   $("coach-checks").replaceChildren(...(checks.length ? checks : [{ ok: false, text: "Start with a title" }]).map((c) =>
     h("li", { className: c.ok ? "ok" : c.ok === null ? "ask" : "nudge" }, h("span", { className: "mark", ariaHidden: "true", textContent: c.ok ? "✓" : c.ok === null ? "?" : "·" }), c.text)));
 }

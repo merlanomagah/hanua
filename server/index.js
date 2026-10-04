@@ -45,7 +45,7 @@ async function recordsFor(area, { fresh = false } = {}) {
   if (!isLive(area)) {
     const shiftField = (v) => (typeof v === "string" && /^\d{4}-\d{2}-\d{2}/.test(v) ? shiftDate(v) : v);
     return (sample[area.id] || []).map((r, i) => ({
-      id: `sample-${area.id}-${i}`, url: null, ...r, date: shiftDate(r.date),
+      id: `sample-${area.id}-${i}`, url: null, ...r, date: shiftDate(r.date), edited: shiftDate(r.edited) ?? null,
       fields: Object.fromEntries(Object.entries(r.fields || {}).map(([k, v]) => [k, shiftField(v)])),
     }));
   }

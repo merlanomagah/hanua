@@ -1,11 +1,12 @@
 // ---------- goals pin board: swipe right to slide the wall aside ----------
-import { dayOf, daysBetween, todayStr } from "../shared/dates.js";
-import { LEVELS, isGoalDone, levelIndex, lineageIn, treeOrder } from "../shared/goals.js";
+import { dayOf, daysBetween, todayStr, ymd } from "../shared/dates.js";
+import { LEVELS, dateConflicts, isGoalDone, levelIndex, lineageIn, treeOrder, visibleGoals } from "../shared/goals.js";
 import { GUIDE, WIP_LIMIT } from "../coach.js";
-import { $, fmtDay, h, reducedMotion, state, store, toast } from "../lib.js";
-import { removeGoal, statusOptions, updateGoal } from "./store.js";
+import { $, ago, fmtDay, h, reducedMotion, state, store, toast } from "../lib.js";
+import { refreshGoals, removeGoal, statusOptions, updateGoal } from "./store.js";
 import { askFelt, openGoal } from "./form.js";
 import { openPlan } from "./plan.js";
+import { openQuick } from "./quick.js";
 import { reviewDue } from "./review.js";
 import { renderTimeline, scrollTimelineToToday } from "./timeline.js";
 import { layoutSpider, renderSpider } from "./tree.js";
@@ -22,7 +23,7 @@ export let onBoard = false;
 export function showBoard(on) {
   if (on === onBoard) return;
   onBoard = on;
-  if (on) renderBoard();
+  if (on) { noteView(boardView); renderBoard(); }
   $("wall").classList.toggle("on-board", on);
   if (!on) $("wall").style.minHeight = "";
   $("ts-goals")?.classList.toggle("on", on);
@@ -71,19 +72,51 @@ export let spiderRoot = store("goals-root") || null; // the goal in the centre o
 export let tlRoot = store("goals-tl-root") || ""; // "" = every goal on the Timeline
 export let tlLevels = new Set((store("goals-tl-levels") || LEVELS.map((l) => l.name).join(",")).split(",").filter((n) => LEVELS.some((l) => l.name === n)));
 if (!tlLevels.size) tlLevels = new Set(LEVELS.map((l) => l.name));
+export let showDone = store("goals-show-done") === "1";
+export const TL_ZOOMS = { fit: "Fit", week: "Weeks", month: "Months", quarter: "Quarter" };
+export let tlZoom = TL_ZOOMS[store("goals-tl-zoom")] ? store("goals-tl-zoom") : "fit";
 export const goalById = (id) => state.goals.goals.find((g) => g.id === id);
+// What the views show: finished goals stay two weeks, then hide unless Show done is on
+export const shown = () => visibleGoals(state.goals.goals, { showDone, today: todayStr() });
+export const isShown = (g) => showDone || !isGoalDone(g) || shown().includes(g);
+// Dates that can't work inside the parent's, worked out once per render
+let conflicts = new Map();
+export function conflictNote(g) {
+  return (conflicts.get(g.id) || []).map(({ kind, parent }) => kind === "late"
+    ? `Due after its ${parent.level} (${fmtDay(parent.due, { day: "numeric", month: "short" })})`
+    : `Starts before its ${parent.level} (${fmtDay(parent.start, { day: "numeric", month: "short" })})`).join(". ");
+}
+
+// Which views get opened, per week, on this Mac only: the evidence for keeping or cutting Hierarchy.
+export function noteView(view) {
+  try {
+    const d = new Date(), week = ymd(new Date(d.getFullYear(), d.getMonth(), d.getDate() - ((d.getDay() + 6) % 7)));
+    const use = JSON.parse(store("goals-view-use") || "{}");
+    use[week] = { ...use[week], [view]: (use[week]?.[view] || 0) + 1 };
+    for (const k of Object.keys(use).sort().slice(0, -8)) delete use[k]; // keep eight weeks
+    store("goals-view-use", JSON.stringify(use));
+  } catch { /* storage blocked: nothing to count */ }
+}
+export function viewUse(weekStart) {
+  try { return JSON.parse(store("goals-view-use") || "{}")[weekStart] || {}; } catch { return {}; }
+}
 
 // A goal plus everything above and below it: the thread shown when you pick a card.
 export const lineage = (id) => lineageIn(state.goals.goals, id);
 
 export function renderBoard() {
-  const { goals, live, notionUrl, error } = state.goals;
-  const open = goals.filter((g) => !isGoalDone(g));
-  const count = (st) => goals.filter((g) => (g.status || "").toLowerCase() === st).length;
+  const { live, notionUrl, error, fetchedAt } = state.goals;
+  const all = state.goals.goals, goals = shown();
+  conflicts = dateConflicts(all);
+  const open = all.filter((g) => !isGoalDone(g));
+  const count = (st) => all.filter((g) => (g.status || "").toLowerCase() === st).length;
   const soon = open.filter((g) => g.due && daysBetween(todayStr(), g.due) >= 0 && daysBetween(todayStr(), g.due) <= 7).length;
+  const hidden = all.length - goals.length;
   $("board-sub").textContent = error
     ? `Couldn't reach Notion: ${error}`
-    : `${open.length} open · ${count("active")} active · ${count("at risk")} at risk · ${count("done")} done · ${soon} due this week${live ? "" : " · sample goals"}`;
+    : `${open.length} open · ${count("active")} active · ${count("at risk")} at risk · ${count("done")} done · ${soon} due this week${live ? (fetchedAt ? ` · updated ${ago(new Date(fetchedAt).toISOString())}` : "") : " · sample goals"}`;
+  $("goals-show-done").setAttribute("aria-checked", String(showDone));
+  $("done-hidden").textContent = showDone ? "showing all" : hidden ? `${hidden} hidden` : "none hidden";
   $("goals-notion").hidden = !notionUrl;
   if (notionUrl) $("goals-notion").href = notionUrl;
   $("goals-guide").hidden = !state.goals.guideUrl;
@@ -92,8 +125,12 @@ export function renderBoard() {
   document.querySelectorAll("[data-level]").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.level === boardLevel)));
   $("level-seg").hidden = boardView !== "kanban";
   fillRootPicker();
+  // the review sits in the toolbar only when it's due; it's always in the ⋯ menu
+  $("review-open").hidden = !reviewDue();
   $("review-open").classList.toggle("due", reviewDue());
-  $("review-open").title = reviewDue() ? "Your weekly review is due" : `Last review ${fmtDay(state.reviews.reviews[0]?.date)}`;
+  $("review-open").title = "Your weekly review is due";
+  $("board-more").classList.toggle("due", reviewDue());
+  $("review-when").textContent = reviewDue() ? "due now" : `last ${fmtDay(state.reviews.reviews[0]?.date, { day: "numeric", month: "short" })}`;
   $("goal-add").textContent = boardView === "kanban" ? `+ New ${boardLevel}` : "+ New ▾";
   $("goal-add").setAttribute("aria-haspopup", boardView === "kanban" ? "false" : "menu");
   $("cork").classList.toggle("kanban", boardView === "kanban");
@@ -106,7 +143,7 @@ export function renderBoard() {
     : boardView === "timeline" ? [renderTimeline()]
     : boardView === "kanban"
     ? statusOptions(GOAL_STATUS).map((st) => {
-        const list = goals.filter((g) => g.level === boardLevel && (g.status || "New") === st).sort(treeOrder(goals));
+        const list = goals.filter((g) => g.level === boardLevel && (g.status || "New") === st).sort(treeOrder(all));
         // Personal Kanban: cap what's in progress, so things get finished
         const over = st === "Active" && list.length > WIP_LIMIT;
         const col = h("section", { className: `pin-col state-${STATE_CLASS[st.toLowerCase()]}${over ? " over-limit" : ""}` },
@@ -118,7 +155,7 @@ export function renderBoard() {
         return col;
       })
     : LEVELS.map((lvl) => {
-        const list = goals.filter((g) => (g.level || "Task") === lvl.name).sort(treeOrder(goals));
+        const list = goals.filter((g) => (g.level || "Task") === lvl.name).sort(treeOrder(all));
         return h("section", { className: `pin-col lvl-${lvl.name.toLowerCase()}` },
           h("h3", { className: "pin-tag", title: GUIDE[lvl.name].what }, lvl.name, h("span", { className: "pin-when", textContent: ` · ${lvl.when}` }), h("span", { className: "pin-count", textContent: list.length })),
           h("div", { className: "pin-list" }, list.length ? list.map((g) => goalCard(g, n++, thread)) : h("p", { className: "pin-empty", textContent: lvl.name === "Epic" ? "Start with a big goal for the year" : "Nothing pinned" })));
@@ -160,29 +197,33 @@ export function goalCard(g, i, thread) {
     focusGoal === g.id && g.why ? h("span", { className: "g-why", textContent: g.why }) : null,
     h("span", { className: "g-bar", title: kids ? `${g.childDone} of ${kids} done` : "" }, Object.assign(h("i"), { style: `width:${g.progress ?? 0}%` })),
     h("span", { className: "g-meta" },
-      h("span", { className: "g-state" }, h("i"), g.status || "New"),
+      (() => { const b = h("button", { type: "button", className: "g-state", title: "Change state or due date", ariaLabel: `${g.status || "New"}: change state or due date` }, h("i"), g.status || "New"); b.dataset.act = "quick"; return b; })(),
       h("span", { className: late ? "late" : "", textContent: [
         kids ? `${g.childDone}/${kids}` : `${g.progress ?? 0}%`,
         g.effortTotal ? `${g.effortTotal} pts` : null,
         g.due ? `${late ? "was due" : "due"} ${fmtDay(g.due, { day: "numeric", month: "short" })}` : null,
-      ].filter(Boolean).join(" · ") })),
+      ].filter(Boolean).join(" · ") }),
+      conflictNote(g) ? h("span", { className: "g-warn", title: conflictNote(g), ariaLabel: conflictNote(g), textContent: "⚠" }) : null),
     g.level === "Epic" ? (() => { const v = epicValue(g); return h("span", { className: "g-value", textContent: `${dollars(v.earned)} of ${dollars(v.target)}` }); })() : null,
-    focusGoal === g.id ? h("span", { className: "g-actions" },
+    // actions: always on the picked card; on the others they float in on hover (always shown on touch screens)
+    h("span", { className: `g-actions${focusGoal === g.id ? "" : " float"}` },
       actButton("edit", "Edit"),
       childLevel ? actButton("plan", `Plan ${childLevel.plural}`) : null,
-      g.url ? h("a", { className: "g-act", href: g.url, target: "_blank", rel: "noopener", textContent: "Notion ↗" }) : null) : null,
+      g.url ? h("a", { className: "g-act", href: g.url, target: "_blank", rel: "noopener", textContent: "Notion ↗" }) : null),
     st === "done" ? h("span", { className: "g-stamp", textContent: "Done" }) : null,
     actButton("delete", "×"));
   el.querySelector('[data-act="delete"]').className = "g-del";
   el.querySelector('[data-act="delete"]').title = "Delete";
   el.querySelector('[data-act="delete"]').ariaLabel = `Delete ${g.title}`;
   el.dataset.id = g.id;
-  el.style.setProperty("--r", CARD_TILTS[i % CARD_TILTS.length]);
+  // pinned-up tilt in Hierarchy; Board cards hang straight so a working list scans faster
+  el.style.setProperty("--r", boardView === "kanban" ? "0deg" : CARD_TILTS[i % CARD_TILTS.length]);
   el.addEventListener("click", (e) => {
     const act = e.target.closest("[data-act]")?.dataset.act;
     if (act === "edit") return openGoal(g);
     if (act === "delete") return confirmDelete(g);
     if (act === "plan") return openPlan(g);
+    if (act === "quick") return openQuick(g, e.target.closest("[data-act]"));
     if (e.target.closest("a")) return;
     focusGoal = focusGoal === g.id ? null : g.id;
     renderBoard();
@@ -281,9 +322,20 @@ export async function moveGoal(g, status, undoing = false) {
 document.querySelectorAll("[data-view]").forEach((b) => b.addEventListener("click", () => {
   boardView = b.dataset.view;
   store("goals-view", boardView);
+  noteView(boardView);
   // a goal picked on the board opens the Tree at that goal
   if (boardView === "spider" && focusGoal) setSpiderRoot(LEVELS[levelIndex(goalById(focusGoal)?.level) + 1] ? focusGoal : goalById(focusGoal)?.parent || focusGoal);
   renderBoard();
+}));
+// tabs: arrow keys move along and switch (the usual tab pattern)
+document.querySelectorAll('[role="tablist"]').forEach((list) => list.addEventListener("keydown", (e) => {
+  if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+  const tabs = [...list.querySelectorAll('[role="tab"]')], i = tabs.indexOf(document.activeElement);
+  if (i < 0) return;
+  e.preventDefault();
+  const next = tabs[(i + (e.key === "ArrowRight" ? 1 : tabs.length - 1)) % tabs.length];
+  next.click();
+  next.focus();
 }));
 document.querySelectorAll("[data-level]").forEach((b) => b.addEventListener("click", () => {
   boardLevel = b.dataset.level;
@@ -329,9 +381,17 @@ $("goal-root").addEventListener("change", (e) => {
   else setSpiderRoot(e.target.value);
   renderBoard();
 });
-// Timeline: which levels get a row (at least one stays on)
+// Timeline: which levels get a row (at least one stays on), and how much time fits on screen
 export function tlLevelPicker() {
-  return h("div", { className: "tl-filter" }, h("span", { className: "cp-label", textContent: "Show" }),
+  return h("div", { className: "tl-filter" },
+    h("span", { className: "cp-label", textContent: "Zoom" }),
+    h("div", { className: "seg", ariaLabel: "Timeline zoom" }, Object.entries(TL_ZOOMS).map(([k, label]) => {
+      const b = h("button", { type: "button", textContent: label });
+      b.setAttribute("aria-pressed", String(tlZoom === k));
+      b.addEventListener("click", () => { tlZoom = k; store("goals-tl-zoom", k); renderBoard(); });
+      return b;
+    })),
+    h("span", { className: "cp-label", textContent: "Show" }),
     h("div", { className: "seg", ariaLabel: "Levels on the timeline" }, LEVELS.map((l) => {
       const b = h("button", { type: "button", textContent: l.plural });
       b.setAttribute("aria-pressed", String(tlLevels.has(l.name)));
@@ -346,24 +406,52 @@ export function tlLevelPicker() {
 
 
 // ---- + New: a stand-alone goal at any level (to build out under a goal, pick it and press Plan) ----
-export function toggleNewMenu(open) {
-  const menu = $("new-menu");
+// The toolbar's two small menus (+ New and ⋯) open, close and move with the keyboard the same way.
+const MENUS = { "new-menu": "goal-add", "more-menu": "board-more" };
+function toggleMenu(id, open) {
+  const menu = $(id);
   open ??= menu.hidden;
+  for (const other of Object.keys(MENUS)) if (other !== id && open) { $(other).hidden = true; $(MENUS[other]).setAttribute("aria-expanded", "false"); }
   menu.hidden = !open;
-  $("goal-add").setAttribute("aria-expanded", String(open));
-  if (open) menu.querySelector("button")?.focus();
+  $(MENUS[id]).setAttribute("aria-expanded", String(open));
+  // opens leftwards from its button; where that would leave the screen (phones), it opens rightwards instead
+  menu.style.left = menu.style.right = "";
+  if (open && menu.getBoundingClientRect().left < 8) { menu.style.left = "0"; menu.style.right = "auto"; }
+  if (open) menu.querySelector("button, a:not([hidden])")?.focus();
 }
+export const toggleNewMenu = (open) => toggleMenu("new-menu", open);
 $("new-menu").replaceChildren(...LEVELS.map((l) => {
   const b = h("button", { type: "button", role: "menuitem" }, h("b", { textContent: `+ ${l.name}` }), h("span", { textContent: l.when }));
   b.addEventListener("click", () => { toggleNewMenu(false); openGoal(null, { level: l.name }); });
   return b;
 }));
-document.addEventListener("click", (e) => { if (!$("new-menu").hidden && !e.target.closest(".add-wrap")) toggleNewMenu(false); });
-$("new-menu").addEventListener("keydown", (e) => {
-  if (e.key === "Escape") { toggleNewMenu(false); $("goal-add").focus(); }
-  if (e.key === "ArrowDown" || e.key === "ArrowUp") {
-    e.preventDefault();
-    const items = [...$("new-menu").querySelectorAll("button")], i = items.indexOf(document.activeElement);
-    items[(i + (e.key === "ArrowDown" ? 1 : items.length - 1)) % items.length].focus();
-  }
+document.addEventListener("click", (e) => {
+  for (const id of Object.keys(MENUS)) if (!$(id).hidden && !e.target.closest(`#${id}, #${MENUS[id]}`)) toggleMenu(id, false);
+});
+for (const [id, btn] of Object.entries(MENUS)) {
+  $(id).addEventListener("keydown", (e) => {
+    if (e.key === "Escape") { e.preventDefault(); toggleMenu(id, false); $(btn).focus(); }
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      e.preventDefault();
+      const items = [...$(id).querySelectorAll("button, a:not([hidden])")], i = items.indexOf(document.activeElement);
+      items[(i + (e.key === "ArrowDown" ? 1 : items.length - 1)) % items.length].focus();
+    }
+  });
+}
+$("board-more").addEventListener("click", () => toggleMenu("more-menu"));
+$("more-menu").addEventListener("click", (e) => { if (e.target.closest("a")) toggleMenu("more-menu", false); });
+$("goals-show-done").addEventListener("click", () => {
+  showDone = !showDone;
+  store("goals-show-done", showDone ? "1" : "0");
+  renderBoard();
+});
+$("review-menu").addEventListener("click", () => { toggleMenu("more-menu", false); $("review-open").click(); });
+// Refresh: everything again straight from Notion (for edits made in Notion itself)
+$("goals-refresh").addEventListener("click", async () => {
+  toggleMenu("more-menu", false);
+  try {
+    await refreshGoals();
+    renderBoard();
+    toast(state.goals.live ? "Up to date with Notion ✓" : "Sample goals reloaded");
+  } catch (err) { toast(err.message, true); }
 });

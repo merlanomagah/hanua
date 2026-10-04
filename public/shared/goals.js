@@ -74,6 +74,14 @@ export function goalSpan(g) {
   return { start, end, guessStart, guessEnd };
 }
 
+// What the board shows. Finished goals stay for two weeks after they're done (so wins don't vanish),
+// then hide unless "Show done" is on. A finished goal with no Completed date counts as old.
+export function visibleGoals(goals, { showDone = false, today, keepDays = 14 } = {}) {
+  if (showDone) return goals;
+  const since = today ? addDays(today, -keepDays) : "";
+  return goals.filter((g) => !isGoalDone(g) || (g.completed && dayOf(g.completed) >= since));
+}
+
 // Dates that can't work: a goal due after its parent, or starting before it. Only real dates count.
 // Returns a Map of goal id -> [{ kind: "late" | "early", parent }].
 export function dateConflicts(goals) {

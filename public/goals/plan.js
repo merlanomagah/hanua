@@ -113,7 +113,12 @@ $("plan-dialog").addEventListener("close", async () => {
     setFocusGoal(p.id);
     const n = created.length;
     if (failed.length) toast(`${n} of ${rows.length} added. Not added: ${failed.map((f) => `“${f.values.title}” (${f.error})`).join(", ")}`, true);
-    else toast(`${n} ${n === 1 ? lvl.name : lvl.plural} added under “${p.title}”${live ? " ✓" : " (sample, not saved to Notion)"}`);
+    else {
+      // keep going down the chain: offer to plan the next level for the first new goal
+      const next = LEVELS[levelIndex(lvl.name) + 1];
+      toast(`${n} ${n === 1 ? lvl.name : lvl.plural} added under “${p.title}”${live ? " ✓" : " (sample, not saved to Notion)"}`, false,
+        next && created[0] ? { label: `Plan ${next.plural} for “${created[0].title}” →`, run: () => openPlan(created[0]) } : null);
+    }
   } catch (err) {
     toast(err.message, true);
   }

@@ -1,5 +1,5 @@
 // Shared by every part of the page: element helpers, the one state object, the API, toasts.
-import { parseDay } from "./shared/dates.js";
+import { daysBetween, parseDay, todayStr, ymd } from "./shared/dates.js";
 
 export const $ = (id) => document.getElementById(id);
 export const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -30,6 +30,24 @@ export function longDate(d, comma = true) {
 export const area = (id) => state.areas.find((a) => a.id === id);
 export const records = (id) => area(id)?.records ?? [];
 export const isDone = (r) => /^(done|complete|reached)/i.test(r.status || "");
+
+// The newest Notion edit across a book's rows, and how long ago that was in words
+export function lastEdited(id) {
+  return records(id).reduce((max, r) => (r.edited && new Date(r.edited) > new Date(max || 0) ? r.edited : max), null);
+}
+export function ago(iso) {
+  if (!iso) return "";
+  const mins = Math.round((Date.now() - new Date(iso)) / 60_000);
+  if (mins < 2) return "just now";
+  if (mins < 60) return `${mins} minutes ago`;
+  const hrs = Math.round(mins / 60);
+  if (hrs < 24) return `${hrs} hour${hrs === 1 ? "" : "s"} ago`;
+  const days = daysBetween(ymd(new Date(iso)), todayStr());
+  if (days <= 1) return "yesterday";
+  if (days < 14) return `${days} days ago`;
+  return `on ${new Date(iso).toLocaleDateString(undefined, { day: "numeric", month: "short" })}`;
+}
+export const updatedLine = (id) => { const e = lastEdited(id); return e ? `updated ${ago(e)}` : ""; };
 
 export function store(key, value) {
   try {

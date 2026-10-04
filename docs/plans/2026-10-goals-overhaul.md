@@ -44,7 +44,7 @@ The order is set so that nothing gets built twice. The foundations go first beca
 
 **Testing:** `npm test`, then the full sample-data browser pass (all four views, Plan, drag on Board and Timeline, review, shop) to show nothing changed.
 
-### Phase 2: The goals board
+### Phase 2: The goals board — done 4 Oct 2026
 
 | Step | What | Notes |
 |---|---|---|

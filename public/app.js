@@ -1,6 +1,6 @@
 import { dayOf, daysBetween, pad, parseDay, timeOf, todayStr, ymd } from "./shared/dates.js";
 import { isGoalDone } from "./shared/goals.js";
-import { $, api, area, fmtDay, h, isDone, isNarrow, longDate, money, num, records, reducedMotion, state, store, toast } from "./lib.js";
+import { $, ago, api, area, fmtDay, h, isDone, isNarrow, longDate, money, num, records, reducedMotion, state, store, toast, updatedLine } from "./lib.js";
 import { onBoard, renderBoard, showBoard } from "./goals/board.js";
 import { openGoal } from "./goals/form.js";
 import { openReview, reviewDue } from "./goals/review.js";
@@ -32,7 +32,7 @@ export function renderShelf() {
     h("div", { className: "shelf-books" }, group.map((b) => {
       const spine = SPINES[b.id];
       const badge = badgeFor(b);
-      const el = h("button", { className: `book${spine ? "" : " plain"}${b.id === activeBook ? " active" : ""}`, type: "button", title: b.label, ariaLabel: `Open ${b.label}` },
+      const el = h("button", { className: `book${spine ? "" : " plain"}${b.id === activeBook ? " active" : ""}`, type: "button", title: [b.label, b.money ? "" : updatedLine(b.id)].filter(Boolean).join(" · "), ariaLabel: `Open ${b.label}` },
         h("span", { className: "b-label" },
           h("span", { className: "b-title", textContent: b.label }),
           h("span", { className: "b-vol", textContent: ROMAN[books.indexOf(b)] ?? "" })),
@@ -440,14 +440,14 @@ export function renderNotes() {
   const today = todayStr();
   const notes = [];
   for (const r of records(ROLE.notes).slice(0, 4)) {
-    notes.push({ text: r.title, meta: `Learning · ${fmtDay(r.date, { day: "numeric", month: "short" })}`, book: ROLE.notes });
+    notes.push({ text: r.title, meta: `Learning · ${fmtDay(r.date, { day: "numeric", month: "short" })}`, book: ROLE.notes, rid: r.id });
   }
   for (const r of records(ROLE.people)) {
     const gap = r.date ? daysBetween(r.date, today) : null;
-    if (gap !== null && gap >= 21) notes.push({ text: `Catch up with ${r.title}`, meta: `${gap} days since you spoke`, book: ROLE.people });
+    if (gap !== null && gap >= 21) notes.push({ text: `Catch up with ${r.title}`, meta: `${gap} days since you spoke`, book: ROLE.people, rid: r.id });
   }
   for (const r of records(ROLE.tasks)) {
-    if (/blocked/i.test(r.status || "")) notes.push({ text: `${r.title} is blocked`, meta: "Work · needs a nudge", book: ROLE.tasks });
+    if (/blocked/i.test(r.status || "")) notes.push({ text: `${r.title} is blocked`, meta: "Work · needs a nudge", book: ROLE.tasks, rid: r.id });
   }
   if (reviewDue()) notes.unshift({ text: "Weekly review due", meta: "Goals · ten minutes", run: () => { showBoard(true); openReview(); } });
   const box = $("notes");
@@ -457,11 +457,11 @@ export function renderNotes() {
       h("span", { textContent: "Your notes will pin here." })));
   }
   box.replaceChildren(...notes.slice(0, 8).map((n, i) => {
-    const el = h("button", { type: "button", className: "note" },
+    const el = h("button", { type: "button", className: "note", title: n.run ? "" : "Open in its book" },
       h("span", { className: "meta", textContent: n.meta }),
       h("span", { className: "text", textContent: n.text }));
     el.style.cssText = `--nc:${NOTE_COLORS[i % NOTE_COLORS.length]};--r:${NOTE_TILTS[i % NOTE_TILTS.length]}`;
-    el.addEventListener("click", () => (n.run ? n.run() : openBook(n.book, bookEl(n.book))));
+    el.addEventListener("click", () => (n.run ? n.run() : openBook(n.book, bookEl(n.book), n.rid)));
     return el;
   }));
 }
@@ -532,9 +532,13 @@ export function renderAgenda() {
   for (const r of items) {
     const t = timeOf(r.date);
     if (!nowPlaced && t && t > nowHM) { list.append(h("li", { className: "now-line" }, h("span", { textContent: `NOW ${nowHM}` }))); nowPlaced = true; }
+    const open = h("button", { type: "button", className: "slot-open", title: "Open in your Calendar book" },
+      h("span", { className: "t", textContent: r.title }), r.status ? h("span", { className: "k", textContent: r.status }) : null);
+    open.addEventListener("click", () => openBook(ROLE.events, bookEl(ROLE.events), r.id));
     list.append(h("li", { className: `slot${t && t < nowHM ? " past" : ""}` },
       h("time", { textContent: t || "All day" }),
-      h("span", {}, h("span", { className: "t", textContent: r.title }), r.status ? h("span", { className: "k", textContent: r.status }) : null)));
+      open,
+      r.url ? h("a", { className: "slot-out", href: r.url, target: "_blank", rel: "noopener", title: "Open in Notion", ariaLabel: `Open ${r.title} in Notion`, textContent: "↗" }) : null));
   }
   if (items.length && !nowPlaced) list.append(h("li", { className: "now-line" }, h("span", { textContent: `NOW ${nowHM}` })));
   $("agenda").replaceChildren(
@@ -603,7 +607,7 @@ export function bookPages(id) {
   const left = [
     h("p", { className: "eyebrow", textContent: a.live ? "Live from Notion" : "Sample data" }),
     h("h2", { id: "book-title", textContent: a.label }),
-    h("p", { className: "sub", textContent: a.error || `${a.records.length} entries` }),
+    h("p", { className: "sub", textContent: a.error || [`${a.records.length} entries`, updatedLine(id)].filter(Boolean).join(" · ") }),
     h("div", { className: "stats" },
       [[a.records.length, "entries"], [recent, "within 30 days"], [open, "still open"], [a.records[0]?.date ? fmtDay(a.records[0].date, { day: "numeric", month: "short" }) : "—", "latest"]]
         .map(([v, l]) => h("div", { className: "stat" }, h("b", { textContent: v }), h("span", { textContent: l })))),
@@ -612,11 +616,15 @@ export function bookPages(id) {
   const right = [
     h("h3", { textContent: "Entries" }),
     a.records.length
-      ? h("ul", { className: "entries" }, a.records.map((r) => h("li", { className: "entry" },
-          h("span", { className: "t", textContent: r.title }),
-          typeof r.amount === "number" ? h("span", { className: `v ${r.amount < 0 ? "neg" : ""}`, textContent: r.amount.toLocaleString() }) : h("span"),
-          h("span", { className: "m" }, [r.date ? fmtDay(r.date) + (timeOf(r.date) ? " " + timeOf(r.date) : "") : null, r.status].filter(Boolean).join(" · "),
-            r.url ? h("span", {}, " · ", h("a", { href: r.url, target: "_blank", rel: "noopener", textContent: "Open in Notion ↗" })) : null))))
+      ? h("ul", { className: "entries" }, a.records.map((r) => {
+          const li = h("li", { className: "entry" },
+            h("span", { className: "t", textContent: r.title }),
+            typeof r.amount === "number" ? h("span", { className: `v ${r.amount < 0 ? "neg" : ""}`, textContent: r.amount.toLocaleString() }) : h("span"),
+            h("span", { className: "m" }, [r.date ? fmtDay(r.date) + (timeOf(r.date) ? " " + timeOf(r.date) : "") : null, r.status].filter(Boolean).join(" · "),
+              r.url ? h("span", {}, " · ", h("a", { href: r.url, target: "_blank", rel: "noopener", textContent: "Open in Notion ↗" })) : null));
+          li.dataset.rid = r.id;
+          return li;
+        }))
       : h("p", { className: "empty", textContent: "Blank pages. Use the Feed bar to write the first entry." }),
   ];
   return { left, right };
@@ -678,7 +686,8 @@ export function setActive(id) {
   document.querySelectorAll(".book").forEach((b) => b.classList.toggle("active", b.dataset.id === id));
 }
 
-export async function openBook(id, fromEl) {
+// focusId: a record to scroll to and mark, e.g. from a pinned note or the agenda
+export async function openBook(id, fromEl, focusId = null) {
   if (openEl || !(id === "money" ? state.money : area(id))) return;
   const book = shelfBooks().find((b) => b.id === id);
   const { left, right } = bookPages(id);
@@ -691,6 +700,12 @@ export async function openBook(id, fromEl) {
   setActive(id);
   document.body.style.overflow = "hidden";
   requestAnimationFrame(() => $("reader").classList.add("dim"));
+  // marked before the opening animation, so it never waits on it
+  const entry = focusId && [...ob.querySelectorAll(".entry")].find((li) => li.dataset.rid === focusId);
+  if (entry) {
+    entry.classList.add("focus");
+    entry.scrollIntoView({ block: "center" });
+  }
 
   if (fromEl && !reducedMotion) {
     // grow the open book out of the spine you clicked
@@ -701,7 +716,7 @@ export async function openBook(id, fromEl) {
       { transform: "none", opacity: 1 },
     ], { duration: 420, easing: "cubic-bezier(.2,.8,.2,1)" }).finished;
   }
-  $("reader-close").focus({ preventScroll: true });
+  (entry?.querySelector("a") || $("reader-close")).focus({ preventScroll: true });
 }
 
 export async function closeBook() {
@@ -750,7 +765,7 @@ export function bookSummary(b) {
   if (!a) return "";
   if (a.error) return "Couldn't reach Notion";
   const n = a.records.length;
-  return `${n ? `${n} entr${n === 1 ? "y" : "ies"}` : "No entries yet"} · ${a.live ? "live from Notion" : "sample"}`;
+  return [n ? `${n} entr${n === 1 ? "y" : "ies"}` : "No entries yet", a.live ? "live from Notion" : "sample", updatedLine(b.id)].filter(Boolean).join(" · ");
 }
 
 export function renderLibrary() {

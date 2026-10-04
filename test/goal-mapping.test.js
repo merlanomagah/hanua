@@ -53,3 +53,12 @@ test("coach checks nudge a topic-style title and a missing parent", () => {
   assert.equal(checks[1].ok, false);
   assert.ok(coachChecks({ level: "Task", title: "Book flights", parent: "p1" }, {}).slice(0, 2).every((c) => c.ok));
 });
+
+test("coach flags dates that don't fit inside the parent's", () => {
+  const ctx = { parentLevel: "Feature", parentDue: "2026-11-30", parentStart: "2026-10-01" };
+  const late = coachChecks({ level: "PBI", title: "Write pages", parent: "f", due: "2026-12-05" }, ctx);
+  assert.ok(late.some((c) => c.ok === false && /Due after its Feature/.test(c.text)));
+  const early = coachChecks({ level: "PBI", title: "Write pages", parent: "f", start: "2026-09-20" }, ctx);
+  assert.ok(early.some((c) => /Starts before its Feature/.test(c.text)));
+  assert.ok(!coachChecks({ level: "PBI", title: "Write pages", parent: "f", due: "2026-11-01" }, ctx).some((c) => /after its/.test(c.text)));
+});

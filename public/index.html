@@ -93,14 +93,23 @@
                 <button type="button" role="tab" data-level="PBI">PBIs</button>
                 <button type="button" role="tab" data-level="Task">Tasks</button>
               </div>
+              <!-- shown here only when it's due; otherwise it's in the ⋯ menu -->
               <button type="button" class="b-btn ghost review-btn" id="review-open">Weekly review</button>
               <span class="add-wrap">
                 <button type="button" class="b-btn" id="goal-add" aria-haspopup="menu" aria-expanded="false">+ New ▾</button>
                 <!-- a stand-alone goal at any level; to build out under a goal, pick it and press Plan -->
                 <span class="new-menu" id="new-menu" role="menu" hidden></span>
               </span>
-              <a class="b-link" id="goals-guide" target="_blank" rel="noopener" hidden>Guide ↗</a>
-              <a class="b-link" id="goals-notion" target="_blank" rel="noopener" hidden>Notion ↗</a>
+              <span class="add-wrap">
+                <button type="button" class="b-btn ghost more-btn" id="board-more" aria-haspopup="menu" aria-expanded="false" aria-label="More">⋯</button>
+                <span class="new-menu" id="more-menu" role="menu" hidden>
+                  <button type="button" role="menuitem" id="goals-refresh"><b>Refresh</b><span>from Notion</span></button>
+                  <button type="button" role="menuitemcheckbox" id="goals-show-done" aria-checked="false"><b>Show done</b><span id="done-hidden"></span></button>
+                  <button type="button" role="menuitem" id="review-menu"><b>Weekly review</b><span id="review-when"></span></button>
+                  <a role="menuitem" id="goals-guide" target="_blank" rel="noopener" hidden><b>Guide ↗</b><span>Agile for life</span></a>
+                  <a role="menuitem" id="goals-notion" target="_blank" rel="noopener" hidden><b>Notion ↗</b><span>the Goals database</span></a>
+                </span>
+              </span>
             </div>
           </div>
           <div class="cork" id="cork">
