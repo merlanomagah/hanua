@@ -1144,7 +1144,7 @@ $("draft-dialog").addEventListener("close", async () => {
 export function renderHeader() {
   const now = new Date();
   const hr = now.getHours();
-  $("greet").textContent = hr < 12 ? "Good morning." : hr < 18 ? "Good afternoon." : "Good evening.";
+  $("greet").textContent = hr >= 21 || hr < 4 ? "Good night." : hr < 12 ? "Good morning." : hr < 18 ? "Good afternoon." : "Good evening.";
   $("today-label").textContent = longDate(now);
   $("arc-date").textContent = longDate(now).toUpperCase().replace(",", " ·");
   const { notion, claude } = state.status;
