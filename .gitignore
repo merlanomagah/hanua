@@ -12,3 +12,6 @@ data/room*/
 
 # the Apple Calendar helper, built on this Mac from scripts/calendar.swift
 bin/
+
+# Gmail sign-in tokens (read-only), this Mac only
+data/gmail*.json
