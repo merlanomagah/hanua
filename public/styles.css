@@ -519,6 +519,12 @@ button:disabled { opacity: 0.5; cursor: progress; }
 .todo li.done .t::after { width: 100%; }
 .todo .m { flex: none; margin-left: auto; font: 1.9cqw var(--mono); letter-spacing: 0.08em; color: var(--muted); text-transform: uppercase; white-space: nowrap; }
 .todo .m.late { color: var(--terra); }
+/* goal Tasks on the notepad: the name opens quick edit; a small gold mark and the goal it serves on the right */
+.todo button.t { border: 0; background: none; padding: 0; text-align: left; cursor: pointer; }
+.todo button.t:hover, .todo button.t:focus-visible { color: var(--terra); }
+.todo .goal-task .t { flex: 0 1 auto; }
+.todo .m.g { flex: 0 1 auto; max-width: 34%; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.todo .m.g::before { content: "◆ "; color: #C9962F; }
 
 /* agenda card */
 .agenda {

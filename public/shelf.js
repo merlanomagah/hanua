@@ -10,7 +10,14 @@ import { mondayOf, sundayOf } from "./goals/review.js";
 export const coinsFor = (g) => coinValue(g, state.goals.goals, state.shop.coinsPerLevel);
 export const toDollars = (coins) => coins / (state.shop.coinsPerDollar || 10);
 export const dollars = (coins) => money(toDollars(coins), toDollars(coins) % 1 ? 2 : 0);
-export const coinText = (g) => (coinsFor(g) ? ` +${coinsFor(g)} coins (${dollars(coinsFor(g))}) in the treat fund.` : "");
+// What finishing a goal earns, in words. When a PBI's Tasks have used up its share, it says so.
+export function coinText(g) {
+  const pay = coinsFor(g), full = state.shop.coinsPerLevel?.[g.level] || 0;
+  if (pay >= full) return pay ? ` +${pay} coins (${dollars(pay)}) in the treat fund.` : "";
+  const pbi = goalById(g.parent), share = state.shop.coinsPerLevel?.PBI || 0;
+  const why = `the Tasks under “${pbi?.title || "this PBI"}” have earned their ${share}-coin share; the PBI pays ${share} more when it's done`;
+  return pay ? ` +${pay} coins (${dollars(pay)}): ${why}.` : ` No coins this time: ${why}.`;
+}
 
 // Earned = finished in the period. Planned = everything due in the period (done or not) plus anything
 // finished in it: the dollar value you set yourself up to earn.

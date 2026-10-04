@@ -1,8 +1,9 @@
 import { dayOf, daysBetween, pad, parseDay, timeOf, todayStr, ymd } from "./shared/dates.js";
 import { isGoalDone } from "./shared/goals.js";
 import { $, ago, api, area, fmtDay, h, isDone, isNarrow, longDate, money, num, records, reducedMotion, state, store, toast, updatedLine } from "./lib.js";
-import { onBoard, renderBoard, showBoard } from "./goals/board.js";
+import { goalById, moveGoal, onBoard, renderBoard, showBoard } from "./goals/board.js";
 import { openGoal } from "./goals/form.js";
+import { openQuick } from "./goals/quick.js";
 import { openReview, reviewDue } from "./goals/review.js";
 import { renderTopShelf, toggleEarnings } from "./shelf.js";
 
@@ -472,33 +473,51 @@ export const PAD_LINES = 18; // ruled lines left on the notepad below the headin
 
 export function renderTodo() {
   const today = todayStr();
-  const tasks = records(ROLE.tasks)
+  const work = records(ROLE.tasks)
     .filter((r) => (!isDone(r) && (!r.date || dayOf(r.date) <= today)) || (isDone(r) && dayOf(r.date) === today))
-    .sort((a, b) => Number(isDone(a)) - Number(isDone(b)) || (a.date || "9").localeCompare(b.date || "9"));
+    .map((r) => ({ r, title: r.title, date: r.date, done: isDone(r) }));
+  // goal Tasks due today or earlier (and any finished today) share the list: one place to tick things off
+  const goalTasks = state.goals.goals
+    .filter((g) => g.level === "Task" && (isGoalDone(g) ? dayOf(g.completed) === today : g.due && dayOf(g.due) <= today))
+    .map((g) => ({ g, title: g.title, date: g.due, done: isGoalDone(g) }));
+  const tasks = [...work, ...goalTasks].sort((a, b) => Number(a.done) - Number(b.done) || (a.date || "9").localeCompare(b.date || "9"));
   const shown = tasks.length > PAD_LINES ? tasks.slice(0, PAD_LINES - 1) : tasks;
   const list = h("ul", { className: "todo" });
   if (!tasks.length) list.append(h("li", {}, h("span", { className: "empty", textContent: "Nothing due today. Enjoy it." })));
-  for (const r of shown) {
-    const late = r.date && dayOf(r.date) < today && !isDone(r);
-    const li = h("li", { className: isDone(r) ? "done" : "" },
-      h("button", { type: "button", className: "check", ariaLabel: `Mark ${r.title} ${isDone(r) ? "not done" : "done"}`, innerHTML: '<svg viewBox="0 0 16 16"><path d="M3 8.5l3 3 7-7"/></svg>' }),
-      h("span", { className: "t", textContent: r.title, title: r.title }),
-      h("span", { className: `m${late ? " late" : ""}`, textContent: late ? `Overdue · ${fmtDay(r.date, { day: "numeric", month: "short" })}` : r.status || "To do" }),
-    );
-    li.querySelector(".check").addEventListener("click", () => toggleTask(r, li));
+  for (const item of shown) {
+    const { r, g, title, done } = item;
+    const late = item.date && dayOf(item.date) < today && !done;
+    const check = h("button", { type: "button", className: "check", ariaLabel: `Mark ${title} ${done ? "not done" : "done"}`, innerHTML: '<svg viewBox="0 0 16 16"><path d="M3 8.5l3 3 7-7"/></svg>' });
+    let li;
+    if (g) {
+      // a goal Task: its name opens quick edit; the note says which goal it serves
+      const parent = goalById(g.parent);
+      const name = h("button", { type: "button", className: "t", textContent: title, title: `${title}: change state or due date` });
+      name.dataset.act = "quick";
+      name.addEventListener("click", () => openQuick(g, name));
+      li = h("li", { className: `goal-task${done ? " done" : ""}` }, check, name,
+        h("span", { className: `m g${late ? " late" : ""}`, title: parent ? `For “${parent.title}”` : "A goal Task", textContent: late ? `Overdue · ${fmtDay(item.date, { day: "numeric", month: "short" })}` : parent ? parent.title : "Goal" }));
+      // finishing it here is the same as on the board: coins, "how big did it feel", Undo
+      check.addEventListener("click", () => { li.classList.toggle("done", !done); moveGoal(g, done ? "Active" : "Done"); });
+    } else {
+      li = h("li", { className: done ? "done" : "" }, check,
+        h("span", { className: "t", textContent: title, title }),
+        h("span", { className: `m${late ? " late" : ""}`, textContent: late ? `Overdue · ${fmtDay(r.date, { day: "numeric", month: "short" })}` : r.status || "To do" }));
+      check.addEventListener("click", () => toggleTask(r, li));
+    }
     list.append(li);
   }
   if (shown.length < tasks.length) {
-    const more = h("li", {}, h("button", { type: "button", className: "more", style: "border:0;background:none;padding:0;cursor:pointer", textContent: `+ ${tasks.length - shown.length} more in your Work book` }));
+    const more = h("li", {}, h("button", { type: "button", className: "more", style: "border:0;background:none;padding:0;cursor:pointer", textContent: `+ ${tasks.length - shown.length} more in your Work book${goalTasks.length ? " and goals" : ""}` }));
     more.firstChild.addEventListener("click", () => openBook(ROLE.tasks, bookEl(ROLE.tasks)));
     list.append(more);
   }
-  const open = tasks.filter((r) => !isDone(r)).length;
+  const open = tasks.filter((t) => !t.done).length;
   $("todo").replaceChildren(
     h("img", { src: "assets/obj/notepad.png", alt: "" }),
     h("div", { className: "pad-lines" },
       h("h2", { className: "pad-title", style: "margin:0", textContent: "Today's list" }),
-      h("div", { className: "pad-sub", textContent: `${open} to do · from your Work book` }),
+      h("div", { className: "pad-sub", textContent: `${open} to do · from your Work book${goalTasks.length ? " and goals" : ""}` }),
       list),
   );
 }

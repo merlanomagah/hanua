@@ -60,7 +60,7 @@ The order is set so that nothing gets built twice. The foundations go first beca
 
 **Testing:** a browser pass at 1440, 1024 and 375; keyboard-only pass (tabs, quick edit, timeline nudge); `npm test`.
 
-### Phase 3: The desk and coins
+### Phase 3: The desk and coins — done 4 Oct 2026
 
 | Step | What | Notes |
 |---|---|---|

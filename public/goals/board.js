@@ -11,7 +11,7 @@ import { reviewDue } from "./review.js";
 import { renderTimeline, scrollTimelineToToday } from "./timeline.js";
 import { layoutSpider, renderSpider } from "./tree.js";
 import { coinText, dollars, epicValue, renderTopShelf } from "../shelf.js";
-import { renderCalendar } from "../app.js";
+import { renderCalendar, renderTodo } from "../app.js";
 
 // Status and Area options come from the Goals database in Notion (sent with /api/goals); these are the fallbacks.
 export const GOAL_STATUS = ["New", "Active", "At risk", "Done"];
@@ -166,6 +166,7 @@ export function renderBoard() {
   if (boardView === "timeline") scrollTimelineToToday();
   renderTopShelf();
   renderCalendar();
+  renderTodo();
   // the wall stretches to fit a long board (phones stack the columns)
   $("wall").style.minHeight = onBoard ? `${$("board-pane").offsetHeight}px` : "";
   requestAnimationFrame(drawThreads);
