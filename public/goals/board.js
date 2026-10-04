@@ -9,7 +9,7 @@ import { openPlan } from "./plan.js";
 import { openQuick } from "./quick.js";
 import { reviewDue } from "./review.js";
 import { renderTimeline, scrollTimelineToToday } from "./timeline.js";
-import { layoutSpider, renderSpider } from "./tree.js";
+import { renderBacklog } from "./backlog.js";
 import { coinText, dollars, epicValue, renderTopShelf } from "../shelf.js";
 import { renderCalendar, renderTodo } from "../app.js";
 
@@ -62,9 +62,10 @@ $("wall").addEventListener("touchend", (e) => {
 });
 
 // ---- board state ----
-// Views: "tree" is the Hierarchy columns, "kanban" the Board, "spider" the Tree diagram, "timeline" the Timeline.
-export const BOARD_VIEWS = ["tree", "kanban", "spider", "timeline"];
-export let boardView = BOARD_VIEWS.includes(store("goals-view")) ? store("goals-view") : "tree";
+// Views: "backlog" (every goal in one indented list), "kanban" the Board, "timeline" the Timeline.
+// Hierarchy columns and the Tree diagram were cut on 5 Oct 2026; a view saved as either opens the Backlog.
+export const BOARD_VIEWS = ["backlog", "kanban", "timeline"];
+export let boardView = BOARD_VIEWS.includes(store("goals-view")) ? store("goals-view") : "backlog";
 export let boardLevel = LEVELS.some((l) => l.name === store("goals-level")) ? store("goals-level") : "Task";
 export let focusGoal = null;
 export const setFocusGoal = (id) => { focusGoal = id; };
@@ -77,12 +78,11 @@ export function flashGoals(ids) {
 export const isFresh = (id) => fresh.has(id);
 function revealFresh() {
   const card = [...$("cork-cols").querySelectorAll(".fresh")][0];
-  const list = card?.closest(".pin-list, .sp-wrap, .tl");
+  const list = card?.closest(".pin-list, .bl, .tl");
   if (!card || !list) return;
   const off = card.getBoundingClientRect().top - list.getBoundingClientRect().top;
   if (off < 0 || off > list.clientHeight - 60) list.scrollTop += off - 16;
 }
-export let spiderRoot = store("goals-root") || null; // the goal in the centre of the Tree view
 export let tlRoot = store("goals-tl-root") || ""; // "" = every goal on the Timeline
 export let tlLevels = new Set((store("goals-tl-levels") || LEVELS.map((l) => l.name).join(",")).split(",").filter((n) => LEVELS.some((l) => l.name === n)));
 if (!tlLevels.size) tlLevels = new Set(LEVELS.map((l) => l.name));
@@ -153,15 +153,14 @@ export function renderBoard() {
   $("goal-add").textContent = boardView === "kanban" ? `+ New ${boardLevel}` : "+ New ▾";
   $("goal-add").setAttribute("aria-haspopup", boardView === "kanban" ? "false" : "menu");
   $("cork").classList.toggle("kanban", boardView === "kanban");
-  $("cork").classList.toggle("view-spider", boardView === "spider");
+  $("cork").classList.toggle("view-backlog", boardView === "backlog");
   $("cork").classList.toggle("view-timeline", boardView === "timeline");
   if (focusGoal && !goalById(focusGoal)) focusGoal = null;
   const thread = focusGoal ? lineage(focusGoal) : null;
   let n = 0;
-  const cols = boardView === "spider" ? [renderSpider()]
+  const cols = boardView === "backlog" ? [renderBacklog()]
     : boardView === "timeline" ? [renderTimeline()]
-    : boardView === "kanban"
-    ? statusOptions(GOAL_STATUS).map((st) => {
+    : statusOptions(GOAL_STATUS).map((st) => {
         const list = goals.filter((g) => g.level === boardLevel && (g.status || "New") === st).sort(treeOrder(all));
         // Personal Kanban: cap what's in progress, so things get finished
         const over = st === "Active" && list.length > WIP_LIMIT;
@@ -172,15 +171,8 @@ export function renderBoard() {
           h("div", { className: "pin-list" }, list.length ? list.map((g) => goalCard(g, n++, thread)) : h("p", { className: "pin-empty", textContent: "Drop a card here" })));
         dropZone(col, st);
         return col;
-      })
-    : LEVELS.map((lvl) => {
-        const list = goals.filter((g) => (g.level || "Task") === lvl.name).sort(treeOrder(all));
-        return h("section", { className: `pin-col lvl-${lvl.name.toLowerCase()}` },
-          h("h3", { className: "pin-tag", title: GUIDE[lvl.name].what }, lvl.name, h("span", { className: "pin-when", textContent: ` · ${lvl.when}` }), h("span", { className: "pin-count", textContent: list.length })),
-          h("div", { className: "pin-list" }, list.length ? list.map((g) => goalCard(g, n++, thread)) : h("p", { className: "pin-empty", textContent: lvl.name === "Epic" ? "Start with a big goal for the year" : "Nothing pinned" })));
       });
   $("cork-cols").replaceChildren(...cols);
-  if (boardView === "spider") layoutSpider();
   if (boardView === "timeline") scrollTimelineToToday();
   renderTopShelf();
   renderCalendar();
@@ -276,7 +268,6 @@ export function confirmDelete(g) {
 $("confirm-no").addEventListener("click", () => { confirmAction = null; $("confirm-dialog").close(); });
 $("confirm-yes").addEventListener("click", () => { const run = confirmAction; confirmAction = null; $("confirm-dialog").close(); run?.(); });
 
-window.addEventListener("resize", () => { if (onBoard && boardView === "spider") layoutSpider(); });
 
 // Kanban: drop a card on a column to change its state. Saves straight away, with Undo.
 export function dropZone(col, status) {
@@ -315,8 +306,6 @@ document.querySelectorAll("[data-view]").forEach((b) => b.addEventListener("clic
   boardView = b.dataset.view;
   store("goals-view", boardView);
   noteView(boardView);
-  // a goal picked on the board opens the Tree at that goal
-  if (boardView === "spider" && focusGoal) setSpiderRoot(LEVELS[levelIndex(goalById(focusGoal)?.level) + 1] ? focusGoal : goalById(focusGoal)?.parent || focusGoal);
   renderBoard();
 }));
 // tabs: arrow keys move along and switch (the usual tab pattern)
@@ -335,42 +324,27 @@ document.querySelectorAll("[data-level]").forEach((b) => b.addEventListener("cli
   renderBoard();
 }));
 $("cork").addEventListener("click", (e) => {
-  if (focusGoal && boardView !== "spider" && boardView !== "timeline" && !e.target.closest(".goal-card")) { focusGoal = null; renderBoard(); }
+  if (focusGoal && boardView === "kanban" && !e.target.closest(".goal-card")) { focusGoal = null; renderBoard(); }
 });
 
-// ---- picking the goal for the Tree and Timeline views ----
+// ---- picking the goal for the Timeline ----
 export const kidsOf = (id) => focusGoals(state.goals.goals).filter((c) => c.parent === id).sort(treeOrder(state.goals.goals));
 // Top-level goals worth looking at: Epics, and anything stand-alone that has goals under it
 export function rootChoices() {
   const goals = focusGoals(state.goals.goals);
   return goals.filter((g) => (!g.parent || !goalById(g.parent)) && (g.level === "Epic" || g.children?.length)).sort(treeOrder(goals));
 }
-export function setSpiderRoot(id) {
-  spiderRoot = id || null;
-  store("goals-root", spiderRoot || "");
-}
 export function fillRootPicker() {
   const sel = $("goal-root");
-  sel.hidden = boardView !== "spider" && boardView !== "timeline";
+  sel.hidden = boardView !== "timeline";
   if (sel.hidden) return;
-  const roots = rootChoices();
-  const opts = roots.map((g) => h("option", { value: g.id, textContent: `${g.level === "Epic" ? "" : `${g.level}: `}${g.title}` }));
-  if (boardView === "timeline") {
-    sel.replaceChildren(h("option", { value: "", textContent: "All goals" }), ...opts);
-    if (tlRoot && !inView(tlRoot)) tlRoot = "";
-    sel.value = tlRoot;
-  } else {
-    // the Tree shows the Epic a drilled-in goal belongs to
-    if (!goalById(spiderRoot)) setSpiderRoot(roots[0]?.id);
-    let top = goalById(spiderRoot);
-    for (const seen = new Set(); top?.parent && goalById(top.parent) && !seen.has(top.id); top = goalById(top.parent)) seen.add(top.id);
-    sel.replaceChildren(...(opts.length ? opts : [h("option", { value: "", textContent: "No Epics yet" })]));
-    sel.value = top?.id || "";
-  }
+  sel.replaceChildren(h("option", { value: "", textContent: "All goals" }), ...rootChoices().map((g) => h("option", { value: g.id, textContent: `${g.level === "Epic" ? "" : `${g.level}: `}${g.title}` })));
+  if (tlRoot && !inView(tlRoot)) tlRoot = "";
+  sel.value = tlRoot;
 }
 $("goal-root").addEventListener("change", (e) => {
-  if (boardView === "timeline") { tlRoot = e.target.value; store("goals-tl-root", tlRoot); }
-  else setSpiderRoot(e.target.value);
+  tlRoot = e.target.value;
+  store("goals-tl-root", tlRoot);
   renderBoard();
 });
 // Timeline: which levels get a row (at least one stays on), and how much time fits on screen

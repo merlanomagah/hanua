@@ -6,6 +6,7 @@ import { $, api, fmtDay, focus, focusGoals, h, state, toast } from "../lib.js";
 import { areaOptions, createGoal, statusOptions, updateGoal } from "./store.js";
 import { GOAL_AREAS, GOAL_STATUS, boardLevel, boardView, flashGoals, goalById, renderBoard, toggleNewMenu } from "./board.js";
 import { coinText } from "../shelf.js";
+import { refreshWhen, whenHint, whenPicker } from "./when.js";
 export let editingGoal = null;
 export function fillSelect(sel, options, value, blank = "—") {
   sel.replaceChildren(h("option", { value: "", textContent: blank }), ...options.map((o) => typeof o === "string" ? h("option", { value: o, textContent: o }) : h("option", { value: o.value, textContent: o.label })));
@@ -36,6 +37,7 @@ export function openGoal(g, preset = {}) {
   f.effort.value = v.effort ?? "";
   f.start.value = dayOf(v.start || "");
   f.due.value = dayOf(v.due || "");
+  syncWhen();
   f.description.value = v.description || "";
   f.why.value = v.why || "";
   f.doneWhen.value = v.doneWhen || "";
@@ -58,7 +60,17 @@ export function openGoal(g, preset = {}) {
   updateCoach();
   $("goal-dialog").showModal();
 }
-$("goal-form").elements.level.addEventListener("change", (e) => fillParents(e.target.value, ""));
+$("goal-form").elements.level.addEventListener("change", (e) => { fillParents(e.target.value, ""); syncWhen(); });
+$("goal-form").elements.parent.addEventListener("change", () => syncWhen());
+
+// "When?" in front of the due date: its picks follow the level, and stop at the parent's due date
+const whenSel = whenPicker($("goal-form").elements.due, {});
+$("when-row").prepend(whenSel);
+function syncWhen() {
+  const f = $("goal-form").elements;
+  refreshWhen(whenSel, { level: f.level.value, parentDue: goalById(f.parent.disabled ? "" : f.parent.value)?.due });
+  $("when-hint").textContent = whenHint(f.level.value);
+}
 
 // ---- the coach beside the form ----
 export function formValues() {

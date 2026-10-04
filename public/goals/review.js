@@ -139,7 +139,7 @@ export function renderReview() {
     // which board views got opened this week (on this Mac): evidence for keeping or cutting one
     if (step.key === "tryNext") {
       const use = viewUse(ymd(mondayOf(new Date())));
-      const names = { tree: "Hierarchy", kanban: "Board", spider: "Tree", timeline: "Timeline" };
+      const names = { backlog: "Backlog", kanban: "Board", timeline: "Timeline" };
       top.push(h("p", { className: "rv-views", textContent: `Views you opened this week: ${Object.entries(names).map(([k, n]) => `${n} ${use[k] || 0}`).join(" · ")}. One you never open is a candidate to cut.` }));
     }
   }

@@ -1,6 +1,6 @@
 // The goals logic the page and the server share: levels, roll-up, ordering, dates and coins.
 // Plain functions over plain goal objects, so the server, the page and the tests all use the same rules.
-import { addDays, dayOf } from "./dates.js";
+import { addDays, dayOf, parseDay, ymd } from "./dates.js";
 
 // The levels work like an Azure DevOps backlog: each goal belongs to one a level up.
 export const LEVELS = [
@@ -116,4 +116,36 @@ export function coinValue(g, goals, perLevel = {}) {
     left -= pay;
   }
   return base;
+}
+
+// "When?": most goals don't need a due date; their level already says roughly when (a Task this week, a PBI
+// this month). A quick pick sets Due to the end of that period, and never later than the parent's due date.
+export const WHEN_PICKS = {
+  Epic: [["year", "This year"], ["next-year", "Next year"]],
+  Feature: [["quarter", "This quarter"], ["next-quarter", "Next quarter"]],
+  PBI: [["month", "This month"], ["next-month", "Next month"]],
+  Task: [["week", "This week"], ["next-week", "Next week"]],
+};
+// Returns { due, capped } for a pick, or null for an unknown pick. Weeks end on Sunday.
+export function whenDue(pick, today, parentDue = "") {
+  const d = parseDay(today), y = d.getFullYear(), m = d.getMonth(), q = Math.floor(m / 3);
+  const end = {
+    week: () => addDays(today, 6 - ((d.getDay() + 6) % 7)),
+    "next-week": () => addDays(today, 13 - ((d.getDay() + 6) % 7)),
+    month: () => ymd(new Date(y, m + 1, 0)),
+    "next-month": () => ymd(new Date(y, m + 2, 0)),
+    quarter: () => ymd(new Date(y, (q + 1) * 3, 0)),
+    "next-quarter": () => ymd(new Date(y, (q + 2) * 3, 0)),
+    year: () => `${y}-12-31`,
+    "next-year": () => `${y + 1}-12-31`,
+  }[pick];
+  if (!end) return null;
+  const due = end(), cap = dayOf(parentDue);
+  return cap && due > cap ? { due: cap, capped: true } : { due, capped: false };
+}
+// Which pick a due date matches (so an existing date shows as "This month"), or "exact", or "" for none.
+export function whenPickOf(level, due, today, parentDue = "") {
+  if (!due) return "";
+  const hit = (WHEN_PICKS[level] || []).find(([k]) => whenDue(k, today, parentDue)?.due === dayOf(due));
+  return hit ? hit[0] : "exact";
 }

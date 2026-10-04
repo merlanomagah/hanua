@@ -100,3 +100,21 @@ test("finished goals hide after two weeks unless Show done is on", async () => {
   assert.deepEqual(visibleGoals(goals, { today: "2026-10-04" }).map((g) => g.id), ["A", "B"]);
   assert.equal(visibleGoals(goals, { today: "2026-10-04", showDone: true }).length, 4);
 });
+
+test("When? picks end on the period's last day, and never after the parent's due date", async () => {
+  const { whenDue, whenPickOf } = await import("../public/shared/goals.js");
+  // Monday 5 Oct 2026
+  assert.deepEqual(whenDue("week", "2026-10-05"), { due: "2026-10-11", capped: false });
+  assert.equal(whenDue("week", "2026-10-11").due, "2026-10-11"); // a Sunday is the end of its own week
+  assert.equal(whenDue("next-week", "2026-10-05").due, "2026-10-18");
+  assert.equal(whenDue("month", "2026-10-05").due, "2026-10-31");
+  assert.equal(whenDue("next-month", "2026-12-05").due, "2027-01-31");
+  assert.equal(whenDue("quarter", "2026-10-05").due, "2026-12-31");
+  assert.equal(whenDue("next-quarter", "2026-11-20").due, "2027-03-31");
+  assert.equal(whenDue("year", "2026-10-05").due, "2026-12-31");
+  assert.deepEqual(whenDue("quarter", "2026-10-05", "2026-11-15"), { due: "2026-11-15", capped: true });
+  assert.equal(whenDue("nonsense", "2026-10-05"), null);
+  assert.equal(whenPickOf("PBI", "2026-10-31", "2026-10-05"), "month");
+  assert.equal(whenPickOf("PBI", "2026-10-20", "2026-10-05"), "exact");
+  assert.equal(whenPickOf("Task", "", "2026-10-05"), "");
+});

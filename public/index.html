@@ -98,12 +98,11 @@
             
             <div class="board-tools">
               <div class="seg" role="tablist" aria-label="Board view">
-                <button type="button" role="tab" data-view="tree" aria-selected="true">Hierarchy</button>
-                <button type="button" role="tab" data-view="kanban" aria-selected="false">Board</button>
-                <button type="button" role="tab" data-view="spider" aria-selected="false">Tree</button>
-                <button type="button" role="tab" data-view="timeline" aria-selected="false">Timeline</button>
+                <button type="button" role="tab" data-view="backlog" aria-selected="true" title="Every goal in one list, each under the goal it belongs to">Backlog</button>
+                <button type="button" role="tab" data-view="kanban" aria-selected="false" title="Cards by state (New, Active, At risk, Done), one level at a time">Board</button>
+                <button type="button" role="tab" data-view="timeline" aria-selected="false" title="Goals with dates, on a calendar you can drag">Timeline</button>
               </div>
-              <!-- Tree and Timeline: which goal to look at (Timeline can show everything) -->
+              <!-- Timeline: which goal to look at (or everything) -->
               <select class="b-select" id="goal-root" aria-label="Show goal" hidden></select>
               <div class="seg" id="level-seg" role="tablist" aria-label="Level" hidden>
                 <button type="button" role="tab" data-level="Epic">Epics</button>
@@ -380,7 +379,7 @@
         </div>
         <label>Area<select name="area"></select></label>
         <label>Start<input name="start" type="date"></label>
-        <label>Due<input name="due" type="date"></label>
+        <div class="when-field" id="when-field"><span class="field-label">When</span><span class="when-row" id="when-row"><input name="due" type="date" aria-label="Due date"></span><small class="when-hint" id="when-hint"></small></div>
         <label class="wide" id="progress-field">Progress <output name="progressOut"></output><input name="progress" type="range" min="0" max="100" step="5"></label>
         <p class="wide rolled" id="progress-rolled" hidden></p>
         <label class="wide">Notes<textarea name="description" rows="2" placeholder="Anything else worth keeping: contacts, links, thoughts"></textarea></label>
@@ -491,7 +490,7 @@
       <div class="plan-layout">
         <aside class="coach-parent plan-parent" id="plan-parent"></aside>
         <div class="plan-main">
-          <div class="plan-cols" aria-hidden="true"><span>Title</span><span>Due</span><span id="plan-size-col">Size</span><span></span></div>
+          <div class="plan-cols" aria-hidden="true"><span>Title</span><span>When</span><span id="plan-size-col">Size</span><span></span></div>
           <ol class="plan-rows" id="plan-rows"></ol>
           <div class="plan-tools">
             <button type="button" class="g-act" id="plan-more">+ Another</button>

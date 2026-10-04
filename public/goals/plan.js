@@ -6,17 +6,20 @@ import { $, api, h, state, toast } from "../lib.js";
 import { createGoals } from "./store.js";
 import { flashGoals, kidsOf, renderBoard, setFocusGoal } from "./board.js";
 import { sized } from "./form.js";
+import { whenHint, whenPicker } from "./when.js";
 export let planParent = null;
 export const planLevel = () => LEVELS[levelIndex(planParent?.level) + 1];
 
 export function planRow(hint, preset = {}) {
   const lvl = planLevel();
   const title = h("input", { name: "t", value: preset.title || "", placeholder: hint ? `For “${hint}”` : `${lvl.name} title`, autocomplete: "off", ariaLabel: `${lvl.name} title` });
-  const due = h("input", { type: "date", name: "d", ariaLabel: "Due" });
+  const due = h("input", { type: "date", name: "d", ariaLabel: "Due date" });
   if (planParent.due) due.max = dayOf(planParent.due);
+  // "No date" unless something real depends on it; quick picks stop at the parent's due date
+  const when = h("span", { className: "plan-when" }, whenPicker(due, { level: lvl.name, parentDue: planParent.due }), due);
   const size = sized(lvl.name) ? h("select", { name: "s", ariaLabel: "Size in points" }, h("option", { value: "", textContent: "—" }), SIZES.map((x) => h("option", { value: x.pts, textContent: x.pts, title: x.feel }))) : null;
   const del = h("button", { type: "button", className: "plan-del", ariaLabel: "Remove this row", textContent: "×" });
-  const row = h("li", { className: "plan-row" }, title, due, size, del,
+  const row = h("li", { className: "plan-row" }, title, when, size, del,
     preset.why || preset.doneWhen ? h("span", { className: "plan-extra", textContent: "Why and done-when from Claude included ✓" }) : null);
   row.dataset.why = preset.why || "";
   row.dataset.done = preset.doneWhen || "";
@@ -71,7 +74,7 @@ export function openPlan(parent) {
   $("plan-gaps").replaceChildren();
   $("plan-ideas").hidden = !state.goals.coach;
   $("plan-ideas").disabled = false;
-  $("plan-after").textContent = `Each ${lvl.name} can get its own${lvl.name === "Task" ? "" : " why and"} done-when afterwards: pick it on the board and press Edit, where the coach helps.`;
+  $("plan-after").textContent = `${whenHint(lvl.name)} Each ${lvl.name} can get its own${lvl.name === "Task" ? "" : " why and"} done-when afterwards: click its name in the Backlog, where the coach helps.`;
   updatePlanCount();
   $("plan-dialog").showModal();
   $("plan-rows").querySelector("input").focus();
