@@ -316,7 +316,7 @@ $("goal-dialog").addEventListener("close", async () => {
     flashGoals([g ? g.id : res.goal.id]);
     toast(!res.live ? "Saved here only (sample goals, so Notion isn't changed)" : g ? "Saved to Notion ✓" : `${values.level} added to Notion ✓`);
     renderBoard();
-    if (g && values.status === "Done" && !wasDone) { askFelt(goalById(g.id)); toast(`Done ✓${focus.on ? "" : coinText(g)}`); }
+    if (g && values.status === "Done" && !wasDone) { askFelt(goalById(g.id)); toast(`Done ✓${focus.on ? "" : coinText(g)}`); window.dispatchEvent(new Event("hanua:done")); }
   } catch (err) {
     toast(err.message, true);
   }

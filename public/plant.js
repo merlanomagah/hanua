@@ -81,6 +81,7 @@ async function water() {
     watered = (await api("/api/plant/water", { day: today })).watered;
     const after = plantState(watered, today);
     renderPlant(true);
+    window.dispatchEvent(new Event("hanua:watered"));
     toast(before.since != null && before.since >= 3
       ? `Watered. It's perking up again (${after.days} days of care).`
       : `Watered ✓ ${after.days} day${after.days === 1 ? "" : "s"} of care.`);

@@ -292,7 +292,7 @@ export async function moveGoal(g, status, undoing = false) {
     renderBoard();
     const res = await saving;
     renderBoard();
-    if (status === "Done" && !undoing) askFelt(goalById(g.id) || g);
+    if (status === "Done" && !undoing) { askFelt(goalById(g.id) || g); window.dispatchEvent(new Event("hanua:done")); }
     const active = state.goals.goals.filter((x) => x.level === g.level && x.status === "Active").length;
     const wip = status === "Active" && active > WIP_LIMIT ? ` That's ${active} active, over your limit of ${WIP_LIMIT}.` : "";
     const earned = status === "Done" && !focus.on ? coinText(g) : ""; // coins are personal money: not at work

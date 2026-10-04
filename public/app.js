@@ -9,6 +9,7 @@ import { openReview, reviewDue } from "./goals/review.js";
 import { renderTopShelf, toggleEarnings } from "./shelf.js";
 import { loadPlant } from "./plant.js";
 import { loadWhiteboard, renderWhiteboard } from "./whiteboard.js";
+import "./bird.js"; // the canary: just for life
 
 // Which Notion area plays which part on the page (ids from config/areas.json)
 export const ROLE = { tasks: "work", events: "calendar", notes: "learning", people: "relationships" };
@@ -965,6 +966,7 @@ export function renderMusic() {
   const active = playing || music.state === "paused";
   $("now-playing").hidden = !music.available;
   $("now-playing").classList.toggle("playing", playing);
+  $("app").dataset.music = playing ? "playing" : ""; // the canary bobs along
   $("np-track").textContent = active && music.track ? music.track : "Music";
   $("np-artist").textContent = music.state === "unknown"
     ? "Allow Hanua to control Music"

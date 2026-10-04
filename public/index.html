@@ -39,6 +39,29 @@
           <div class="case-foot-row">
             <img src="assets/shelf/bookend.png" alt="" class="bookend">
             <span class="tagline">Plan with purpose.<br>Live with others in mind.</span>
+            <!-- the canary's cage: close the door and it stays in -->
+            <div class="cage" id="cage">
+              <svg class="cage-back" viewBox="0 0 60 84" aria-hidden="true">
+                <ellipse cx="30" cy="78" rx="26" ry="4" fill="#5a4024"/>
+                <path d="M8 76 V40 Q8 14 30 12 Q52 14 52 40 V76" fill="rgb(250 240 210 / 0.06)"/>
+                <path d="M14 58 H46" stroke="#b8893f" stroke-width="1.6" stroke-linecap="round"/>
+              </svg>
+              <div class="cage-slot" id="cage-slot"></div>
+              <svg class="cage-front" viewBox="0 0 60 84" aria-hidden="true">
+                <circle cx="30" cy="5" r="3.2" fill="none" stroke="#c99a48" stroke-width="1.4"/>
+                <path d="M30 8 V12" stroke="#c99a48" stroke-width="1.4"/>
+                <path d="M8 76 V40 Q8 14 30 12 Q52 14 52 40 V76" fill="none" stroke="#d4a752" stroke-width="1.6"/>
+                <g stroke="#c99a48" stroke-width="0.9" opacity=".9">
+                  <path d="M15 76 V36 Q17 20 30 12"/><path d="M45 76 V36 Q43 20 30 12"/><path d="M22 76 V32 Q23 18 30 12"/>
+                  <path d="M38 76 V32 Q37 18 30 12"/>
+                </g>
+                <path d="M8 40 H52 M8 76 H52" stroke="#d4a752" stroke-width="1.4"/>
+                <g class="cage-door-g"><rect x="25" y="46" width="13" height="26" fill="none" stroke="#e0b562" stroke-width="1.3"/>
+                  <path d="M29.3 46 V72 M33.6 46 V72" stroke="#c99a48" stroke-width=".8"/></g>
+                <rect x="4" y="74" width="52" height="5" rx="1.5" fill="#a87a35"/>
+              </svg>
+              <button type="button" class="cage-door" id="cage-door" aria-pressed="false"></button>
+            </div>
           </div>
           <img src="assets/shelf/plank.png" alt="" class="plank">
         </div>
