@@ -128,3 +128,21 @@ test("the lights switch off at 9 pm and on at 4 am, each once", async () => {
   assert.deepEqual(lastLightSwitch(at(2)), { key: "2026-10-04 off", on: false }); // still last night's switch
   assert.deepEqual(lastLightSwitch(at(4)), { key: "2026-10-05 on", on: true });
 });
+
+test("the plant grows with each day watered and browns with days missed, kindly", async () => {
+  const { plantState } = await import("../public/shared/plant.js");
+  const today = "2026-10-10";
+  assert.deepEqual(plantState([], today), { days: 0, last: null, since: null, wateredToday: false, health: "fresh", words: "happy" });
+  const s = plantState(["2026-10-01", "2026-10-02", "2026-10-02", "2026-10-09"], today);
+  assert.equal(s.days, 3); // the same day twice counts once
+  assert.equal(s.health, "fresh"); // watered yesterday
+  assert.equal(plantState(["2026-10-08"], today).health, "thirsty");
+  assert.equal(plantState(["2026-10-07"], today).health, "wilting");
+  assert.equal(plantState(["2026-10-05"], today).health, "browning");
+  assert.equal(plantState(["2026-09-01"], today).health, "dormant");
+  // growth is kept however long the gap, and one watering brings it back
+  const back = plantState(["2026-09-01", "2026-09-02", today], today);
+  assert.equal(back.days, 3);
+  assert.equal(back.health, "fresh");
+  assert.equal(back.wateredToday, true);
+});

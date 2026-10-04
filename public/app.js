@@ -7,6 +7,8 @@ import { openGoal } from "./goals/form.js";
 import { openQuick } from "./goals/quick.js";
 import { openReview, reviewDue } from "./goals/review.js";
 import { renderTopShelf, toggleEarnings } from "./shelf.js";
+import { loadPlant } from "./plant.js";
+import { loadWhiteboard, renderWhiteboard } from "./whiteboard.js";
 
 // Which Notion area plays which part on the page (ids from config/areas.json)
 export const ROLE = { tasks: "work", events: "calendar", notes: "learning", people: "relationships" };
@@ -168,7 +170,13 @@ export function renderClock() {
     clockShown[i] = digits[i];
   }
   $("flip-ampm").textContent = t.getHours() < 12 ? "AM" : "PM";
-  $("clock").ariaLabel = `Clock showing ${t.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}`;
+  // the day and date flip over at midnight, like the time
+  const date = [t.toLocaleDateString("en-NZ", { weekday: "short" }).toUpperCase(), pad(t.getDate()), t.toLocaleDateString("en-NZ", { month: "short" }).toUpperCase()];
+  ["fdd", "fdn", "fdm"].forEach((id, i) => {
+    if (clockShown[4 + i] !== date[i]) flipTo($(id), date[i], clockShown[4 + i] !== undefined);
+    clockShown[4 + i] = date[i];
+  });
+  $("clock").ariaLabel = `Clock showing ${t.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}, ${t.toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" })}`;
 }
 
 // ---------- wall: money monitor and its remote ----------
@@ -891,7 +899,7 @@ $("ts-home").addEventListener("click", () => { closeOverlays(); showBoard(false)
 $("ts-desk").addEventListener("click", () => {
   closeOverlays();
   showBoard(false);
-  window.scrollTo({ top: $("desk-edge").getBoundingClientRect().top + window.scrollY - $("topshelf").offsetHeight, behavior: reducedMotion ? "auto" : "smooth" });
+  lookDown();
 });
 $("ts-goals").addEventListener("click", () => { closeOverlays(); showBoard(!onBoard); renderTopShelf(); });
 $("ts-library").addEventListener("click", () => { closeOverlays(); openLibrary(); });
@@ -1085,9 +1093,53 @@ $("ask-form").addEventListener("submit", async (e) => {
 
 // ---------- to the desk ----------
 
-$("to-desk").addEventListener("click", () => {
+$("to-desk").addEventListener("click", lookDown);
+
+// Look down at the desk: a quick glide with the room tipping slightly, like turning your head down,
+// rather than a long scroll. From To the desk, the top shelf's desk button, or a flick down at the bottom of the wall.
+let looking = false;
+export function lookDown() {
   const top = $("desk-edge").getBoundingClientRect().top + window.scrollY - $("topshelf").offsetHeight;
-  window.scrollTo({ top, behavior: reducedMotion ? "auto" : "smooth" });
+  if (reducedMotion) return window.scrollTo({ top });
+  if (looking) return;
+  looking = true;
+  const from = window.scrollY, dist = top - from, start = performance.now();
+  const ms = Math.min(720, 360 + Math.abs(dist) / 5);
+  const parts = [document.querySelector(".wall"), $("desk-edge"), document.querySelector(".desk")];
+  const ease = (p) => (p < 0.5 ? 4 * p ** 3 : 1 - (-2 * p + 2) ** 3 / 2);
+  const step = (now) => {
+    const p = Math.min(1, (now - start) / ms);
+    window.scrollTo(0, from + dist * ease(p));
+    // the tilt swells in the middle of the move and settles to flat; each part tips about the middle of the screen
+    const tilt = Math.sin(Math.PI * p) * 6, mid = window.scrollY + innerHeight / 2;
+    for (const el of parts) {
+      el.style.transformOrigin = `50% ${mid - (el.getBoundingClientRect().top + window.scrollY)}px`;
+      el.style.transform = p < 1 ? `perspective(1600px) rotateX(${tilt}deg)` : "";
+    }
+    if (p < 1) requestAnimationFrame(step);
+    else { looking = false; for (const el of parts) el.style.transformOrigin = ""; }
+  };
+  requestAnimationFrame(step);
+}
+// A quick flick down while the bottom of the wall is in view (and the desk isn't yet) looks down.
+let flick = 0, flickTimer = 0;
+window.addEventListener("wheel", (e) => {
+  if (e.deltaY <= 0 || looking || Math.abs(e.deltaX) > Math.abs(e.deltaY) || document.querySelector("dialog[open]")) { flick = 0; return; }
+  const edge = $("desk-edge").getBoundingClientRect().top, btn = $("to-desk").getBoundingClientRect();
+  if (!(btn.top < innerHeight && btn.bottom > 0 && edge > innerHeight - 40)) { flick = 0; return; }
+  flick += e.deltaY;
+  clearTimeout(flickTimer);
+  flickTimer = setTimeout(() => { flick = 0; }, 160);
+  if (flick > 240) { flick = 0; e.preventDefault(); lookDown(); }
+}, { passive: false });
+let touchFlick = null;
+window.addEventListener("touchstart", (e) => { touchFlick = e.touches.length === 1 ? { y: e.touches[0].clientY, t: performance.now() } : null; }, { passive: true });
+window.addEventListener("touchend", (e) => {
+  if (!touchFlick || looking) return;
+  const dy = touchFlick.y - e.changedTouches[0].clientY, dt = performance.now() - touchFlick.t;
+  touchFlick = null;
+  const edge = $("desk-edge").getBoundingClientRect().top, btn = $("to-desk").getBoundingClientRect();
+  if (dy > 80 && dt < 250 && btn.top < innerHeight && btn.bottom > 0 && edge > innerHeight - 40) lookDown();
 });
 
 // ---------- feed ----------
@@ -1153,12 +1205,22 @@ $("draft-dialog").addEventListener("close", async () => {
 
 // ---------- boot ----------
 
+// ISO week number (weeks start Monday; week 1 holds the year's first Thursday)
+const isoWeek = (d) => {
+  const t = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  t.setUTCDate(t.getUTCDate() + 4 - (t.getUTCDay() || 7));
+  return Math.ceil(((t - Date.UTC(t.getUTCFullYear(), 0, 1)) / 86_400_000 + 1) / 7);
+};
+// Southern Hemisphere seasons (Aotearoa and Sydney)
+const season = (d) => ["SUMMER", "AUTUMN", "WINTER", "SPRING"][Math.floor(((d.getMonth() + 1) % 12) / 3)];
+
 export function renderHeader() {
   const now = new Date();
   const hr = now.getHours();
   $("greet").textContent = hr >= 21 || hr < 4 ? "Good night." : hr < 12 ? "Good morning." : hr < 18 ? "Good afternoon." : "Good evening.";
   $("today-label").textContent = longDate(now);
-  $("arc-date").textContent = longDate(now).toUpperCase().replace(",", " ·");
+  // the clock shows the day and date, so the curve over the lamp shows the week of the year and the season
+  $("arc-date").textContent = `WEEK ${isoWeek(now)} · ${season(now)}`;
   const { notion, claude } = state.status;
   const live = state.areas.filter((a) => a.live).length;
   $("status").replaceChildren(
@@ -1178,6 +1240,7 @@ export function renderAll() {
   renderAgenda();
   renderWeek();
   renderTopShelf();
+  renderWhiteboard();
   if (onBoard) renderBoard();
 }
 
@@ -1202,6 +1265,8 @@ refreshMusic();
 setInterval(() => { if (document.visibilityState === "visible") refreshMusic(); }, 5000);
 renderMoneyScreen();
 load();
+loadPlant();
+loadWhiteboard();
 setInterval(renderClock, 1000);
 // keep the "now" line, greeting and today's date current
 setInterval(() => { renderHeader(); renderAgenda(); autoLights(); }, 60_000);

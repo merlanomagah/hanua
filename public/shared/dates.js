@@ -20,3 +20,6 @@ export function lastLightSwitch(now = new Date()) {
   if (hr >= LIGHTS_ON_HOUR) return { key: `${day} on`, on: true };
   return { key: `${yesterday} off`, on: false };
 }
+
+// The Monday that starts the week holding `d` (a Date), as YYYY-MM-DD
+export const weekStart = (d = new Date()) => ymd(new Date(d.getFullYear(), d.getMonth(), d.getDate() - ((d.getDay() + 6) % 7)));

@@ -6,3 +6,6 @@ logs/
 
 # the sleep screen PIN (a hash; reset with "Reset Hanua PIN.command")
 data/lock*.json
+
+# the room's own things: the plant's watering log and the menu whiteboard's drawings (this Mac only)
+data/room*/

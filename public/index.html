@@ -180,10 +180,32 @@
                       <span class="flip-pair"><span class="flip" id="fd0"></span><span class="flip" id="fd1"></span></span>
                       <span class="flip-pair"><span class="flip" id="fd2"></span><span class="flip" id="fd3"></span></span>
                     </div>
+                    <!-- the day and date on smaller flip cards under the time -->
+                    <div class="flip-date">
+                      <span class="flip word" id="fdd"></span><span class="flip num" id="fdn"></span><span class="flip word" id="fdm"></span>
+                    </div>
                     <span class="flip-ampm" id="flip-ampm"></span>
                   </div>
+                  <!-- the watering can: drag it over the plant and hold, or click, to water it -->
+                  <button type="button" class="can" id="can" aria-label="Water the plant">
+                    <svg viewBox="0 0 70 50" aria-hidden="true">
+                      <defs>
+                        <linearGradient id="can-metal" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#d79a6b"/><stop offset=".45" stop-color="#b56b3f"/><stop offset="1" stop-color="#7d4426"/></linearGradient>
+                      </defs>
+                      <path d="M14 18 Q24 2 36 18" fill="none" stroke="#7d4426" stroke-width="3" stroke-linecap="round"/>
+                      <path d="M38 36 L60 15 L63 18 L42 41 Z" fill="url(#can-metal)"/>
+                      <ellipse cx="62" cy="15" rx="3.2" ry="4.6" transform="rotate(-45 62 15)" fill="#8a4c2b"/>
+                      <path d="M10 18 H40 L43 46 Q25 49 7 46 Z" fill="url(#can-metal)"/>
+                      <path d="M10 18 H40" stroke="#e8b48a" stroke-width="1.5"/>
+                      <path d="M9 30 H41" stroke="#7d4426" stroke-width="1" opacity=".45"/>
+                    </svg>
+                    <span class="drops" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+                  </button>
+                  <!-- the plant: it grows along the shelf with every day it's watered -->
+                  <img src="assets/obj/plant.png" alt="" class="shelf-plant" id="shelf-plant">
                 </div>
                 <div class="float-shelf" aria-hidden="true">
+                  <svg class="vine" id="vine" aria-hidden="true"></svg>
                   <img src="assets/shelf/bookend.png" alt="" class="bracket left">
                   <img src="assets/shelf/bookend.png" alt="" class="bracket right">
                   <img src="assets/shelf/plank.png" alt="" class="plank">
@@ -250,7 +272,6 @@
                 <div class="deco-row">
                   <img src="assets/obj/books.png" alt="" class="deco-books">
                   <button type="button" class="record-player" id="record-player" aria-label="Open the record player"></button>
-                  <img src="assets/obj/plant.png" alt="" class="deco-plant">
                 </div>
                 <div class="float-shelf" aria-hidden="true">
                   <img src="assets/shelf/bookend.png" alt="" class="bracket left">
@@ -267,6 +288,34 @@
             </div>
             <div class="wall-right"></div>
           </div>
+
+          <!-- the week's menu: drawn by hand with the markers on the tray; the days fill in by themselves -->
+          <section class="menu-board" id="menu-board" aria-label="This week's menu">
+            <div class="mb-frame">
+              <header class="mb-head">
+                <span class="mb-title">Menu</span>
+                <span class="mb-week" id="mb-week"></span>
+                <span class="mb-nav">
+                  <button type="button" id="mb-prev" aria-label="Last week's menu">‹</button>
+                  <button type="button" id="mb-this">This week</button>
+                  <button type="button" id="mb-next" aria-label="Next week's menu">›</button>
+                </span>
+              </header>
+              <div class="mb-surface">
+                <div class="mb-grid" id="mb-grid" aria-hidden="true"></div>
+                <canvas class="mb-canvas" id="mb-canvas" aria-label="The menu drawing. Pick up a marker from the tray to draw"></canvas>
+                <div class="mb-cover" id="mb-cover" hidden><span>Personal</span><small>The menu's put away while you're at work</small></div>
+              </div>
+              <div class="mb-tray">
+                <button type="button" class="marker ink" data-tool="ink" aria-pressed="false" aria-label="Black marker" title="Black marker: click to pick it up, click again (or Esc) to put it down"><i></i></button>
+                <button type="button" class="marker red" data-tool="red" aria-pressed="false" aria-label="Red marker" title="Red marker"><i></i></button>
+                <button type="button" class="eraser" data-tool="erase" aria-pressed="false" aria-label="Eraser" title="Eraser: pick it up and rub out"><i></i></button>
+                <span class="mb-gap"></span>
+                <button type="button" class="mb-small" id="mb-undo">Undo</button>
+                <button type="button" class="mb-small" id="mb-clear">Wipe</button>
+              </div>
+            </div>
+          </section>
 
           <div class="to-desk">
             <button type="button" id="to-desk"><span>TO THE DESK</span><span class="arrow">↓</span></button>

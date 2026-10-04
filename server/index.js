@@ -1,7 +1,7 @@
 import "dotenv/config";
 import express from "express";
 import Anthropic from "@anthropic-ai/sdk";
-import { readFile } from "node:fs/promises";
+import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { notionEnabled, queryArea, getSchema, toNotionProperties, createPage, updatePage, archivePage, NotionError } from "./notion.js";
@@ -58,7 +58,9 @@ async function recordsFor(area, { fresh = false } = {}) {
 }
 
 const app = express();
-app.use(express.json({ limit: "100kb" }));
+// small JSON everywhere; the whiteboard's drawings (a few hundred KB) have their own, larger limit
+const smallJson = express.json({ limit: "100kb" });
+app.use((req, res, next) => (req.path.startsWith("/api/board/") ? next() : smallJson(req, res, next)));
 app.use(express.static(path.join(root, "public")));
 
 // The sleep screen's PIN (a hash in data/lock.json, or LOCK_FILE; the sample preview uses its own file)
@@ -69,6 +71,41 @@ app.post("/api/lock/setup", async (req, res) => {
   catch (err) { res.status(err.status || 500).json({ error: err.message }); }
 });
 app.post("/api/lock/check", async (req, res) => res.json(await checkPin(lockFile, req.body?.pin)));
+
+// Things the room itself keeps, with no other home: the plant's watering log and the menu whiteboard's drawings.
+// On this Mac only (gitignored). The sample preview keeps its own folder so tests never touch Mel's.
+const roomDir = path.resolve(root, process.env.ROOM_DATA || (notionEnabled() ? "data/room" : "data/room-sample"));
+const readJson = async (file, fallback) => { try { return JSON.parse(await readFile(file, "utf8")); } catch { return fallback; } };
+const isDay = (d) => /^\d{4}-\d{2}-\d{2}$/.test(String(d || ""));
+const plantFile = path.join(roomDir, "plant.json");
+app.get("/api/plant", async (_req, res) => res.json(await readJson(plantFile, { watered: [] })));
+app.post("/api/plant/water", async (req, res) => {
+  const day = req.body?.day;
+  if (!isDay(day)) return res.status(400).json({ error: "Which day was it watered?" });
+  const plant = await readJson(plantFile, { watered: [] });
+  if (!plant.watered.includes(day)) plant.watered = [...plant.watered, day].sort();
+  await mkdir(roomDir, { recursive: true });
+  await writeFile(plantFile, JSON.stringify(plant, null, 2) + "\n");
+  res.json(plant);
+});
+// The whiteboard: one PNG per week, named by its Monday
+const boardDir = path.join(roomDir, "whiteboard");
+app.get("/api/board", async (_req, res) => {
+  const weeks = await readdir(boardDir).catch(() => []);
+  res.json({ weeks: weeks.filter((f) => /^\d{4}-\d{2}-\d{2}\.png$/.test(f)).map((f) => f.slice(0, 10)).sort() });
+});
+app.get("/api/board/:week", async (req, res) => {
+  if (!isDay(req.params.week)) return res.status(400).end();
+  try { res.type("png").set("Cache-Control", "no-store").send(await readFile(path.join(boardDir, `${req.params.week}.png`))); }
+  catch { res.status(404).end(); }
+});
+app.put("/api/board/:week", express.json({ limit: "6mb" }), async (req, res) => {
+  const m = /^data:image\/png;base64,([A-Za-z0-9+/=]+)$/.exec(req.body?.image || "");
+  if (!isDay(req.params.week) || !m) return res.status(400).json({ error: "That drawing couldn't be saved" });
+  await mkdir(boardDir, { recursive: true });
+  await writeFile(path.join(boardDir, `${req.params.week}.png`), Buffer.from(m[1], "base64"));
+  res.json({ ok: true });
+});
 
 app.get("/api/status", (_req, res) => {
   res.json({ notion: notionEnabled(), claude: claudeEnabled() });
