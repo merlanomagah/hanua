@@ -2592,3 +2592,20 @@ dialog.lock::backdrop { background: #14110e; }
 .at-pick { height: 30px; padding: 0 6px; border: 1px solid var(--border-2); border-radius: 4px; background: #fff; font: 12px var(--ui); color: var(--ink); }
 .at-sec { flex: 1; min-width: 90px; }
 .at-row .pl-go { margin-left: auto; height: 30px; }
+/* part G: picked lines and their bar; a meeting row's ×; meetings in Up next */
+.pl-line.picked { background: rgb(196 96 42 / 0.1); border-radius: 3px; box-shadow: inset 3px 0 0 var(--terra); }
+.pl-bulk { flex: none; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 10px 18px; border-top: 1px solid #ddd6c9; background: #f3f0ea; }
+.bk-count { margin-right: 6px; font: 10px var(--mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-3); }
+.bk-btn, .bk-sel { height: 28px; padding: 0 10px; border: 1px solid var(--border-2); border-radius: 4px; background: #fff; cursor: pointer; font: 12px var(--ui); color: var(--ink); }
+.bk-btn.p-h { background: var(--terra); border-color: var(--terra); color: #fff; } .bk-btn.p-m { background: #f1dfae; } .bk-btn.p-l { background: #d9e6dc; }
+.bk-x { margin-left: auto; }
+.pl-meet-x { opacity: 0; } .pl-meet:hover .pl-meet-x, .pl-meet-x:focus-visible { opacity: 1; }
+@media (hover: none) { .pl-meet-x { opacity: 0.7; } }
+.ip-add { position: absolute; top: 8px; right: 34px; z-index: 1; width: 22px; height: 22px; padding: 0; border: 0; border-radius: 5px; background: rgb(28 24 20 / 0.06); cursor: pointer; font: 16px/22px var(--ui); color: var(--ink-3); }
+.ip-add:hover { background: rgb(28 24 20 / 0.12); color: var(--ink); }
+.mt-form { display: flex; flex-direction: column; gap: 6px; margin: 4px 0 8px; padding: 8px; border-radius: 8px; background: rgb(255 255 255 / 0.75); box-shadow: 0 0 0 1px var(--border-2); }
+.mt-row { display: flex; gap: 6px; align-items: center; }
+.mt-title { height: 30px; padding: 0 8px; border: 1px solid var(--border-2); border-radius: 4px; font: 14px var(--ui); }
+.mt-row .pl-go { margin-left: auto; height: 28px; }
+.mt-del, .mt-cancel { height: 28px; padding: 0 8px; border: 0; border-radius: 4px; background: none; cursor: pointer; font: 12px var(--ui); color: var(--ink-3); }
+.mt-del { color: #a2431b; }

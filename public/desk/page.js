@@ -1,7 +1,7 @@
 // Plan my day: the page in its window (Mel, 6 Oct 2026): the date (Tue 06-Oct-2026), Today's focuses, three tasks,
 // Meetings & events, the To-Do List in sections, the morning sweep, the archive, and Save & plan. Its widget,
 // Today's plan, sits on the desktop. Rules: public/shared/desk.js (tested); the day itself: state.js.
-import { carriedDays, CLASH_TEXT, deskSections, deskShape, fromMin, isFixed, keepPlan, lastFocus, leftovers, minsText, openItems, planDay, planDate, settle, shorterCol, stampLine, timeLabel, toMin, DEFAULT_MINS, GENERAL, MAX_LINES, MAX_MEETINGS, MAX_NAME, MAX_SECTIONS, MEETING_PICKS, SECTION_ROWS, TIME_PICKS, TIME_WORDS } from "../shared/desk.js";
+import { carriedDays, moveLines, removeMeeting, setLines, CLASH_TEXT, deskSections, deskShape, fromMin, isFixed, keepPlan, lastFocus, leftovers, minsText, openItems, planDay, planDate, settle, shorterCol, stampLine, timeLabel, toMin, DEFAULT_MINS, GENERAL, MAX_LINES, MAX_MEETINGS, MAX_NAME, MAX_SECTIONS, MEETING_PICKS, SECTION_ROWS, TIME_PICKS, TIME_WORDS } from "../shared/desk.js";
 import { dayOf, parseDay, timeOf, todayStr, ymd } from "../shared/dates.js";
 import { $, focus, h, toast } from "../lib.js";
 import { calendarItems } from "../app.js";
@@ -83,6 +83,54 @@ const workChip = (on, label, toggle) => {
   return b;
 };
 
+// ---- Undo, and several lines at once (Mel, 6 Oct 2026, part G) ----
+// Anything that takes things away or changes many at once keeps a copy first and offers Undo
+const snapshot = () => structuredClone({ sections: desk.sections, meetings: desk.meetings, settled: desk.settled, settledAt: desk.settledAt });
+const redrawAll = () => { save(); renderTodo(); renderAgenda(); renderPlanWidget(); };
+export function undoable(text, change) {
+  const before = snapshot();
+  change();
+  redrawAll();
+  toast(text, false, { label: "Undo", run: () => { Object.assign(desk, structuredClone(before)); redrawAll(); } });
+}
+// ⌘-click (or Ctrl-click) picks a line, Shift-click picks a run of them; then the bar at the bottom sets priority
+// or time, moves them to another section, ticks or clears them. H / M / L set the priority too; Esc lets go.
+let selected = new Set(), anchor = null;
+const writtenRefs = () => desk.sections.flatMap((x) => x.lines.filter((l) => l.text).map((l) => l.id));
+function pick(ref, range) {
+  if (range && anchor) {
+    const all = writtenRefs(), a = all.indexOf(anchor), b = all.indexOf(ref);
+    if (a >= 0 && b >= 0) for (const r of all.slice(Math.min(a, b), Math.max(a, b) + 1)) selected.add(r);
+  } else if (selected.has(ref)) selected.delete(ref);
+  else selected.add(ref);
+  anchor = ref;
+  renderTodo();
+}
+export const clearPicks = () => { if (!selected.size) return false; selected = new Set(); anchor = null; renderTodo(); return true; };
+function bulkBar() {
+  const refs = [...selected].filter((r) => writtenRefs().includes(r));
+  if (!refs.length) return null;
+  const n = refs.length, many = `${n} line${n === 1 ? "" : "s"}`;
+  const btn = (label, title, run, cls = "") => { const b = h("button", { type: "button", className: `bk-btn ${cls}`, textContent: label, title }); b.addEventListener("click", run); return b; };
+  const pri = ["h", "m", "l"].map((p) => btn(PRI_LABEL[p], `Set ${many} to ${PRI_LABEL[p]} (${p.toUpperCase()})`, () => undoable(`${many}: ${PRI_LABEL[p]}`, () => setLines(desk, refs, { pri: p })), `p-${p}`));
+  const time = h("select", { className: "bk-sel", ariaLabel: `Time for ${many}` }, h("option", { value: "", textContent: "Time…" }), TIME_PICKS.map((m) => h("option", { value: String(m), textContent: timeLabel(m) })));
+  time.addEventListener("change", () => { const m = Number(time.value); if (m) undoable(`${many}: ${timeLabel(m)}`, () => setLines(desk, refs, { mins: m })); });
+  const move = h("select", { className: "bk-sel", ariaLabel: `Move ${many} to` }, h("option", { value: "", textContent: "Move to…" }), desk.sections.map((x) => h("option", { value: x.id, textContent: x.name || "General" })));
+  move.addEventListener("change", () => { if (move.value) { const to = desk.sections.find((x) => x.id === move.value); undoable(`${many} moved to ${to?.name || "General"}`, () => moveLines(desk, refs, move.value)); } });
+  return h("div", { className: "pl-bulk", role: "toolbar", ariaLabel: `${many} picked` },
+    h("span", { className: "bk-count", textContent: `${many} picked` }), ...pri, time, move,
+    btn("✓ Done", `Tick ${many}`, () => undoable(`${many} ticked`, () => setLines(desk, refs, { done: true }))),
+    btn("Clear", `Take ${many} off the page`, () => undoable(`${many} cleared`, () => { const want = new Set(refs); for (const x of desk.sections) x.lines = x.lines.filter((l) => !want.has(l.id)); selected = new Set(); })),
+    btn("✕", "Let go of the picked lines (Esc)", clearPicks, "bk-x"));
+}
+$("todo").addEventListener("keydown", (e) => {
+  if (!selected.size || e.target.closest?.("textarea, input, select") || e.metaKey || e.ctrlKey || e.altKey) return;
+  const p = { h: "h", m: "m", l: "l" }[e.key.toLowerCase()];
+  if (p) { e.preventDefault(); const refs = [...selected]; undoable(`${refs.length} line${refs.length === 1 ? "" : "s"}: ${PRI_LABEL[p]}`, () => setLines(desk, refs, { pri: p })); }
+});
+// Esc lets go of the picked lines first, before it closes the window
+$("plan-day").addEventListener("cancel", (e) => { if (clearPicks()) e.preventDefault(); });
+
 // a tickable line kept in its place: typing on it makes it real, a tick only once something's written
 function tickLine(line, { label, section, index, onText, onTick, ensure }) {
   const li = h("li", { className: `pl-line${line?.done ? " done" : ""}${line?.text ? "" : " empty"}` });
@@ -98,6 +146,18 @@ function tickLine(line, { label, section, index, onText, onTick, ensure }) {
     if (!v) { li.classList.remove("done"); tick.classList.remove("on"); }
   } });
   li.append(tick, input);
+  // ⌘-click / Shift-click picks it (part G)
+  if (line?.id) {
+    li.dataset.ref = line.id;
+    li.classList.toggle("picked", selected.has(line.id));
+    li.addEventListener("pointerdown", (e) => { if ((e.metaKey || e.ctrlKey || e.shiftKey) && line.text) e.preventDefault(); }); // no caret
+    li.addEventListener("click", (e) => {
+      if (!(e.metaKey || e.ctrlKey || e.shiftKey) || !line.text) return;
+      e.preventDefault(); e.stopPropagation();
+      document.activeElement?.blur?.();
+      pick(line.id, e.shiftKey);
+    }, true);
+  }
   if (ensure) li.append(picks(() => line || { pri: "", mins: 0 }, (v) => { line = ensure(); Object.assign(line, v); save(); }));
   return li;
 }
@@ -126,6 +186,20 @@ function sectionEl(sec) {
         if (v && i === rows - 1 && rows < MAX_LINES) renderTodo(); // writing on the last line: one more appears
       },
       onTick: () => { const l = sec.lines[i]; if (!l?.text) return null; l.done = !l.done; stampLine(l); save(); renderPlanWidget(); return l.done; } }));
+    // a line emptied by deleting its text gets an Undo when you leave it (not while you're retyping it)
+    const field = list.lastChild.querySelector(".pl-input");
+    let had = null;
+    field.addEventListener("focus", () => { had = sec.lines[i]?.text ? structuredClone(sec.lines[i]) : null; });
+    field.addEventListener("blur", () => {
+      const was = had; had = null;
+      if (!was || sec.lines.some((l) => l.id === was.id && l.text)) return;
+      toast(`Cleared: ${was.text}`, false, { label: "Undo", run: () => {
+        const at = sec.lines.findIndex((l) => l.id === was.id);
+        if (at >= 0) sec.lines[at] = was;
+        else { while (sec.lines.length < i) sec.lines.push({ id: newId(), text: "", done: false, pri: "", mins: 0 }); if (sec.lines[i] && !sec.lines[i].text) sec.lines[i] = was; else sec.lines.splice(i, 0, was); }
+        redrawAll();
+      } });
+    });
   }
   let head;
   // General and the fixed sections (Spark NZ, Jump issues: config/areas.json) keep their name and can't be removed
@@ -151,7 +225,11 @@ function sweepEl(items) {
   const today = todayStr();
   // where it's from, and how long it's been waiting (from the day it was first written; Mel: here only, not on the line)
   const fromText = (it) => { const n = carriedDays(it, today); return `${it.section} · ${dayWord(it.from || it.day)}${n > 1 ? ` · day ${n}` : ""}`; };
-  const act = (label, title, run) => { const b = h("button", { type: "button", className: "sw-act", textContent: label, title }); b.addEventListener("click", () => { run(); save(); renderTodo(); renderPlanWidget(); }); return b; };
+  const act = (label, title, run, said = null) => {
+    const b = h("button", { type: "button", className: "sw-act", textContent: label, title });
+    b.addEventListener("click", () => (said ? undoable(said, run) : (run(), renderTodo()))); // every decision has an Undo
+    return b;
+  };
   return h("div", { className: "pl-sweep" },
     h("h3", { textContent: "Before you start" }),
     h("p", { className: "sw-lede", textContent: `${items.length} ${items.length === 1 ? "thing" : "things"} from earlier ${items.length === 1 ? "wasn't" : "weren't"} ticked off. Done already, bring into today, or let go?` }),
@@ -159,12 +237,12 @@ function sweepEl(items) {
       h("span", { className: "sw-from", textContent: fromText(it), title: fromText(it) }),
       h("span", { className: "sw-text", textContent: it.text }),
       h("span", { className: "sw-acts" },
-        act("✓ Done", "It got done: tick it off", () => settleAs(it, "done")),
-        act("→ Today", "Bring it into today", () => settleAs(it, "today")),
-        act("✕ Remove", "Let it go", () => settleAs(it, "gone")))))),
+        act("✓ Done", "It got done: tick it off", () => settleAs(it, "done"), `Done: ${it.text}`),
+        act("→ Today", "Bring it into today", () => settleAs(it, "today"), `Brought into today: ${it.text}`),
+        act("✕ Remove", "Let it go", () => settleAs(it, "gone"), `Let go: ${it.text}`))))),
     h("div", { className: "sw-foot" },
-      act("All to today", "Bring every one into today", () => items.forEach((it) => settleAs(it, "today"))),
-      act("Let all go", "Let every one go", () => items.forEach((it) => settleAs(it, "gone"))),
+      act("All to today", "Bring every one into today", () => items.forEach((it) => settleAs(it, "today")), `${items.length} brought into today`),
+      act("Let all go", "Let every one go", () => items.forEach((it) => settleAs(it, "gone")), `${items.length} let go`),
       act("Later", "Plan first; these wait until next time", () => { sweepLater = true; })));
 }
 
@@ -223,7 +301,10 @@ function meetingsEl() {
       ensure().title = v; save(); renderAgenda();
       if (v && i === rows - 1 && rows < MAX_MEETINGS) renderTodo();
     } });
-    list.append(h("li", { className: "pl-line pl-meet" }, timeBox, title, len, focus.on ? null : workChip(Boolean(m?.work), "Meeting", () => { const x = ensure(); x.work = !x.work; save(); return x.work; })));
+    // × takes a meeting row away (with Undo); an empty row has nothing to take away
+    const del = m && (m.title || m.time) ? h("button", { type: "button", className: "pl-sec-x pl-meet-x", textContent: "×", ariaLabel: `Remove ${m.title || "this meeting"}`, title: "Remove this meeting" }) : null;
+    del?.addEventListener("click", () => undoable(`Removed: ${m.title || "meeting"}`, () => removeMeeting(desk, m.id)));
+    list.append(h("li", { className: "pl-line pl-meet" }, timeBox, title, len, focus.on ? null : workChip(Boolean(m?.work), "Meeting", () => { const x = ensure(); x.work = !x.work; save(); return x.work; }), del));
   }
   return tagged(h("section", { className: "pl-sec pl-meetings" }, heading("Meetings & events", "meetings"), list), "meet");
 }
@@ -294,7 +375,7 @@ export function renderTodo() {
   txtBtn.addEventListener("click", () => openTxt());
   const bar = h("div", { className: "pw-bar" }, dots("plan-day", () => $("plan-day").close()),
     h("span", { className: "pw-title", textContent: archive ? "Archive" : "Plan my day.txt" }), h("span", { className: "pw-tools" }, txtBtn, swap));
-  $("todo").replaceChildren(bar, page);
+  $("todo").replaceChildren(bar, page, ...(archive ? [] : [bulkBar()].filter(Boolean)));
   if (old && !archive) page.scrollTop = old.scrollTop;
   renderTxt();
   page.querySelectorAll(".pl-input").forEach(fitLine);

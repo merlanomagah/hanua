@@ -228,6 +228,33 @@ export function moveInOrder(order, ref, to) {
   return out;
 }
 
+// Several lines at once (part G): move them to another section (after its last written line, filling blanks), or
+// set their priority, time or tick. Lines keep their ids, so the plan, the sweep and the record still find them.
+export function moveLines(d, refs, toId) {
+  const to = d.sections.find((x) => x.id === toId);
+  if (!to) return d;
+  const want = new Set(refs), moving = [];
+  for (const sec of d.sections) {
+    if (sec === to) continue;
+    sec.lines = sec.lines.filter((l) => { if (want.has(l.id) && l.text) { moving.push({ ...l }); return false; } return true; }); // out of its old section altogether: no empty copy with the same id left behind
+    while (sec.lines.length && !sec.lines.at(-1).text) sec.lines.pop();
+  }
+  for (const l of moving) {
+    const blank = to.lines.findIndex((x) => !x.text);
+    if (blank >= 0) to.lines[blank] = l; else to.lines.push(l);
+  }
+  return d;
+}
+export function setLines(d, refs, patch, now = new Date()) {
+  const want = new Set(refs);
+  for (const sec of d.sections) for (const l of sec.lines) if (want.has(l.id) && l.text) { Object.assign(l, patch); if ("done" in patch) stampLine(l, now); }
+  return d;
+}
+export function removeMeeting(d, id) {
+  d.meetings = d.meetings.filter((m) => m.id !== id);
+  return d;
+}
+
 // Keep a plan when it's made (Save & plan / Re-plan), and make it the current one
 export function keepPlan(d, { blocks, overflow }, now = new Date()) {
   d.blocks = blocks; d.overflow = overflow;

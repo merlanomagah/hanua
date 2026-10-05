@@ -243,3 +243,22 @@ test("draft day: a day planned before the draft counts as locked; the order is k
   assert.equal(deskShape({ locked: false, blocks: [{ ref: "a", start: "09:00", end: "09:30", kind: "task" }] }).locked, false);
   assert.deepEqual(deskShape({ order: ["a", "bad id!", "b"] }).order, ["a", "b"]);
 });
+
+test("bulk: lines move to another section keeping their ids; several get a priority, time or tick at once", async () => {
+  const { deskShape, moveLines, setLines, removeMeeting } = await import("../public/shared/desk.js");
+  const d = deskShape({ sections: [
+    { id: "general", lines: [{ id: "a", text: "Milk", pri: "h" }, { id: "b", text: "Bread" }, { id: "c", text: "Post" }] },
+    { id: "s1", name: "House", lines: [{ id: "x", text: "Bins" }, { id: "blank", text: "" }, { id: "y", text: "Mop" }] },
+  ], meetings: [{ id: "m1", time: "09:00", title: "Stand-up" }, { id: "m2", time: "10:00", title: "1:1" }] });
+  moveLines(d, ["a", "c"], "s1");
+  assert.deepEqual(d.sections[0].lines.filter((l) => l.text).map((l) => l.id), ["b"]);
+  assert.deepEqual(d.sections[1].lines.filter((l) => l.text).map((l) => l.id), ["x", "a", "y", "c"]); // a filled the blank
+  assert.equal(d.sections[1].lines.find((l) => l.id === "a").pri, "h");
+  setLines(d, ["a", "b", "nope"], { pri: "l", mins: 10 });
+  assert.deepEqual(["a", "b"].map((r) => d.sections.flatMap((x) => x.lines).find((l) => l.id === r)).map((l) => [l.pri, l.mins]), [["l", 10], ["l", 10]]);
+  setLines(d, ["x"], { done: true }, new Date("2026-10-06T09:00:00Z"));
+  assert.equal(d.sections[1].lines[0].doneAt, "2026-10-06T09:00:00.000Z");
+  assert.deepEqual(removeMeeting(d, "m1").meetings.map((m) => m.id), ["m2"]);
+  // and it all survives a save
+  assert.deepEqual(deskShape(d).sections[1].lines.filter((l) => l.text).map((l) => l.id), ["x", "a", "y", "c"]);
+});
