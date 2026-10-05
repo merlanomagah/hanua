@@ -132,7 +132,7 @@ Read this first if you're picking Hanua up in a new session or a different Claud
 
 ## Running and checking
 
-- `npm start`, or `scripts/start.sh` (it backgrounds the server, then opens a new Safari window). `scripts/restart.sh` ("Restart Hanua.command") stops it and starts it fresh, for after an update. The owner also has a macOS Shortcuts shortcut, "Restart Hanua", with a keyboard shortcut, that runs `scripts/restart.sh`: after a change, tell them to use that. Port comes from `.env` (`PORT`), default 3000.
+- `npm start`, or `scripts/start.sh` (it backgrounds the server, then opens a new Safari window). `scripts/restart.sh` ("Restart Hanua.command") stops it and starts it fresh, for after an update. The owner also has a macOS Shortcuts shortcut, "Restart Hanua", with a keyboard shortcut, that runs `scripts/restart.sh` (its Run Shell Script step must be `bash "/Users/melmanueli/Documents/GitHub/hanua/scripts/restart.sh"`, nothing else: on 6 Oct 2026 it opened `Restart Hanua.command` in Terminal and then quit Terminal, which killed the restart, so the server kept running morning code): after a change, tell them to use that. To check a restart happened, compare `ps -o lstart -p $(cat .hanua.pid)` with the time. Port comes from `.env` (`PORT`), default 3000.
 - Without keys, everything runs on sample data (`data/sample.json`, dates shifted to today) and sample money. Use that to check changes in a browser at desktop and phone widths before pushing.
 
 ## Layout
