@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { dayKey, stepDay, deskShape, carriedOver, lastFocus, workReady, deskSections, WORK_WAIT_MS, MAX_LINES, MAX_TEXT } from "../public/shared/desk.js";
+import { dayKey, stepDay, deskShape, lastFocus, deskSections, planDate, MAX_LINES, MAX_TEXT } from "../public/shared/desk.js";
 
 test("desk: day keys are real days only", () => {
   assert.equal(dayKey("2026-10-05"), "2026-10-05");
@@ -32,37 +32,22 @@ test("desk: shape keeps three focus areas, three key tasks and caps the lists", 
   assert.deepEqual(deskShape(null), deskShape({}));
 });
 
-test("desk: unfinished jottings carry once, finished and settled ones don't, nothing from the future or over a week ago", () => {
-  const days = {
-    "2026-09-20": { general: [{ id: "a", text: "too old" }] },
-    "2026-10-03": { general: [{ id: "a", text: "Post the parcel" }, { id: "b", text: "Done already", done: true }, { id: "c", text: "" }] },
-    "2026-10-04": { general: [{ id: "a", text: "Ring Nana" }, { id: "b", text: "Let this go" }], settled: { "2026-10-03:x": "gone" } },
-    "2026-10-05": { general: [{ id: "a", text: "Ring Nana" }], settled: { "2026-10-04:a": "today", "2026-10-04:b": "gone" } },
-    "2026-10-06": { general: [{ id: "a", text: "Tomorrow's" }] },
-  };
-  const c = carriedOver(days, "2026-10-05");
-  assert.deepEqual(c.map((x) => x.key), ["2026-10-03:a"]);
-  assert.equal(c[0].text, "Post the parcel");
-  // running it twice changes nothing
-  assert.deepEqual(carriedOver(days, "2026-10-05"), c);
-});
-
 test("desk: yesterday's focus areas show as a hint, today's never do", () => {
   const days = { "2026-10-02": { focus: ["Old"] }, "2026-10-04": { focus: ["", "", ""] }, "2026-10-03": { focus: ["Calm", "Sydney"] }, "2026-10-05": { focus: ["Today"] } };
   assert.deepEqual(lastFocus(days, "2026-10-05"), ["Calm", "Sydney", ""]);
   assert.equal(lastFocus({ "2026-10-05": { focus: ["x"] } }, "2026-10-05"), null);
 });
 
-test("desk: a Work line goes to Notion only after five quiet minutes", () => {
-  const now = 1_000_000_000;
-  const work = [{ id: "a", text: "Send deck", edited: now - WORK_WAIT_MS }, { id: "b", text: "Still typing", edited: now - 60_000 }, { id: "c", text: "", edited: now - WORK_WAIT_MS * 2 }, { id: "d", text: "No time", edited: 0 }];
-  assert.deepEqual(workReady(work, now).map((w) => w.id), ["a"]);
+test("desk: at work the whole page is put away (it has no Work/personal split)", () => {
+  assert.deepEqual(deskSections(true), []);
+  assert.deepEqual(deskSections(false), ["focus", "todo"]);
 });
 
-test("desk: at work only the Work list shows", () => {
-  assert.deepEqual(deskSections(true), ["work"]);
-  assert.ok(!deskSections(true).includes("general"));
-  assert.deepEqual(deskSections(false), ["focus", "key", "general", "work"]);
+test("desk: the page's date reads like Tue 06-Oct-2026", () => {
+  assert.equal(planDate("2026-10-06"), "Tue 06-Oct-2026");
+  assert.equal(planDate("2026-01-01"), "Thu 01-Jan-2026");
+  assert.equal(planDate("2028-02-29"), "Tue 29-Feb-2028");
+  assert.equal(planDate("2026-02-30"), "");
 });
 
 test("desk: sticky notes are tidied, taken-down ones are kept but not shown, and the wall holds twelve", async () => {

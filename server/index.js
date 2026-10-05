@@ -166,9 +166,8 @@ app.put("/api/menu/:week", async (req, res) => {
   res.json(menu);
 });
 
-// The desk's notebook: one small JSON file per day (focus areas, key tasks, General jottings, and Work lines still
-// resting before they go to the Work book). A day comes back with the week before it, so the page can offer
-// yesterday's unfinished jottings again (carriedOver in public/shared/desk.js).
+// Plan my day: one small JSON file per day (Today's focuses and the To-Do List lines). A day comes back with the week
+// before it, so the page can show the last focuses faintly as a hint (lastFocus in public/shared/desk.js).
 const deskDir = path.join(roomDir, "desk");
 // The quiet prompt under each heading, from the Notion page "Hanua planner prompts" (Bula copy stays out of the
 // public repo). Cached 5 min; with Notion off, or the page not connected, the headings show on their own.

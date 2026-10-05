@@ -231,8 +231,7 @@ button:disabled { opacity: 0.5; cursor: progress; }
 .board-pane::before { content: ""; position: absolute; inset: 0; z-index: 1; pointer-events: none; background: var(--ink); opacity: 0; transition: opacity 600ms; }
 .lamp-off .board-pane::before { opacity: 0.34; }
 /* the same lamp on the desk and on top of the goals board frame */
-.desk-lamp { position: absolute; z-index: 4; right: var(--pad-r); top: 70px; width: clamp(80px, 7vw, 104px); }
-.desk-lamp .lamp-glow, .board-lamp .lamp-glow { width: 300px; height: 300px; }
+.board-lamp .lamp-glow { width: 300px; height: 300px; }
 .board-lamp { position: absolute; z-index: 4; right: 22px; bottom: calc(100% + 10px); width: clamp(58px, 6vw, 78px); }
 .board-head { padding-right: clamp(96px, 9vw, 120px); }
 .board-lamp .pull-cord { --len: 22px; }
@@ -704,8 +703,8 @@ button.frame:hover { transform: translateY(-2px); box-shadow: inset 1px 1px 0 rg
 .to-desk button:hover { color: var(--terra); }
 .to-desk .arrow { font-size: 14px; }
 
-/* ---------- the desk, seen front-on (Mel, 5 Oct 2026): the bricks come down to an oak desk top; a MacBook Pro on it is
-   the day's plan, the agenda is a ruled sheet pinned to the wall, the lamp stands at the right ---------- */
+/* ---------- the desk, seen front-on (Mel, 5 Oct 2026): the bricks come down to an oak desk top. Since 6 Oct 2026 the
+   bricks are a Mac desktop (a "Plan my day" file, a dock), the agenda is a ruled sheet pinned at the right ---------- */
 .desk-edge {
   height: 26px; position: relative; z-index: 1;
   background: linear-gradient(180deg, #C79A72 0%, #A87650 35%, #7A4E30 100%);
@@ -714,9 +713,8 @@ button.frame:hover { transform: translateY(-2px); box-shadow: inset 1px 1px 0 rg
 .desk {
   --pad-r: clamp(24px, 4vw, 52px);
   --top-h: 30%;                                   /* the desk top's band, from the bottom of the screen */
-  --lamp-w: clamp(96px, 9vw, 140px);
-  /* the agenda sheet hangs at the right above the lamp, so it ends where the lamp's shade begins */
-  --sheet-h: clamp(220px, calc((100vh - var(--rail-h)) * 0.7 - 84px - var(--lamp-w) * 1.32), 420px);
+  /* the agenda sheet hangs at the right and ends well above the desk top */
+  --sheet-h: clamp(220px, calc((100vh - var(--rail-h)) * 0.7 - 140px), 420px);
   --edge: clamp(28px, 4.5vw, 64px);
   --stick: clamp(72px, 5.6vw, 88px);             /* a sticky note: 7.6 cm, about an eighth of a 27" screen's width */
   --pc-left: calc(var(--edge) + var(--stick) * 2 + 12px + clamp(20px, 2.4vw, 36px));
@@ -737,7 +735,7 @@ button.frame:hover { transform: translateY(-2px); box-shadow: inset 1px 1px 0 rg
   background-size: 100% 100%, 100% 100%, cover; background-position: 0 0, 0 0, center; background-color: #A87650;
 }
 .desk-top::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 22px; background: linear-gradient(180deg, #8a5a38, #5e3a22); box-shadow: inset 0 1px 0 rgb(255 230 200 / 0.35); }
-/* the agenda sheet, pinned to the bricks at the right, above the lamp */
+/* the agenda sheet, pinned to the bricks at the right */
 .agenda-sheet {
   position: absolute; z-index: 2; right: var(--pad-r); top: 64px; height: var(--sheet-h); aspect-ratio: 21 / 29.7; box-sizing: border-box;
   transform: rotate(-1.2deg); outline-offset: 6px; container-type: inline-size;
@@ -746,36 +744,27 @@ button.frame:hover { transform: translateY(-2px); box-shadow: inset 1px 1px 0 rg
 }
 .agenda-sheet::before { content: ""; position: absolute; top: 0; bottom: 0; left: 34px; width: 1px; background: rgb(196 96 42 / 0.35); }
 .ag-pin { position: absolute; z-index: 3; top: -6px; left: calc(50% - 8px); width: 16px; height: 16px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #f4a37a, #c4602a 60%, #8a3d17); box-shadow: 2px 4px 4px rgb(0 0 0 / 0.35); }
-/* the desk monitor: a 27" screen (16:9) on a stand, showing a desktop with a "Plan my day" folder and a dock */
-.pc { position: absolute; z-index: 4; left: var(--pc-left); right: var(--pc-right); bottom: calc(var(--top-h) - 30px); display: flex; flex-direction: column; align-items: center; }
-.pc-monitor { width: min(100%, 860px); box-sizing: border-box; padding: 10px 10px 12px; border-radius: 10px; background: linear-gradient(180deg, #2a2a2c, #161617);
-  box-shadow: inset 0 0 0 1px #4a4a4d, 0 22px 34px -16px rgb(0 0 0 / 0.6); }
-.pc-screen { position: relative; aspect-ratio: 16 / 9; overflow: hidden; border-radius: 3px; container-type: inline-size;
-  background: radial-gradient(120% 90% at 20% 10%, #f3c9a2 0%, rgb(243 201 162 / 0) 55%), linear-gradient(160deg, #e8a978 0%, #c4602a 42%, #6a3e2f 72%, #2f4a40 100%); }
-.pc-screen::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(118deg, rgb(255 255 255 / 0.12), rgb(255 255 255 / 0) 35%); }
-.pc-menubar { position: absolute; left: 0; right: 0; top: 0; display: flex; align-items: center; gap: 12px; height: 20px; padding: 0 10px;
-  background: rgb(250 247 242 / 0.5); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); font: 10px var(--ui); color: #2b2420; }
-.pc-menubar b { font-weight: 600; }
-.pc-apple { width: 9px; height: 10px; border-radius: 50% 50% 45% 45%; background: #2b2420; }
-.pc-clock { margin-left: auto; }
-.pc-desktop { position: absolute; top: 34px; right: 18px; display: flex; flex-direction: column; align-items: center; gap: 14px; }
-.pc-folder { display: flex; flex-direction: column; align-items: center; gap: 4px; width: 92px; padding: 6px 4px; border: 1px solid transparent; border-radius: 6px; background: transparent; cursor: default; }
-.pc-folder svg { width: clamp(44px, 9cqw, 64px); height: auto; filter: drop-shadow(0 2px 3px rgb(0 0 0 / 0.3)); }
-.pc-folder span { padding: 1px 5px; border-radius: 3px; font: 500 11px var(--ui); color: #fff; text-shadow: 0 1px 2px rgb(0 0 0 / 0.6); }
-.pc-folder.sel { background: rgb(255 255 255 / 0.18); border-color: rgb(255 255 255 / 0.3); }
-.pc-folder.sel span { background: #2f6fd1; text-shadow: none; }
-.pc-folder:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
-.pc-dock { position: absolute; left: 50%; bottom: 6px; transform: translateX(-50%); display: flex; align-items: center; gap: 6px; padding: 5px 8px; border-radius: 12px;
-  background: rgb(250 247 242 / 0.32); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.35); }
-.pc-dock i { width: clamp(18px, 4.4cqw, 30px); aspect-ratio: 1; border-radius: 26%; box-shadow: 0 1px 2px rgb(0 0 0 / 0.3); }
-.pc-dock b { width: 1px; height: 22px; background: rgb(255 255 255 / 0.5); }
-.pc-dock .d1 { background: linear-gradient(180deg, #7fd0ff, #2a7fe0); } .pc-dock .d2 { background: linear-gradient(180deg, #fff, #e8e2d6); }
-.pc-dock .d3 { background: linear-gradient(180deg, #ffe680, #f2b632); } .pc-dock .d4 { background: linear-gradient(180deg, #ff8a80, #e0453a); }
-.pc-dock .d5 { background: linear-gradient(180deg, #9be37a, #3fa64a); } .pc-dock .d6 { background: linear-gradient(180deg, #c7a6ff, #7c4ddb); }
-.pc-dock .d7 { background: linear-gradient(180deg, #d9dadd, #8e9095); }
-.pc-stand { display: flex; flex-direction: column; align-items: center; width: min(100%, 860px); }
-.pc-neck { width: 13%; height: clamp(34px, 4.6vw, 64px); background: linear-gradient(90deg, #9a9ca0, #d9dadd 45%, #b1b3b7); }
-.pc-foot { width: 30%; height: 9px; border-radius: 3px 3px 6px 6px; background: linear-gradient(180deg, #d9dadd, #8e9095); box-shadow: 0 8px 10px -4px rgb(0 0 0 / 0.45); }
+/* the bricks are a Mac desktop (Mel, 6 Oct 2026): a text file at the top right, as on a Mac, left of the agenda sheet */
+.desktop-icons { position: absolute; z-index: 3; top: 64px; right: var(--pc-right); display: flex; flex-direction: column; align-items: center; gap: 14px; }
+.desk-file { display: flex; flex-direction: column; align-items: center; gap: 5px; width: 96px; padding: 8px 4px 6px; border: 1px solid transparent; border-radius: 5px; background: transparent; cursor: default; }
+.desk-file svg { width: 48px; height: auto; filter: drop-shadow(1px 3px 3px rgb(28 24 20 / 0.3)); }
+.desk-file span { padding: 1px 6px; border-radius: 3px; font: 500 12px var(--ui); color: var(--ink); background: rgb(250 247 242 / 0.7); }
+.desk-file:hover { background: rgb(250 247 242 / 0.25); }
+.desk-file.sel { background: rgb(28 24 20 / 0.1); border-color: rgb(28 24 20 / 0.14); }
+.desk-file.sel span { background: #2f6fd1; color: #fff; }
+.desk-file:focus-visible { outline: 2px solid var(--terra); outline-offset: 2px; }
+/* the dock: frosted glass along the bottom of the bricks, just above the desk top */
+.desk-dock { position: absolute; z-index: 3; left: 50%; bottom: calc(var(--top-h) + 14px); transform: translateX(-50%); display: flex; align-items: flex-end; gap: 8px; padding: 6px 8px; border-radius: 14px;
+  background: rgb(250 247 242 / 0.4); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.45), 0 10px 22px -10px rgb(28 24 20 / 0.45); }
+.dock-app { position: relative; display: grid; place-items: center; width: 52px; height: 52px; padding: 0; border: 0; border-radius: 12px; cursor: pointer;
+  background: linear-gradient(180deg, #fbf8f2, #e6dfd2); box-shadow: 0 1px 2px rgb(28 24 20 / 0.3); transition: transform 160ms ease; }
+.dock-app img { width: 86%; height: auto; }
+.dock-app:hover, .dock-app:focus-visible { transform: translateY(-4px) scale(1.08); }
+.dock-app:focus-visible { outline: 2px solid var(--terra); outline-offset: 3px; }
+.dock-app::after { content: attr(title); position: absolute; bottom: calc(100% + 10px); left: 50%; transform: translateX(-50%); padding: 3px 8px; border-radius: 4px; white-space: nowrap;
+  background: rgb(28 24 20 / 0.78); color: #fff; font: 11px var(--ui); opacity: 0; pointer-events: none; transition: opacity 150ms; }
+.dock-app:hover::after, .dock-app:focus-visible::after { opacity: 1; }
+@media (prefers-reduced-motion: reduce) { .dock-app { transition: none; } .dock-app:hover, .dock-app:focus-visible { transform: none; } }
 /* sticky notes on the wall at the left: two columns, a little tilt each; the × shows on hover (always on touch) */
 .stickies { position: absolute; z-index: 3; left: var(--edge); top: 64px; display: grid; grid-template-columns: repeat(2, var(--stick)); gap: 12px; }
 .desk-sticky { position: relative; width: var(--stick); height: var(--stick); box-sizing: border-box; padding: 12px 8px 6px; transform: rotate(var(--tilt, 0deg));
@@ -797,9 +786,6 @@ button.frame:hover { transform: translateY(-2px); box-shadow: inset 1px 1px 0 rg
 .sticky-pad-btn:hover { transform: rotate(-6deg) translateY(-2px); }
 .sticky-pad-btn:hover span { color: var(--terra); }
 .sticky-pad-btn:disabled { opacity: 0.6; cursor: default; }
-.mug { position: absolute; z-index: 3; width: clamp(56px, 5vw, 80px); height: auto; left: calc(var(--pc-left) - clamp(72px, 6.4vw, 100px)); bottom: calc(var(--top-h) - 48px); filter: drop-shadow(4px 8px 6px rgb(28 24 20 / 0.4)); }
-/* the lamp stands on the desk at the right, under the agenda sheet */
-.desk-lamp { position: absolute; z-index: 2; right: var(--pad-r); bottom: calc(var(--top-h) - 40px); top: auto; width: var(--lamp-w); }
 /* back up to the wall */
 .desk-up { position: absolute; z-index: 4; top: 14px; left: 0; right: 0; display: flex; justify-content: center; pointer-events: none; }
 .desk-up button {
@@ -830,10 +816,10 @@ button.frame:hover { transform: translateY(-2px); box-shadow: inset 1px 1px 0 rg
 @media (max-width: 900px) { .desk-up { display: none; } }
 @media (prefers-reduced-motion: reduce) { .wall, .desk-pane { transition: none; } }
 
-/* ---- Plan my day: the planner as a large landscape window over the room; faint rows, one --line sets each row's
-   height and the rule spacing, so typed text sits in the middle of every row ---- */
-.plan-dialog { width: min(1200px, calc(100% - 48px)); height: min(760px, calc(100vh - 96px)); max-width: none; max-height: none; box-sizing: border-box; padding: 0; border: 0; border-radius: 10px; overflow: hidden;
-  background: #FCFBF8; box-shadow: 0 0 0 1px rgb(0 0 0 / 0.12), 0 40px 80px -20px rgb(0 0 0 / 0.55); }
+/* ---- Plan my day: today's page over the whole screen, rail and desk included (Mel, 6 Oct 2026); faint rows, one
+   --line sets each row's height and the rule spacing, so typed text sits in the middle of every row ---- */
+.plan-dialog { position: fixed; inset: 0; width: 100%; height: 100%; max-width: none; max-height: none; margin: 0; box-sizing: border-box; padding: 0; border: 0; border-radius: 0; overflow: hidden;
+  background: #FCFBF8; }
 .plan-dialog[open] { animation: plan-in 220ms ease-out; }
 @keyframes plan-in { from { opacity: 0; transform: scale(0.97); } }
 @media (prefers-reduced-motion: reduce) { .plan-dialog[open] { animation: none; } }
@@ -847,16 +833,17 @@ button.frame:hover { transform: translateY(-2px); box-shadow: inset 1px 1px 0 rg
 .pw-close::after { content: "×"; position: absolute; inset: 0; display: grid; place-items: center; font: 600 10px/1 var(--ui); color: rgb(80 20 10 / 0.75); opacity: 0; }
 .pw-bar:hover .pw-close::after, .pw-close:focus-visible::after { opacity: 1; }
 .pw-title { flex: 1; text-align: center; margin-right: 54px; font: 10px var(--mono); letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-4); }
-.pl-cols { display: grid; grid-template-columns: 1fr 1fr; column-gap: 7%; align-items: start; }
-.pl-col { min-width: 0; }
-.pl-col > .pl-col:empty { display: none; }
-@media (max-width: 760px) { .pl-cols { grid-template-columns: 1fr; } .pl-cols > .pl-col + .pl-col { margin-top: var(--line); } .plan-dialog { width: 100%; height: 100%; border-radius: 0; } }
+/* the date across the top (two rows high), then Today's focuses | To-Do List side by side; one column on phones */
+.pl-date { margin: 0 0 var(--line); height: calc(var(--line) * 2); white-space: nowrap; font: 500 min(calc(var(--line) * 1.5), 10vw)/calc(var(--line) * 2) var(--display); color: var(--ink); letter-spacing: 0.01em; }
+.pl-cols { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); column-gap: 8%; align-items: start; }
+.pl-cols > .pl-sec + .pl-sec { margin-top: 0; }
+@media (max-width: 760px) { .pl-cols { grid-template-columns: 1fr; } .pl-cols > .pl-sec + .pl-sec { margin-top: var(--line); } }
 .pl-page {
-  --line: 30px; --paper: #FCFBF8; --rule: #ECE8E0;
+  --line: 36px; --paper: #FCFBF8; --rule: #ECE8E0;
   flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin;
-  padding: calc(var(--line) / 2) 5% var(--line); box-sizing: border-box;
+  padding: var(--line) max(6%, (100% - 1080px) / 2) calc(var(--line) * 2); box-sizing: border-box;
   background: var(--paper) repeating-linear-gradient(180deg, transparent 0 calc(var(--line) - 1px), var(--rule) calc(var(--line) - 1px) var(--line)) local;
-  background-position: 0 calc(var(--line) / 2);
+  background-position: 0 0; /* the rule ends each row, so text sits in the middle of it */
 }
 .pl-sec + .pl-sec { margin-top: var(--line); }
 
@@ -865,8 +852,8 @@ button.frame:hover { transform: translateY(-2px); box-shadow: inset 1px 1px 0 rg
 .pl-prompt { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: italic 400 calc(var(--line) * 0.52)/var(--line) var(--display); color: var(--ink-4); }
 .pl-list { list-style: none; margin: 0; padding: 0; }
 .pl-line { display: flex; align-items: center; gap: 8px; height: var(--line); min-width: 0; }
-.pl-num, .pl-bullet { flex: none; width: 12px; font: 10px var(--mono); color: var(--ink-4); text-align: center; }
-.pl-bullet { font: 14px var(--display); }
+.pl-num { flex: none; width: 22px; font: 500 calc(var(--line) * 0.62) var(--display); color: var(--terra); }
+.pl-todo .pl-line.empty .check { visibility: hidden; } /* a tick box only once something's written */
 .pl-input {
   flex: 1; min-width: 0; height: var(--line); margin: 0; padding: 0; border: 0; border-radius: 0; background: transparent; -webkit-appearance: none; appearance: none;
   font: 400 calc(var(--line) * 0.7) var(--display); color: var(--ink); line-height: normal;
@@ -881,23 +868,8 @@ button.frame:hover { transform: translateY(-2px); box-shadow: inset 1px 1px 0 rg
 .planner .check:disabled { opacity: 0.35; cursor: default; }
 .planner .check svg { width: 100%; height: 100%; stroke: var(--green); stroke-width: 3; fill: none; stroke-dasharray: 20; stroke-dashoffset: 20; transition: stroke-dashoffset 300ms ease; }
 .planner .check.on svg, .planner .done .check svg { stroke-dashoffset: 0; }
-.planner .t {
-  position: relative; flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 0; border: 0; background: none; text-align: left;
-  font: 400 calc(var(--line) * 0.7)/var(--line) var(--display); color: var(--ink);
-}
-.planner button.t { cursor: pointer; }
-.planner button.t:hover, .planner button.t:focus-visible { color: var(--terra); }
-.planner .done .t, .planner .done .pl-input { color: var(--muted); text-decoration: line-through; text-decoration-color: var(--ink-3); }
-.planner .m { flex: none; margin-left: auto; max-width: 40%; overflow: hidden; text-overflow: ellipsis; font: 8px var(--mono); letter-spacing: 0.08em; color: var(--muted); text-transform: uppercase; white-space: nowrap; }
-.planner .m.late { color: var(--terra); }
-.planner .m.g::before { content: "◆ "; color: #C9962F; }
-.planner .pl-wait { color: var(--faint); }
-.pl-line.carried .t { color: var(--ink-4); font-style: italic; }
-.pl-from { flex: none; font: 8px var(--mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--faint); }
-.pl-acts { flex: none; margin-left: auto; display: flex; gap: 2px; }
-.pl-act { padding: 2px 5px; border: 0; border-radius: 2px; background: transparent; cursor: pointer; font: 8px var(--mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--terra); }
-.pl-act:hover { background: rgb(196 96 42 / 0.1); }
-.pl-covered { margin: var(--line) 0 0; height: var(--line); font: italic 13px/var(--line) var(--display); color: var(--ink-4); }
+.planner .done .pl-input { color: var(--muted); text-decoration: line-through; text-decoration-color: var(--ink-3); }
+.pl-covered { margin: 0; height: var(--line); font: italic 18px/var(--line) var(--display); color: var(--ink-4); }
 
 /* ---- the agenda sheet's contents: the day at the top, ‹ › at the sides, events on the ruled lines ---- */
 .ip-screen { position: relative; height: 100%; box-sizing: border-box; display: flex; flex-direction: column; padding: 14px 18px 12px 44px; }
@@ -1947,11 +1919,11 @@ dialog h3 { margin: 0 0 4px; font: italic 300 32px/1.1 var(--display); }
   .shelf-row { margin-top: 14px; }
   .case-fill, .case-foot { display: none; }
   .topshelf { flex-wrap: wrap; gap: 8px 10px; }
-  /* phones: one scrolling column on the bricks, the laptop's screen first (no laptop body), then the agenda sheet */
+  /* phones: one scrolling column on the bricks, the Plan my day file first, then notes, the agenda sheet and the dock */
   .desk { display: flex; flex-direction: column; gap: 28px; padding: 110px 16px 60px; min-height: 0; }
-  .desk-top, .mug, .pc-stand, .sticky-pad-btn img { display: none; }
-  .pc { position: static; order: 1; }
-  .pc-monitor { width: 100%; }
+  .desk-top, .sticky-pad-btn img { display: none; }
+  .desktop-icons { position: static; order: 1; align-self: flex-end; }
+  .desk-dock { position: static; order: 5; align-self: center; transform: none; }
   .desk-left { display: contents; }
   .desk-notes { order: 2; }
   .stickies { position: static; order: 2; grid-template-columns: repeat(auto-fill, 96px); justify-content: center; --stick: 96px; }
@@ -1959,7 +1931,6 @@ dialog h3 { margin: 0 0 4px; font: italic 300 32px/1.1 var(--display); }
   .sticky-pad-btn span { position: static; font-size: 14px; }
   .sticky-pad-btn span::after { content: " Add a sticky note"; font: 10px var(--mono); letter-spacing: 0.14em; text-transform: uppercase; }
   .agenda-sheet { position: relative; order: 4; right: auto; top: auto; height: 420px; width: 100%; aspect-ratio: auto; transform: none; }
-  .desk-lamp { top: 20px; bottom: auto; right: 16px; width: 70px; }
   .open-book { grid-template-columns: 1fr; height: calc(100vh - 48px); }
   .open-book .page.left { display: none; }
   .open-book .page.right { border-radius: 2px; }
@@ -1976,7 +1947,6 @@ dialog h3 { margin: 0 0 4px; font: italic 300 32px/1.1 var(--display); }
   .greet-row { padding: 0 2%; gap: 4px; }
   .lamp-wrap { width: 76px; }
   .pull-cord { --len: 26px; }
-  .desk-lamp { width: 64px; }
   .board-lamp { width: 50px; right: 12px; }
   .board-head { padding-right: 64px; }
   .lamp-date text { font-size: 56px; letter-spacing: 0.1em; }
@@ -2278,7 +2248,7 @@ dialog.lock::backdrop { background: #14110e; }
 @keyframes drop-bob { 50% { transform: translateY(-3px); } }
 @media (prefers-reduced-motion: reduce) { .plant-drop { animation: none; } }
 
-@media (max-width: 900px) { .meal-slip { position: relative; top: auto; right: auto; order: 3; align-self: center; max-width: 100%; } }
+@media (max-width: 900px) { .meal-slip { position: relative; top: auto; right: auto; left: auto; order: 3; align-self: center; max-width: 100%; } }
 
 /* ---- the music card: a soft smoked-glass overlay floating by the record player (Mel, 5 Oct 2026: not boxy) ----
    No border or hard edge; it sits centred in the space left of the player, so the gaps either side match. */
@@ -2304,9 +2274,6 @@ dialog.lock::backdrop { background: #14110e; }
 .player-shelf .np-btn:focus-visible { outline: 2px solid var(--terra-soft); outline-offset: 2px; }
 .player-shelf .record-player { margin-right: 4px; }
 .lamp-off .player-shelf .now-playing { filter: brightness(0.9); }
-
-/* narrower desks have no room beside the laptop: the desk lamp steps away (the wall's lamp still switches every light) */
-@media (min-width: 901px) and (max-width: 1180px) { .desk-lamp { display: none; } }
 
 /* ---------- goal form: "Also in" (other books the goal shows in) ---------- */
 .also-in { display: grid; gap: 6px; }
@@ -2334,3 +2301,6 @@ dialog.lock::backdrop { background: #14110e; }
 .bg-row.step .lvl-ico { width: 12px; height: 12px; }
 .bg-row.step .t { font: 15px/1.25 var(--ui); color: var(--ink-3); }
 .bg-row.done .t { color: var(--faint); text-decoration: line-through; text-decoration-thickness: 1px; }
+
+/* narrower desks: the meal slip and the Plan my day file can't sit side by side, so the slip hangs under the file */
+@media (min-width: 901px) and (max-width: 1365px) { .meal-slip { top: 184px; left: auto; right: var(--pc-right); } }

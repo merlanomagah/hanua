@@ -403,36 +403,19 @@
         <article class="agenda-sheet" id="agenda" aria-label="Agenda" tabindex="0"></article>
         <!-- today's meals, pinned beside it -->
         <button type="button" class="meal-slip" id="meal-slip" title="Open the kitchen" hidden></button>
-        <!-- a desk monitor showing a desktop: double-click "Plan my day" to open the planner (Mel, 5 Oct 2026) -->
-        <div class="pc">
-          <div class="pc-monitor">
-            <div class="pc-screen">
-              <div class="pc-menubar" aria-hidden="true"><span class="pc-apple"></span><b>Hanua</b><span>File</span><span>Edit</span><span>View</span><span class="pc-clock" id="pc-clock"></span></div>
-              <div class="pc-desktop" role="group" aria-label="Desktop">
-                <button type="button" class="pc-folder" id="open-plan" title="Double-click to open" aria-label="Plan my day: open the planner">
-                  <svg viewBox="0 0 64 52" aria-hidden="true"><path d="M2 8a4 4 0 0 1 4-4h18l6 6h28a4 4 0 0 1 4 4v32a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4z" fill="#6aaee8"/><path d="M2 16h60v30a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4z" fill="#8cc4f2"/><path d="M2 16h60" stroke="#5a9bd6" stroke-width="1.2"/></svg>
-                  <span>Plan my day</span>
-                </button>
-              </div>
-              <!-- the dock, just for the look -->
-              <div class="pc-dock" aria-hidden="true"><i class="d1"></i><i class="d2"></i><i class="d3"></i><i class="d4"></i><i class="d5"></i><i class="d6"></i><b></b><i class="d7"></i></div>
-            </div>
-          </div>
-          <div class="pc-stand" aria-hidden="true"><i class="pc-neck"></i><i class="pc-foot"></i></div>
+        <!-- the bricks are a Mac desktop (Mel, 6 Oct 2026): double-click "Plan my day" to open it over the whole page -->
+        <div class="desktop-icons" role="group" aria-label="Desktop">
+          <button type="button" class="desk-file" id="open-plan" title="Double-click to open" aria-label="Plan my day: open today's page">
+            <svg viewBox="0 0 48 60" aria-hidden="true"><path d="M4 2h28l12 12v42a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z" fill="#fdfcf9" stroke="#cfc8bb"/><path d="M32 2v10a2 2 0 0 0 2 2h10" fill="#ebe6dc" stroke="#cfc8bb"/><path d="M9 24h28M9 30h28M9 36h28M9 42h20" stroke="#b9b2a5" stroke-width="1.6"/><text x="24" y="54" text-anchor="middle" font-family="DM Mono, monospace" font-size="6.5" letter-spacing=".5" fill="#8a8275">TXT</text></svg>
+            <span>Plan my day</span>
+          </button>
         </div>
+        <!-- the dock: the record player brings up the turntable; more to come -->
+        <nav class="desk-dock" aria-label="Dock">
+          <button type="button" class="dock-app" id="dock-records" aria-label="Record player" title="Record player"><img src="assets/obj/record-player-top.png" alt=""></button>
+        </nav>
         <!-- a pad of sticky notes on the desk: click it and a fresh note goes up on the wall -->
         <button type="button" class="sticky-pad-btn" id="add-sticky" title="Add a sticky note to the wall" aria-label="Add a sticky note"><img src="assets/obj/sticky-pad.png" alt=""><span aria-hidden="true">+</span></button>
-        <!-- a mug on the desk, left of the monitor -->
-        <svg class="mug" viewBox="0 0 64 60" aria-hidden="true"><defs><linearGradient id="mug-glaze" x1="0" x2="1"><stop offset="0" stop-color="#e9e1d3"/><stop offset=".35" stop-color="#faf6ee"/><stop offset="1" stop-color="#cfc4b2"/></linearGradient></defs><path d="M44 18h6a9 9 0 0 1 0 18h-5" fill="none" stroke="#d6ccbb" stroke-width="5"/><path d="M6 10h40v36a10 10 0 0 1-10 10H16A10 10 0 0 1 6 46z" fill="url(#mug-glaze)"/><ellipse cx="26" cy="10" rx="20" ry="3.4" fill="#5a3a26"/><ellipse cx="26" cy="10" rx="20" ry="3.4" fill="none" stroke="#efe8dc" stroke-width="1.6"/></svg>
-        <!-- the same lamp on the desk; its cord switches every light -->
-        <div class="lamp-wrap desk-lamp">
-          <button type="button" class="lamp" aria-label="Lamp">
-            <span class="lamp-glow" aria-hidden="true"></span>
-            <img src="assets/obj/lamp-off.png" alt="" class="lamp-img">
-            <img src="assets/obj/lamp-on.png" alt="" class="lamp-img lamp-lit">
-          </button>
-          <button type="button" class="pull-cord" aria-label="Pull to switch all the lights" aria-pressed="true"><span class="cord-string"></span><span class="cord-bead"></span></button>
-        </div>
         <div class="desk-dim" aria-hidden="true"></div>
       </section>
       </div>
@@ -482,7 +465,7 @@
     </div>
   </div>
 
-  <!-- Plan my day: the planner as a large landscape window over the room (opened from the desk monitor) -->
+  <!-- Plan my day: today's page over the whole screen (opened from the desktop on the desk's bricks) -->
   <dialog id="plan-day" class="plan-dialog" aria-label="Plan my day"><article class="planner" id="todo"></article></dialog>
 
   <dialog id="day-dialog" class="day-dialog">

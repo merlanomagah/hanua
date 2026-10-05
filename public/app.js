@@ -15,7 +15,7 @@ import "./menu-plan.js"; // Plan the week ✦ on the menu board
 import { onKitchen, renderMealSlip, showKitchen } from "./kitchen.js"; // swipe left: the weather window and the menu
 import { weatherLine } from "./weather-window.js";
 import "./bird.js"; // the canary: just for life
-import { loadDesk, loadStickies, renderAgenda, renderStickies, renderTodo, showDesk } from "./planner.js"; // the desk: monitor, planner, stickies, agenda
+import { loadDesk, loadStickies, renderAgenda, renderStickies, renderTodo, showDesk } from "./planner.js"; // the desk: desktop, planner, stickies, agenda
 
 // Which Notion area plays which part on the page (ids from config/areas.json)
 export const ROLE = { tasks: "work", events: "calendar", notes: "learning", people: "relationships" };
@@ -1403,7 +1403,9 @@ $("lift-needle").addEventListener("click", async () => {
 });
 
 // Closing only hides the player view; the music carries on in the Music app.
+let turntableFrom = null; // the record player on the wall, or the dock on the desk: focus goes back there
 export function openTurntable() {
+  turntableFrom = document.activeElement;
   renderCrate();
   $("turntable").classList.add("open");
   $("turntable").setAttribute("aria-hidden", "false");
@@ -1414,7 +1416,7 @@ export function closeTurntable() {
   $("turntable").classList.remove("open");
   $("turntable").setAttribute("aria-hidden", "true");
   $("turntable").inert = true;
-  $("record-player").focus({ preventScroll: true });
+  (turntableFrom?.isConnected && !turntableFrom.closest("[inert]") ? turntableFrom : $("record-player")).focus({ preventScroll: true });
 }
 $("turntable").inert = true;
 $("record-player").addEventListener("click", openTurntable);

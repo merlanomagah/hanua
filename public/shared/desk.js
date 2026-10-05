@@ -1,13 +1,13 @@
 // The desk's notebook: rules shared by the page and the server (no page imports here).
-// One small file per day on this Mac (data/room/desk/<day>.json) holds what only lives here: the day's three focus
-// areas, three key tasks and the General jottings. Work lines are only held here until they've rested for five
-// minutes (Mel brainstorms and changes her mind); then they go to the Work book in Notion, their real home.
+// One small file per day on this Mac (data/room/desk/<day>.json) holds the day's page: three focuses and the to-do
+// lines (`general`, kept in place so a line typed halfway down stays there). Since 6 Oct 2026 the page is just
+// Today's focuses and a To-Do List (Mel); older files may still carry key tasks and Work lines, which are ignored.
 import { addDays } from "./dates.js";
 
 export const FOCUS_N = 3, KEY_N = 3;
 export const MAX_TEXT = 200, MAX_LINES = 40;
-export const WORK_WAIT_MS = 5 * 60_000; // a Work line goes to Notion five minutes after its last edit
-export const CARRY_DAYS = 7; // unfinished General jottings are offered again for up to a week
+export const CARRY_DAYS = 7; // how far back the server looks for the last focuses (shown faintly as a hint)
+export const TODO_ROWS = 14; // the To-Do List always has at least this many lines to write on
 
 // A real day, written YYYY-MM-DD, or null (guards /api/desk/:day like weekKey does for the menu)
 export function dayKey(s) {
@@ -39,22 +39,6 @@ export function deskShape(x) {
   return { focus, key, general, work, settled };
 }
 
-// Unfinished General jottings from the last week that haven't been brought forward or let go.
-// days: { "YYYY-MM-DD": deskShape } including today's. Worked out on load, never copied forward by itself.
-export function carriedOver(days, today) {
-  const settled = {};
-  for (const d of Object.values(days)) Object.assign(settled, deskShape(d).settled);
-  const out = [];
-  for (const [day, d] of Object.entries(days).sort(([a], [b]) => a.localeCompare(b))) {
-    if (!dayKey(day) || day >= today || day < stepDay(today, -CARRY_DAYS)) continue;
-    for (const g of deskShape(d).general) {
-      const key = `${day}:${g.id}`;
-      if (g.text && !g.done && !settled[key]) out.push({ key, day, id: g.id, text: g.text });
-    }
-  }
-  return out;
-}
-
 // The focus areas last written on an earlier day (shown faintly as a hint; they never carry by themselves)
 export function lastFocus(days, today) {
   const earlier = Object.keys(days).filter((d) => dayKey(d) && d < today).sort().reverse();
@@ -65,11 +49,17 @@ export function lastFocus(days, today) {
   return null;
 }
 
-// Work lines that have rested long enough to go to Notion
-export const workReady = (work, now = Date.now()) => work.filter((w) => w.text && w.edited && now - w.edited >= WORK_WAIT_MS);
+// Which sections show: none at work (the page has no Work/personal split, so all of it counts as personal)
+export const deskSections = (atWork) => (atWork ? [] : ["focus", "todo"]);
 
-// Which sections show: at work only Work (focus areas, key tasks and General can be personal)
-export const deskSections = (atWork) => (atWork ? ["work"] : ["focus", "key", "general", "work"]);
+// The page's date, always written the same way: "Tue 06-Oct-2026"
+const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+export function planDate(day) {
+  if (!dayKey(day)) return "";
+  const [y, m, d] = day.split("-").map(Number);
+  return `${DAYS[new Date(Date.UTC(y, m - 1, d)).getUTCDay()]} ${String(d).padStart(2, "0")}-${MONTHS[m - 1]}-${y}`;
+}
 
 // ---- sticky notes on the desk's wall: typed by Mel, kept on this Mac (data/room/stickies.json) until taken down ----
 export const STICKY_MAX = 12, STICKY_TEXT = 160;

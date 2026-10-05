@@ -1,18 +1,14 @@
-// ---------- the desk, seen front-on: a MacBook Pro whose screen plans the day, the agenda pinned on the wall ----------
+// ---------- the desk, seen front-on: the bricks are a Mac desktop (a "Plan my day" file and a dock), the agenda pinned on the wall ----------
 // The desk is its own pane, one slide down from the wall (or the kitchen), and one slide back up (Mel, 5 Oct 2026),
 // except on phones, where the stacked room is taller than the screen and the page just scrolls.
-// The planner on the laptop's screen has four sections on faint rows (the text sits in the middle of each row):
-// Focus (3), Key tasks (3), General and Work. Focus, Key tasks and General jottings live in a small file per day on
-// this Mac; Work is the Work book in Notion, and a Work line typed here goes there after five quiet minutes.
-// Rules: public/shared/desk.js (tested).
-import { carriedOver, deskSections, deskShape, lastFocus, stepDay, stickiesUp, stickyShape, workReady, STICKY_COLOURS, STICKY_MAX, STICKY_TEXT, WORK_WAIT_MS } from "./shared/desk.js";
-import { isGoalDone } from "./shared/goals.js";
+// Plan my day opens over the whole page (Mel, 6 Oct 2026): the date (Tue 06-Oct-2026), Today's focuses (3 numbered
+// lines) and a To-Do List of empty lines, on faint rows with the text in the middle of each. Kept in a small file per
+// day on this Mac. Rules: public/shared/desk.js (tested).
+import { deskSections, deskShape, lastFocus, planDate, stepDay, stickiesUp, stickyShape, MAX_LINES, STICKY_COLOURS, STICKY_MAX, STICKY_TEXT, TODO_ROWS } from "./shared/desk.js";
 import { dayOf, parseDay, timeOf, todayStr } from "./shared/dates.js";
-import { $, api, area, focus, focusGoals, h, isDone, isWorkGoal, longDate, records, reducedMotion, state, toast } from "./lib.js";
-import { goalById, moveGoal } from "./goals/board.js";
+import { $, focus, h, longDate, reducedMotion, toast } from "./lib.js";
 import { openGoal } from "./goals/form.js";
-import { openQuick } from "./goals/quick.js";
-import { bookEl, calendarItems, ensureApple, openBook, openInCalendar, ROLE, sortByTime, toggleTask } from "./app.js";
+import { bookEl, calendarItems, ensureApple, openBook, openInCalendar, openTurntable, ROLE, sortByTime } from "./app.js";
 
 // ---- the desk as a pane ----
 export let onDesk = false;
@@ -79,11 +75,10 @@ addEventListener("wheel", (e) => {
   if (Math.abs(flick) > 240) { flick = 0; e.preventDefault(); showDesk(down); }
 }, { passive: false });
 
-// ---- the notebook ----
+// ---- the page: Today's focuses and a To-Do List ----
 let deskDay = todayStr(), desk = deskShape({}), earlier = {}, prompts = {}, loaded = false;
 let saveTimer = 0;
 const newId = () => Math.random().toString(36).slice(2, 10);
-const data = (el, set) => { for (const [k, v] of Object.entries(set)) el.dataset[k] = v; return el; };
 
 export async function loadDesk() {
   deskDay = todayStr();
@@ -93,7 +88,6 @@ export async function loadDesk() {
   } catch { /* the server's away: an empty page */ }
   loaded = true;
   renderTodo();
-  sendReadyWork();
   try { prompts = (await (await fetch("/api/desk/prompts")).json()).prompts || {}; renderTodo(); } catch { /* headings alone */ }
 }
 function save() {
@@ -103,65 +97,24 @@ function save() {
       const res = await fetch(`/api/desk/${deskDay}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(desk) });
       if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || `Request failed (${res.status})`);
     }
-    catch (err) { toast(`Today's notes couldn't be saved: ${err.message}`, true); }
+    catch (err) { toast(`Today's page couldn't be saved: ${err.message}`, true); }
   }, 500);
 }
 
-// ---- Work lines: kept here for five quiet minutes, then added to the Work book ----
-let sending = false;
-async function sendReadyWork() {
-  if (sending || !loaded) return;
-  const ready = workReady(desk.work);
-  if (!ready.length) return;
-  sending = true;
-  for (const w of ready) {
-    try {
-      const { record, live } = await api(`/api/areas/${ROLE.tasks}/records`, { title: w.text, due: deskDay });
-      desk.work = desk.work.filter((x) => x.id !== w.id);
-      area(ROLE.tasks)?.records.unshift(record);
-      save();
-      toast(live ? `Added to your Work book: ${w.text}` : `${w.text}: added (sample data, so Notion isn't changed)`, false,
-        { label: "Undo", run: () => undoWork(record) });
-    } catch (err) { toast(`Couldn't add “${w.text}” to your Work book: ${err.message}`, true); break; }
-  }
-  sending = false;
-  renderTodo();
-}
-async function undoWork(record) {
-  const book = area(ROLE.tasks);
-  if (book) book.records = book.records.filter((r) => r.id !== record.id);
-  renderTodo();
-  try { await api(`/api/areas/${ROLE.tasks}/records/${record.id}/delete`, {}); toast("Taken out of your Work book (it's in Notion's trash)"); }
-  catch (err) { toast(err.message, true); }
-}
-setInterval(() => { sendReadyWork(); refreshWaits(); }, 20_000);
-function waitText(w) {
-  if (!w.text) return "";
-  const mins = Math.ceil((WORK_WAIT_MS - (Date.now() - w.edited)) / 60_000);
-  return mins > 0 ? `to Notion in ${mins} min` : "to Notion now";
-}
-function refreshWaits() {
-  for (const el of document.querySelectorAll("#todo [data-wait]")) {
-    const w = desk.work.find((x) => x.id === el.dataset.wait);
-    if (w) el.textContent = waitText(w);
-  }
-}
-
-// ---- building the page ----
 const check = (done, label) => h("button", { type: "button", className: `check${done ? " on" : ""}`, ariaLabel: label, ariaPressed: String(done), innerHTML: '<svg viewBox="0 0 16 16"><path d="M3 8.5l3 3 7-7"/></svg>' });
-const secEl = (name, ...kids) => data(h("section", { className: "pl-sec" }, ...kids), { section: name });
+const secEl = (name, ...kids) => { const el = h("section", { className: `pl-sec pl-${name}` }, ...kids); el.dataset.section = name; return el; };
 function heading(name, key) {
   const prompt = prompts[key] || "";
   return h("div", { className: "pl-head" }, h("h3", { textContent: name }), prompt ? h("span", { className: "pl-prompt", textContent: prompt, title: prompt }) : null);
 }
-// a line you type on; Enter makes the next line, Backspace on an empty line takes it away
-function lineInput(value, { placeholder = "", label, onInput, onEnter, onEmptyBack, list }) {
+// a line you type on; Enter goes to the next line, arrows move between lines
+function lineInput(value, { placeholder = "", label, onInput, section, index }) {
   const input = h("input", { type: "text", className: "pl-input", value, placeholder, ariaLabel: label, autocomplete: "off", spellcheck: true, maxLength: 200 });
-  if (list) input.setAttribute("list", list);
   input.addEventListener("input", () => onInput(input.value));
   input.addEventListener("keydown", (e) => {
-    if (e.key === "Enter" && !e.isComposing) { e.preventDefault(); onEnter?.(); }
-    if (e.key === "Backspace" && !input.value && onEmptyBack) { e.preventDefault(); onEmptyBack(); }
+    if (e.isComposing) return;
+    if (e.key === "Enter" || e.key === "ArrowDown") { e.preventDefault(); focusLine(section, index + 1); }
+    if (e.key === "ArrowUp") { e.preventDefault(); focusLine(section, index - 1); }
   });
   return input;
 }
@@ -169,146 +122,63 @@ function focusLine(section, index) {
   document.querySelectorAll(`#todo [data-section="${section}"] .pl-input`)[index]?.focus({ preventScroll: true });
 }
 
-// one of today's tasks from Notion (the Work book, or a goal Task): tick it here as on the board
-function taskRow(item, today) {
-  const { r, g, title, done } = item;
-  const late = item.date && dayOf(item.date) < today && !done;
-  const tick = check(done, `Mark ${title} ${done ? "not done" : "done"}`);
-  const li = h("li", { className: `pl-line task${done ? " done" : ""}${g ? " goal-task" : ""}` });
-  if (g) {
-    const parent = goalById(g.parent);
-    const name = h("button", { type: "button", className: "t", textContent: title, title: `${title}: change state or due date` });
-    name.dataset.act = "quick";
-    name.addEventListener("click", () => openQuick(g, name));
-    li.append(tick, name, h("span", { className: `m g${late ? " late" : ""}`, title: parent ? `For “${parent.title}”` : "A goal Task",
-      textContent: late ? `Overdue · ${fmtShort(item.date)}` : parent ? parent.title : "Goal" }));
-    tick.addEventListener("click", () => { li.classList.toggle("done", !done); moveGoal(g, done ? "Active" : "Done"); });
-  } else {
-    const name = h("button", { type: "button", className: "t", textContent: title, title: "Open in your Work book" });
-    name.addEventListener("click", () => openBook(ROLE.tasks, bookEl(ROLE.tasks), r.id));
-    li.append(tick, name, h("span", { className: `m${late ? " late" : ""}`, textContent: late ? `Overdue · ${fmtShort(r.date)}` : r.status || "To do" }));
-    tick.addEventListener("click", () => toggleTask(r, li));
-  }
-  return li;
-}
-const fmtShort = (d) => parseDay(d).toLocaleDateString(undefined, { day: "numeric", month: "short" });
-
 export function renderTodo() {
   const today = todayStr();
-  if (deskDay !== today && loaded) { loadDesk(); return; } // a new day: a fresh page (yesterday's offered again)
-  const all = state.goals?.goals || [];
-  const byId = new Map(all.map((g) => [g.id, g]));
-  // today's tasks from Notion: open Work book rows due by today (or undated), goal Tasks due by today, and any finished today
-  const work = records(ROLE.tasks)
-    .filter((r) => (!isDone(r) && (!r.date || dayOf(r.date) <= today)) || (isDone(r) && dayOf(r.date) === today))
-    .map((r) => ({ r, title: r.title, date: r.date, done: isDone(r) }));
-  const goalTasks = focusGoals(all)
-    .filter((g) => g.level === "Task" && (isGoalDone(g) ? dayOf(g.completed) === today : g.due && dayOf(g.due) <= today))
-    .map((g) => ({ g, title: g.title, date: g.due, done: isGoalDone(g), work: isWorkGoal(g, byId) }));
-  const order = (a, b) => Number(a.done) - Number(b.done) || (a.date || "9").localeCompare(b.date || "9");
-  const workTasks = [...work, ...goalTasks.filter((t) => t.work)].sort(order);
-  const generalTasks = goalTasks.filter((t) => !t.work).sort(order);
+  if (deskDay !== today && loaded) { loadDesk(); return; } // a new day: a fresh page
   const shows = deskSections(focus.on);
   const sections = [];
 
   if (shows.includes("focus")) {
     const hint = lastFocus(earlier, today) || [];
-    sections.push(secEl("focus", heading("Focus", "focus"),
+    sections.push(secEl("focus", heading("Today's focuses", "focus"),
       h("ol", { className: "pl-list" }, desk.focus.map((text, i) => h("li", { className: "pl-line" },
-        h("span", { className: "pl-num", textContent: `${i + 1}` }),
-        lineInput(text, { label: `Focus area ${i + 1}`, placeholder: hint[i] || "", onInput: (v) => { desk.focus[i] = v; save(); }, onEnter: () => focusLine("focus", i + 1) }))))));
+        h("span", { className: "pl-num", textContent: `${i + 1}.` }),
+        lineInput(text, { label: `Focus ${i + 1}`, placeholder: hint[i] || "", section: "focus", index: i, onInput: (v) => { desk.focus[i] = v; save(); } }))))));
   }
-  if (shows.includes("key")) {
-    sections.push(secEl("key", heading("Key tasks", "key tasks"),
-      h("ol", { className: "pl-list" }, desk.key.map((k, i) => {
-        const tick = check(k.done, `Mark key task ${i + 1} ${k.done ? "not done" : "done"}`);
-        const li = h("li", { className: `pl-line${k.done ? " done" : ""}` }, tick,
-          lineInput(k.text, { label: `Key task ${i + 1}`, list: "pl-suggest", onInput: (v) => { desk.key[i].text = v; save(); }, onEnter: () => focusLine("key", i + 1) }));
-        tick.addEventListener("click", () => { k.done = !k.done; li.classList.toggle("done", k.done); tick.classList.toggle("on", k.done); tick.ariaPressed = String(k.done); save(); });
-        return li;
-      })),
-      // suggestions for key tasks: today's tasks already in Notion
-      h("datalist", { id: "pl-suggest" }, [...workTasks, ...generalTasks].filter((t) => !t.done).map((t) => h("option", { value: t.title })))));
-  }
-  if (shows.includes("general")) {
-    const carried = carriedOver({ ...earlier, [today]: desk }, today);
+  if (shows.includes("todo")) {
+    // empty lines to write on, kept in place: a line typed halfway down stays halfway down
+    const rows = Math.min(MAX_LINES, Math.max(TODO_ROWS, desk.general.length + 1));
     const list = h("ul", { className: "pl-list" });
-    for (const c of carried) {
-      const bring = h("button", { type: "button", className: "pl-act", textContent: "today", title: "Bring it into today" });
-      const drop = h("button", { type: "button", className: "pl-act", textContent: "let go", title: prompts.carried || "Put it down" });
-      bring.addEventListener("click", () => { desk.settled[c.key] = "today"; desk.general.push({ id: newId(), text: c.text, done: false }); save(); renderTodo(); });
-      drop.addEventListener("click", () => { desk.settled[c.key] = "gone"; save(); renderTodo(); });
-      list.append(h("li", { className: "pl-line carried" }, h("span", { className: "pl-from", textContent: parseDay(c.day).toLocaleDateString(undefined, { weekday: "short" }) }),
-        h("span", { className: "t", textContent: c.text }), h("span", { className: "pl-acts" }, bring, drop)));
+    for (let i = 0; i < rows; i++) {
+      const l = desk.general[i];
+      const tick = check(Boolean(l?.done), "Mark done");
+      const li = h("li", { className: `pl-line${l?.done ? " done" : ""}${l?.text ? "" : " empty"}` });
+      const input = lineInput(l?.text || "", { label: `To-do line ${i + 1}`, section: "todo", index: i, onInput: (v) => {
+        while (desk.general.length <= i) desk.general.push({ id: newId(), text: "", done: false });
+        desk.general[i].text = v;
+        if (!v) desk.general[i].done = false;
+        while (desk.general.length && !desk.general.at(-1).text) desk.general.pop(); // no trailing blanks kept
+        li.classList.toggle("empty", !v);
+        if (!v) li.classList.remove("done");
+        save();
+      } });
+      tick.addEventListener("click", () => {
+        const line = desk.general[i];
+        if (!line?.text) return;
+        line.done = !line.done; li.classList.toggle("done", line.done); tick.classList.toggle("on", line.done); tick.ariaPressed = String(line.done); save();
+      });
+      li.append(tick, input);
+      list.append(li);
     }
-    for (const t of generalTasks) list.append(taskRow(t, today));
-    typedLines(list, desk.general, "general", true);
-    sections.push(secEl("general", heading("General", "general"), list));
+    sections.push(secEl("todo", heading("To-Do List", "to-do"), list));
   }
-  if (shows.includes("work")) {
-    const list = h("ul", { className: "pl-list" });
-    for (const t of workTasks) list.append(taskRow(t, today));
-    typedLines(list, desk.work, "work", false);
-    sections.push(secEl("work", heading("Work", "work"), list));
-  }
-  if (focus.on) sections.push(h("p", { className: "pl-covered", textContent: "Focus, key tasks and General are put away at work." }));
 
   // keep the cursor where it was across a re-render
-  const active = document.activeElement?.closest?.("#todo") ? { sec: document.activeElement.closest("[data-section]")?.dataset.section, i: [...document.querySelectorAll(`#todo [data-section="${document.activeElement.closest("[data-section]")?.dataset.section}"] .pl-input`)].indexOf(document.activeElement) } : null;
-  // two columns in the landscape window: Focus and Key tasks | General and Work
-  const col = (...names) => h("div", { className: "pl-col" }, sections.filter((x) => names.includes(x.dataset?.section)));
-  const covered = sections.find((x) => x.classList?.contains("pl-covered"));
-  const page = h("div", { className: "pl-page", ariaLabel: `Plan for ${longDate(parseDay(today), false)}` },
-    h("div", { className: "pl-cols" }, col("focus", "key"), h("div", { className: "pl-col" }, col("general", "work"), covered)));
+  const at = document.activeElement?.closest?.("#todo [data-section]");
+  const active = at ? { sec: at.dataset.section, i: [...at.querySelectorAll(".pl-input")].indexOf(document.activeElement) } : null;
   const old = $("todo").querySelector(".pl-page");
-  if (old) page.scrollTop = old.scrollTop;
-  // Plan my day: a window with a title bar (the day); its red button closes it, like a Mac window
+  const page = h("div", { className: "pl-page", ariaLabel: `Plan for ${planDate(today)}` },
+    h("p", { className: "pl-date", textContent: planDate(today) }),
+    shows.length ? h("div", { className: "pl-cols" }, ...sections)
+      : h("p", { className: "pl-covered", textContent: "Today's page is put away at work." }));
+  // a window over the whole page with a title bar; its red button closes it, like a Mac window
   const close = h("button", { type: "button", className: "pw-close", ariaLabel: "Close Plan my day", title: "Close (Esc)" });
   close.addEventListener("click", () => $("plan-day").close());
   const bar = h("div", { className: "pw-bar" }, h("span", { className: "pw-dots" }, close, h("i", { ariaHidden: "true" }), h("i", { ariaHidden: "true" })),
-    h("span", { className: "pw-title", textContent: `Plan my day · ${longDate(parseDay(today), false)}` }));
+    h("span", { className: "pw-title", textContent: "Plan my day.txt" }));
   $("todo").replaceChildren(bar, page);
   if (old) page.scrollTop = old.scrollTop;
   if (active && active.i >= 0) focusLine(active.sec, active.i);
-}
-
-// typed lines (General jottings, or Work lines resting before they go to Notion), always with one empty line to write on
-function typedLines(list, lines, section, tickable) {
-  const rows = lines.filter((l) => l.text);
-  rows.push({ id: newId(), text: "", done: false, edited: 0, blank: true });
-  rows.forEach((l, i) => {
-    const commit = (v) => {
-      let line = lines.find((x) => x.id === l.id);
-      if (!line && v) { line = { id: l.id, text: "", done: false }; lines.push(line); delete l.blank; }
-      if (!line) return;
-      line.text = v;
-      if (section === "work") line.edited = Date.now();
-      if (!v) lines.splice(lines.indexOf(line), 1);
-      save();
-      const wait = list.querySelector(`[data-wait="${l.id}"]`);
-      if (wait) wait.textContent = section === "work" ? waitText(line) : "";
-    };
-    const input = lineInput(l.text, {
-      label: `${section === "work" ? "Work" : "General"} line`, placeholder: l.blank ? (section === "work" ? "Add a work task…" : "Add something…") : "",
-      onInput: commit,
-      onEnter: () => { if (input.value) { renderTodo(); focusLine(section, i + 1); } },
-      onEmptyBack: i > 0 ? () => { renderTodo(); focusLine(section, Math.max(0, i - 1)); } : null,
-    });
-    const li = h("li", { className: `pl-line typed${l.done ? " done" : ""}` });
-    if (tickable) {
-      const tick = check(l.done, "Mark done");
-      tick.addEventListener("click", () => {
-        const line = lines.find((x) => x.id === l.id);
-        if (!line) return;
-        line.done = !line.done; li.classList.toggle("done", line.done); tick.classList.toggle("on", line.done); tick.ariaPressed = String(line.done); save();
-      });
-      if (l.blank) tick.disabled = true;
-      li.append(tick);
-    } else li.append(h("span", { className: "pl-bullet", ariaHidden: "true", textContent: "–" }));
-    li.append(input);
-    if (section === "work") li.append(data(h("span", { className: "m pl-wait", textContent: l.blank ? "" : waitText(l) }), { wait: l.id }));
-    list.append(li);
-  });
 }
 
 // ---- the agenda on a ruled sheet pinned to the wall: swipe (or ‹ ›) through the days ----
@@ -380,27 +250,23 @@ $("agenda").addEventListener("keydown", (e) => {
   if (e.key === "ArrowRight") { e.preventDefault(); movePad(1); }
 });
 
-// ---- the desk monitor: double-click "Plan my day" to open the planner (Enter or a tap work too), like a real desktop ----
-const folder = $("open-plan");
+// ---- the desktop on the bricks: double-click "Plan my day" to open it over the whole page (Enter or a tap work too) ----
+const file = $("open-plan");
 let lastPointer = "mouse";
-folder.addEventListener("pointerdown", (e) => { lastPointer = e.pointerType; });
-folder.addEventListener("click", (e) => {
+file.addEventListener("pointerdown", (e) => { lastPointer = e.pointerType; });
+file.addEventListener("click", (e) => {
   if (e.detail === 0 || lastPointer === "touch") return openPlan(); // keyboard or touch: one press opens it
-  folder.classList.add("sel");
+  file.classList.add("sel");
 });
-folder.addEventListener("dblclick", openPlan);
-document.addEventListener("pointerdown", (e) => { if (!folder.contains(e.target)) folder.classList.remove("sel"); });
+file.addEventListener("dblclick", openPlan);
+document.addEventListener("pointerdown", (e) => { if (!file.contains(e.target)) file.classList.remove("sel"); });
 export function openPlan() {
-  folder.classList.remove("sel");
+  file.classList.remove("sel");
   if (!$("plan-day").open) $("plan-day").showModal();
 }
-$("plan-day").addEventListener("close", () => folder.focus({ preventScroll: true }));
-$("plan-day").addEventListener("click", (e) => { if (e.target === $("plan-day")) $("plan-day").close(); });
-
-// the clock in the monitor's menu bar
-function pcClock() { $("pc-clock").textContent = new Date().toLocaleTimeString(undefined, { weekday: "short", hour: "numeric", minute: "2-digit" }); }
-pcClock();
-setInterval(pcClock, 30_000);
+$("plan-day").addEventListener("close", () => file.focus({ preventScroll: true }));
+// the dock: the record player brings up the turntable (more to come)
+$("dock-records").addEventListener("click", openTurntable);
 
 // ---- sticky notes on the wall: typed here, kept on this Mac until taken down (× in the corner, with Undo) ----
 let stickies = [];
