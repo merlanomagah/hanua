@@ -25,6 +25,17 @@ open_browser() {
   if command -v open >/dev/null 2>&1; then open "$URL"; else echo "Open $URL in your browser."; fi
 }
 
+# Kept running by macOS (scripts/agent.sh)? Make sure it's loaded, wait for it, open it.
+LABEL="local.hanua.server"; PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"; DOMAIN="gui/$(id -u)"
+if [ -f "$PLIST" ]; then
+  launchctl print "$DOMAIN/$LABEL" >/dev/null 2>&1 || launchctl bootstrap "$DOMAIN" "$PLIST"
+  for _ in $(seq 1 30); do
+    if curl -fs "$URL/api/status" >/dev/null 2>&1; then open_browser; echo "Hanua is running at $URL"; exit 0; fi
+    sleep 0.5
+  done
+  echo "Hanua didn't answer. The last lines of logs/hanua.log:"; tail -n 20 logs/hanua.log; exit 1
+fi
+
 # Already running? Just open it.
 if curl -fs "$URL/api/status" >/dev/null 2>&1; then
   open_browser

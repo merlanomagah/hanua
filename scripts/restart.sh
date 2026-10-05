@@ -5,6 +5,13 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
+# Kept running by macOS (scripts/agent.sh): one command restarts it, nothing left running for Shortcuts to cut off
+LABEL="local.hanua.server"
+if [ -f "$HOME/Library/LaunchAgents/$LABEL.plist" ]; then
+  launchctl print "gui/$(id -u)/$LABEL" >/dev/null 2>&1 && launchctl kickstart -k "gui/$(id -u)/$LABEL"
+  exec scripts/start.sh
+fi
+
 scripts/stop.sh
 
 # Also stop a Hanua from this folder that was started some other way (e.g. npm start).

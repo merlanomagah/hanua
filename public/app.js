@@ -1,4 +1,5 @@
 import "./lock.js"; // the sleep screen goes up before anything else
+import "./updates.js"; // reloads itself (while asleep) when Hanua is updated
 import { aheadText, dayOf, daysBetween, lastLightSwitch, pad, parseDay, timeIn, timeOf, todayStr, ymd } from "./shared/dates.js";
 import { GREET_EVERY_MS, GREET_NAME, greetingsAt, timeOfDay } from "./shared/greetings.js";
 import { goalsInBook, isGoalDone, onCalendar, visibleGoals } from "./shared/goals.js";

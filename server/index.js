@@ -18,8 +18,13 @@ import { lockStatus, setPin, checkPin } from "./lock.js";
 import { getWeather } from "./weather.js";
 import { backupDue, backupRoom, backupWarning, readStatus } from "./backup.js";
 import os from "node:os";
+import { watchForUpdates } from "./updates.js";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+// Running as the Mac's launch agent (scripts/agent.sh): restart on the new code when main moves (server/updates.js)
+const agent = process.env.HANUA_AGENT === "1";
+const bootAt = new Date().toISOString();
+const updates = agent ? watchForUpdates({ root }) : null;
 const config = JSON.parse(await readFile(path.join(root, "config/areas.json"), "utf8"));
 const sample = JSON.parse(await readFile(path.join(root, "data/sample.json"), "utf8"));
 
@@ -68,6 +73,8 @@ const app = express();
 // small JSON everywhere; the whiteboard's drawings (a few hundred KB) have their own, larger limit
 const smallJson = express.json({ limit: "100kb" });
 app.use((req, res, next) => (req.path.startsWith("/api/board/") ? next() : smallJson(req, res, next)));
+// a save in flight holds off a restart until things are quiet (server/updates.js)
+app.use((req, _res, next) => { if (req.method !== "GET") updates?.wrote(); next(); });
 // "no-cache" = Safari must ask each time whether a file changed (a quick 304 when it hasn't), so after an update
 // it never keeps showing the old page from its cache (6 Oct 2026)
 app.use(express.static(path.join(root, "public"), { setHeaders: (res) => res.set("Cache-Control", "no-cache") }));
@@ -255,7 +262,8 @@ app.get("/api/backup", async (_req, res) => {
 });
 
 app.get("/api/status", (_req, res) => {
-  res.json({ notion: notionEnabled(), claude: claudeEnabled() });
+  // boot changes on every start, so an open page can tell Hanua was updated (public/updates.js)
+  res.set("Cache-Control", "no-store").json({ notion: notionEnabled(), claude: claudeEnabled(), boot: bootAt });
 });
 
 app.get("/api/areas", async (_req, res, next) => {
@@ -648,7 +656,8 @@ app.use((err, _req, res, _next) => {
 const port = Number(process.env.PORT) || 3000;
 // Bind to localhost only: this server holds your Notion and Claude keys.
 app.listen(port, "127.0.0.1", () => {
-  console.log(`Hanua running at http://localhost:${port}`);
+  console.log(`Hanua running at http://localhost:${port}${agent ? " (kept running by macOS; restarts itself when main is updated)" : ""}`);
+  if (agent) writeFile(path.join(root, ".hanua.pid"), `${process.pid}\n`).catch(() => {});
   console.log(`  Notion: ${notionEnabled() ? "connected" : "not configured (showing sample data)"}`);
   console.log(`  Claude: ${claudeEnabled() ? "connected" : "not configured"}`);
 });
