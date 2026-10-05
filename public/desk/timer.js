@@ -31,6 +31,16 @@ function timerAct(what) {
   if (what === "mute") timer.muted = !timer.muted;
   keepTimer(); renderTimer();
 }
+// Mostly the timer (Mel, 6 Oct 2026): the ring and the time; click the middle to start or pause (▶ / ❚❚ on hover),
+// ↺ in the top corner resets, the bell in the bottom corner mutes (struck through) and unmutes, and the label at the
+// top left switches between Focus and Break
+const ICONS = {
+  play: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13l10.5-6.5z"/></svg>',
+  pause: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6.5" y="5.5" width="4" height="13" rx="1"/><rect x="13.5" y="5.5" width="4" height="13" rx="1"/></svg>',
+  reset: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12a7 7 0 1 0 2.1-5" fill="none"/><path d="M4.5 3.5v4h4" fill="none"/></svg>',
+  bell: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4a5 5 0 0 0-5 5v4l-1.8 3h13.6L17 13V9a5 5 0 0 0-5-5z" fill="none"/><path d="M10 19a2 2 0 0 0 4 0" fill="none"/></svg>',
+  muted: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4a5 5 0 0 0-5 5v4l-1.8 3h13.6L17 13V9a5 5 0 0 0-5-5z" fill="none"/><path d="M10 19a2 2 0 0 0 4 0" fill="none"/><path d="M4 4l16 16" fill="none"/></svg>',
+};
 function renderTimer() {
   const left = leftNow(), running = Boolean(timer.endsAt);
   if (running && left <= 0) { // finished: chime, and the other half is ready to start
@@ -40,28 +50,32 @@ function renderTimer() {
     toast(was === "focus" ? "Focus done. Take five." : "Break's over. Ready when you are.", false, { label: was === "focus" ? "Start break" : "Start focus", run: () => timerAct("go") });
     return renderTimer();
   }
-  const frac = left / fullOf(timer.mode), r = 34, c = 2 * Math.PI * r;
+  const frac = left / fullOf(timer.mode), r = 44, c = 2 * Math.PI * r;
   const chip = $("ts-timer");
   chip.hidden = !running;
   chip.textContent = `${timer.mode === "focus" ? "●" : "☕"} ${mmss(left)}`;
   // each second only the numbers and the ring move (the buttons stay put, so keyboard focus isn't lost)
+  const w = $("w-timer");
   const shape = `${timer.mode}|${running}|${timer.muted}|${left < fullOf(timer.mode)}`;
-  if ($("w-timer").dataset.shape === shape) {
-    $("w-timer").querySelector(".tm-left").textContent = mmss(left);
-    $("w-timer").querySelector(".tm-ring").setAttribute("stroke-dashoffset", String(c * (1 - frac)));
+  if (w.dataset.shape === shape && w.querySelector(".tm-left")) {
+    w.querySelector(".tm-left").textContent = mmss(left);
+    w.querySelector(".tm-ring").setAttribute("stroke-dashoffset", String(c * (1 - frac)));
     return;
   }
-  $("w-timer").dataset.shape = shape;
-  const btn = (label, what, cls = "") => { const b = h("button", { type: "button", className: `tm-btn ${cls}`, textContent: label }); b.addEventListener("click", () => timerAct(what)); return b; };
-  const ring = `<svg viewBox="0 0 80 80" aria-hidden="true"><circle cx="40" cy="40" r="${r}" class="tm-track"/><circle cx="40" cy="40" r="${r}" class="tm-ring" stroke-dasharray="${c}" stroke-dashoffset="${c * (1 - frac)}" transform="rotate(-90 40 40)"/></svg>`;
-  $("w-timer").className = `widget wg-timer tm-${timer.mode}${running ? " running" : ""}`;
-  $("w-timer").replaceChildren(
-    h("span", { className: "wg-label", textContent: timer.mode === "focus" ? "Focus timer" : "Break" }),
-    h("div", { className: "tm-row" },
-      h("div", { className: "tm-dial", innerHTML: ring }, h("b", { className: "tm-left", textContent: mmss(left), role: "timer", ariaLabel: `${mmss(left)} left` })),
-      h("div", { className: "tm-btns" }, btn(running ? "Pause" : left < fullOf(timer.mode) ? "Resume" : "Start", "go", "tm-go"), btn("Reset", "reset"),
-        btn(timer.mode === "focus" ? "Break" : "Focus", "switch"),
-        (() => { const m = h("button", { type: "button", className: "tm-btn tm-mute", ariaPressed: String(timer.muted), title: timer.muted ? "Chime off" : "Chime on", textContent: timer.muted ? "🔕" : "🔔" }); m.addEventListener("click", () => timerAct("mute")); return m; })())));
+  w.dataset.shape = shape;
+  const icon = (cls, label, svg, what) => { const b = h("button", { type: "button", className: `tm-icon ${cls}`, ariaLabel: label, title: label, innerHTML: svg }); b.addEventListener("click", (e) => { e.stopPropagation(); timerAct(what); }); return b; };
+  const ring = `<svg class="tm-svg" viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="${r}" class="tm-track"/><circle cx="50" cy="50" r="${r}" class="tm-ring" stroke-dasharray="${c}" stroke-dashoffset="${c * (1 - frac)}" transform="rotate(-90 50 50)"/></svg>`;
+  const goLabel = running ? "Pause" : left < fullOf(timer.mode) ? "Resume" : "Start";
+  const dial = h("button", { type: "button", className: "tm-dial", ariaLabel: `${goLabel} the ${timer.mode === "focus" ? "focus" : "break"} timer, ${mmss(left)} left`, innerHTML: ring },
+    h("b", { className: "tm-left", textContent: mmss(left), role: "timer" }),
+    h("span", { className: "tm-go-ico", innerHTML: running ? ICONS.pause : ICONS.play, ariaHidden: "true" }));
+  dial.addEventListener("click", () => timerAct("go"));
+  const mode = h("button", { type: "button", className: "wg-label tm-mode", textContent: timer.mode === "focus" ? "Focus" : "Break", title: `Switch to ${timer.mode === "focus" ? "a 5-minute break" : "25 minutes of focus"}` });
+  mode.addEventListener("click", (e) => { e.stopPropagation(); timerAct("switch"); });
+  w.className = `widget wg-timer tm-${timer.mode}${running ? " running" : ""}`;
+  w.replaceChildren(mode, dial,
+    icon("tm-reset", "Reset", ICONS.reset, "reset"),
+    icon("tm-bell", timer.muted ? "Chime off: click to turn it on" : "Chime on: click to mute", timer.muted ? ICONS.muted : ICONS.bell, "mute"));
   // the rail: the countdown follows you round the room while it runs
   chip.dataset.tip = timer.mode === "focus" ? "Focusing: open the desk" : "On a break: open the desk";
 }

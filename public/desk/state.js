@@ -10,6 +10,8 @@ export let backup = null; // the nightly backup's status (/api/backup): a line i
 export let stale = null; // "page" or "server" when the two save a day differently: saving stops and the page says so
 export const newId = () => Math.random().toString(36).slice(2, 10);
 let saveTimer = 0;
+let dayLoaded;
+export const dayReady = new Promise((r) => { dayLoaded = r; }); // today's page has been read (or the server's away)
 
 // today's page and the week before it (a new day starts with yesterday's section headers, empty)
 export async function fetchDay() {
@@ -26,6 +28,7 @@ export async function fetchDay() {
     }
   } catch { /* the server's away: an empty page */ }
   loaded = true;
+  dayLoaded();
 }
 export async function fetchPrompts() {
   try { prompts = (await (await fetch("/api/desk/prompts")).json()).prompts || {}; return true; } catch { return false; /* headings alone */ }

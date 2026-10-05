@@ -5,6 +5,7 @@
 // resize from the corner, like To-do.txt (places kept in this browser).
 import { $, focus, h, toast } from "../lib.js";
 import { check } from "./page.js";
+import { noteClosed, noteOpen, registerWindow, resizable, restorePlace, windowBar } from "./window.js";
 
 const post = async (url, body) => {
   const res = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body || {}) });
@@ -13,44 +14,6 @@ const post = async (url, body) => {
   return j;
 };
 const NOT_ALLOWED = "Hanua can't see Reminders yet. macOS asks once: say OK. If it didn't ask: System Settings → Privacy & Security → Reminders → Hanua Calendar.";
-
-// ---- a window on the desktop: a title bar with the red close button, dragged by the bar, resized from the corner ----
-function windowBar(win, title, tools, onClose) {
-  const close = h("button", { type: "button", className: "pw-close", ariaLabel: `Close ${title}`, title: "Close" });
-  close.addEventListener("click", onClose);
-  const bar = h("div", { className: "pw-bar txt-bar" }, h("span", { className: "pw-dots" }, close, h("i", { ariaHidden: "true" }), h("i", { ariaHidden: "true" })),
-    h("span", { className: "pw-title", textContent: title }), h("span", { className: "pw-tools txt-date" }, ...tools));
-  bar.addEventListener("pointerdown", (e) => {
-    if (e.target.closest("button, a")) return;
-    const box = win.getBoundingClientRect(), host = win.offsetParent.getBoundingClientRect();
-    const dx = e.clientX - box.left, dy = e.clientY - box.top;
-    bar.setPointerCapture(e.pointerId);
-    const move = (ev) => {
-      const x = Math.max(0, Math.min(host.width - box.width, ev.clientX - host.left - dx)), y = Math.max(0, Math.min(host.height - 60, ev.clientY - host.top - dy));
-      win.style.left = `${x}px`; win.style.top = `${y}px`;
-    };
-    const up = () => { bar.removeEventListener("pointermove", move); keepPlace(win); };
-    bar.addEventListener("pointermove", move);
-    bar.addEventListener("pointerup", up, { once: true });
-  });
-  return bar;
-}
-const placeKey = (win) => `win-${win.id}`;
-function keepPlace(win) {
-  try { localStorage.setItem(placeKey(win), JSON.stringify({ x: win.offsetLeft, y: win.offsetTop, w: win.offsetWidth, h: win.offsetHeight })); } catch { /* fine */ }
-}
-function restorePlace(win) {
-  let p = null;
-  try { p = JSON.parse(localStorage.getItem(placeKey(win)) || "null"); } catch { p = null; }
-  if (!p) return;
-  win.style.left = `${p.x}px`; win.style.top = `${p.y}px`;
-  if (p.w) { win.style.width = `${p.w}px`; win.style.height = `${p.h}px`; win.style.maxHeight = "none"; }
-}
-function resizable(win) {
-  let ready = false;
-  new ResizeObserver(() => { if (ready && !win.hidden) keepPlace(win); }).observe(win);
-  return () => { ready = false; requestAnimationFrame(() => { ready = true; }); }; // only Mel's own resizing is kept
-}
 
 // ---- the Shopping list ----
 const shop = $("shop-win");
@@ -89,7 +52,7 @@ function renderShop(keepTyping = false) {
   const typed = shop.querySelector(".shop-add")?.value || "";
   const open = h("button", { type: "button", className: "pw-btn", textContent: "Reminders ↗", title: "Open the list in Reminders (share it, or set it to Groceries there)" });
   open.addEventListener("click", () => post("/api/reminders/show").catch(() => {}));
-  const bar = windowBar(shop, "Shopping list", [open], () => { shop.hidden = true; $("open-shop").focus({ preventScroll: true }); });
+  const bar = windowBar(shop, "Shopping list", [open], () => { hideShop(); $("open-shop").focus({ preventScroll: true }); });
   const input = h("input", { type: "text", className: "shop-add", placeholder: "Add an item, then Enter", ariaLabel: "Add to the shopping list", maxLength: 200, autocomplete: "off", value: keepTyping ? "" : typed });
   input.addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.isComposing) { e.preventDefault(); const v = input.value; input.value = ""; addItem(v); } });
   const rows = items.map((it) => {
@@ -106,15 +69,19 @@ function renderShop(keepTyping = false) {
   shop.replaceChildren(bar, body);
   if (keepTyping) input.focus({ preventScroll: true });
 }
-export function openShop() {
+let shopPlaced = false;
+function showShop() {
   if (focus.on) return;
-  const first = shop.hidden;
   shop.hidden = false;
-  if (first) { restorePlace(shop); shopReady(); }
+  if (!shopPlaced) { restorePlace(shop); shopPlaced = true; shopReady(); }
   renderShop();
   shop.querySelector(".shop-add")?.focus({ preventScroll: true });
   loadShop();
 }
+const hideShop = () => { shop.hidden = true; noteClosed("shop-win"); };
+const SHOP_ICON = '<svg viewBox="0 0 48 60" width="30" aria-hidden="true"><path d="M4 2h28l12 12v42a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z" fill="#fdfcf9" stroke="#cfc8bb"/><path d="M12 22h4l3 13h13l3-9H17" fill="none" stroke="#c4602a" stroke-width="2.2" stroke-linejoin="round"/></svg>';
+registerWindow("shop-win", { title: "Shopping list", icon: SHOP_ICON, show: showShop, hide: hideShop, shown: () => !shop.hidden });
+export function openShop() { showShop(); noteOpen("shop-win"); }
 
 // ---- Add reminder: what and when, into Reminders with an alert ----
 const rem = $("rem-win");
@@ -135,6 +102,7 @@ function picks(now = new Date()) {
 const whenText = (d) => d.toLocaleString("en-NZ", { weekday: "short", day: "numeric", month: "short", hour: "numeric", minute: "2-digit" });
 function renderRem() {
   const bar = windowBar(rem, "Add reminder", [], () => { rem.hidden = true; $("open-remind").focus({ preventScroll: true }); });
+  bar.querySelector(".pw-min").hidden = true; // a quick note: close it, nothing to keep
   const what = h("input", { type: "text", className: "shop-add", placeholder: "Remind me to…", ariaLabel: "What to be reminded of", maxLength: 200, autocomplete: "off" });
   let when = picks()[0][1];
   const at = h("input", { type: "datetime-local", className: "rem-at", ariaLabel: "When", value: local(when), step: 300 });

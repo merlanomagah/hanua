@@ -9,8 +9,7 @@ export const SIZE_NAMES = { s: "Small", m: "Medium", l: "Large" };
 export const WIDGET_SIZES = {
   agenda: { s: [260, 300], m: [360, 380], l: [400, 560] },
   "desk-window": { s: [280, 0], m: [380, 0], l: [540, 0] },
-  "w-plan": { s: [180, 150], m: [280, 150], l: [380, 190] },
-  "w-timer": { s: [180, 150], m: [280, 150], l: [380, 150] },
+  "w-timer": { s: [170, 170], m: [220, 220], l: [290, 290] },
 };
 export const sizeOf = (id, size) => WIDGET_SIZES[id]?.[SIZES.includes(size) ? size : "m"] || null;
 
@@ -44,4 +43,19 @@ export function layoutShape(o) {
     items[id] = it;
   }
   return { items };
+}
+
+// Overlap of two boxes { x, y, w, h } (touching edges don't count)
+export const overlaps = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
+// The first free file-grid spot, down each column from the top right (like a Mac placing a new file), clear of
+// everything already on the desk; null if the desk is full
+export function freeSpot(box, taken, area) {
+  for (let col = 0; ; col++) {
+    const x = area.w - EDGE - box.w - col * FILE_GRID.w;
+    if (x < EDGE) return null;
+    for (let y = TOP; y + box.h <= area.h - EDGE; y += FILE_GRID.h) {
+      const spot = { x, y, w: box.w, h: box.h };
+      if (!taken.some((t) => overlaps(spot, t))) return { x, y };
+    }
+  }
 }

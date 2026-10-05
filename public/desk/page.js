@@ -8,6 +8,7 @@ import { calendarItems } from "../app.js";
 import { backup, desk, deskDay, earlier, fixed, loaded, newId, prompts, save, stale } from "./state.js";
 import { renderAgenda } from "./agenda.js";
 import { openTxt, renderTxt } from "./todotxt.js";
+import { dots, noteClosed, noteOpen, registerWindow } from "./window.js";
 import { loadBackup, loadDesk } from "../planner.js";
 
 let sweepLater = false;
@@ -295,13 +296,11 @@ export function renderTodo() {
   if (stale) body.unshift(h("p", { className: "pl-stale", role: "alert", textContent: CLASH_TEXT[stale] }));
   const page = h("div", { className: `pl-page${archive ? " is-archive" : ""}`, ariaLabel: `Plan for ${planDate(today)}` }, ...body);
   // a window with a title bar: the red button closes it, like a Mac window; Archive looks back
-  const close = h("button", { type: "button", className: "pw-close", ariaLabel: "Close Plan my day", title: "Close (Esc)" });
-  close.addEventListener("click", () => $("plan-day").close());
   const swap = h("button", { type: "button", className: "pw-btn", textContent: archive ? "← Today" : "Archive", title: archive ? "Back to today's page" : "Earlier days' pages", hidden: focus.on });
   swap.addEventListener("click", () => { if (archive) { archive = null; renderTodo(); } else openArchive(); });
   const txtBtn = h("button", { type: "button", className: "pw-btn", textContent: "To-do.txt", title: "Today's list, to tick off in any order", hidden: Boolean(archive) });
   txtBtn.addEventListener("click", () => openTxt());
-  const bar = h("div", { className: "pw-bar" }, h("span", { className: "pw-dots" }, close, h("i", { ariaHidden: "true" }), h("i", { ariaHidden: "true" })),
+  const bar = h("div", { className: "pw-bar" }, dots("plan-day", () => $("plan-day").close()),
     h("span", { className: "pw-title", textContent: archive ? "Archive" : "Plan my day.txt" }), h("span", { className: "pw-tools" }, txtBtn, swap));
   $("todo").replaceChildren(bar, page);
   if (old && !archive) page.scrollTop = old.scrollTop;
@@ -310,21 +309,15 @@ export function renderTodo() {
   if (active?.name) $("todo").querySelector(`[data-section="${active.sec}"] .pl-sec-name`)?.focus({ preventScroll: true });
   else if (active && active.i >= 0) focusLine(active.sec, active.i);
 }
-$("plan-day").addEventListener("close", () => { if (archive) { archive = null; renderTodo(); } });
+$("plan-day").addEventListener("close", () => { noteClosed("plan-day"); if (archive) { archive = null; renderTodo(); } });
 
-// ---- widgets on the desktop: Up next (the agenda), the weather window (weather-window.js), Today's plan ----
+// Today's plan widget was cut (Mel, 6 Oct 2026: redundant); the focuses go on the wall as post-its instead (part E).
+// Kept as the one hook everything calls when the day's focuses or ticks change.
 export function renderPlanWidget() {
-  const w = $("w-plan");
-  if (!w) return;
-  w.hidden = focus.on; // personal: put away at work
-  const f = desk.focus.filter(Boolean);
-  const lines = desk.sections.flatMap((x) => x.lines).filter((l) => l.text), done = lines.filter((l) => l.done).length;
-  w.replaceChildren(h("span", { className: "wg-label", textContent: "Today's plan" }),
-    f.length ? h("ol", { className: "wg-focus" }, f.map((x) => h("li", { textContent: x }))) : h("p", { className: "wg-empty", textContent: "No focuses yet. Open Plan my day." }),
-    h("p", { className: "wg-meta", textContent: lines.length ? `${done} of ${lines.length} done` : "Nothing on the list yet" }));
+  document.dispatchEvent(new Event("hanua:plan"));
 }
-$("w-plan").addEventListener("click", () => openPlan());
 
-export function openPlan() {
-  if (!$("plan-day").open) $("plan-day").showModal();
-}
+const PLAN_ICON = '<svg viewBox="0 0 48 60" width="30" aria-hidden="true"><path d="M4 2h28l12 12v42a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z" fill="#fdfcf9" stroke="#cfc8bb"/><path d="M9 24h28M9 30h28M9 36h28M9 42h20" stroke="#b9b2a5" stroke-width="2"/></svg>';
+const showPlan = () => { if (!$("plan-day").open) $("plan-day").showModal(); };
+registerWindow("plan-day", { title: "Plan my day", icon: PLAN_ICON, show: showPlan, hide: () => $("plan-day").close(), shown: () => $("plan-day").open });
+export function openPlan() { showPlan(); noteOpen("plan-day"); }

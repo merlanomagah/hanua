@@ -400,7 +400,7 @@
           <!-- sticky notes on the wall: typed here, kept on this Mac until taken down (the × in each corner) -->
           <div class="stickies" id="stickies" aria-label="Sticky notes"></div>
         </div>
-        <!-- widgets down the right, like a Mac's (Mel, 6 Oct 2026): Up next (swipe or ‹ › for other days), the weather window, Today's plan -->
+        <!-- widgets down the right, like a Mac's (Mel, 6 Oct 2026): Up next (swipe or ‹ › for other days), the weather window, the focus timer -->
         <aside class="widgets" aria-label="Widgets">
           <article class="widget wg-agenda" id="agenda" aria-label="Up next" tabindex="0"></article>
           <!-- the kitchen's weather window, small: the same sky, drawn again (weather-window.js) -->
@@ -413,11 +413,8 @@
             <div class="ww-frame" aria-hidden="true"><i></i><i></i></div>
             <figcaption class="ww-sill"><span class="ww-place"></span><span class="ww-summary"></span></figcaption>
           </figure>
-          <!-- two small ones side by side: Today's plan, and a focus timer (25 on, 5 off; the countdown shows in the top rail while it runs) -->
-          <div class="wg-pair">
-            <button type="button" class="widget wg-plan" id="w-plan" aria-label="Today's plan: open Plan my day"></button>
-            <article class="widget wg-timer" id="w-timer" aria-label="Focus timer"></article>
-          </div>
+          <!-- the focus timer (25 on, 5 off; the countdown shows in the top rail while it runs). Today's plan was cut 6 Oct 2026 -->
+          <article class="widget wg-timer" id="w-timer" aria-label="Focus timer"></article>
         </aside>
         <!-- today's meals, pinned beside it -->
         <button type="button" class="meal-slip" id="meal-slip" title="Open the kitchen" hidden></button>
@@ -426,6 +423,11 @@
           <button type="button" class="desk-file" id="open-plan" title="Double-click to open" aria-label="Plan my day: open today's page">
             <svg viewBox="0 0 48 60" aria-hidden="true"><path d="M4 2h28l12 12v42a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z" fill="#fdfcf9" stroke="#cfc8bb"/><path d="M32 2v10a2 2 0 0 0 2 2h10" fill="#ebe6dc" stroke="#cfc8bb"/><path d="M9 24h28M9 30h28M9 36h28M9 42h20" stroke="#b9b2a5" stroke-width="1.6"/><text x="24" y="54" text-anchor="middle" font-family="DM Mono, monospace" font-size="6.5" letter-spacing=".5" fill="#8a8275">TXT</text></svg>
             <span>Plan my day</span>
+          </button>
+          <!-- To-do.txt: today's list as a plain list (back on the desktop, 6 Oct 2026: there was no way back in without it) -->
+          <button type="button" class="desk-file" id="open-txt" title="Double-click to open" aria-label="To-do.txt: open today's list">
+            <svg viewBox="0 0 48 60" aria-hidden="true"><path d="M4 2h28l12 12v42a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z" fill="#fdfcf9" stroke="#cfc8bb"/><path d="M32 2v10a2 2 0 0 0 2 2h10" fill="#ebe6dc" stroke="#cfc8bb"/><path d="M9 22l2 2 4-4M9 31l2 2 4-4M9 40l2 2 4-4" fill="none" stroke="#3f7a5a" stroke-width="1.6"/><path d="M19 22h18M19 31h18M19 40h12" stroke="#b9b2a5" stroke-width="1.6"/><text x="24" y="54" text-anchor="middle" font-family="DM Mono, monospace" font-size="6.5" letter-spacing=".5" fill="#8a8275">TXT</text></svg>
+            <span>To-do.txt</span>
           </button>
           <!-- the Shopping list and Add reminder (Apple Reminders, 6 Oct 2026); put away at work -->
           <button type="button" class="desk-file personal" id="open-shop" title="Double-click to open" aria-label="Shopping list: open">
@@ -450,6 +452,9 @@
           <button type="button" class="dock-app" id="dock-records" aria-label="Record player" title="Record player"><img src="assets/obj/record-player-top.png" alt=""></button>
           <i class="dock-sep" aria-hidden="true"></i>
           <button type="button" class="dock-app dock-sticky" id="add-sticky" title="New sticky note" aria-label="Add a sticky note"><span aria-hidden="true">+</span></button>
+          <!-- minimised windows wait here, like a Mac's (public/desk/window.js) -->
+          <i class="dock-sep" id="dock-min-sep" aria-hidden="true" hidden></i>
+          <span class="dock-min" id="dock-min"></span>
         </nav>
         <div class="desk-dim" aria-hidden="true"></div>
       </section>

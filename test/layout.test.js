@@ -27,3 +27,14 @@ test("layout: the saved arrangement is tidied; sizes default to Medium", () => {
   assert.deepEqual(sizeOf("agenda", "huge"), sizeOf("agenda", "m"));
   assert.equal(sizeOf("nothing", "m"), null);
 });
+
+test("layout: a new file goes to the first free grid spot from the top right", async () => {
+  const { freeSpot, overlaps, FILE_GRID, EDGE, TOP } = await import("../public/shared/layout.js");
+  const a = { w: 1200, h: 800 }, b = { w: 96, h: 100 };
+  const x0 = a.w - EDGE - b.w;
+  assert.deepEqual(freeSpot(b, [], a), { x: x0, y: TOP });
+  assert.deepEqual(freeSpot(b, [{ x: x0, y: TOP, w: 96, h: 100 }], a), { x: x0, y: TOP + FILE_GRID.h });
+  // a wide widget across the first column pushes it to the next column
+  assert.deepEqual(freeSpot(b, [{ x: x0 - 300, y: 0, w: 500, h: 800 }], a).x < x0 - 300, true);
+  assert.equal(overlaps({ x: 0, y: 0, w: 10, h: 10 }, { x: 10, y: 0, w: 10, h: 10 }), false);
+});

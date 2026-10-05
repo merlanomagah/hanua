@@ -5,13 +5,13 @@
 // Files drag from anywhere on them (a click or double-click still opens), widgets by the grip at their top
 // (so Up next's swipe and the timer's buttons still work). Arrow keys move a selected file or a focused grip.
 // Not on phones, where the desk is one scrolling page.
-import { clamp, layoutShape, place, sizeOf, snapFile, snapWidget, toShare, FILE_GRID, SIZES, SIZE_NAMES, WIDGET_GRID } from "../shared/layout.js";
+import { clamp, freeSpot, layoutShape, place, sizeOf, snapFile, snapWidget, toShare, FILE_GRID, SIZES, SIZE_NAMES, WIDGET_GRID } from "../shared/layout.js";
 import { $, h, toast } from "../lib.js";
 
 const KEY = "desk-layout";
 const desk = document.querySelector(".desk");
 const stacked = () => matchMedia("(max-width: 900px)").matches;
-const WIDGETS = { agenda: "Up next", "desk-window": "Weather", "w-plan": "Today's plan", "w-timer": "Focus timer" };
+const WIDGETS = { agenda: "Up next", "desk-window": "Weather", "w-timer": "Focus timer" };
 const items = () => [...desk.querySelectorAll(".desk-file"), ...Object.keys(WIDGETS).map((id) => $(id)).filter(Boolean)];
 const isFile = (el) => el.classList.contains("desk-file");
 
@@ -25,16 +25,26 @@ const area = () => ({ w: desk.clientWidth, h: desk.clientHeight });
 export function applyLayout() {
   const on = arranged() && !stacked();
   desk.classList.toggle("arranged", on);
+  const fresh = [];
   for (const el of items()) {
     el.dataset.arrange = "";
     if (!on) { el.style.left = el.style.top = el.style.width = el.style.height = ""; continue; }
     const it = layout.items[el.id];
-    if (!it) continue;
+    if (!it) { if (!el.hidden) fresh.push(el); continue; }
     const size = !isFile(el) && sizeOf(el.id, it.size);
     if (size) { el.style.width = `${size[0]}px`; el.style.height = size[1] ? `${size[1]}px` : ""; }
     const p = place(it, { w: el.offsetWidth, h: el.offsetHeight }, area());
     el.style.left = `${p.x}px`; el.style.top = `${p.y}px`;
   }
+  // something new on an arranged desk (a file added since): the first free spot from the top right, then kept
+  for (const el of fresh) {
+    const a = area(), d = desk.getBoundingClientRect();
+    const taken = items().filter((x) => x !== el && !x.hidden && layout.items[x.id]).map((x) => { const r = x.getBoundingClientRect(); return { x: r.left - d.left, y: r.top - d.top, w: r.width, h: r.height }; });
+    const p = freeSpot({ w: el.offsetWidth, h: el.offsetHeight }, taken, a) || { x: 12, y: 56 };
+    el.style.left = `${p.x}px`; el.style.top = `${p.y}px`;
+    layout.items[el.id] = { x: toShare(p.x, a.w), y: toShare(p.y, a.h) };
+  }
+  if (fresh.length) keep();
 }
 
 // the size closest to a widget's width now, so the first move doesn't resize anything
@@ -130,7 +140,7 @@ for (const [id, name] of Object.entries(WIDGETS)) {
   if (!el) continue;
   const grip = h("span", { className: "wg-grip", role: "button", tabIndex: 0, ariaLabel: `Move ${name} (drag, or arrow keys)`, title: "Drag to move" });
   const more = h("span", { className: "wg-more", role: "button", tabIndex: 0, ariaLabel: `${name}: size and layout`, title: "Size", textContent: "⋯" });
-  const stop = (e) => e.stopPropagation(); // Today's plan is a button: these mustn't open it
+  const stop = (e) => e.stopPropagation(); // the grip and ⋯ mustn't also click the widget under them
   grip.addEventListener("pointerdown", (e) => { stop(e); e.preventDefault(); dragFrom(el, e); });
   grip.addEventListener("click", stop);
   grip.addEventListener("keydown", (e) => {
@@ -146,7 +156,7 @@ for (const [id, name] of Object.entries(WIDGETS)) {
   more.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") show(e); });
   el.addEventListener("contextmenu", (e) => { if (stacked()) return; e.preventDefault(); openMenu(el, { x: e.clientX, y: e.clientY }); });
   el.append(grip, more);
-  // Up next, Today's plan and the timer redraw themselves (replaceChildren): put the grip and ⋯ back each time
+  // Up next and the timer redraw themselves (replaceChildren): put the grip and ⋯ back each time
   new MutationObserver(() => { if (!grip.isConnected) el.append(grip, more); }).observe(el, { childList: true });
 }
 // Files drag from anywhere on them; a selected one moves a grid square with the arrow keys

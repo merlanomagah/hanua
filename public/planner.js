@@ -8,7 +8,8 @@ import { showBoard } from "./goals/board.js";
 import { parseDay, todayStr } from "./shared/dates.js";
 import { $, reducedMotion } from "./lib.js";
 import { openInCalendar, openTurntable, renderNotes } from "./app.js";
-import { fetchBackup, fetchDay, fetchPrompts } from "./desk/state.js";
+import { dayReady, desk, fetchBackup, fetchDay, fetchPrompts } from "./desk/state.js";
+import { restoreWindows } from "./desk/window.js";
 import { openPlan, renderTodo, resetSweep } from "./desk/page.js";
 import { renderAgenda } from "./desk/agenda.js";
 import { openTxt } from "./desk/todotxt.js";
@@ -117,6 +118,17 @@ document.addEventListener("pointerdown", (e) => { if (!e.target.closest?.(".desk
 const file = $("open-plan");
 desktopFile(file, () => openPlan());
 initLists(desktopFile);
+desktopFile($("open-txt"), () => openTxt());
+
+// The first time the desk shows after Hanua opens: today's windows as they were left (open, or minimised in the
+// dock). The first time today: the one that fits the day (Mel, 6 Oct 2026): planned → To-do.txt; started but not
+// planned → Plan my day; nothing written yet → nothing.
+function fitsToday() {
+  if (desk.blocks.length) return "todo-txt";
+  const written = desk.focus.some(Boolean) || desk.sections.some((x) => x.lines.some((l) => l.text)) || desk.meetings.some((m) => m.title);
+  return written ? "plan-day" : null;
+}
+document.addEventListener("hanua:desk", (e) => { if (e.detail) dayReady.then(() => restoreWindows(fitsToday)); });
 $("plan-day").addEventListener("close", () => { if (!$("todo-txt").contains(document.activeElement)) file.focus({ preventScroll: true }); });
 
 // the dock, like a Mac's: Calendar opens the Calendar app on today, Notion the Hanua page, the record player the turntable
