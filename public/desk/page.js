@@ -299,8 +299,10 @@ export function renderTodo() {
   close.addEventListener("click", () => $("plan-day").close());
   const swap = h("button", { type: "button", className: "pw-btn", textContent: archive ? "← Today" : "Archive", title: archive ? "Back to today's page" : "Earlier days' pages", hidden: focus.on });
   swap.addEventListener("click", () => { if (archive) { archive = null; renderTodo(); } else openArchive(); });
+  const txtBtn = h("button", { type: "button", className: "pw-btn", textContent: "To-do.txt", title: "Today's list, to tick off in any order", hidden: Boolean(archive) });
+  txtBtn.addEventListener("click", () => openTxt());
   const bar = h("div", { className: "pw-bar" }, h("span", { className: "pw-dots" }, close, h("i", { ariaHidden: "true" }), h("i", { ariaHidden: "true" })),
-    h("span", { className: "pw-title", textContent: archive ? "Archive" : "Plan my day.txt" }), h("span", { className: "pw-tools" }, swap));
+    h("span", { className: "pw-title", textContent: archive ? "Archive" : "Plan my day.txt" }), h("span", { className: "pw-tools" }, txtBtn, swap));
   $("todo").replaceChildren(bar, page);
   if (old && !archive) page.scrollTop = old.scrollTop;
   renderTxt();

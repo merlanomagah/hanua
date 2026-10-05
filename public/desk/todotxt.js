@@ -26,14 +26,15 @@ export function renderTxt() {
   if (txt.hidden) return;
   const all = openItems({ ...desk, sections: desk.sections.map((x) => ({ ...x, lines: x.lines.map((l) => ({ ...l, done: false })) })) }, focus.on);
   const byRef = new Map(all.map((x) => [x.ref, x]));
-  const row = (ref, time) => {
+  const row = (ref, time, tag = true) => {
     const info = refInfo(ref);
     if (!info?.obj.text) return null;
     const done = info.obj.done;
     const tick = check(done, `Mark ${info.obj.text} ${done ? "not done" : "done"}`);
     tick.addEventListener("click", () => toggleRef(ref));
     return h("li", { className: `txt-line${done ? " done" : ""}` }, tick, h("span", { className: "txt-time", textContent: time || "" }),
-      h("i", { className: `txt-pri p-${info.obj.pri || "none"}`, title: PRI_LABEL[info.obj.pri || ""] }), h("span", { className: "txt-text", textContent: info.obj.text }));
+      h("i", { className: `txt-pri p-${info.obj.pri || "none"}`, title: PRI_LABEL[info.obj.pri || ""] }), h("span", { className: "txt-text", textContent: info.obj.text }),
+      tag ? h("span", { className: "txt-sec", textContent: info.where }) : null);
   };
   const planned = desk.blocks.filter((b) => b.kind === "task" && byRef.has(b.ref));
   const plannedRefs = new Set(planned.map((b) => b.ref));
@@ -41,13 +42,15 @@ export function renderTxt() {
   const rest = all.filter((x) => !plannedRefs.has(x.ref) && !over.includes(x.ref));
   const group = (title, rows) => (rows.filter(Boolean).length ? [title ? h("h4", { textContent: title }) : null, h("ul", { className: "txt-list" }, rows)] : []);
   const close = h("button", { type: "button", className: "pw-close", ariaLabel: "Close To-do.txt", title: "Close" });
-  close.addEventListener("click", () => { txt.hidden = true; $("open-txt").focus({ preventScroll: true }); });
+  close.addEventListener("click", () => { txt.hidden = true; $("open-plan").focus({ preventScroll: true }); });
   const bar = h("div", { className: "pw-bar txt-bar" }, h("span", { className: "pw-dots" }, close, h("i", { ariaHidden: "true" }), h("i", { ariaHidden: "true" })),
     h("span", { className: "pw-title", textContent: "To-do.txt" }), h("span", { className: "pw-tools txt-date", textContent: planDate(deskDay) }));
   const body = h("div", { className: "txt-body", tabIndex: -1 },
     ...group(planned.length ? "The plan" : "", planned.map((b) => row(b.ref, b.start))),
     ...group("Didn't fit today", over.map((r) => row(r))),
-    ...group(planned.length ? "Not planned yet" : "To do", rest.map((x) => row(x.ref))),
+    // what isn't time-blocked sits under its own section's header, as on the page (Mel, 6 Oct 2026)
+    ...(rest.length && planned.length ? [h("h3", { className: "txt-part", textContent: "Not planned yet" })] : []),
+    ...[...new Set(rest.map((x) => x.section || "General"))].flatMap((name) => group(name, rest.filter((x) => (x.section || "General") === name).map((x) => row(x.ref, "", false)))),
     !all.length ? h("p", { className: "txt-empty", textContent: focus.on ? "No Work tasks today." : "Nothing on the list yet: open Plan my day." } ) : null,
     all.length && !planned.length ? h("p", { className: "txt-empty", textContent: "Press Save & plan in Plan my day to time-block these." }) : null);
   txt.replaceChildren(bar, body);

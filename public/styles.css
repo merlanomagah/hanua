@@ -713,7 +713,7 @@ button.frame:hover { transform: translateY(-2px); box-shadow: inset 1px 1px 0 rg
 .desk {
   --pad-r: clamp(24px, 4vw, 52px);
   --top-h: 30%;                                   /* the desk top's band, from the bottom of the screen */
-  --wg-w: clamp(250px, 21vw, 310px);             /* the widgets' column at the right */
+  --wg-w: clamp(280px, 25vw, 390px);             /* the widgets' column at the right */
   --edge: clamp(28px, 4.5vw, 64px);
   --stick: clamp(72px, 5.6vw, 88px);             /* a sticky note: 7.6 cm, about an eighth of a 27" screen's width */
   --pc-left: calc(var(--edge) + var(--stick) * 2 + 12px + clamp(20px, 2.4vw, 36px));
@@ -735,19 +735,21 @@ button.frame:hover { transform: translateY(-2px); box-shadow: inset 1px 1px 0 rg
 }
 .desk-top::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 22px; background: linear-gradient(180deg, #8a5a38, #5e3a22); box-shadow: inset 0 1px 0 rgb(255 230 200 / 0.35); }
 /* To-do.txt: a small window on the desktop, dragged by its title bar */
-.txt-win { position: absolute; z-index: 6; left: var(--pc-left); top: 240px; width: min(360px, calc(100% - 32px)); max-height: 58%; display: flex; flex-direction: column; overflow: hidden;
+.txt-win { position: absolute; z-index: 6; left: var(--pc-left); top: 200px; width: min(540px, calc(100% - 32px)); max-height: 70%; display: flex; flex-direction: column; overflow: hidden;
   border-radius: 10px; background: #FCFBF8; box-shadow: 0 0 0 1px rgb(0 0 0 / 0.12), 0 24px 48px -16px rgb(0 0 0 / 0.5); }
 .txt-win[hidden] { display: none; }
 .txt-bar { cursor: grab; touch-action: none; grid-template-columns: 60px 1fr auto; }
 .txt-date { font: 9px var(--mono); letter-spacing: 0.1em; color: var(--ink-4); }
-.txt-body { flex: 1; min-height: 0; overflow-y: auto; padding: 8px 16px 14px; outline: none; }
-.txt-body h4 { margin: 10px 0 2px; font: 9px var(--mono); letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-4); }
+.txt-body { flex: 1; min-height: 0; overflow-y: auto; padding: 10px 22px 18px; outline: none; }
+.txt-part { margin: 18px 0 0; font: italic 500 18px var(--display); color: var(--terra); }
+.txt-body h4 { margin: 14px 0 4px; font: 9px var(--mono); letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-4); }
 .txt-list { list-style: none; margin: 0; padding: 0; }
-.txt-line { display: flex; align-items: center; gap: 8px; min-height: 28px; border-bottom: 1px solid #efebe3; --line: 30px; }
-.txt-time { flex: none; width: 38px; font: 11px var(--mono); font-variant-numeric: tabular-nums; color: var(--ink-4); }
+.txt-line { display: flex; align-items: center; gap: 10px; min-height: 36px; padding: 2px 0; border-bottom: 1px solid #efebe3; --line: 30px; }
+.txt-time { flex: none; width: 40px; font: 11px var(--mono); font-variant-numeric: tabular-nums; color: var(--ink-4); }
 .txt-pri { flex: none; width: 7px; height: 7px; border-radius: 50%; background: #e3ddd2; }
 .txt-pri.p-h { background: var(--terra); } .txt-pri.p-m { background: #d9b45c; } .txt-pri.p-l { background: #8fb39d; }
-.txt-text { min-width: 0; font: 16px/1.3 var(--display); }
+.txt-text { flex: 1; min-width: 0; font: 17px/1.35 var(--display); }
+.txt-sec { flex: none; max-width: 32%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 9px var(--mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--faint); }
 .txt-line.done .txt-text { color: var(--muted); text-decoration: line-through; }
 .txt-win .check { position: relative; flex: none; width: 15px; height: 15px; padding: 0; border: 1px solid var(--ink-3); border-radius: 2px; background: transparent; cursor: pointer; display: grid; place-items: center; }
 .txt-win .check svg { width: 100%; height: 100%; stroke: var(--green); stroke-width: 3; fill: none; stroke-dasharray: 20; stroke-dashoffset: 20; transition: stroke-dashoffset 300ms ease; }
@@ -760,7 +762,7 @@ button.frame:hover { transform: translateY(-2px); box-shadow: inset 1px 1px 0 rg
 .slot.plan-break .t { font-style: italic; color: var(--muted); }
 .slot.plan-break time::before { background: transparent !important; box-shadow: inset 0 0 0 1px var(--faint); }
 /* widgets down the right of the desktop, like a Mac's (6 Oct 2026): Up next fills what Weather and Today's plan leave */
-.widgets { position: absolute; z-index: 3; right: var(--pad-r); top: 64px; bottom: calc(var(--top-h) + 16px); width: var(--wg-w); display: flex; flex-direction: column; gap: 14px; }
+.widgets { position: absolute; z-index: 3; right: var(--pad-r); top: 64px; bottom: 22px; /* down to the desk, beside the dock (6 Oct 2026: more room) */ width: var(--wg-w); display: flex; flex-direction: column; gap: 14px; }
 .widget { position: relative; box-sizing: border-box; padding: 12px 14px; border: 0; border-radius: 12px; text-align: left; color: var(--ink); container-type: inline-size;
   background: rgb(250 247 242 / 0.78); -webkit-backdrop-filter: blur(14px) saturate(1.2); backdrop-filter: blur(14px) saturate(1.2);
   box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.55), 0 10px 24px -14px rgb(28 24 20 / 0.5); }
@@ -824,7 +826,7 @@ button.frame:hover { transform: translateY(-2px); box-shadow: inset 1px 1px 0 rg
 .desk-file.sel span { background: #2f6fd1; color: #fff; }
 .desk-file:focus-visible { outline: 2px solid var(--terra); outline-offset: 2px; }
 /* the dock: frosted glass along the bottom of the screen, on the desk, like a Mac's */
-.desk-dock { position: absolute; z-index: 3; left: 50%; bottom: 14px; transform: translateX(-50%); display: flex; align-items: flex-end; gap: 8px; padding: 6px 8px; border-radius: 14px;
+.desk-dock { position: absolute; z-index: 3; left: calc(50% - (var(--wg-w) + var(--pad-r)) / 2); bottom: 14px; /* centred in the space left of the widgets, which reach down beside it */ transform: translateX(-50%); display: flex; align-items: flex-end; gap: 8px; padding: 6px 8px; border-radius: 14px;
   background: rgb(250 247 242 / 0.4); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.45), 0 10px 22px -10px rgb(28 24 20 / 0.45); }
 .dock-app { position: relative; display: grid; place-items: center; width: 52px; height: 52px; padding: 0; border: 0; border-radius: 12px; cursor: pointer;
   background: linear-gradient(180deg, #fbf8f2, #e6dfd2); box-shadow: 0 1px 2px rgb(28 24 20 / 0.3); transition: transform 160ms ease; }
@@ -912,7 +914,7 @@ button.frame:hover { transform: translateY(-2px); box-shadow: inset 1px 1px 0 rg
 .pw-title { text-align: center; font: 10px var(--mono); letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-4); }
 /* the date across the top (two rows high), then Today's focuses | To-Do List side by side; one column on phones */
 .pl-date { margin: 0 0 var(--line); height: calc(var(--line) * 2); white-space: nowrap; font: 500 min(calc(var(--line) * 1.5), 10vw)/calc(var(--line) * 2) var(--display); color: var(--ink); letter-spacing: 0.01em; }
-.pl-cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: 8%; align-items: start; }
+.pl-cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: 6%; align-items: start; }
 .pl-cols > .pl-sec + .pl-sec { margin-top: 0; }
 .pl-top { margin-bottom: var(--line); }
 .pl-col, .pl-cols > .pl-sec { min-width: 0; }
@@ -992,7 +994,7 @@ ul.ar-list { list-style: none; }
 .pl-page {
   --line: 36px; --paper: #FCFBF8; --rule: #ECE8E0;
   flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin;
-  padding: var(--line) max(6%, (100% - 1080px) / 2) calc(var(--line) * 2); box-sizing: border-box;
+  padding: var(--line) max(5%, (100% - 1440px) / 2) calc(var(--line) * 2); box-sizing: border-box;
   background: var(--paper) repeating-linear-gradient(180deg, transparent 0 calc(var(--line) - 1px), var(--rule) calc(var(--line) - 1px) var(--line)) local;
   background-position: 0 0; /* the rule ends each row, so text sits in the middle of it */
 }
@@ -1039,10 +1041,10 @@ ul.ar-list { list-style: none; }
 .ip-body { flex: 1; min-height: 0; overflow-y: auto; scrollbar-width: none; }
 .ip-body .empty { margin: 0; line-height: 26px; font: italic 17px/26px var(--display); color: var(--muted); }
 .ip-list { list-style: none; padding: 0; margin: 0; position: relative; }
-.ip-list .slot { grid-template-columns: 52px 1fr; gap: 6px; padding: 0; min-height: 52px; border-bottom: 0; align-items: start; }
+.ip-list .slot { grid-template-columns: 56px 1fr; gap: 8px; padding: 4px 0; min-height: 52px; border-bottom: 0; align-items: start; }
 .ip-list .slot time { line-height: 26px; font-size: 10px; }
 .ip-list .slot time::before { content: ""; display: inline-block; width: 5px; height: 5px; margin-right: 5px; border-radius: 50%; background: var(--dot, var(--green)); vertical-align: 1px; }
-.ip-list .slot .t { display: block; font: 17px/26px var(--display); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ip-list .slot .t { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; font: 17px/24px var(--display); padding-top: 1px; }
 .ip-list .slot .k { margin: 0; line-height: 26px; }
 .ip-list .slot-out { bottom: auto; top: 30px; }
 .ip-list .now-line { margin: 0; }

@@ -114,7 +114,6 @@ function desktopFile(el, open) {
 document.addEventListener("pointerdown", (e) => { if (!e.target.closest?.(".desk-file")) document.querySelectorAll(".desk-file.sel").forEach((f) => f.classList.remove("sel")); });
 const file = $("open-plan");
 desktopFile(file, () => openPlan());
-desktopFile($("open-txt"), () => openTxt());
 $("plan-day").addEventListener("close", () => { if (!$("todo-txt").contains(document.activeElement)) file.focus({ preventScroll: true }); });
 
 // the dock, like a Mac's: Calendar opens the Calendar app on today, Notion the Hanua page, the record player the turntable
