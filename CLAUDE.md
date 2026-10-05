@@ -74,7 +74,7 @@ Read this first if you're picking Hanua up in a new session or a different Claud
 | 4 | Review the panel after 2–3 weeks from the Diary's "Panel:" lines: cut or merge seats that only pass | From about 18–25 Oct 2026 |
 | 5 | Spine count badges keep or remove | Waiting on real data |
 | 6 | Probes from 5 Oct: cut the menu board if no week is filled in (check `data/room/menu/`); cut the canary if the cage door stays shut or it distracts | From about 25 Oct 2026 |
-| 7 | Goals guide page (Notion, "Agile for life"): add a line on optional dates so it matches the "When?" coach | Small, not yet done |
+| 7 | Goals guide page (Notion, "Agile for life"): add a line on optional dates so it matches the "When?" coach | Done 5 Oct 2026 (section 10, "Dates are optional"; section 12 covers Also in) |
 | 8 | Ask Mel after a few days in Safari: does Touch ID come up by itself (or only after a tap), do typed notebook lines sit in the middle of the lines, is the desk slide comfortable, does a Work line reach the Work book after 5 minutes | From 6 Oct 2026 |
 | 9 | The daily planner (#2) is now partly built as the desk notebook; the parked Planned-for date on goal Tasks is still not built. Revisit with Mel once the notebook has been used for 2–3 weeks | From about 26 Oct 2026 |
 
