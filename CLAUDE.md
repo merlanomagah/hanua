@@ -4,7 +4,7 @@ A personal daily dashboard drawn as a room: a bookcase menu (Notion databases), 
 
 ## Workflow
 
-- **Every change request goes through the Hanua Panel first** (`/panel`, `.claude/skills/panel/`), automatically, before anything is touched. It starts with a "worth it?" Gate (Chair and Sceptic), then the seats for the lane (Fix / Small / Medium / Large) assess it, and Mel approves one brief. Not for questions, Mel's own data entry or close-out; skipped when Mel says "skip panel". Parked ideas: `docs/panel/parked.md`. Mel's choice, 4 Oct 2026; the panel is itself Being tested (each Diary row notes which seats caught something).
+- **Every change request goes through the Hanua Panel first** (`/panel`, `.claude/skills/panel/`), automatically, before anything is touched. It starts with a "worth it?" Gate (Chair and Sceptic), then the seats for the lane (Fix / Small / Medium / Large) assess it, and Mel approves one brief. Not for questions, Mel's own data entry or close-out; skipped when Mel says "skip panel". Parked ideas: `docs/panel/parked.md`. Mel's choice, 4 Oct 2026; the panel is itself Being tested (each Diary row notes which seats caught something). Since 6 Oct 2026 every brief also carries a **Lifecycle** table (add incl. ad hoc, see, change, remove + Undo, bulk, close out, record, day 30; SKILL.md Step 3b): Mel's requests describe the making, the panel asks for the rest.
 - Do the work on a working branch. When a change is finished and tested, **also update `main`** (fast-forward it to the finished work and push). The owner has given standing permission for this. They pull `main` with GitHub Desktop.
 - **Push it yourself.** The owner logged in GitHub's `gh` tool (4 Oct 2026) so Claude can push; they shouldn't need GitHub Desktop for it. Use it per command, without changing git config:
   `git -c credential.helper= -c "credential.helper=!$HOME/.local/gh/gh_2.102.0_macOS_arm64/bin/gh auth git-credential" push origin main` (and the working branch). If that fails, `gh auth status` says why.
@@ -26,7 +26,26 @@ The reasoning behind Hanua lives in [Hanua OS](https://app.notion.com/p/3ee16603
 5. A preference stated or something deliberately cut → Preferences (and its cut list). A new image → full-size original in `prototypes/room-dashboard/assets/`, resized copy in `public/assets/`, and a row in the image library.
 6. At the end of every new room, run the promotion check (unpromoted Learning Log rows up; Playbook patterns not adopted, offered as proposals) and update Hanua OS's row in the OS Registry with the sweep date.
 
-## Start here (6 Oct 2026, morning close-out)
+## Start here (6 Oct 2026, evening close-out)
+
+**First, before anything else:** ask Mel to use **Restart Hanua** if she hasn't since the evening's push. A page newer than the running server makes the server drop fields it doesn't know (meetings, priorities, blocks) when the day saves. Then ask the three questions from the planner assessment (below).
+
+**The planner assessment (6 Oct, evening)**: Plan my day works day to day but isn't yet built for longevity or insight. In order (each through the panel):
+| # | Step | Size | Why |
+|---|---|---|---|
+| 11 | **Backup** of `data/room/` (Time Machine reported "Failed to mount backup destination"; else a nightly copy to a private iCloud folder, never the public repo) + a **version check** so an old server refuses (not silently drops) new fields | Small, urgent | The planner's days exist only on this Mac |
+| 12 | **Record when and where from**: added/ticked times on lines, keep each plan instead of overwriting on Re-plan, carried tasks remember their first day ("day 4") | Small | Insights can't be backfilled |
+| 13 | **Close the day** (offered from ~4 pm): tick, decide on the rest now, one line on what went well and what got in the way; the day is marked closed; the morning sweep only catches unclosed days | Medium | Mel wants the closing habit |
+| 14 | **Routines**: recurring tasks on set days with priority/time preset | Medium | Not starting from scratch |
+| 15 | **Weekly summary** into the Notion Weekly review (done, rolled over, plan followed, meeting hours), Mel confirms | Medium | Planner work becomes visible where she reflects |
+| 16 | **Patterns page** (rolled-over tasks, repeated tasks → routines/automation, plan vs actual, estimate accuracy, work vs personal), then Claude suggestions only if Mel chooses | Larger, after 3–4 weeks of history | Automation and Hanua-improvement insights |
+| 17 | Lifecycle gaps found in today's build: Undo on the sweep's Remove / Let all go; delete a meeting row (not just blank it); move a block by hand; split `public/planner.js` (~700 lines) into page / To-do.txt / timer / agenda | Small each | The new panel check, applied backwards |
+
+**Ask Mel:** (1) Is there a Time Machine drive that's just unplugged, or should Hanua back itself up to iCloud? (2) When should Close the day be offered (e.g. 4 pm)? (3) Would she ever want Claude to read her planner history (personal only, or work too: work tasks may be Spark NZ's)? Also how the desk, Plan my day, Save & plan, To-do.txt and the timer feel in Safari after a few mornings, and whether the sweep is a help or a chore. The TV build (#10) is still due from Thu 8 Oct.
+
+**Built on 6 Oct, afternoon and evening (all on `main`):** the desk as a whole-screen Mac desktop (files, widgets incl. the kitchen's weather window small, a dock on the desk: Goals, Calendar, Notion, record player, Stickies), Plan my day as a window (focuses, 3 tasks, Meetings & events, To-Do List sections, morning sweep, archive) with time-blocking (Save & plan → the desk's Up next, To-do.txt, focus timer). Briefs: `docs/plans/2026-10-plan-my-day-timeblocks.md`. Details under Layout → The desk.
+
+## Earlier on 6 Oct 2026 (morning close-out)
 
 **Next session:** build **the one-screen TV** (pending #10, brief `docs/plans/2026-10-tv-channels-review.md`, approved: all four of Mel's answers are at the top). From **Thu 8 Oct**, after the first practice pay on Wed 7 Oct. Run it through the panel's exit check (1440 / 1024 / 375, blank At work and with the remote).
 

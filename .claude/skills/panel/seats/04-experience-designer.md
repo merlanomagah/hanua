@@ -11,3 +11,4 @@
 4. Keyboard and screen reader: focus order, Esc closes, labels on icon controls, contrast on cream paper.
 5. 375px: nothing scrolls sideways; touch targets; hover-only things have a touch equivalent.
 6. Does it keep "Claude drafts, Mel confirms" and Undo where things change?
+7. **Owns the Lifecycle table** (SKILL.md Step 3b): add (incl. ad hoc), see, change, remove + Undo, bulk, close out, record, day 30. Mel asks for the making; this seat asks for the rest (6 Oct 2026).

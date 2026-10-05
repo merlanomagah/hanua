@@ -68,6 +68,23 @@ The **Fix** lane skips the Gate: broken things get fixed.
 
 Seats are in `seats/` (one file each: lens, checklist, what to read). Read the file of every seat that sits. Guests sit only when the change touches their area (each guest file says when).
 
+## Step 3b. Lifecycle check (every lane except Fix)
+
+Mel's requests describe the *making* ("build this so I can do X"); the rest of that thing's life only shows up in use, as later "I forgot to ask for…" requests (Mel, 6 Oct 2026: goals needed ad hoc tasks, edit and delete later; Pūtea's goals had no delete until an old "Belgium Trip" goal got stuck). The panel asks, so she doesn't have to. For each thing the change lets her create, fill in this table in the brief (one line each; "not needed" is a fine answer, a blank is not):
+
+| Verb | Question |
+|---|---|
+| Add | How does it get made, including the ad hoc / one-off case, not just the planned one? |
+| See | Where does she find it again tomorrow, and in a month? |
+| Change | Can she edit every field she set, and reorder or move it? |
+| Remove | Delete or archive? To Notion's trash or marked, never erased (blocking 6). Is there Undo? |
+| Bulk | Many at once (clear all, let all go, move several)? |
+| Close out | What happens at the end of its day / week / life: done, carried, archived? |
+| Record | What's kept for later insight (when, where from, how it ended), and is it backed up? |
+| Day 30 | What does it look like with a month of real use: too many, stale, forgotten? |
+
+Gaps go into the brief's In and out table: built now, or named as deliberately not (and why).
+
 ## Step 4. Assessment
 
 **Premortem first (Medium and Large).** Before any seat speaks, write 3–5 reasons in the past tense: *"It's three weeks later. This failed, or Mel stopped using it. Why?"* Past tense is the point: it makes it fine to name the thing everyone privately suspects, and it finds causes better than asking "what could go wrong". Then the seats work as diagnosticians: each says which of those failures its lens owns and what the brief does about it, before adding anything new. A failure no seat owns is a gap to name in the brief.

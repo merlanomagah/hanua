@@ -26,6 +26,11 @@ Only seats that said something; list the passes in one line underneath.
 | # | Question | Recommendation |
 |---|---|---|
 
+## 4b. Lifecycle (from SKILL.md Step 3b)
+| Verb | For <the thing created> |
+|---|---|
+| Add / See / Change / Remove (+ Undo) / Bulk / Close out / Record / Day 30 | one line each |
+
 ## 5. In and out
 | In this change | Deliberately not (and what would earn it) |
 |---|---|
