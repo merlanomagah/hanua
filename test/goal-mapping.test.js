@@ -38,7 +38,7 @@ test("a cleared title is never sent as empty", () => {
 });
 
 test("status and area choices come from the Notion schema", () => {
-  assert.deepEqual(goalOptions(schema, fields), { level: ["Epic", "Feature", "PBI", "Task"], status: ["New", "Active", "At risk", "Done"], area: ["Work", "Health"] });
+  assert.deepEqual(goalOptions(schema, fields), { level: ["Epic", "Feature", "PBI", "Task"], status: ["New", "Active", "At risk", "Done"], area: ["Work", "Health"], alsoIn: null });
 });
 
 test("sizing suggestion adds unknowns and waiting to the work", () => {
@@ -61,4 +61,13 @@ test("coach flags dates that don't fit inside the parent's", () => {
   const early = coachChecks({ level: "PBI", title: "Write pages", parent: "f", start: "2026-09-20" }, ctx);
   assert.ok(early.some((c) => /Starts before its Feature/.test(c.text)));
   assert.ok(!coachChecks({ level: "PBI", title: "Write pages", parent: "f", due: "2026-11-01" }, ctx).some((c) => /after its/.test(c.text)));
+});
+
+test("Also in reads as a list and writes as a multi-select", () => {
+  const f = { ...fields, alsoIn: "Also in" };
+  const s = { ...schema, "Also in": { type: "multi_select", options: ["Work", "Finances"] } };
+  assert.deepEqual(toGoal({ id: "a", title: "t", fields: { "Also in": "Work, Finances" } }, f).alsoIn, ["Work", "Finances"]);
+  assert.deepEqual(toGoal({ id: "a", title: "t", fields: {} }, f).alsoIn, []);
+  assert.deepEqual(goalProperties(s, { alsoIn: ["Finances"] }, f)["Also in"], { multi_select: [{ name: "Finances" }] });
+  assert.deepEqual(goalProperties(s, { alsoIn: [] }, f)["Also in"], { multi_select: [] });
 });

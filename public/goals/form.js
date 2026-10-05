@@ -1,10 +1,10 @@
 // ---- the goal form: review, edit, or add (Notion only changes on Save) ----
 import { dayOf, todayStr } from "../shared/dates.js";
-import { LEVELS, donePoints, isGoalDone, levelIndex } from "../shared/goals.js";
+import { LEVELS, bookArea, donePoints, isGoalDone, levelIndex } from "../shared/goals.js";
 import { GUIDE, SIZES, SIZE_QUESTIONS, coachChecks, suggestSize } from "../coach.js";
 import { $, api, fmtDay, focus, focusGoals, h, state, toast } from "../lib.js";
-import { areaOptions, createGoal, statusOptions, updateGoal } from "./store.js";
-import { GOAL_AREAS, GOAL_STATUS, boardLevel, boardView, flashGoals, goalById, renderBoard, toggleNewMenu } from "./board.js";
+import { alsoInOptions, areaOptions, createGoal, statusOptions, updateGoal } from "./store.js";
+import { GOAL_AREAS, GOAL_BOOKS, GOAL_STATUS, boardLevel, boardView, flashGoals, goalById, renderBoard, toggleNewMenu } from "./board.js";
 import { coinText } from "../shelf.js";
 import { refreshWhen, whenHint, whenPicker } from "./when.js";
 export let editingGoal = null;
@@ -34,6 +34,7 @@ export function openGoal(g, preset = {}) {
   fillSelect(f.priority, [1, 2, 3, 4].map((p) => ({ value: String(p), label: `P${p}${p === 1 ? " · highest" : p === 4 ? " · lowest" : ""}` })), v.priority ? String(v.priority) : "");
   // a goal added at work is a work goal, so it stays on screen
   fillSelect(f.area, areaOptions(GOAL_AREAS), v.area || (!g && focus.on ? "Work" : ""));
+  fillAlsoIn(v.alsoIn || []);
   f.effort.value = v.effort ?? "";
   f.start.value = dayOf(v.start || "");
   f.due.value = dayOf(v.due || "");
@@ -60,6 +61,16 @@ export function openGoal(g, preset = {}) {
   updateCoach();
   $("goal-dialog").showModal();
 }
+// "Also in": a tick per book, the Area's own book left out (the goal is already there)
+function fillAlsoIn(picked) {
+  const area = bookArea($("goal-form").elements.area.value);
+  $("also-chips").replaceChildren(...alsoInOptions(GOAL_BOOKS).map((name) => {
+    const box = h("input", { type: "checkbox", value: name, checked: picked.map(bookArea).includes(name) });
+    return h("label", { className: "also-chip", hidden: name === area }, box, h("span", { textContent: name }));
+  }));
+}
+const alsoInValue = () => [...$("also-chips").querySelectorAll("input:checked")].filter((b) => !b.closest("label").hidden).map((b) => b.value);
+$("goal-form").elements.area.addEventListener("change", () => fillAlsoIn(alsoInValue()));
 $("goal-form").elements.level.addEventListener("change", (e) => { fillParents(e.target.value, ""); syncWhen(); });
 $("goal-form").elements.parent.addEventListener("change", () => syncWhen());
 
@@ -304,6 +315,7 @@ $("goal-dialog").addEventListener("close", async () => {
     title: f.title.value.trim(), level: f.level.value, parent: f.parent.disabled ? "" : f.parent.value, status: f.status.value,
     priority: f.priority.value, effort: f.effort.value, area: f.area.value, start: f.start.value, due: f.due.value, description: f.description.value.trim(),
     why: f.level.value === "Task" ? "" : f.why.value.trim().replace(/^so that\s*$/i, ""), doneWhen: f.doneWhen.value.trim(),
+    alsoIn: alsoInValue(),
   };
   const g = editingGoal;
   if (!(g?.children?.length)) values.progress = f.progress.value;

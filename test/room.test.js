@@ -74,3 +74,12 @@ test("wall clocks: Sydney and Suva against Auckland, across daylight saving", ()
   assert.equal(aheadText(-3.5), "−3½ h");
   assert.equal(aheadText(0), "same time");
 });
+
+test("the plant counts days watered in a row, still alive until today's watering is missed", async () => {
+  const { plantState } = await import("../public/shared/plant.js");
+  const w = ["2026-10-01", "2026-10-03", "2026-10-04"];
+  assert.equal(plantState(w, "2026-10-04").streak, 2);
+  assert.equal(plantState(w, "2026-10-05").streak, 2); // not yet watered today: yesterday's run still counts
+  assert.equal(plantState(w, "2026-10-06").streak, 0); // a day missed
+  assert.equal(plantState([], "2026-10-06").streak, 0);
+});

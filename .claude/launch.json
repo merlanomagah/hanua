@@ -75,6 +75,23 @@
       ],
       "port": 3033,
       "autoPort": true
+    },
+    {
+      "name": "sample-frames",
+      "runtimeExecutable": "env",
+      "runtimeArgs": [
+        "NOTION_TOKEN=",
+        "ANTHROPIC_API_KEY=",
+        "ANTHROPIC_AUTH_TOKEN=",
+        "PUTEA_URL=http://127.0.0.1:3456",
+        "LOCK_FILE=data/lock-frames.json",
+        "ROOM_DATA=data/room-sample",
+        "APPLE_CAL=0",
+        "node",
+        "server/index.js"
+      ],
+      "port": 3035,
+      "autoPort": true
     }
   ]
 }

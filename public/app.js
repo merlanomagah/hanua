@@ -1,14 +1,15 @@
 import "./lock.js"; // the sleep screen goes up before anything else
 import { aheadText, dayOf, daysBetween, lastLightSwitch, pad, parseDay, timeIn, timeOf, todayStr, ymd } from "./shared/dates.js";
 import { GREET_EVERY_MS, GREET_NAME, greetingsAt, timeOfDay } from "./shared/greetings.js";
-import { onCalendar } from "./shared/goals.js";
+import { goalsInBook, isGoalDone, onCalendar, visibleGoals } from "./shared/goals.js";
 import { appleAtWork, withoutDuplicates } from "./shared/events.js";
 import { $, ago, api, area, fmtDay, focus, focusGoals, h, hiddenInFocus, isDone, isNarrow, longDate, money, num, records, reducedMotion, state, store, toast, updatedLine } from "./lib.js";
-import { onBoard, renderBoard, showBoard } from "./goals/board.js";
+import { flashGoals, onBoard, renderBoard, showBoard } from "./goals/board.js";
+import { levelIcon } from "./goals/icons.js";
 import { openGoal } from "./goals/form.js";
 import { openReview, reviewDue } from "./goals/review.js";
 import { renderTopShelf, toggleEarnings } from "./shelf.js";
-import { loadPlant } from "./plant.js";
+import { loadPlant, plantNow } from "./plant.js";
 import { loadWhiteboard, renderWhiteboard } from "./whiteboard.js";
 import "./menu-plan.js"; // Plan the week ✦ on the menu board
 import { onKitchen, renderMealSlip, showKitchen } from "./kitchen.js"; // swipe left: the weather window and the menu
@@ -18,7 +19,7 @@ import { loadDesk, loadStickies, renderAgenda, renderStickies, renderTodo, showD
 
 // Which Notion area plays which part on the page (ids from config/areas.json)
 export const ROLE = { tasks: "work", events: "calendar", notes: "learning", people: "relationships" };
-export const MONEY_BOOK = { id: "money", label: "Money", icon: "$", color: "#2e5e4e", money: true };
+export const MONEY_BOOK = { id: "money", label: "Finances", icon: "$", color: "#2e5e4e", money: true };
 // Spine artwork per book (assets/shelf/book-*.png); books without one get a plain cloth spine
 export const SPINES = { work: "work", calendar: "calendar", money: "money", health: "health", learning: "learning", relationships: "people" };
 export const ROMAN = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"];
@@ -234,7 +235,64 @@ export let channel = Math.min(CHANNELS.length - 1, Math.max(0, Number(store("roo
 export const row = (name, mid, amt, cls = "") =>
   h("span", { className: `cat ${cls}` }, h("span", { className: "name", textContent: name }), mid, h("span", { className: "amt", textContent: amt }));
 
+// ---------- wall: three framed pictures under the greeting shelf (Mel, 5 Oct 2026) ----------
+// Today's spend (Pūtea), the plant's days watered in a row, the next savings goal (Pūtea). Read live, never kept.
+// Money frames go blank at work and when the remote hides money, like the TV.
+function frame(kind, label, body, { onclick, title } = {}) {
+  const art = h("div", { className: "fr-art" }, h("span", { className: "fr-label", textContent: label }), ...body);
+  const props = { className: `frame fr-${kind}`, title: title || "" };
+  return onclick ? h("button", { type: "button", ...props, onclick }, art) : h("div", props, art);
+}
+const blankFrame = (kind, label, why) => frame(kind, label, [h("span", { className: "fr-blank", textContent: why })]);
+export function renderFrames() {
+  const box = $("frames");
+  if (!box) return;
+  const m = state.money, off = moneyOff();
+  const why = focus.on ? "Put away at work" : "Hidden with the remote";
+  const toBook = () => openBook("money", bookEl("money"));
+  const live = m?.live;
+  // 1. today's spend, against what's usual for this weekday
+  let spend;
+  if (off) spend = blankFrame("spend", "Today's spend", why);
+  else if (!m?.today) spend = blankFrame("spend", "Today's spend", m?.reason === "closed" ? "Open Pūtea+ to see today" : "Waiting for Pūtea");
+  else {
+    const t = m.today, over = t.usual > 0 && t.spent > t.usual * 1.15;
+    const usual = t.usual > 0 ? `you usually spend ${money(t.usual)} on a ${t.weekday}` : `a quiet ${t.weekday} usually`;
+    spend = frame("spend", "Today's spend", [
+      h("b", { className: `fr-fig${over ? " over" : ""}`, textContent: money(t.spent, t.spent % 1 ? 2 : 0) }),
+      h("span", { className: "fr-line", textContent: t.spent === 0 ? `Nothing yet · ${usual}` : usual }),
+      t.mindful ? h("span", { className: "fr-tag", textContent: "A mindful day" }) : null,
+      live ? null : h("span", { className: "fr-tag", textContent: "Sample" }),
+    ], { onclick: toBook, title: "Open the Finances book" });
+  }
+  // 2. the plant: days watered in a row
+  const p = plantNow();
+  const plant = frame("plant", "Plant watered", [
+    h("b", { className: "fr-fig", textContent: String(p.streak) }),
+    h("span", { className: "fr-line", textContent: p.streak === 1 ? "day in a row" : "days in a row" }),
+    h("span", { className: "fr-tag", textContent: p.wateredToday ? "Watered today ✓" : p.streak ? "Water today to keep it going" : "Water it to start a run" }),
+  ], { onclick: () => $("can")?.focus(), title: "The can is on the books' shelf" });
+  // 3. the next savings goal in Pūtea
+  let save;
+  const g = m?.savings?.find((x) => !x.done) || m?.savings?.[0];
+  if (off) save = blankFrame("save", "Saving for", why);
+  else if (!g) save = blankFrame("save", "Saving for", live ? "No savings goals in Pūtea yet" : "Waiting for Pūtea");
+  else {
+    const pct = g.target ? Math.min(100, Math.round((g.saved / g.target) * 100)) : 0;
+    save = frame("save", "Saving for", [
+      h("span", { className: "fr-name", textContent: `${g.icon ? g.icon + " " : ""}${g.name}` }),
+      h("span", { className: "fr-ring", style: `--p:${pct}`, ariaLabel: `${pct}% saved` }, h("b", { textContent: `${pct}%` })),
+      h("span", { className: "fr-line", textContent: `${money(g.saved)} of ${money(g.target)}` }),
+      g.due ? h("span", { className: "fr-tag", textContent: `by ${fmtDay(g.due, { day: "numeric", month: "short" })}` }) : null,
+    ], { onclick: toBook, title: "Open the Finances book" });
+  }
+  box.replaceChildren(spend, plant, save);
+}
+window.addEventListener("hanua:plant", () => renderFrames());
+window.addEventListener("hanua:watered", () => setTimeout(renderFrames, 50));
+
 export function renderMoneyScreen() {
+  renderFrames();
   const m = state.money;
   const el = $("screen");
   if (focus.on) return el.replaceChildren();
@@ -337,7 +395,7 @@ export function applyScreen(animate) {
   $("screen-power").setAttribute("aria-pressed", String(screenOn));
   $("screen-power").title = screenOn ? "Turn the screen off" : "Turn the screen on";
   $("screen-power").ariaLabel = screenOn ? "Turn the spending screen off" : "Turn the spending screen on";
-  $("money-screen").ariaLabel = screenOn ? "Open the Money book" : "Spending screen is off";
+  $("money-screen").ariaLabel = screenOn ? "Open the Finances book" : "Spending screen is off";
   $("screen").setAttribute("aria-hidden", String(!screenOn));
 }
 export function setScreen(on, animate = true) {
@@ -361,6 +419,7 @@ export function applyRemote() {
   p.title = moneyOff() ? "Show money views again" : "Hide all money views";
   p.ariaLabel = moneyOff() ? "Show all money views" : "Hide all money views";
   $("app").classList.toggle("money-hidden", moneyOff());
+  renderFrames();
 }
 
 $("remote-power").addEventListener("click", () => {
@@ -679,12 +738,9 @@ export function renderNotes() {
   }
   if (reviewDue() && !focus.on) notes.unshift({ text: "Weekly review due", meta: "Goals · ten minutes", run: () => { showBoard(true); openReview(); } });
   const box = $("notes");
-  if (!notes.length) {
-    return box.replaceChildren(h("div", { className: "notes-empty" },
-      h("div", { className: "placeholder", ariaHidden: "true" }),
-      h("span", { textContent: "Your notes will pin here." })));
-  }
-  box.replaceChildren(...notes.slice(0, 8).map((n, i) => {
+  // on the desk wall above the stickies since 5 Oct 2026 (the wall has the frames); nothing pinned, nothing shown
+  box.hidden = !notes.length;
+  box.replaceChildren(...notes.slice(0, 3).map((n, i) => {
     const el = h("button", { type: "button", className: "note", title: n.run ? "" : "Open in its book" },
       h("span", { className: "meta", textContent: n.meta }),
       h("span", { className: "text", textContent: n.text }));
@@ -716,6 +772,43 @@ export async function toggleTask(r, li) {
 
 export let openEl = null;
 
+// A book's goals (Mel, 5 Oct 2026): those whose Area is this book or that are "Also in" it, each with its
+// progress and the next few open steps underneath. A click takes you to the goal on the board.
+const BOOK_AREA = { work: "Work", health: "Health", learning: "Learning", relationships: "People", money: "Finances" };
+function goalsSection(id) {
+  const name = BOOK_AREA[id];
+  if (!name) return [];
+  const all = visibleGoals(focusGoals(state.goals?.goals || []), { today: todayStr() });
+  const roots = goalsInBook(all, name).sort((a, b) => Number(isGoalDone(a)) - Number(isGoalDone(b)) || (a.priority ?? 9) - (b.priority ?? 9));
+  // mark it first, so the board draws it lit and scrolls to it
+  const toBoard = (g) => () => { closeBook(); flashGoals([g.id]); if (onBoard) renderBoard(); else showBoard(true); };
+  const row = (g, small) => h("li", { className: `bg-row${small ? " step" : ""}${isGoalDone(g) ? " done" : ""}` },
+    h("button", { type: "button", className: "bg-open", title: "Show it on the goals board", onclick: toBoard(g) },
+      levelIcon(g.level),
+      h("span", { className: "t", textContent: g.title }),
+      small ? null : h("span", { className: "bg-bar", ariaHidden: "true" }, Object.assign(h("i"), { style: `width:${g.progress || 0}%` })),
+      h("span", { className: "m", textContent: small ? g.status || "" : `${g.progress || 0}%${g.status ? " · " + g.status : ""}` })));
+  const list = roots.flatMap((g) => {
+    const next = all.filter((c) => c.parent === g.id && !isGoalDone(c)).slice(0, 3);
+    return [row(g, false), ...next.map((c) => row(c, true))];
+  });
+  return [
+    h("h3", { textContent: "Goals" }),
+    list.length ? h("ul", { className: "book-goals" }, list)
+      : h("p", { className: "empty", textContent: `No goals here yet. Give a goal the Area ${name}, or tick ${name} under "Also in".` }),
+  ];
+}
+
+// Pūtea's savings goals in the Finances book: read live, never kept
+function savingsSection(m) {
+  if (!m?.savings?.length) return [];
+  return [
+    h("h3", { textContent: "Savings goals · Pūtea" }),
+    h("ul", { className: "mrows" }, m.savings.map((g) => bar(`${g.icon ? g.icon + " " : ""}${g.name}`, g.saved, g.target,
+      [`of ${money(g.target)}`, g.done ? "reached ✓" : g.due ? `by ${fmtDay(g.due, { day: "numeric", month: "short", year: "numeric" })}` : ""].filter(Boolean).join(" · ")))),
+  ];
+}
+
 export function bookPages(id) {
   if (id === "money") return moneyPages();
   const a = { ...area(id), records: records(id) };
@@ -732,6 +825,7 @@ export function bookPages(id) {
     askForm(id, a.label),
   ];
   const right = [
+    ...goalsSection(id),
     h("h3", { textContent: "Entries" }),
     a.records.length
       ? h("ul", { className: "entries" }, a.records.map((r) => {
@@ -779,7 +873,7 @@ export function moneyPages() {
   const m = state.money;
   if (moneyOff()) {
     return {
-      left: [h("p", { className: "eyebrow", textContent: "Hidden" }), h("h2", { id: "book-title", textContent: "Money" }),
+      left: [h("p", { className: "eyebrow", textContent: "Hidden" }), h("h2", { id: "book-title", textContent: "Finances" }),
         h("p", { className: "sub", textContent: focus.on ? "Put away while you're at work." : "Money is hidden with the remote. Press its power button to show it again." })],
       right: [h("p", { className: "empty", textContent: "These pages are face down for now." })],
     };
@@ -792,7 +886,7 @@ export function moneyPages() {
   const turn = (n, label) => h("button", { type: "button", className: "mb-turn", ariaLabel: label, textContent: n < 0 ? "‹" : "›", onclick: () => turnMoney(n), disabled: n > 0 && thisMonth });
   const left = [
     h("p", { className: "eyebrow", textContent: src.eyebrow }),
-    h("h2", { id: "book-title", textContent: "Money" }),
+    h("h2", { id: "book-title", textContent: "Finances" }),
     h("div", { className: "money-month" }, turn(-1, "The month before"), h("span", { textContent: monthName(view.key) + (thisMonth ? " · so far" : "") }), turn(1, "The month after")),
     src.note ? h("p", { className: "money-note", textContent: src.note }) : null,
     h("div", { className: "stats" },
@@ -803,12 +897,13 @@ export function moneyPages() {
     mo.biggest ? h("p", { className: "money-big" }, h("span", { className: "eyebrow", textContent: "Biggest single spend" }),
       h("b", { textContent: `${mo.biggest.name} · ${money(mo.biggest.amount, 2)}` }),
       h("small", { textContent: [fmtDay(mo.biggest.date, { day: "numeric", month: "short" }), mo.biggest.category].filter(Boolean).join(" · ") })) : null,
-    askForm(null, "money"),
+    askForm(null, "finances"),
     m.live && m.puteaUrl ? h("a", { className: "money-open", href: m.puteaUrl, target: "_blank", rel: "noopener", textContent: "Open Pūtea ↗" }) : null,
   ];
   const catMax = Math.max(0, ...mo.categories.map((c) => c.total));
   const placeMax = Math.max(0, ...mo.places.map((p) => p.total));
   const right = [
+    ...(thisMonth ? [...goalsSection("money"), ...savingsSection(m)] : []),
     h("h3", { textContent: "Where it went" }),
     mo.categories.length ? h("ul", { className: "mrows" }, mo.categories.map((c) => bar(c.name, c.total, catMax, c.count ? `${c.count} payment${c.count === 1 ? "" : "s"}` : ""))) : h("p", { className: "empty", textContent: "Nothing spent this month." }),
     mo.places.length ? h("h3", { textContent: "Top places" }) : null,

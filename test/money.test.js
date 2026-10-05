@@ -2,7 +2,7 @@
 // Pūtea's own (src/main/services/finance.ts: getMonthData, listTransactions, getSubscriptions).
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { label, shapeMonth, shapeSubscriptions, shapeThisPay, isMonthKey, getMoney } from "../server/money.js";
+import { label, shapeMonth, shapeSubscriptions, shapeThisPay, shapeToday, shapeSavings, isMonthKey, getMoney } from "../server/money.js";
 
 const month = {
   income: 3240, expenses: 1868.4, net: 1371.6, prevIncome: 3000, prevExpenses: 2410.75,
@@ -93,4 +93,29 @@ test("this pay keeps Pūtea's figures and trims to what one screen shows", () =>
 test("an older Pūtea without plans gives no This pay rather than made-up figures", () => {
   assert.equal(shapeThisPay(null), null);
   assert.equal(shapeThisPay({}), null);
+});
+
+test("today's spend comes from Pūtea's habits: today's day only", () => {
+  const habits = { mindful: { days: [
+    { date: "2026-10-04", weekday: "Sunday", typical: 33.22, spent: 0, today: false },
+    { date: "2026-10-05", weekday: "Monday", typical: 10.5607, spent: 40, today: true, mindful: false },
+  ] } };
+  assert.deepEqual(shapeToday(habits), { date: "2026-10-05", weekday: "Monday", spent: 40, usual: 10.56, mindful: false, payday: false });
+  assert.equal(shapeToday(null), null);
+  assert.equal(shapeToday({ mindful: { days: [] } }), null);
+});
+
+test("savings goals: soonest date first, then undated, then past, then finished; balance beats current_amount", () => {
+  const list = [
+    { id: 2, name: "Emergency fund", target_amount: 18000, current_amount: 0, account_balance: 1301.5, target_date: null },
+    { id: 6, name: "Belgium Trip", target_amount: 6000, current_amount: 0, target_date: "2026-08-01" },
+    { id: 3, name: "Move to Sydney", target_amount: 3500, current_amount: 0, target_date: "2026-12-31" },
+    { id: 5, name: "Queenstown Marathon", target_amount: 1000, current_amount: 300, target_date: "2026-11-13" },
+    { id: 7, name: "Done one", target_amount: 100, current_amount: 100, target_date: "2026-10-30" },
+  ];
+  const out = shapeSavings(list, "2026-10-05");
+  assert.deepEqual(out.map((g) => g.id), [5, 3, 2, 6, 7]);
+  assert.equal(out.find((g) => g.id === 2).saved, 1301.5);
+  assert.equal(out.at(-1).done, true);
+  assert.deepEqual(shapeSavings(null), []);
 });

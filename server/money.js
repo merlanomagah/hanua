@@ -78,6 +78,25 @@ export function shapeThisPay(p) {
   };
 }
 
+// The wall frame "Today's spend": Pūtea's GET /api/habits has this week's days, each with what was spent and
+// what's usual for that weekday (its mindful-days probe). Only today's is kept.
+export function shapeToday(habits) {
+  const d = (habits?.mindful?.days || []).find((x) => x.today);
+  if (!d) return null;
+  return { date: d.date, weekday: d.weekday, spent: round2(d.spent || 0), usual: round2(d.typical || 0), mindful: !!d.mindful, payday: !!d.payday };
+}
+
+// Pūtea's savings goals (GET /api/finance/goals), soonest date first, then the undated; finished ones last.
+export function shapeSavings(list, today = ymd(new Date())) {
+  const goals = (Array.isArray(list) ? list : []).map((g) => {
+    const saved = round2(g.account_balance ?? g.current_amount ?? 0);
+    return { id: g.id, name: String(g.name || "").trim(), icon: g.icon || "", target: round2(g.target_amount || 0), saved,
+      due: g.target_date ? String(g.target_date).slice(0, 10) : null, done: g.target_amount > 0 && saved >= g.target_amount };
+  });
+  const rank = (g) => (g.done ? 3 : g.due && g.due < today ? 2 : g.due ? 0 : 1);
+  return goals.sort((a, b) => rank(a) - rank(b) || (a.due || "9").localeCompare(b.due || "9") || b.target - a.target);
+}
+
 async function liveMonth(key) {
   const [month, cur] = await Promise.all([putea(`/api/finance/month/${key}`), putea(txPath(key))]);
   return shapeMonth(key, month, cur.transactions || []);
@@ -102,6 +121,7 @@ export async function getMoney(now = new Date()) {
       putea("/api/finance/accounts").catch(() => []),
       putea("/api/this-pay").catch(() => null), // an older Pūtea has no plan yet: the channel says so
     ]);
+    const [habits, savings] = await Promise.all([putea("/api/habits").catch(() => null), putea("/api/finance/goals").catch(() => [])]);
     const month = shapeMonth(ym(now), summary, cur.transactions || []);
     const spend = [...(cur.transactions || []), ...(before.transactions || [])].filter(isSpend);
     const days = lastWeek(now).map((date) => ({
@@ -116,6 +136,8 @@ export async function getMoney(now = new Date()) {
       month,
       subscriptions: shapeSubscriptions(subs),
       thisPay: shapeThisPay(thisPay),
+      today: shapeToday(habits),
+      savings: shapeSavings(savings, ymd(now)),
       week: {
         spent: round2(days.reduce((s, d) => s + d.spent, 0)),
         usual: Math.round((month.prevExpenses / daysIn(prev)) * 7),
@@ -192,6 +214,12 @@ function sampleMoney(now) {
       { name: "Anthropic", monthly: 36, frequency: "Monthly", last: ymd(new Date(now.getFullYear(), now.getMonth(), 1)) },
     ].sort((a, b) => b.monthly - a.monthly),
     week: { spent: days.reduce((s, d) => s + d.spent, 0), usual: 480, days },
+    today: { date: ymd(now), weekday: now.toLocaleDateString("en-NZ", { weekday: "long" }), spent: 18.5, usual: 26, mindful: false, payday: false },
+    savings: [
+      { id: 1, name: "Queenstown Marathon", icon: "🏃", target: 1000, saved: 300, due: ymd(new Date(now.getFullYear(), now.getMonth() + 1, 13)), done: false },
+      { id: 2, name: "Move to Sydney", icon: "✈️", target: 3500, saved: 900, due: ymd(new Date(now.getFullYear(), now.getMonth() + 3, 0)), done: false },
+      { id: 3, name: "Emergency fund", icon: "🛟", target: 18000, saved: 1300, due: null, done: false },
+    ],
     thisPay: {
       hasPlan: true, practice: false, day: 6, days: 14, daysLeft: 9, nextPayday: ymd(new Date(now.getFullYear(), now.getMonth(), now.getDate() + 9)),
       safe: { pay: 212, perDay: 23.56 },

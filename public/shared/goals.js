@@ -55,6 +55,23 @@ export function treeOrder(goals) {
   return (a, b) => (order.get(a.id) ?? 1e9) - (order.get(b.id) ?? 1e9);
 }
 
+// Goals in the books: a goal belongs to the book of its Area, and to any book in "Also in" (Mel, 5 Oct 2026:
+// "Land a PM role at $100K" is Work and Finances). Books are named by Area; Money was renamed Finances.
+export const bookArea = (name) => (name === "Money" ? "Finances" : name);
+export const goalBooks = (g) => new Set([g?.area, ...(g?.alsoIn || [])].filter(Boolean).map(bookArea));
+// The goals a book opens on: those tagged with it whose parent isn't (the rest come along underneath them).
+export function goalsInBook(goals, area) {
+  const want = bookArea(area);
+  const byId = new Map(goals.map((g) => [g.id, g]));
+  const tagged = (g) => goalBooks(g).has(want);
+  const underTagged = (g) => {
+    const seen = new Set();
+    for (let p = byId.get(g.parent); p && !seen.has(p.id); p = byId.get(p.parent)) { if (tagged(p)) return true; seen.add(p.id); }
+    return false;
+  };
+  return goals.filter((g) => tagged(g) && !underTagged(g));
+}
+
 // A goal plus everything above and below it.
 export function lineageIn(goals, id) {
   const byId = new Map(goals.map((g) => [g.id, g]));

@@ -1,7 +1,8 @@
 // The plant on the greeting shelf: it grows with every day Mel waters it, and browns when days are missed.
 // The kind version (Mel, 5 Oct 2026): growth is never taken away, and one watering brings it straight back.
 // Shared so the rules are tested; the log itself is a list of watered days (YYYY-MM-DD), kept on the Mac.
-import { daysBetween } from "./dates.js";
+import { addDays, daysBetween } from "./dates.js";
+
 
 // Days since the last watering -> how it looks
 export const HEALTH = [
@@ -18,5 +19,11 @@ export function plantState(watered = [], today) {
   const since = last ? daysBetween(last, today) : null;
   // never watered: a fresh new plant, not a thirsty one
   const health = since == null ? HEALTH[0] : [...HEALTH].reverse().find((h) => since >= h.from);
-  return { days: days.length, last, since, wateredToday: since === 0, health: health.name, words: health.words };
+  // days in a row: counted back from today, or from yesterday while today's watering is still to come
+  let streak = 0;
+  if (since === 0 || since === 1) {
+    const have = new Set(days);
+    for (let d = last; have.has(d); d = addDays(d, -1)) streak++;
+  }
+  return { days: days.length, last, since, wateredToday: since === 0, health: health.name, words: health.words, streak };
 }

@@ -10,8 +10,12 @@ let pouring = false;
 const SEG = 34; // px between the vine's nodes along the shelf
 const DROP = 26; // leaves on the strand that hangs down once the shelf is full
 
+// how the plant is today, for the wall frame of days watered in a row
+export const plantNow = () => plantState(watered, todayStr());
+
 export async function loadPlant() {
   try { watered = (await api("/api/plant")).watered || []; } catch { watered = []; }
+  window.dispatchEvent(new Event("hanua:plant"));
   renderPlant();
 }
 

@@ -223,11 +223,13 @@
                 </div>
               </div>
 
-              <div class="notes" id="notes" aria-label="Pinned notes"></div>
+              <!-- three framed pictures under the greeting shelf, like wall art: today's spend, the plant's days in a row,
+                   the next savings goal (Pūtea and the plant, read live; Mel, 5 Oct 2026) -->
+              <div class="frames" id="frames" aria-label="Today at a glance"></div>
 
               <div class="monitor-wrap">
                 <div class="monitor" id="monitor">
-                  <button class="glass" id="money-screen" type="button" aria-label="Open the Money book">
+                  <button class="glass" id="money-screen" type="button" aria-label="Open the Finances book">
                     <span class="screen" id="screen"></span>
                   </button>
                   <div class="chin">
@@ -391,8 +393,12 @@
         <div class="desk-up"><button type="button" id="desk-up"><span class="arrow" aria-hidden="true">↑</span>THE WALL</button></div>
         <!-- seen front-on (Mel, 5 Oct 2026): the bricks come down to an oak desk top -->
         <div class="desk-top" aria-hidden="true"></div>
-        <!-- sticky notes on the wall: typed here, kept on this Mac until taken down (the × in each corner) -->
-        <div class="stickies" id="stickies" aria-label="Sticky notes"></div>
+        <div class="desk-left">
+          <!-- Hanua's own nudges, pinned above the stickies: weekly review due, someone to catch up with, a blocked task -->
+          <div class="desk-notes" id="notes" aria-label="Pinned notes"></div>
+          <!-- sticky notes on the wall: typed here, kept on this Mac until taken down (the × in each corner) -->
+          <div class="stickies" id="stickies" aria-label="Sticky notes"></div>
+        </div>
         <!-- the agenda on lined paper pinned at the right, above the lamp: swipe, or ‹ ›, for other days -->
         <article class="agenda-sheet" id="agenda" aria-label="Agenda" tabindex="0"></article>
         <!-- today's meals, pinned beside it -->
@@ -513,6 +519,8 @@
           <input name="effort" type="hidden">
         </div>
         <label>Area<select name="area"></select></label>
+        <!-- other books this goal also shows in, besides its Area (Notion "Also in") -->
+        <div class="wide also-in" id="also-in" role="group" aria-labelledby="also-in-label"><span class="field-label" id="also-in-label">Also in</span><span class="also-chips" id="also-chips"></span></div>
         <label>Start<input name="start" type="date"></label>
         <div class="when-field" id="when-field"><span class="field-label">When</span><span class="when-row" id="when-row"><input name="due" type="date" aria-label="Due date"></span><small class="when-hint" id="when-hint"></small></div>
         <label class="wide" id="progress-field">Progress <output name="progressOut"></output><input name="progress" type="range" min="0" max="100" step="5"></label>

@@ -17,7 +17,9 @@ import { renderTodo } from "../planner.js";
 
 // Status and Area options come from the Goals database in Notion (sent with /api/goals); these are the fallbacks.
 export const GOAL_STATUS = ["New", "Active", "At risk", "Done"];
-export const GOAL_AREAS = ["Work", "Health", "Learning", "People", "Money", "Personal"];
+export const GOAL_AREAS = ["Work", "Health", "Learning", "People", "Finances", "Personal"];
+// the books a goal can also be shown in (Notion "Also in"; options read from the schema when there)
+export const GOAL_BOOKS = ["Work", "Health", "Learning", "People", "Finances"];
 export const STATE_CLASS = { new: "new", active: "active", "at risk": "risk", done: "done" };
 export const CARD_TILTS = ["-1.2deg", "0.9deg", "-0.5deg", "1.5deg", "-1.6deg", "0.6deg"];
 

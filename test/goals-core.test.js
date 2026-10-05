@@ -132,7 +132,7 @@ test("the lights switch off at 9 pm and on at 4 am, each once", async () => {
 test("the plant grows with each day watered and browns with days missed, kindly", async () => {
   const { plantState } = await import("../public/shared/plant.js");
   const today = "2026-10-10";
-  assert.deepEqual(plantState([], today), { days: 0, last: null, since: null, wateredToday: false, health: "fresh", words: "happy" });
+  assert.deepEqual(plantState([], today), { days: 0, last: null, since: null, wateredToday: false, health: "fresh", words: "happy", streak: 0 });
   const s = plantState(["2026-10-01", "2026-10-02", "2026-10-02", "2026-10-09"], today);
   assert.equal(s.days, 3); // the same day twice counts once
   assert.equal(s.health, "fresh"); // watered yesterday
@@ -162,4 +162,20 @@ test("a week is named by a real Monday", () => {
   assert.equal(weekKey("2026-13-40"), null);
   assert.equal(weekKey("../x"), null);
   assert.equal(weekKey("2026-1-5"), null);
+});
+
+test("goals show in the book of their Area and any book they're also in, with children under them", async () => {
+  const { goalsInBook, goalBooks } = await import("../public/shared/goals.js");
+  const goals = [
+    goal("E", "Epic", { area: "Work" }),
+    goal("F", "Feature", { parent: "E", area: "Work", alsoIn: ["Finances"] }),
+    goal("P", "PBI", { parent: "F", area: "Work", alsoIn: ["Finances"] }),
+    goal("S", "Epic", { area: "Money" }),
+    goal("H", "Task", { area: "Health" }),
+  ];
+  assert.deepEqual(goalsInBook(goals, "Work").map((g) => g.id), ["E"]);
+  assert.deepEqual(goalsInBook(goals, "Finances").map((g) => g.id), ["F", "S"]); // P sits under F; old "Money" counts as Finances
+  assert.deepEqual(goalsInBook(goals, "Health").map((g) => g.id), ["H"]);
+  assert.deepEqual(goalsInBook(goals, "People"), []);
+  assert.deepEqual([...goalBooks({ area: "Work", alsoIn: ["Finances", "Work"] })], ["Work", "Finances"]);
 });

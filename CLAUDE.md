@@ -40,6 +40,16 @@ The reasoning behind Hanua lives in [Hanua OS](https://app.notion.com/p/3ee16603
 
 Pūtea now plans each pay. Hanua shows it as a **fourth TV channel**, not on the desk (the 5 Oct cut list keeps the desk for daily planning; Mel chose the TV). `server/money.js` `shapeThisPay()` reads Pūtea's read-only `GET /api/this-pay`; `public/app.js` CH 4 draws safe to spend, the next payday, flexible spending, debt payments due and payday moves. Same rules as CH 1–3 (blank At work and when the remote hides money). A probe: cut it if it isn't watched (look from ~2 Nov 2026). Brief: `docs/plans/2026-10-tv-this-pay.md`. To test with real Pūtea figures and no Notion: the `sample-putea` launch config (port 3033).
 
+## 5 Oct 2026, late night: goals in their books, three frames, music card, rail fix
+
+Brief: `docs/plans/2026-10-goals-in-books-and-money-frames.md` (Large lane; Mel's answers at the top).
+- **Goals in books.** Notion Goals has a new multi-select **Also in** (`goals.fields.alsoIn`); Area stays a goal's home and still drives At work. Rule `goalsInBook` / `goalBooks` / `bookArea` in `public/shared/goals.js` (tested): a book shows goals whose Area or Also in is that book, with their next 3 open steps underneath; a click lands on the goal on the board (`goalsSection` in `public/app.js`). The goal form has "Also in" ticks (`fillAlsoIn`, the Area's own book hidden).
+- **Money → Finances**: the book's label and the Area option in Notion (no rows used Money; `bookArea` still reads an old "Money" as Finances). The book id stays `money`. The Finances book lists its goals and **Pūtea's savings goals** (`shapeSavings`, `GET /api/finance/goals`).
+- **Three frames** under the greeting shelf (`#frames`, `renderFrames`), replacing the wall's pinned notes: **Today's spend** vs usual for the weekday (`shapeToday`, Pūtea's `GET /api/habits`), **Plant watered** days in a row (`plantState().streak`, tested), **Saving for** the next Pūtea savings goal. Money frames go blank At work and with the remote. Walnut frames, cream mat; on phones they grow to fit and drop the ring.
+- **Pinned notes** (weekly review due, catch up, blocked, Learning notes) moved to the desk wall, left of the screen above the stickies (`.desk-left`, 3 at most, hidden when empty).
+- **Music card**: smoked-glass overlay, no border, centred left of the record player. **Top rail**: no more overlap in narrow windows.
+- Preview with real Pūtea and a fresh test PIN: launch config `sample-frames` (port 3035).
+
 ## Where we left off (5 Oct 2026, night)
 
 Read this first if you're picking Hanua up in a new session or a different Claude account. Fuller context: the Hanua OS Context page and the latest Session Diary rows in Notion (5 Oct: "Goals Backlog view…", "Room life…", "The canary redrawn…", "The wall rearranged, a typed menu…", "Plan the week…").

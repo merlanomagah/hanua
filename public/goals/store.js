@@ -80,4 +80,5 @@ export async function refreshGoals(fresh = true) {
 
 // The Status and Area choices: from the Notion database when it's connected, otherwise the defaults.
 export const statusOptions = (fallback) => state.goals.options?.status?.length ? state.goals.options.status : fallback;
+export const alsoInOptions = (fallback) => state.goals.options?.alsoIn?.length ? state.goals.options.alsoIn : fallback;
 export const areaOptions = (fallback) => state.goals.options?.area?.length ? state.goals.options.area : fallback;
