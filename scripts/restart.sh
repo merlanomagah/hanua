@@ -11,13 +11,15 @@ URL="http://localhost:$PORT"
 
 # Hanua restarts itself: ask it to, and wait for the fresh copy to answer. It's Hanua's own child, so this script
 # (and Shortcuts, which runs it) can finish straight away without cutting anything off (6 Oct 2026).
+# a Mac notification when it's done, so a restart from the shortcut or the Desktop app never feels like nothing happened
+notify() { osascript -e 'display notification "Restarted with the latest version." with title "Hanua"' >/dev/null 2>&1 || true; }
 boot() { curl -fs "$URL/api/status" 2>/dev/null | sed -n 's/.*"boot":"\([^"]*\)".*/\1/p' || true; } # empty while it restarts
 BEFORE=$(boot)
 if [ -n "$BEFORE" ] && curl -fs -X POST -H "X-Hanua: restart" "$URL/api/restart" >/dev/null 2>&1; then
   for _ in $(seq 1 40); do
     sleep 0.5
     NOW=$(boot)
-    if [ -n "$NOW" ] && [ "$NOW" != "$BEFORE" ]; then exec scripts/start.sh; fi
+    if [ -n "$NOW" ] && [ "$NOW" != "$BEFORE" ]; then notify; exec scripts/start.sh; fi
   done
   echo "Hanua didn't come back. The last lines of logs/hanua.log:"; tail -n 20 logs/hanua.log; exit 1
 fi
@@ -46,4 +48,4 @@ if lsof -tiTCP:"$PORT" -sTCP:LISTEN >/dev/null 2>&1; then
   exit 1
 fi
 
-scripts/start.sh
+scripts/start.sh && notify
