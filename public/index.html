@@ -399,10 +399,19 @@
           <!-- sticky notes on the wall: typed here, kept on this Mac until taken down (the × in each corner) -->
           <div class="stickies" id="stickies" aria-label="Sticky notes"></div>
         </div>
-        <!-- widgets down the right, like a Mac's (Mel, 6 Oct 2026): Up next (swipe or ‹ › for other days), Weather, Today's plan -->
+        <!-- widgets down the right, like a Mac's (Mel, 6 Oct 2026): Up next (swipe or ‹ › for other days), the weather window, Today's plan -->
         <aside class="widgets" aria-label="Widgets">
           <article class="widget wg-agenda" id="agenda" aria-label="Up next" tabindex="0"></article>
-          <article class="widget wg-weather" id="w-weather" aria-label="Weather" hidden></article>
+          <!-- the kitchen's weather window, small: the same sky, drawn again (weather-window.js) -->
+          <figure class="widget wg-window weather-window" id="desk-window">
+            <div class="ww-glass">
+              <canvas class="ww-sky" aria-hidden="true"></canvas>
+              <div class="ww-panes"></div>
+              <span class="ww-now" hidden><span>NOW</span></span>
+            </div>
+            <div class="ww-frame" aria-hidden="true"><i></i><i></i></div>
+            <figcaption class="ww-sill"><span class="ww-place"></span><span class="ww-summary"></span></figcaption>
+          </figure>
           <button type="button" class="widget wg-plan" id="w-plan" aria-label="Today's plan: open Plan my day"></button>
         </aside>
         <!-- today's meals, pinned beside it -->

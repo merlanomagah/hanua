@@ -5,7 +5,6 @@
 // lines) and a To-Do List of empty lines, on faint rows with the text in the middle of each. Kept in a small file per
 // day on this Mac. Rules: public/shared/desk.js (tested).
 import { bringForward, deskSections, deskShape, lastFocus, leftovers, planDate, shorterCol, startDay, stepDay, stickiesUp, stickyShape, GENERAL, MAX_LINES, MAX_NAME, MAX_SECTIONS, SECTION_ROWS, STICKY_COLOURS, STICKY_MAX, STICKY_TEXT } from "./shared/desk.js";
-import { KINDS } from "./shared/weather.js";
 import { showBoard } from "./goals/board.js";
 import { dayOf, parseDay, timeOf, todayStr } from "./shared/dates.js";
 import { $, focus, h, longDate, reducedMotion, toast } from "./lib.js";
@@ -287,7 +286,7 @@ export function renderTodo() {
 }
 $("plan-day").addEventListener("close", () => { if (archive) { archive = null; renderTodo(); } });
 
-// ---- widgets on the desktop: Up next (the agenda), Weather, Today's plan ----
+// ---- widgets on the desktop: Up next (the agenda), the weather window (weather-window.js), Today's plan ----
 export function renderPlanWidget() {
   const w = $("w-plan");
   if (!w) return;
@@ -298,22 +297,6 @@ export function renderPlanWidget() {
     f.length ? h("ol", { className: "wg-focus" }, f.map((x) => h("li", { textContent: x }))) : h("p", { className: "wg-empty", textContent: "No focuses yet. Open Plan my day." }),
     h("p", { className: "wg-meta", textContent: tasks.length ? `${done} of ${tasks.length} task${tasks.length === 1 ? "" : "s"} done` : "No tasks set" }));
 }
-async function renderWeatherWidget() {
-  const w = $("w-weather");
-  try {
-    const j = await (await fetch("/api/weather")).json();
-    const day = j.days?.[0];
-    if (!day) throw new Error("no forecast");
-    const k = KINDS[j.now?.kind || day.kind] || KINDS.cloudy;
-    const rain = Math.max(...(day.parts || []).map((p) => p.rain || 0));
-    w.replaceChildren(h("span", { className: "wg-label", textContent: j.place || "Weather" }),
-      h("div", { className: "wg-wx" }, h("span", { className: "wg-emoji", textContent: k.emoji }), h("b", { textContent: `${Math.round(j.now?.temp ?? day.max)}°` })),
-      h("p", { className: "wg-meta", textContent: `${k.words} · H ${Math.round(day.max)}° L ${Math.round(day.min)}°${rain >= 30 ? ` · ${rain}% rain` : ""}` }));
-    w.hidden = false;
-  } catch { w.hidden = true; }
-}
-renderWeatherWidget();
-setInterval(renderWeatherWidget, 30 * 60_000);
 $("w-plan").addEventListener("click", () => openPlan());
 
 // ---- the agenda, as the Up next widget: swipe (or ‹ ›) through the days ----

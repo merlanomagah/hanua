@@ -748,6 +748,17 @@ button.frame:hover { transform: translateY(-2px); box-shadow: inset 1px 1px 0 rg
 .wg-emoji { font-size: 26px; line-height: 1; }
 .wg-wx b { font: 400 34px/1.1 var(--display); }
 .wg-meta { margin: 4px 0 0; font: 12px var(--ui); color: var(--ink-3); }
+/* the weather window, small: a slim cream frame round the same sky, the sill underneath */
+.wg-window.weather-window { flex: none; margin: 0; padding: 0; overflow: hidden; background: #EFE8DC; }
+.wg-window .ww-glass { height: clamp(104px, 9vw, 130px); margin: 6px 6px 0; border-radius: 7px 7px 2px 2px; }
+.wg-window .ww-frame { inset: 0 0 auto; height: calc(clamp(104px, 9vw, 130px) + 12px); border-width: 6px; border-radius: 12px 12px 4px 4px; box-shadow: none; }
+.wg-window .ww-frame i { width: 5px; margin-left: -2.5px; box-shadow: none; }
+.wg-window .ww-pane { padding: 6px 6px 6px 8px; }
+.wg-window .ww-pane .ww-label { font-size: 7px; letter-spacing: 0.14em; }
+.wg-window .ww-pane .ww-temp { gap: 4px; font-size: 22px; }
+.wg-window .ww-pane .ww-words { font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wg-window .ww-now span { top: 4px; left: 3px; font-size: 6px; padding: 1px 3px; }
+.wg-window .ww-sill { position: static; height: auto; padding: 7px 12px 8px; font-size: 8px; letter-spacing: 0.14em; filter: none; background-size: cover; }
 .wg-plan { flex: none; display: block; width: 100%; cursor: pointer; font: inherit; }
 .wg-plan:hover { background: rgb(250 247 242 / 0.9); }
 .wg-focus { margin: 2px 0 0; padding-left: 18px; font: 16px/1.35 var(--display); }
