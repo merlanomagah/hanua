@@ -188,6 +188,8 @@ app.get("/api/desk/prompts", async (_req, res) => {
       : `Couldn't read the planner prompts (${err.message}).` });
   }
 });
+// Where the desk's dock points: Notion opens the Hanua page (the books, Goals, Weekly reviews, Treat shop)
+app.get("/api/desk/links", (_req, res) => res.json({ notion: config.planner?.notionUrl || null }));
 // Sticky notes on the desk's wall: one small file, kept until each is taken down (taken-down notes are marked, not erased)
 const stickiesFile = path.join(roomDir, "stickies.json");
 app.get("/api/stickies", async (_req, res) => res.set("Cache-Control", "no-store").json(stickyShape(await readJson(stickiesFile, []))));

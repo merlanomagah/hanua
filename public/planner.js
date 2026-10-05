@@ -265,8 +265,17 @@ export function openPlan() {
   if (!$("plan-day").open) $("plan-day").showModal();
 }
 $("plan-day").addEventListener("close", () => file.focus({ preventScroll: true }));
-// the dock: the record player brings up the turntable (more to come)
+// the dock, like a Mac's: Calendar opens the Calendar app on today, Notion the Hanua page, the record player the turntable
 $("dock-records").addEventListener("click", openTurntable);
+$("dock-calendar").addEventListener("click", () => openInCalendar({ date: todayStr() }));
+function dockDate() { // the Calendar tile shows today, like the real one
+  const d = parseDay(todayStr());
+  $("dock-cal-day").textContent = d.toLocaleDateString("en-NZ", { weekday: "short" }).toUpperCase();
+  $("dock-cal-date").textContent = String(d.getDate());
+}
+dockDate();
+setInterval(dockDate, 60_000);
+fetch("/api/desk/links").then((r) => r.json()).then(({ notion }) => { if (notion) $("dock-notion").href = notion; }).catch(() => { /* Notion's own home page is fine */ });
 
 // ---- sticky notes on the wall: typed here, kept on this Mac until taken down (× in the corner, with Undo) ----
 let stickies = [];

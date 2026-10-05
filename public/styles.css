@@ -759,6 +759,11 @@ button.frame:hover { transform: translateY(-2px); box-shadow: inset 1px 1px 0 rg
 .dock-app { position: relative; display: grid; place-items: center; width: 52px; height: 52px; padding: 0; border: 0; border-radius: 12px; cursor: pointer;
   background: linear-gradient(180deg, #fbf8f2, #e6dfd2); box-shadow: 0 1px 2px rgb(28 24 20 / 0.3); transition: transform 160ms ease; }
 .dock-app img { width: 86%; height: auto; }
+.dock-cal { grid-template-rows: 15px 1fr; place-items: stretch; overflow: hidden; background: #fff; }
+.dock-cal b { display: grid; place-items: center; background: #e2675c; color: #fff; font: 600 8px var(--ui); letter-spacing: 0.08em; }
+.dock-cal span { display: grid; place-items: center; font: 300 25px/1 var(--ui); color: var(--ink); }
+.dock-notion { background: #fff; text-decoration: none; }
+.dock-notion svg { width: 62%; height: auto; }
 .dock-app:hover, .dock-app:focus-visible { transform: translateY(-4px) scale(1.08); }
 .dock-app:focus-visible { outline: 2px solid var(--terra); outline-offset: 3px; }
 .dock-app::after { content: attr(title); position: absolute; bottom: calc(100% + 10px); left: 50%; transform: translateX(-50%); padding: 3px 8px; border-radius: 4px; white-space: nowrap;

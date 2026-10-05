@@ -410,8 +410,10 @@
             <span>Plan my day</span>
           </button>
         </div>
-        <!-- the dock: the record player brings up the turntable; more to come -->
+        <!-- the dock: Calendar opens the Calendar app on today, Notion the Hanua page, the record player the turntable -->
         <nav class="desk-dock" aria-label="Dock">
+          <button type="button" class="dock-app dock-cal" id="dock-calendar" aria-label="Calendar: open the Calendar app on today" title="Calendar"><b id="dock-cal-day"></b><span id="dock-cal-date"></span></button>
+          <a class="dock-app dock-notion" id="dock-notion" href="https://www.notion.so" target="_blank" rel="noopener" aria-label="Notion: open the Hanua page" title="Notion"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M7 5.5h13.5L26 10v16.5H7z" fill="#fff" stroke="#1c1814" stroke-width="2" stroke-linejoin="round"/><path d="M12 22V11l8.5 11V11" fill="none" stroke="#1c1814" stroke-width="2.4" stroke-linecap="square" stroke-linejoin="miter"/></svg></a>
           <button type="button" class="dock-app" id="dock-records" aria-label="Record player" title="Record player"><img src="assets/obj/record-player-top.png" alt=""></button>
         </nav>
         <!-- a pad of sticky notes on the desk: click it and a fresh note goes up on the wall -->
