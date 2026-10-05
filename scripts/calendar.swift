@@ -12,6 +12,7 @@
 //   HanuaCalendar remind-add LIST TITLE [DUE] → {"id":…} (LIST "" = the default list; DUE yyyy-MM-ddTHH:mm, with an alert)
 //   HanuaCalendar remind-done ID 1|0          → {"ok":true}   ticked or unticked
 //   HanuaCalendar remind-remove ID            → {"ok":true}   (Undo of an add)
+//   HanuaCalendar reminder-lists              → {"lists":[…],"default":…} (for Settings)
 import AppKit
 import EventKit
 import Foundation
@@ -81,6 +82,8 @@ if mode.hasPrefix("remind") {
   }
   func item(_ id: String) -> EKReminder? { store.calendarItem(withIdentifier: id) as? EKReminder }
   switch mode {
+  case "reminder-lists":
+    out(["lists": store.calendars(for: .reminder).map { $0.title }.sorted(), "default": store.defaultCalendarForNewReminders()?.title ?? ""])
   case "reminders":
     guard args.count >= 3, let cal = list(args[2]) else { out(["error": "list"]) }
     var found: [EKReminder] = []

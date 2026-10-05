@@ -15,6 +15,7 @@ import { renderAgenda } from "./desk/agenda.js";
 import { openTxt } from "./desk/todotxt.js";
 import "./desk/timer.js";
 import "./desk/wallnotes.js"; // focus and reminder post-its
+import { settings } from "./desk/settings.js"; // the gear in the dock
 import "./desk/arrange.js"; // everything on the desk moves, on one grid
 import { initLists } from "./desk/lists.js"; // the Shopping list and Add reminder (Apple Reminders)
 
@@ -125,6 +126,7 @@ desktopFile($("open-txt"), () => openTxt());
 // dock). The first time today: the one that fits the day (Mel, 6 Oct 2026): planned → To-do.txt; started but not
 // planned → Plan my day; nothing written yet → nothing.
 function fitsToday() {
+  if (settings && !settings.desk.autoOpen) return null; // switched off in Settings
   if (desk.locked) return "todo-txt";
   const written = desk.focus.some(Boolean) || desk.sections.some((x) => x.lines.some((l) => l.text)) || desk.meetings.some((m) => m.title);
   return written ? "plan-day" : null;

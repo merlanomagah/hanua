@@ -12,7 +12,7 @@ Sorted by what each item touches, so the saved day's shape changes once, `public
 | 4 | Faster on the page | 18h multi-select and H/M/L then Tab; 17 Undo on the sweep, delete a meeting row; from step 3's Lifecycle: Move a line to another section, Undo for a cleared line | Builds on the new shape | Medium | Done 6 Oct (`2026-10-desk-arrange-and-lists.md`, `2026-10-desk-flow-and-notes.md`) |
 | 5 | Desktop and Up next | 18d meetings both ways, 17 move a block by hand, 18g To-do.txt as a window only, 18f drag desktop icons | All in the desktop layer | Medium | Done 6 Oct (same briefs; plus arranging, Shopping list, reminders, the draft day) |
 | — | The TV (#10) | Approved brief `2026-10-tv-channels-review.md` | Separate area; from Thu 8 Oct | Approved | |
-| 6 | Settings | 18e: fixed sections, day hours, time labels, close times | After 3–5, once the settings are known | Medium | |
+| 6 | Settings | 18e: fixed sections, day hours, time labels, close times | After 3–5, once the settings are known | Medium | Done 6 Oct (`2026-10-desk-settings.md`) |
 | 7 | Close the day | 13 (4 pm, reminder 7 pm) | Needs step 3's record | Medium | |
 | 8 | Routines | 14 | Edited in Settings; needs the new shape | Medium | |
 | 9 | Weekly summary | 15 into the Notion Weekly review, Mel confirms | Needs ~a week of closed days (mid-Oct) | Medium | |

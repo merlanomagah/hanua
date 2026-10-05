@@ -8,6 +8,8 @@ export let deskDay = todayStr(), desk = deskShape({}), earlier = {}, prompts = {
 export let fixed = []; // the sections every day has (config/areas.json planner.fixedSections)
 export let backup = null; // the nightly backup's status (/api/backup): a line in the Archive, a note on the desk if it fails
 export let stale = null; // "page" or "server" when the two save a day differently: saving stops and the page says so
+// Settings changed the fixed sections: today follows at once
+export const setFixed = (f) => { fixed = f || []; };
 export const newId = () => Math.random().toString(36).slice(2, 10);
 let saveTimer = 0;
 let dayLoaded;
@@ -23,7 +25,7 @@ export async function fetchDay() {
       stale = versionClash(j.v); // an old server answers without one
       earlier = j.earlier || {};
       fixed = j.fixed || [];
-      desk = startDay(j.day, earlier, deskDay, fixed);
+      desk = startDay(j.day, earlier, deskDay, fixed, j.usual);
       if (JSON.stringify(desk) !== JSON.stringify(deskShape(j.day))) save(); // a new day, a fixed section added, an older day converted
     }
   } catch { /* the server's away: an empty page */ }

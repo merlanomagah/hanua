@@ -7,7 +7,8 @@ import path from "node:path";
 import { notionEnabled, queryArea, getSchema, toNotionProperties, createPage, updatePage, archivePage, pageSection, pageSections, NotionError } from "./notion.js";
 import { claudeEnabled, ask, draftEntry, coachGoal, suggestChildren, suggestMeals } from "./claude.js";
 import { getMoney, getMoneyMonth, isMonthKey } from "./money.js";
-import { addReminder, getAppleEvents, getDueReminders, getShopping, removeReminder, setReminderDone, showDay, showReminders } from "./calendar.js";
+import { addReminder, getAppleEvents, getDueReminders, getReminderLists, getShopping, removeReminder, setListNames, setReminderDone, showDay, showReminders } from "./calendar.js";
+import { defaults as settingDefaults, settingsShape } from "../public/shared/settings.js";
 import { musicStatus, musicAction, playPlaylist } from "./music.js";
 import { toGoal, goalProperties, goalOptions } from "./goals.js";
 import { rollUp } from "../public/shared/goals.js";
@@ -211,6 +212,22 @@ app.put("/api/stickies", async (req, res) => {
   await writeFile(stickiesFile, JSON.stringify(notes, null, 2) + "\n");
   res.json(notes);
 });
+// Settings Mel changes herself (the desk's Settings window; public/shared/settings.js): on this Mac beside the days,
+// so the nightly backup has them. Unset ones fall back to config/areas.json, .env and the code.
+const settingsFile = path.join(roomDir, "settings.json");
+const settingBase = () => settingDefaults(config.planner?.fixedSections || []);
+let settings = settingsShape(await readJson(settingsFile, {}), settingBase());
+setListNames(settings.lists);
+app.get("/api/settings", (_req, res) => res.set("Cache-Control", "no-store").json({ settings, defaults: settingBase() }));
+app.put("/api/settings", async (req, res) => {
+  settings = settingsShape(req.body, settingBase());
+  await mkdir(roomDir, { recursive: true });
+  await writeFile(settingsFile, JSON.stringify(settings, null, 2) + "\n");
+  setListNames(settings.lists);
+  res.json({ settings, defaults: settingBase() });
+});
+app.get("/api/reminders/lists", async (_req, res) => { try { res.json(await getReminderLists()); } catch (err) { res.status(500).json({ error: err.message }); } });
+
 // The archive: every day that has a page, newest first (each one read with /api/desk/:day)
 app.get("/api/desk/days", async (_req, res) => {
   const files = await readdir(deskDir).catch(() => []);
@@ -223,7 +240,7 @@ app.get("/api/desk/:day", async (req, res) => {
   const earlier = {};
   for (let i = 1; i <= CARRY_DAYS; i++) { const d = stepDay(day, -i); earlier[d] = await read(d); }
   // fixed: the sections every day has (config/areas.json planner.fixedSections; Settings will edit them, step 6)
-  res.set("Cache-Control", "no-store").json({ day: await read(day), earlier, v: DESK_VERSION, fixed: config.planner?.fixedSections || [] });
+  res.set("Cache-Control", "no-store").json({ day: await read(day), earlier, v: DESK_VERSION, fixed: settings.fixedSections, usual: settings.day });
 });
 app.put("/api/desk/:day", async (req, res) => {
   const day = dayKey(req.params.day);

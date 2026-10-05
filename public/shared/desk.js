@@ -18,6 +18,8 @@ export const TIME_PICKS = [10, 15, 30, 45, 60, 120];
 export const TIME_WORDS = { 10: "Quick", 15: "Short", 30: "Half hour", 45: "Solid", 60: "Hour", 120: "Big" };
 export const MEETING_PICKS = [15, 30, 45, 60, 90, 120];
 export const minsText = (m) => (m >= 60 ? `${Math.floor(m / 60)}h${m % 60 ? String(m % 60) : ""}` : `${m}m`); // 15m … 1h30, 2h
+// the words are Mel's to change (Settings, step 6): the page sets them once they're read
+export const setTimeWords = (w) => { for (const m of TIME_PICKS) if (w?.[m]) TIME_WORDS[m] = w[m]; };
 export const timeLabel = (m) => (TIME_WORDS[m] ? `${TIME_WORDS[m]} (${minsText(m)})` : minsText(m));
 const KEPT_MINS = [...new Set([...TIME_PICKS, ...MEETING_PICKS])]; // an older 90m line keeps its time
 export const DEFAULT_MINS = 30, GAP = 5, MEETING_PAD = 5, BREAK_AFTER = 90, BREAK_MINS = 10, MAX_MEETINGS = 12;
@@ -142,9 +144,10 @@ export function withFixed(d, fixed = []) {
 // A new day starts with the last day's section headers (empty), so "House" or "Admin" is waiting each morning:
 // the fixed ones, and Mel's own only if something was written in them (an empty one isn't carried, 6 Oct 2026).
 // Only once: after that the day is Mel's to change (a section she removes doesn't come back).
-export function startDay(day, earlier, today, fixed = []) {
+export function startDay(day, earlier, today, fixed = [], usualDay = null) {
   const d = deskShape(day);
   if (d.started) return withFixed(d, fixed);
+  if (usualDay) d.day = { ...usualDay }; // a new day starts with Mel's usual hours (Settings)
   const last = Object.keys(earlier || {}).filter((k) => dayKey(k) && k < today).sort().reverse()
     .map((k) => deskShape(earlier[k])).find((x) => x.sections.length > 1);
   for (const s of last?.sections.slice(1) || []) {

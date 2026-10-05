@@ -192,7 +192,7 @@ function saveDefault() {
 function resetLayout() {
   withUndo(read(DEFAULT) ? "Back to your default layout" : "Back to Hanua's own layout", () => { const d = read(DEFAULT); layout = d ? layoutShape(d) : { items: {} }; keep(); redraw(); });
 }
-function ownLayout() {
+export function ownLayout() {
   withUndo("Back to Hanua's own layout (your default is forgotten)", () => { write(DEFAULT, null); layout = { items: {} }; keep(); redraw(); });
 }
 

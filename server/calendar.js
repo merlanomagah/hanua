@@ -126,8 +126,11 @@ export async function showDay(date) {
 // ---------- Reminders: the Shopping list and Add reminder ----------
 // Lists by name (.env): REMINDERS_SHOPPING (default "Shopping", made if missing) and REMINDERS_LIST (Add reminder's
 // list; blank = the default one). Nothing is kept here: each read asks Reminders. The sample server has a pretend list.
-const shoppingList = () => process.env.REMINDERS_SHOPPING?.trim() || "Shopping";
-const reminderList = () => process.env.REMINDERS_LIST?.trim() || "";
+// Settings (the desk's Lists group) win over .env
+let named = { shopping: "", reminders: "" };
+export const setListNames = (lists) => { named = { shopping: lists?.shopping || "", reminders: lists?.reminders || "" }; };
+const shoppingList = () => named.shopping || process.env.REMINDERS_SHOPPING?.trim() || "Shopping";
+const reminderList = () => named.reminders || process.env.REMINDERS_LIST?.trim() || "";
 const why = (e) => (e === "denied" || e === "restricted" ? "denied" : e === "notDetermined" ? "ask" : "error");
 const fail = (res) => Object.assign(new Error(res.error === "denied" ? "Hanua isn't allowed to use Reminders yet: System Settings → Privacy & Security → Reminders → Hanua Calendar" : "Reminders didn't answer"), { status: 503, reason: why(res.error) });
 let sampleShop = [{ id: "sh1", title: "Milk" }, { id: "sh2", title: "Bananas" }, { id: "sh3", title: "Rolled oats" }];
@@ -174,6 +177,14 @@ export async function getDueReminders() {
   const res = await helper(["reminders", reminderList()]);
   if (res.error) return { live: false, reason: why(res.error), items: [] };
   return { live: true, list: res.list, items: due(res.items || []) };
+}
+
+// Mel's Reminders lists, for the Settings window to pick from (no typing a name wrong)
+export async function getReminderLists() {
+  if (appleOff()) return { live: false, lists: ["Reminders", "Shopping", "Family"], shopping: shoppingList(), reminders: reminderList() };
+  const res = await helper(["reminder-lists"]);
+  if (res.error) return { live: false, reason: why(res.error), lists: [], shopping: shoppingList(), reminders: reminderList() };
+  return { live: true, lists: res.lists || [], defaultList: res.default, shopping: shoppingList(), reminders: reminderList() };
 }
 
 // Open the Reminders app (where the list lives: edit, share, or set it to Groceries there)

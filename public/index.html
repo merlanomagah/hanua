@@ -444,6 +444,8 @@
         <div class="rem-notes" id="rem-notes" aria-label="Reminders due" hidden></div>
         <!-- To-do.txt: a window on the desktop (no file: Mel, 6 Oct 2026), opened by Save & plan, Up next or Plan my day's title bar -->
         <section class="txt-win" id="todo-txt" aria-label="To-do.txt" hidden></section>
+        <!-- Settings (public/desk/settings.js), from the gear in the dock -->
+        <section class="txt-win set-win" id="settings-win" aria-label="Settings" hidden></section>
         <!-- the Shopping list (Apple Reminders) and Add reminder: windows like To-do.txt -->
         <section class="txt-win list-win" id="shop-win" aria-label="Shopping list" hidden></section>
         <section class="txt-win list-win rem-win" id="rem-win" aria-label="Add reminder" hidden></section>
@@ -453,6 +455,7 @@
           <button type="button" class="dock-app dock-cal" id="dock-calendar" aria-label="Calendar: open the Calendar app on today" title="Calendar"><b id="dock-cal-day"></b><span id="dock-cal-date"></span></button>
           <a class="dock-app dock-notion" id="dock-notion" href="https://www.notion.so" target="_blank" rel="noopener" aria-label="Notion: open the Hanua page" title="Notion"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M7 5.5h13.5L26 10v16.5H7z" fill="#fff" stroke="#1c1814" stroke-width="2" stroke-linejoin="round"/><path d="M12 22V11l8.5 11V11" fill="none" stroke="#1c1814" stroke-width="2.4" stroke-linecap="square" stroke-linejoin="miter"/></svg></a>
           <button type="button" class="dock-app" id="dock-records" aria-label="Record player" title="Record player"><img src="assets/obj/record-player-top.png" alt=""></button>
+          <button type="button" class="dock-app dock-gear" id="dock-settings" aria-label="Settings" title="Settings"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/></svg></button>
           <i class="dock-sep" aria-hidden="true"></i>
           <button type="button" class="dock-app dock-sticky" id="add-sticky" title="New sticky note" aria-label="Add a sticky note"><span aria-hidden="true">+</span></button>
           <!-- minimised windows wait here, like a Mac's (public/desk/window.js) -->

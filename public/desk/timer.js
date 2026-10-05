@@ -3,7 +3,16 @@ import { $, h, toast } from "../lib.js";
 import { showDesk } from "../planner.js";
 
 // ---- the focus timer: 25 minutes on, 5 off (a soft chime at the end, mutable); the rail shows it while it runs ----
-const FOCUS_MS = 25 * 60_000, BREAK_MS = 5 * 60_000;
+// lengths from Settings (Focus timer group); 25 / 5 until they're read
+let FOCUS_MS = 25 * 60_000, BREAK_MS = 5 * 60_000;
+document.addEventListener("hanua:settings", (e) => {
+  const t = e.detail?.timer;
+  if (!t) return;
+  const was = fullOf(timer.mode);
+  FOCUS_MS = t.focus * 60_000; BREAK_MS = t.rest * 60_000;
+  if (!timer.endsAt && timer.left === was) { timer.left = fullOf(timer.mode); keepTimer(); } // not started: the new length
+  $("w-timer").dataset.shape = ""; renderTimer();
+});
 let timer = { mode: "focus", left: FOCUS_MS, endsAt: 0, muted: false };
 try { timer = { ...timer, ...JSON.parse(localStorage.getItem("focus-timer") || "{}") }; } catch { /* a fresh timer */ }
 const keepTimer = () => { try { localStorage.setItem("focus-timer", JSON.stringify(timer)); } catch { /* fine */ } };
