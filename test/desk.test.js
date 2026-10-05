@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { dayKey, stepDay, deskShape, lastFocus, deskSections, planDate, startDay, leftovers, bringForward, shorterCol, MAX_LINES, MAX_TEXT } from "../public/shared/desk.js";
+import { dayKey, stepDay, deskShape, lastFocus, deskSections, planDate, startDay, leftovers, bringForward, settle, carriedDays, shorterCol, withFixed, isFixed, stampLine, keepPlan, timeLabel, TIME_PICKS, PLANS_KEPT, MAX_LINES, MAX_TEXT } from "../public/shared/desk.js";
 
 test("desk: day keys are real days only", () => {
   assert.equal(dayKey("2026-10-05"), "2026-10-05");
@@ -20,18 +20,19 @@ test("desk: stepping days across month and year ends, 29 Feb and both NZ dayligh
   assert.equal(stepDay("2026-10-05", 7), "2026-10-12");
 });
 
-test("desk: shape keeps three focus areas, three key tasks and caps the lists", () => {
-  const s = deskShape({ focus: ["  Calm  ", "Sydney", "Health", "extra"], key: [{ text: "Call", done: 1 }], general: Array.from({ length: 60 }, (_, i) => ({ id: `g${i}`, text: "x".repeat(400) })), settled: { "2026-10-04:g1": "gone", "bad": "today", "2026-10-04:g2": "maybe" } });
+test("desk: shape keeps three focus areas, turns an older day's Tasks into General lines, and caps the lists", () => {
+  const s = deskShape({ focus: ["  Calm  ", "Sydney", "Health", "extra"], key: [{ text: "Call", done: 1, pri: "h", mins: 15 }, { text: "" }, { text: "Ring" }], general: Array.from({ length: 60 }, (_, i) => ({ id: `g${i}`, text: "x".repeat(400) })), settled: { "2026-10-04:g1": "gone", "bad": "today", "2026-10-04:g2": "maybe" } });
   assert.deepEqual(s.focus, ["Calm", "Sydney", "Health"]);
-  assert.equal(s.key.length, 3);
-  assert.deepEqual(s.key[0], { text: "Call", done: true, pri: "", mins: 0 });
-  assert.deepEqual(s.key[2], { text: "", done: false, pri: "", mins: 0 });
-  // an older file's plain list opens as the General section
+  assert.equal(s.key, undefined);
+  // an older file's plain list opens as the General section, its Tasks first (ids k0-k2 kept, blanks dropped)
   assert.equal(s.sections[0].id, "general");
+  assert.deepEqual(s.sections[0].lines.slice(0, 2).map((l) => [l.id, l.text, l.done, l.pri, l.mins]), [["k0", "Call", true, "h", 15], ["k2", "Ring", false, "", 0]]);
   assert.equal(s.sections[0].lines.length, MAX_LINES);
-  assert.equal(s.sections[0].lines[0].text.length, MAX_TEXT);
+  assert.equal(s.sections[0].lines[2].text.length, MAX_TEXT);
   assert.deepEqual(s.settled, { "2026-10-04:g1": "gone" });
   assert.deepEqual(deskShape(null), deskShape({}));
+  // converting again changes nothing (the Tasks aren't added twice)
+  assert.deepEqual(deskShape({ ...s, key: [{ text: "Call" }] }).sections[0].lines.filter((l) => l.id === "k0").length, 1);
 });
 
 test("desk: sections keep General first, keep blanks in the middle and drop trailing ones", () => {
@@ -41,7 +42,7 @@ test("desk: sections keep General first, keep blanks in the middle and drop trai
   assert.equal(s.sections[1].col, 1);
   assert.equal(s.sections[0].lines[0].text, "Ring Nana");
   // a blank line can't be ticked
-  assert.equal(deskShape({ key: [{ text: "", done: true }] }).key[0].done, false);
+  assert.equal(deskShape({ general: [{ id: "x", text: "", done: true }, { id: "y", text: "y" }] }).sections[0].lines[0].done, false);
 });
 
 test("desk: a new day starts with the last day's section headers, empty, only once", () => {
@@ -56,26 +57,37 @@ test("desk: a new day starts with the last day's section headers, empty, only on
 test("desk: the morning sweep lists last week's unfinished, not what's dealt with, done or too old", () => {
   const days = {
     "2026-09-20": { key: [{ text: "Too old" }] },
-    "2026-10-04": { key: [{ text: "Call bank" }, { text: "Done one", done: true }], sections: [{ id: "general", lines: [{ id: "a", text: "Post parcel" }, { id: "b", text: "" }] }, { id: "s1", name: "House", lines: [{ id: "c", text: "Bins" }] }] },
+    "2026-10-04": { key: [{ text: "Call bank" }, { text: "Done one", done: true }], sections: [{ id: "general", lines: [{ id: "a", text: "Post parcel" }, { id: "b", text: "" }] }, { id: "s1", name: "House", lines: [{ id: "c", text: "Bins", from: "2026-10-02" }] }] },
     "2026-10-05": { settled: { "2026-10-04:a": "gone" } },
-    "2026-10-06": { settled: { "2026-10-04:c": "done" }, key: [{ text: "Today's own" }] },
+    "2026-10-06": { settled: { "2026-10-04:c": "today" } },
   };
-  const l = leftovers(days, "2026-10-06");
-  assert.deepEqual(l.map((x) => [x.key, x.section, x.text]), [["2026-10-04:k0", null, "Call bank"]]);
+  // an older day's Task keeps its sweep key (k0), now under General
+  assert.deepEqual(leftovers(days, "2026-10-06").map((x) => [x.key, x.section, x.text, x.from]), [["2026-10-04:k0", "General", "Call bank", "2026-10-04"]]);
+  // a Task already dealt with before the change stays dealt with
+  assert.deepEqual(leftovers({ ...days, "2026-10-05": { settled: { "2026-10-04:a": "gone", "2026-10-04:k0": "done" } } }, "2026-10-06"), []);
+  // a carried line remembers its first day
+  const back = { ...days, "2026-10-06": {} };
+  assert.equal(leftovers(back, "2026-10-06").find((x) => x.text === "Bins").from, "2026-10-02");
+  assert.equal(carriedDays({ day: "2026-10-04", from: "2026-10-02" }, "2026-10-06"), 5);
+  assert.equal(carriedDays({ day: "2026-10-05" }, "2026-10-06"), 2);
 });
 
-test("desk: bringing forward puts a task in an empty slot and a line under its own header", () => {
-  const d = deskShape({ key: [{ text: "Full" }], sections: [] });
-  bringForward(d, { key: "2026-10-05:k1", section: null, text: "Call bank" }, "n1");
-  assert.equal(d.key[1].text, "Call bank");
-  bringForward(d, { key: "2026-10-05:c", section: "House", text: "Bins" }, "n2");
+test("desk: bringing forward puts a line under its own header (General if it had none), remembering where it began", () => {
+  const now = new Date("2026-10-06T08:00:00Z");
+  const d = deskShape({ sections: [] });
+  bringForward(d, { key: "2026-10-05:k1", day: "2026-10-05", section: "General", text: "Call bank", added: "2026-10-05T01:00:00.000Z" }, "n1", now);
+  bringForward(d, { key: "2026-10-05:c", day: "2026-10-05", from: "2026-10-03", section: "House", text: "Bins" }, "n2", now);
+  assert.deepEqual(d.sections[0].lines.map((l) => [l.text, l.from, l.added]), [["Call bank", "2026-10-05", "2026-10-05T01:00:00.000Z"]]);
   const house = d.sections.find((s) => s.name === "House");
-  assert.deepEqual(house.lines.map((l) => l.text), ["Bins"]);
+  assert.deepEqual(house.lines.map((l) => [l.text, l.from]), [["Bins", "2026-10-03"]]);
   assert.deepEqual(d.settled, { "2026-10-05:k1": "today", "2026-10-05:c": "today" });
-  // all task slots full: a task goes to General
-  const full = deskShape({ key: [{ text: "a" }, { text: "b" }, { text: "c" }] });
-  bringForward(full, { key: "2026-10-05:k0", section: null, text: "d" }, "n3");
-  assert.equal(full.sections[0].lines[0].text, "d");
+  assert.equal(d.settledAt["2026-10-05:c"], now.toISOString());
+  // done / let go are recorded with when
+  settle(d, { key: "2026-10-04:z" }, "gone", "n3", now);
+  assert.deepEqual([d.settled["2026-10-04:z"], d.settledAt["2026-10-04:z"]], ["gone", now.toISOString()]);
+  // and survive a save
+  assert.deepEqual(deskShape(d).settledAt, d.settledAt);
+  assert.equal(deskShape(d).sections[1].lines[0].from, "2026-10-03");
 });
 
 test("desk: a new section goes to the shorter column", () => {
@@ -91,7 +103,7 @@ test("desk: yesterday's focus areas show as a hint, today's never do", () => {
 
 test("desk: at work the whole page is put away (it has no Work/personal split)", () => {
   assert.deepEqual(deskSections(true), []);
-  assert.deepEqual(deskSections(false), ["focus", "key", "todo"]);
+  assert.deepEqual(deskSections(false), ["focus", "todo"]);
 });
 
 test("desk: the page's date reads like Tue 06-Oct-2026", () => {
@@ -147,6 +159,55 @@ test("plan: only open items are planned, and at work only Work ones", async () =
   const d = deskShape({ key: [{ text: "Call", pri: "h", mins: 15 }, { text: "Done", done: true }], sections: [{ id: "general", lines: [{ id: "a", text: "Milk" }] }, { id: "s1", name: "Sprint", work: true, lines: [{ id: "b", text: "Review PR", mins: 45 }] }] });
   assert.deepEqual(openItems(d).map((x) => x.ref), ["k0", "a", "b"]);
   assert.deepEqual(openItems(d, true).map((x) => x.ref), ["b"]);
-  assert.equal(d.key[0].mins, 15);
-  assert.equal(deskShape({ key: [{ text: "x", mins: 37, pri: "urgent" }] }).key[0].mins, 0);
+  assert.equal(openItems(d)[0].mins, 15);
+  assert.equal(deskShape({ general: [{ id: "x", text: "x", mins: 37, pri: "urgent" }] }).sections[0].lines[0].mins, 0);
+});
+
+const FIXED = [{ name: "Spark NZ", work: true }, { name: "Jump issues", work: true }];
+test("desk: fixed sections are always there after General; one with the same name is adopted", () => {
+  const d = withFixed(deskShape({ sections: [{ id: "s9", name: "House", lines: [{ id: "h", text: "Bins" }] }, { id: "sw", name: "spark nz", col: 1, work: false, lines: [{ id: "x", text: "Deck" }] }] }), FIXED);
+  assert.deepEqual(d.sections.map((s) => [s.id, s.name]), [["general", "General"], ["sw", "spark nz"], ["f-jump-issues", "Jump issues"], ["s9", "House"]]);
+  assert.equal(d.sections[1].lines[0].text, "Deck"); // kept its lines
+  assert.equal(d.sections[2].work, true);
+  assert.equal(isFixed(d.sections[1], FIXED), true);
+  assert.equal(isFixed(d.sections[3], FIXED), false);
+  // again: nothing doubles
+  assert.equal(withFixed(d, FIXED).sections.length, 4);
+});
+
+test("desk: a new day carries fixed sections and only Mel's own that had something written", () => {
+  const earlier = { "2026-10-06": { sections: [{ id: "general", lines: [] }, { id: "a", name: "Walkthrough", lines: [{ id: "1", text: "Mop" }] }, { id: "b", name: "", lines: [] }, { id: "c", name: "Empty one", lines: [] }] } };
+  const d = startDay({}, earlier, "2026-10-07", FIXED);
+  assert.deepEqual(d.sections.map((s) => s.name), ["General", "Spark NZ", "Jump issues", "Walkthrough"]);
+  assert.equal(d.sections[3].lines.length, 0);
+  assert.equal(d.started, true);
+});
+
+test("desk: lines remember when they were written and ticked; a cleared line forgets", () => {
+  const t1 = new Date("2026-10-06T08:00:00Z"), t2 = new Date("2026-10-06T09:30:00Z");
+  const l = { id: "a", text: "Mop", done: false };
+  stampLine(l, t1);
+  assert.equal(l.added, t1.toISOString());
+  l.done = true; stampLine(l, t2);
+  assert.deepEqual([l.added, l.doneAt], [t1.toISOString(), t2.toISOString()]);
+  l.done = false; stampLine(l, t2);
+  assert.equal(l.doneAt, undefined);
+  assert.equal(deskShape({ general: [{ id: "a", text: "Mop", added: "nonsense", done: true, doneAt: t2.toISOString() }] }).sections[0].lines[0].added, undefined);
+  l.text = ""; stampLine(l, t2);
+  assert.equal(l.added, undefined);
+});
+
+test("desk: every plan is kept (the newest ten), the last is the current one", () => {
+  const d = deskShape({});
+  for (let i = 0; i < 12; i++) keepPlan(d, { blocks: [{ ref: `r${i}`, start: "09:00", end: "09:30", kind: "task" }], overflow: [] }, new Date(Date.UTC(2026, 9, 6, 8, i)));
+  const saved = deskShape(d);
+  assert.equal(saved.plans.length, PLANS_KEPT);
+  assert.equal(saved.plans.at(-1).blocks[0].ref, "r11");
+  assert.equal(saved.blocks[0].ref, "r11");
+});
+
+test("desk: times read as words with the minutes", () => {
+  assert.deepEqual(TIME_PICKS.map(timeLabel), ["Quick (10m)", "Short (15m)", "Half hour (30m)", "Solid (45m)", "Hour (1h)", "Big (2h)"]);
+  assert.equal(timeLabel(90), "1h30"); // an older line or a meeting
+  assert.equal(deskShape({ general: [{ id: "a", text: "x", mins: 90 }] }).sections[0].lines[0].mins, 90);
 });

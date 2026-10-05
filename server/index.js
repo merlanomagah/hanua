@@ -222,7 +222,8 @@ app.get("/api/desk/:day", async (req, res) => {
   const read = async (d) => deskShape(await readJson(path.join(deskDir, `${d}.json`), {}));
   const earlier = {};
   for (let i = 1; i <= CARRY_DAYS; i++) { const d = stepDay(day, -i); earlier[d] = await read(d); }
-  res.set("Cache-Control", "no-store").json({ day: await read(day), earlier, v: DESK_VERSION });
+  // fixed: the sections every day has (config/areas.json planner.fixedSections; Settings will edit them, step 6)
+  res.set("Cache-Control", "no-store").json({ day: await read(day), earlier, v: DESK_VERSION, fixed: config.planner?.fixedSections || [] });
 });
 app.put("/api/desk/:day", async (req, res) => {
   const day = dayKey(req.params.day);

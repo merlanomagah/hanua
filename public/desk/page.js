@@ -1,11 +1,11 @@
 // Plan my day: the page in its window (Mel, 6 Oct 2026): the date (Tue 06-Oct-2026), Today's focuses, three tasks,
 // Meetings & events, the To-Do List in sections, the morning sweep, the archive, and Save & plan. Its widget,
 // Today's plan, sits on the desktop. Rules: public/shared/desk.js (tested); the day itself: state.js.
-import { bringForward, CLASH_TEXT, deskSections, deskShape, fromMin, lastFocus, leftovers, openItems, planDay, planDate, shorterCol, toMin, DEFAULT_MINS, GENERAL, MAX_LINES, MAX_MEETINGS, MAX_NAME, MAX_SECTIONS, SECTION_ROWS, TIME_PICKS } from "../shared/desk.js";
+import { carriedDays, CLASH_TEXT, deskSections, deskShape, fromMin, isFixed, keepPlan, lastFocus, leftovers, minsText, openItems, planDay, planDate, settle, shorterCol, stampLine, timeLabel, toMin, DEFAULT_MINS, GENERAL, MAX_LINES, MAX_MEETINGS, MAX_NAME, MAX_SECTIONS, MEETING_PICKS, SECTION_ROWS, TIME_PICKS, TIME_WORDS } from "../shared/desk.js";
 import { dayOf, parseDay, timeOf, todayStr, ymd } from "../shared/dates.js";
 import { $, focus, h, toast } from "../lib.js";
 import { calendarItems } from "../app.js";
-import { backup, desk, deskDay, earlier, loaded, newId, prompts, save, stale } from "./state.js";
+import { backup, desk, deskDay, earlier, fixed, loaded, newId, prompts, save, stale } from "./state.js";
 import { renderAgenda } from "./agenda.js";
 import { openTxt, renderTxt } from "./todotxt.js";
 import { loadBackup, loadDesk } from "../planner.js";
@@ -61,15 +61,18 @@ const dayWord = (day) => parseDay(day).toLocaleDateString("en-NZ", { weekday: "s
 
 // quick picks on a written line: priority and a rough time (blank = Medium, 30 min); not precise, just structure
 export const PRI_LABEL = { "": "Priority", h: "High", m: "Med", l: "Low" };
-const minsLabel = (m) => (m >= 60 ? `${Math.floor(m / 60)}h${m % 60 ? String(m % 60) : ""}` : `${m}m`); // 15m … 1h30, 2h
+// Time is a word with the minutes in brackets in the list ("Quick (10m)"); on the line just the word, so lines stay narrow
+const timeWord = (m) => TIME_WORDS[m] || (m ? minsText(m) : "Time");
 function picks(get, set) {
   const pri = h("select", { className: `pl-pri p-${get().pri || "none"}`, ariaLabel: "Priority", title: "Priority" },
     ["", "h", "m", "l"].map((v) => h("option", { value: v, textContent: PRI_LABEL[v], selected: get().pri === v })));
-  const time = h("select", { className: `pl-mins${get().mins ? "" : " unset"}`, ariaLabel: "Roughly how long", title: "Roughly how long (blank counts as 30 min)" },
-    h("option", { value: "0", textContent: "Time" }), TIME_PICKS.map((m) => h("option", { value: String(m), textContent: minsLabel(m), selected: get().mins === m })));
+  const now = get().mins, picksFor = TIME_PICKS.includes(now) || !now ? TIME_PICKS : [...TIME_PICKS, now].sort((a, b) => a - b); // an older 1h30 stays
+  const time = h("select", { className: "pl-mins-pick", ariaLabel: "Roughly how long", title: "Roughly how long (blank counts as Half hour)" },
+    h("option", { value: "0", textContent: "Time" }), picksFor.map((m) => h("option", { value: String(m), textContent: timeLabel(m), selected: now === m })));
+  const shown = h("span", { className: `pl-mins${now ? "" : " unset"}`, textContent: timeWord(now), ariaHidden: "true" }, time);
   pri.addEventListener("change", () => { set({ pri: pri.value }); pri.className = `pl-pri p-${pri.value || "none"}`; });
-  time.addEventListener("change", () => { set({ mins: Number(time.value) }); time.classList.toggle("unset", !Number(time.value)); });
-  return h("span", { className: "pl-picks" }, pri, time);
+  time.addEventListener("change", () => { const m = Number(time.value); set({ mins: m }); shown.firstChild.textContent = timeWord(m); shown.classList.toggle("unset", !m); });
+  return h("span", { className: "pl-picks" }, pri, shown);
 }
 const workChip = (on, label, toggle) => {
   const b = h("button", { type: "button", className: `pl-work${on ? " on" : ""}`, ariaPressed: String(on), title: on ? "Work: shows at work" : "Mark as work, so it shows at work", ariaLabel: `${label}: work`,
@@ -104,14 +107,6 @@ function focusesEl() {
       h("span", { className: "pl-num", textContent: `${i + 1}.` }),
       lineInput(text, { label: `Focus ${i + 1}`, placeholder: hint[i] || "", section: "focus", index: i, onInput: (v) => { desk.focus[i] = v; save(); renderPlanWidget(); } }))))), "focus");
 }
-function tasksEl() {
-  const head = heading("Tasks to complete", "key tasks");
-  head.append(workChip(desk.keyWork, "Tasks to complete", () => { desk.keyWork = !desk.keyWork; save(); return desk.keyWork; }));
-  return tagged(h("section", { className: "pl-sec pl-key" }, head,
-    h("ol", { className: "pl-list" }, desk.key.map((k, i) => tickLine(k, { label: `Task ${i + 1}`, section: "key", index: i, ensure: () => k,
-      onText: (v) => { k.text = v; if (!v) k.done = false; save(); renderPlanWidget(); },
-      onTick: () => { if (!k.text) return null; k.done = !k.done; save(); renderPlanWidget(); return k.done; } })))), "key");
-}
 function sectionEl(sec) {
   const key = `s:${sec.id}`;
   const rows = Math.min(MAX_LINES, Math.max(SECTION_ROWS, sec.lines.length + 1));
@@ -120,16 +115,20 @@ function sectionEl(sec) {
     const ensure = () => { while (sec.lines.length <= i) sec.lines.push({ id: newId(), text: "", done: false, pri: "", mins: 0 }); return sec.lines[i]; };
     list.append(tickLine(sec.lines[i], { label: `${sec.name || "section"} line ${i + 1}`, section: key, index: i, ensure,
       onText: (v) => {
-        ensure().text = v;
-        if (!v) sec.lines[i].done = false;
+        const l = ensure();
+        l.text = v;
+        if (!v) l.done = false;
+        stampLine(l); // when it was first written (cleared: forgotten)
         while (sec.lines.length && !sec.lines.at(-1).text) sec.lines.pop();
         save();
         if (v && i === rows - 1 && rows < MAX_LINES) renderTodo(); // writing on the last line: one more appears
       },
-      onTick: () => { const l = sec.lines[i]; if (!l?.text) return null; l.done = !l.done; save(); return l.done; } }));
+      onTick: () => { const l = sec.lines[i]; if (!l?.text) return null; l.done = !l.done; stampLine(l); save(); renderPlanWidget(); return l.done; } }));
   }
   let head;
+  // General and the fixed sections (Spark NZ, Jump issues: config/areas.json) keep their name and can't be removed
   if (sec.id === GENERAL) head = heading("General", "general");
+  else if (isFixed(sec, fixed)) head = heading(sec.name, sec.name.toLowerCase());
   else {
     const name = h("input", { type: "text", className: "pl-sec-name", value: sec.name, placeholder: "Name this section", ariaLabel: "Section name", maxLength: MAX_NAME, autocomplete: "off" });
     name.addEventListener("input", () => { sec.name = name.value; save(); });
@@ -146,21 +145,24 @@ function sectionEl(sec) {
 
 // the morning sweep: unfinished things from the last week, each done, brought into today, or let go
 function sweepEl(items) {
-  const settle = (item, how) => { if (how === "today") bringForward(desk, item, newId()); else desk.settled[item.key] = how; };
+  const settleAs = (item, how) => settle(desk, item, how, newId());
+  const today = todayStr();
+  // where it's from, and how long it's been waiting (from the day it was first written; Mel: here only, not on the line)
+  const fromText = (it) => { const n = carriedDays(it, today); return `${it.section} · ${dayWord(it.from || it.day)}${n > 1 ? ` · day ${n}` : ""}`; };
   const act = (label, title, run) => { const b = h("button", { type: "button", className: "sw-act", textContent: label, title }); b.addEventListener("click", () => { run(); save(); renderTodo(); renderPlanWidget(); }); return b; };
   return h("div", { className: "pl-sweep" },
     h("h3", { textContent: "Before you start" }),
     h("p", { className: "sw-lede", textContent: `${items.length} ${items.length === 1 ? "thing" : "things"} from earlier ${items.length === 1 ? "wasn't" : "weren't"} ticked off. Done already, bring into today, or let go?` }),
     h("ul", { className: "sw-list" }, items.map((it) => h("li", { className: "sw-item" },
-      h("span", { className: "sw-from", textContent: `${dayWord(it.day)} · ${it.section || "Tasks"}` }),
+      h("span", { className: "sw-from", textContent: fromText(it), title: fromText(it) }),
       h("span", { className: "sw-text", textContent: it.text }),
       h("span", { className: "sw-acts" },
-        act("✓ Done", "It got done: tick it off", () => settle(it, "done")),
-        act("→ Today", "Bring it into today", () => settle(it, "today")),
-        act("✕ Remove", "Let it go", () => settle(it, "gone")))))),
+        act("✓ Done", "It got done: tick it off", () => settleAs(it, "done")),
+        act("→ Today", "Bring it into today", () => settleAs(it, "today")),
+        act("✕ Remove", "Let it go", () => settleAs(it, "gone")))))),
     h("div", { className: "sw-foot" },
-      act("All to today", "Bring every one into today", () => items.forEach((it) => settle(it, "today"))),
-      act("Let all go", "Let every one go", () => items.forEach((it) => settle(it, "gone"))),
+      act("All to today", "Bring every one into today", () => items.forEach((it) => settleAs(it, "today"))),
+      act("Let all go", "Let every one go", () => items.forEach((it) => settleAs(it, "gone"))),
       act("Later", "Plan first; these wait until next time", () => { sweepLater = true; })));
 }
 
@@ -187,7 +189,6 @@ function archiveEl() {
   const page = !p ? h("p", { className: "pl-covered", textContent: archive.days.length ? "Choose a day." : "No earlier days yet: yesterday's page lands here tomorrow." })
     : h("div", { className: "ar-page" }, h("p", { className: "pl-date", textContent: planDate(archive.day) }),
       h("h4", { textContent: "Focuses" }), h("ol", { className: "ar-list" }, p.focus.filter(Boolean).map((f) => h("li", { textContent: f }))),
-      h("h4", { textContent: "Tasks to complete" }), h("ul", { className: "ar-list" }, p.key.filter((k) => k.text).map((k) => read(k.text, k.done))),
       ...p.sections.filter((s) => s.lines.some((l) => l.text)).flatMap((s) => [h("h4", { textContent: s.name || "Untitled" }), h("ul", { className: "ar-list" }, s.lines.filter((l) => l.text).map((l) => read(l.text, l.done)))]));
   return h("div", { className: "pl-archive" }, h("div", {}, pick, backupLine()), page);
 }
@@ -214,7 +215,7 @@ function meetingsEl() {
     time.addEventListener("change", () => { ensure().time = time.value; time.classList.toggle("blank", !time.value); save(); renderAgenda(); });
     const timeBox = h("span", { className: "pl-timebox" }, time);
     const len = h("select", { className: `pl-mins${m?.mins ? "" : " unset"}`, ariaLabel: "How long", title: "How long (blank counts as 30 min)" },
-      h("option", { value: "0", textContent: "30m?" }), TIME_PICKS.map((v) => h("option", { value: String(v), textContent: minsLabel(v), selected: m?.mins === v })));
+      h("option", { value: "0", textContent: "30m?" }), MEETING_PICKS.map((v) => h("option", { value: String(v), textContent: minsText(v), selected: m?.mins === v })));
     len.addEventListener("change", () => { ensure().mins = Number(len.value); len.classList.toggle("unset", !Number(len.value)); save(); });
     const title = lineInput(m?.title || "", { label: `Meeting ${i + 1}`, placeholder: i === 0 && !m ? "e.g. Coffee with Sam" : "", section: "meet", index: i, onInput: (v) => {
       ensure().title = v; save(); renderAgenda();
@@ -242,8 +243,7 @@ function fixedToday() {
   return [...cal, ...meets];
 }
 function savePlan() {
-  const { blocks, overflow } = planDay({ tasks: openItems(desk, focus.on), fixed: fixedToday(), from: nowHHMM(), day: desk.day });
-  desk.blocks = blocks; desk.overflow = overflow;
+  const { blocks, overflow } = keepPlan(desk, planDay({ tasks: openItems(desk, focus.on), fixed: fixedToday(), from: nowHHMM(), day: desk.day })); // each plan kept
   save();
   $("plan-day").close();
   renderAgenda();
@@ -268,9 +268,9 @@ export function renderTodo() {
     const work = desk.sections.filter((x) => x.work);
     body = [
       h("div", { className: "pl-datebar" }, h("p", { className: "pl-date", textContent: planDate(today) }), dayBar()),
-      h("div", { className: "pl-cols pl-top" }, meetingsEl(), desk.keyWork ? tasksEl() : h("div")),
+      meetingsEl(),
       work.length ? h("div", { className: "pl-cols" }, h("div", { className: "pl-col" }, work.filter((_, i) => i % 2 === 0).map(sectionEl)), h("div", { className: "pl-col" }, work.filter((_, i) => i % 2 === 1).map(sectionEl))) : null,
-      h("p", { className: "pl-covered", textContent: work.length || desk.keyWork ? "Personal parts of the page are put away at work." : "Mark a section Work (at home) and it shows here. The rest is put away at work." }),
+      h("p", { className: "pl-covered", textContent: work.length ? "Personal parts of the page are put away at work." : "Mark a section Work (at home) and it shows here. The rest is put away at work." }),
     ];
   }
   else if (archive) body = [archiveEl()];
@@ -285,8 +285,8 @@ export function renderTodo() {
     const col = (n) => h("div", { className: "pl-col" }, desk.sections.filter((s) => s.col === n).map(sectionEl));
     body = [
       h("div", { className: "pl-datebar" }, h("p", { className: "pl-date", textContent: planDate(today) }), dayBar()),
-      h("div", { className: "pl-cols pl-top" }, focusesEl(), tasksEl()),
-      meetingsEl(),
+      // the 3 Tasks were cut (6 Oct 2026): focuses and the day's meetings side by side, so the To-Do List comes up
+      h("div", { className: "pl-cols pl-top" }, focusesEl(), meetingsEl()),
       h("div", { className: "pl-todo-head" }, h("h2", { textContent: "To-Do List" }), add),
       h("div", { className: "pl-cols" }, col(0), col(1)),
       items.length ? (() => { const b = h("button", { type: "button", className: "pl-later", textContent: `${items.length} from earlier still waiting` }); b.addEventListener("click", () => { sweepLater = false; renderTodo(); }); return b; })() : null,
@@ -316,10 +316,10 @@ export function renderPlanWidget() {
   if (!w) return;
   w.hidden = focus.on; // personal: put away at work
   const f = desk.focus.filter(Boolean);
-  const tasks = desk.key.filter((k) => k.text), done = tasks.filter((k) => k.done).length;
+  const lines = desk.sections.flatMap((x) => x.lines).filter((l) => l.text), done = lines.filter((l) => l.done).length;
   w.replaceChildren(h("span", { className: "wg-label", textContent: "Today's plan" }),
     f.length ? h("ol", { className: "wg-focus" }, f.map((x) => h("li", { textContent: x }))) : h("p", { className: "wg-empty", textContent: "No focuses yet. Open Plan my day." }),
-    h("p", { className: "wg-meta", textContent: tasks.length ? `${done} of ${tasks.length} task${tasks.length === 1 ? "" : "s"} done` : "No tasks set" }));
+    h("p", { className: "wg-meta", textContent: lines.length ? `${done} of ${lines.length} done` : "Nothing on the list yet" }));
 }
 $("w-plan").addEventListener("click", () => openPlan());
 

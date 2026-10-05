@@ -87,7 +87,7 @@
       "why": "Why",
       "doneWhen": "Done when",
       "felt": "Felt",
-        "alsoIn": "Also in"
+      "alsoIn": "Also in"
     },
     "guideUrl": "https://www.notion.so/3ee16603f0bd818bbe32c6cf887853b2",
     "limit": 1000
@@ -134,5 +134,18 @@
   "menu": {
     "guideUrl": "https://www.notion.so/3ef16603f0bd81de96e2d015f720ddca"
   },
-  "planner": { "promptsUrl": "https://www.notion.so/3ef16603f0bd81ccb238d0d7654ad168", "notionUrl": "https://www.notion.so/3ee16603f0bd8134b80ce08224b12888" }
+  "planner": {
+    "promptsUrl": "https://www.notion.so/3ef16603f0bd81ccb238d0d7654ad168",
+    "notionUrl": "https://www.notion.so/3ee16603f0bd8134b80ce08224b12888",
+    "fixedSections": [
+      {
+        "name": "Spark NZ",
+        "work": true
+      },
+      {
+        "name": "Jump issues",
+        "work": true
+      }
+    ]
+  }
 }

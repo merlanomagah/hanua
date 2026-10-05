@@ -5,6 +5,7 @@ import { todayStr } from "../shared/dates.js";
 import { toast } from "../lib.js";
 
 export let deskDay = todayStr(), desk = deskShape({}), earlier = {}, prompts = {}, loaded = false;
+export let fixed = []; // the sections every day has (config/areas.json planner.fixedSections)
 export let backup = null; // the nightly backup's status (/api/backup): a line in the Archive, a note on the desk if it fails
 export let stale = null; // "page" or "server" when the two save a day differently: saving stops and the page says so
 export const newId = () => Math.random().toString(36).slice(2, 10);
@@ -19,8 +20,9 @@ export async function fetchDay() {
       const j = await res.json();
       stale = versionClash(j.v); // an old server answers without one
       earlier = j.earlier || {};
-      desk = startDay(j.day, earlier, deskDay);
-      if (!j.day?.started) save();
+      fixed = j.fixed || [];
+      desk = startDay(j.day, earlier, deskDay, fixed);
+      if (JSON.stringify(desk) !== JSON.stringify(deskShape(j.day))) save(); // a new day, a fixed section added, an older day converted
     }
   } catch { /* the server's away: an empty page */ }
   loaded = true;
@@ -51,10 +53,8 @@ export function save() {
   }, 500);
 }
 
-// what a block or list entry points at: a Task (k0..k2) or a line in a section
+// what a block or list entry points at: a line in a section
 export function refInfo(ref) {
-  const k = /^k(\d)$/.exec(ref);
-  if (k) { const obj = desk.key[Number(k[1])]; return obj && { obj, work: desk.keyWork, where: "Tasks" }; }
   for (const s of desk.sections) { const obj = s.lines.find((l) => l.id === ref); if (obj) return { obj, work: s.work, where: s.name || "General" }; }
   return null;
 }

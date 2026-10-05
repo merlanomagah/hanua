@@ -1,5 +1,5 @@
 // To-do.txt: the day's list in plan order, a small window to tick off in any order (ticked → out of the agenda)
-import { openItems, planDate } from "../shared/desk.js";
+import { openItems, planDate, stampLine } from "../shared/desk.js";
 import { $, focus, h } from "../lib.js";
 import { desk, deskDay, refInfo, save } from "./state.js";
 import { check, PRI_LABEL, renderPlanWidget, renderTodo } from "./page.js";
@@ -19,11 +19,12 @@ function toggleRef(ref) {
   const info = refInfo(ref);
   if (!info?.obj.text) return;
   info.obj.done = !info.obj.done;
+  stampLine(info.obj);
   save(); renderTodo(); renderAgenda(); renderPlanWidget();
 }
 export function renderTxt() {
   if (txt.hidden) return;
-  const all = openItems({ ...desk, key: desk.key.map((k) => ({ ...k, done: false })), sections: desk.sections.map((x) => ({ ...x, lines: x.lines.map((l) => ({ ...l, done: false })) })) }, focus.on);
+  const all = openItems({ ...desk, sections: desk.sections.map((x) => ({ ...x, lines: x.lines.map((l) => ({ ...l, done: false })) })) }, focus.on);
   const byRef = new Map(all.map((x) => [x.ref, x]));
   const row = (ref, time) => {
     const info = refInfo(ref);
