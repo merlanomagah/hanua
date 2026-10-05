@@ -38,3 +38,13 @@ test("layout: a new file goes to the first free grid spot from the top right", a
   assert.deepEqual(freeSpot(b, [{ x: x0 - 300, y: 0, w: 500, h: 800 }], a).x < x0 - 300, true);
   assert.equal(overlaps({ x: 0, y: 0, w: 10, h: 10 }, { x: 10, y: 0, w: 10, h: 10 }), false);
 });
+
+test("layout: a drop onto something goes to the nearest free spot; nothing else moves", async () => {
+  const { nearestFree, overlaps, GRID } = await import("../public/shared/layout.js");
+  const a = { w: 1200, h: 800 }, box = { w: 100, h: 100 };
+  const other = { x: 400, y: 300, w: 100, h: 100 };
+  assert.deepEqual(nearestFree({ x: 600, y: 300 }, box, [other], a), { x: 600, y: 300 }); // clear already
+  const p = nearestFree({ x: 420, y: 300 }, box, [other], a);
+  assert.equal(overlaps({ ...p, ...box }, other), false);
+  assert.ok(Math.hypot(p.x - 420, p.y - 300) <= 120 + GRID); // close by, not across the desk
+});

@@ -2476,11 +2476,12 @@ dialog.lock::backdrop { background: #14110e; }
 .pl-picks .pl-mins:has(.pl-mins-pick:focus-visible) { border-color: var(--border-2); }
 .pl-picks .pl-mins:hover { border-color: var(--border-2); }
 /* ---- arranging the desk (public/desk/arrange.js): once something's moved, every file and widget has its own place ---- */
-.desk.arranged .widgets, .desk.arranged .wg-pair, .desk.arranged .desktop-icons { display: contents; }
-.desk.arranged [data-arrange] { position: absolute; z-index: 3; margin: 0; box-sizing: border-box; }
+.desk.arranged .widgets, .desk.arranged .wg-pair, .desk.arranged .desktop-icons, .desk.arranged .desk-left, .desk.arranged .desk-left .stickies { display: contents; }
+.desk.arranged [data-move] { position: absolute; z-index: 3; margin: 0; box-sizing: border-box; }
+.desk.arranged #notes { width: calc(var(--stick) * 2 + 12px); }
 .desk.arranged .wg-agenda { flex: none; }
 .desk.arranged .wg-pair .widget { min-height: 0; }
-[data-arrange].dragging { z-index: 7 !important; opacity: 0.92; box-shadow: 0 18px 40px -12px rgb(0 0 0 / 0.45); cursor: grabbing; }
+[data-move].dragging { z-index: 7 !important; opacity: 0.92; box-shadow: 0 18px 40px -12px rgb(0 0 0 / 0.45); cursor: grabbing; }
 .desk-file { touch-action: none; }
 /* a widget's grip (drag to move) and ⋯ (its size), shown on hover or focus */
 .wg-grip, .wg-more { position: absolute; z-index: 2; top: 3px; height: 14px; display: grid; place-items: center; border-radius: 7px; opacity: 0; transition: opacity 150ms; cursor: grab; touch-action: none; }
@@ -2518,3 +2519,27 @@ dialog.lock::backdrop { background: #14110e; }
 .dock-win { background: #fdfcf9; }
 .dock-win svg { width: 30px; height: auto; }
 .txt-count { margin: 2px 0 0; font: 9px var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-4); }
+
+/* post-its on the wall (public/desk/wallnotes.js): today's focuses and reminders due. Before anything's been arranged
+   they sit in a row at the top right, left of the files; arranged, each has its own place like everything else */
+.focus-notes, .rem-notes { position: absolute; z-index: 3; right: calc(var(--pc-right) + 112px); display: flex; gap: 14px; }
+.focus-notes { top: 64px; }
+.rem-notes { top: calc(80px + var(--stick)); }
+.focus-notes[hidden], .rem-notes[hidden] { display: none; }
+.desk.arranged .focus-notes, .desk.arranged .rem-notes { display: contents; }
+.post-it { position: relative; width: var(--stick); height: var(--stick); overflow: hidden; box-sizing: border-box; padding: 10px 10px 12px; display: flex; flex-direction: column; gap: 4px;
+  transform: rotate(var(--tilt, 0deg)); cursor: grab; touch-action: none; box-shadow: 0 1px 1px rgb(0 0 0 / 0.08), 0 8px 14px -8px rgb(0 0 0 / 0.35); }
+.post-it:focus-visible { outline: 2px solid var(--terra); outline-offset: 2px; }
+.pi-label { font: 8px var(--mono); letter-spacing: 0.16em; text-transform: uppercase; color: rgb(28 24 20 / 0.55); }
+.pi-text { font: italic 400 clamp(13px, 1.1vw, 16px)/1.22 var(--display); color: var(--ink); overflow-wrap: anywhere; overflow: hidden; }
+.pi-focus { background: linear-gradient(170deg, #f7c9a8, #f1b58e); }
+.pi-rem { background: linear-gradient(170deg, #cfe6f2, #b9d9ea); padding-right: 30px; }
+.pi-rem.overdue .pi-label { color: #a2431b; }
+.pn-tick { position: absolute; right: 7px; bottom: 7px; width: 18px; height: 18px; padding: 0; border: 1.5px solid rgb(28 24 20 / 0.45); border-radius: 3px; background: rgb(255 255 255 / 0.5); cursor: pointer; }
+.pn-tick:hover { background: #fff; border-color: var(--green); }
+.desk.arranged .desk-sticky, .desk.arranged .meal-slip, .desk.arranged #notes { cursor: grab; }
+/* phones: the desk is one scrolling page, so the post-its sit in it as a row near the top */
+@media (max-width: 900px) {
+  .focus-notes, .rem-notes { position: relative; top: auto; right: auto; order: 2; flex-wrap: wrap; justify-content: center; align-self: center; max-width: 100%; }
+  .post-it { cursor: default; }
+}

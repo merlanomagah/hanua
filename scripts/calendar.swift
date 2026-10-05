@@ -8,7 +8,7 @@
 //   HanuaCalendar status                      → {"status":"granted" | "notDetermined" | "denied" | …}
 //   HanuaCalendar events FROM TO [names…]     → {"events":[…],"calendars":[…]} or {"error":"denied"}
 //   FROM and TO are days (YYYY-MM-DD, TO included); names, if given, limit it to those calendars.
-//   HanuaCalendar reminders LIST              → {"list":…,"items":[{id,title}]} open items (LIST made if missing)
+//   HanuaCalendar reminders LIST              → {"list":…,"items":[{id,title,due?}]} open items (LIST made if missing)
 //   HanuaCalendar remind-add LIST TITLE [DUE] → {"id":…} (LIST "" = the default list; DUE yyyy-MM-ddTHH:mm, with an alert)
 //   HanuaCalendar remind-done ID 1|0          → {"ok":true}   ticked or unticked
 //   HanuaCalendar remind-remove ID            → {"ok":true}   (Undo of an add)
@@ -88,7 +88,13 @@ if mode.hasPrefix("remind") {
       store.fetchReminders(matching: store.predicateForIncompleteReminders(withDueDateStarting: nil, ending: nil, calendars: [cal])) { r in found = r ?? []; finish() }
     }
     found.sort { ($0.creationDate ?? .distantPast) < ($1.creationDate ?? .distantPast) }
-    out(["list": cal.title, "items": found.map { ["id": $0.calendarItemIdentifier, "title": $0.title ?? ""] }])
+    out(["list": cal.title, "items": found.map { r -> [String: Any] in
+      var o: [String: Any] = ["id": r.calendarItemIdentifier, "title": r.title ?? ""]
+      if let dc = r.dueDateComponents, let due = Calendar.current.date(from: dc) {
+        o["due"] = dc.hour == nil ? String(local.string(from: due).prefix(10)) : local.string(from: due) // a day, or a day and time
+      }
+      return o
+    }])
   case "remind-add":
     guard args.count >= 4, let cal = list(args[2]) else { out(["error": "list"]) }
     let r = EKReminder(eventStore: store)

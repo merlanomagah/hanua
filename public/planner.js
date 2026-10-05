@@ -14,7 +14,8 @@ import { openPlan, renderTodo, resetSweep } from "./desk/page.js";
 import { renderAgenda } from "./desk/agenda.js";
 import { openTxt } from "./desk/todotxt.js";
 import "./desk/timer.js";
-import "./desk/arrange.js"; // drag files and widgets, widget sizes, Reset layout
+import "./desk/wallnotes.js"; // focus and reminder post-its
+import "./desk/arrange.js"; // everything on the desk moves, on one grid
 import { initLists } from "./desk/lists.js"; // the Shopping list and Add reminder (Apple Reminders)
 
 export { backup } from "./desk/state.js";

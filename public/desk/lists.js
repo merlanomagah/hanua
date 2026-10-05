@@ -120,6 +120,7 @@ function renderRem() {
     try {
       const j = await post("/api/reminders", { title, due: at.value });
       rem.hidden = true; $("open-remind").focus({ preventScroll: true });
+      document.dispatchEvent(new Event("hanua:reminders")); // due today: it goes on the wall too
       toast(`Reminder set: ${whenText(new Date(at.value))}${j.live === false ? " (sample: Reminders is off here)" : ""}`, false, { label: "Undo", run: () => post(`/api/reminders/${encodeURIComponent(j.id)}/remove`).catch((err) => toast(err.message, true)) });
     } catch (err) { toast(err.message.includes("allowed") ? NOT_ALLOWED : `Couldn't set it: ${err.message}`, true); }
     finally { save.disabled = false; }

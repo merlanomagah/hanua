@@ -26,7 +26,8 @@ export function renderStickies(focusId) {
     text.addEventListener("input", () => { const s = stickies.find((x) => x.id === n.id); if (s) { s.text = text.value; saveStickies(); } });
     const x = h("button", { type: "button", className: "st-x", ariaLabel: "Take this note down", title: "Take it down", textContent: "×" });
     x.addEventListener("click", () => takeDown(n.id));
-    const note = h("div", { className: `desk-sticky st-${n.colour}`, style: `--tilt:${[-2.5, 1.8, -1, 2.6, -1.8, 1.2][i % 6]}deg` }, x, text);
+    const note = h("div", { className: `desk-sticky st-${n.colour}`, id: `sticky-${n.id}`, style: `--tilt:${[-2.5, 1.8, -1, 2.6, -1.8, 1.2][i % 6]}deg` }, x, text);
+    note.dataset.move = "note"; // moves on the desk's grid (arrange.js); drag it by its edge, not its text
     if (n.id === focusId) requestAnimationFrame(() => text.focus());
     return note;
   }));

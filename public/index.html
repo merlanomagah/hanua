@@ -396,7 +396,7 @@
         <div class="desk-top" aria-hidden="true"></div>
         <div class="desk-left">
           <!-- Hanua's own nudges, pinned above the stickies: weekly review due, someone to catch up with, a blocked task -->
-          <div class="desk-notes" id="notes" aria-label="Pinned notes"></div>
+          <div class="desk-notes" id="notes" aria-label="Pinned notes" data-move="note"></div>
           <!-- sticky notes on the wall: typed here, kept on this Mac until taken down (the × in each corner) -->
           <div class="stickies" id="stickies" aria-label="Sticky notes"></div>
         </div>
@@ -417,7 +417,7 @@
           <article class="widget wg-timer" id="w-timer" aria-label="Focus timer"></article>
         </aside>
         <!-- today's meals, pinned beside it -->
-        <button type="button" class="meal-slip" id="meal-slip" title="Open the kitchen" hidden></button>
+        <button type="button" class="meal-slip" id="meal-slip" title="Open the kitchen" data-move="note" hidden></button>
         <!-- the bricks are a Mac desktop (Mel, 6 Oct 2026): double-click "Plan my day" to open it over the whole page -->
         <div class="desktop-icons" role="group" aria-label="Desktop">
           <button type="button" class="desk-file" id="open-plan" title="Double-click to open" aria-label="Plan my day: open today's page">
@@ -439,6 +439,9 @@
             <span>Add reminder</span>
           </button>
         </div>
+        <!-- post-its on the wall (public/desk/wallnotes.js): today's focuses, and reminders due today or overdue -->
+        <div class="focus-notes" id="focus-notes" aria-label="Today's focuses" hidden></div>
+        <div class="rem-notes" id="rem-notes" aria-label="Reminders due" hidden></div>
         <!-- To-do.txt: a window on the desktop (no file: Mel, 6 Oct 2026), opened by Save & plan, Up next or Plan my day's title bar -->
         <section class="txt-win" id="todo-txt" aria-label="To-do.txt" hidden></section>
         <!-- the Shopping list (Apple Reminders) and Add reminder: windows like To-do.txt -->

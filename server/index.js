@@ -7,7 +7,7 @@ import path from "node:path";
 import { notionEnabled, queryArea, getSchema, toNotionProperties, createPage, updatePage, archivePage, pageSection, pageSections, NotionError } from "./notion.js";
 import { claudeEnabled, ask, draftEntry, coachGoal, suggestChildren, suggestMeals } from "./claude.js";
 import { getMoney, getMoneyMonth, isMonthKey } from "./money.js";
-import { addReminder, getAppleEvents, getShopping, removeReminder, setReminderDone, showDay, showReminders } from "./calendar.js";
+import { addReminder, getAppleEvents, getDueReminders, getShopping, removeReminder, setReminderDone, showDay, showReminders } from "./calendar.js";
 import { musicStatus, musicAction, playPlaylist } from "./music.js";
 import { toGoal, goalProperties, goalOptions } from "./goals.js";
 import { rollUp } from "../public/shared/goals.js";
@@ -278,6 +278,7 @@ const remindersRoute = (fn) => async (req, res) => {
   catch (err) { res.status(err.status || 500).json({ error: err.message, reason: err.reason }); }
 };
 app.get("/api/reminders/shopping", remindersRoute(() => getShopping()));
+app.get("/api/reminders/due", remindersRoute(() => getDueReminders()));
 app.post("/api/reminders/shopping", remindersRoute((req) => addReminder({ to: "shopping", title: req.body?.title })));
 app.post("/api/reminders", remindersRoute((req) => addReminder({ to: "reminders", title: req.body?.title, due: req.body?.due })));
 app.post("/api/reminders/:id/done", remindersRoute((req) => setReminderDone(req.params.id, Boolean(req.body?.done))));

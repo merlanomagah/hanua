@@ -59,3 +59,24 @@ export function freeSpot(box, taken, area) {
     }
   }
 }
+
+// One grid for the whole desk, and nothing overlaps (Mel, 6 Oct 2026: "grid style, like the Mac desktop"): a dropped
+// item goes to the nearest free spot to where it was let go, and nothing else moves. SPACE keeps a little gap.
+export const GRID = 16, SPACE = 8;
+const grown = (b) => ({ x: b.x - SPACE / 2, y: b.y - SPACE / 2, w: b.w + SPACE, h: b.h + SPACE });
+export const snapGrid = ({ x, y }, box, area) => clamp({ x: Math.round(x / GRID) * GRID, y: Math.round(y / GRID) * GRID }, box, area);
+export function nearestFree(want, box, taken, area, step = GRID) {
+  const free = (p) => !taken.some((t) => overlaps(grown({ ...p, ...box }), t));
+  const start = clamp(want, box, area);
+  if (free(start)) return start;
+  for (let r = 1; r <= 80; r++) {
+    const ring = [];
+    for (let i = -r; i <= r; i++) ring.push([i, -r], [i, r], [-r, i], [r, i]);
+    ring.sort((a, b) => Math.hypot(...a) - Math.hypot(...b));
+    for (const [dx, dy] of ring) {
+      const p = clamp({ x: start.x + dx * step, y: start.y + dy * step }, box, area);
+      if (free(p)) return p;
+    }
+  }
+  return start; // the desk is full: let it overlap rather than vanish
+}
