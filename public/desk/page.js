@@ -9,6 +9,7 @@ import { backup, desk, deskDay, earlier, fixed, loaded, newId, prompts, save, st
 import { renderAgenda } from "./agenda.js";
 import { openTxt, renderTxt } from "./todotxt.js";
 import { dots, noteClosed, noteOpen, registerWindow } from "./window.js";
+import { openDraft } from "./draft.js";
 import { loadBackup, loadDesk } from "../planner.js";
 
 let sweepLater = false;
@@ -228,29 +229,20 @@ function meetingsEl() {
 }
 
 // the working day and Save & plan
-const nowHHMM = () => { const d = new Date(); return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`; };
+export const nowHHMM = () => { const d = new Date(); return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`; };
 function dayBar() {
   const field = (k, label) => { const t = h("input", { type: "time", className: "pl-time", value: desk.day[k], ariaLabel: label, step: 900 }); t.addEventListener("change", () => { if (t.value) { desk.day[k] = t.value; save(); } }); return t; };
-  const go = h("button", { type: "button", className: "pl-go", textContent: desk.blocks.length ? "Re-plan from now" : "Save & plan", title: "Time-block the day round your meetings, then open To-do.txt" });
-  go.addEventListener("click", savePlan);
+  const go = h("button", { type: "button", className: "pl-go", textContent: desk.locked ? "Re-plan from now" : "Save & plan", title: "See the day as it would run, arrange the order, then lock it in" });
+  go.addEventListener("click", () => openDraft());
   return h("div", { className: "pl-daybar" }, h("span", { className: "pl-daylabel", textContent: "My day" }), field("start", "Day starts"), h("span", { textContent: "–" }), field("end", "Day ends"), go);
 }
 // fixed things today: jotted meetings, and timed events already in the calendars
-function fixedToday() {
+export function fixedToday() {
   const today = todayStr();
   const cal = calendarItems().filter((x) => dayOf(x.date) === today && timeOf(x.date) && x.kind !== "Due" && !x.goal)
-    .map((x) => ({ start: timeOf(x.date), end: x.end && dayOf(x.end) === today && timeOf(x.end) ? timeOf(x.end) : fromMin(Math.min(1439, toMin(timeOf(x.date)) + DEFAULT_MINS)) }));
-  const meets = desk.meetings.filter((m) => m.time).map((m) => ({ start: m.time, end: fromMin(Math.min(1439, toMin(m.time) + (m.mins || DEFAULT_MINS))) }));
+    .map((x) => ({ start: timeOf(x.date), end: x.end && dayOf(x.end) === today && timeOf(x.end) ? timeOf(x.end) : fromMin(Math.min(1439, toMin(timeOf(x.date)) + DEFAULT_MINS)), title: focus.on && x.busy ? "Busy" : x.title }));
+  const meets = desk.meetings.filter((m) => m.time).map((m) => ({ start: m.time, end: fromMin(Math.min(1439, toMin(m.time) + (m.mins || DEFAULT_MINS))), title: focus.on && !m.work ? "Busy" : m.title || "Meeting" }));
   return [...cal, ...meets];
-}
-function savePlan() {
-  const { blocks, overflow } = keepPlan(desk, planDay({ tasks: openItems(desk, focus.on), fixed: fixedToday(), from: nowHHMM(), day: desk.day })); // each plan kept
-  save();
-  $("plan-day").close();
-  renderAgenda();
-  openTxt();
-  const n = blocks.filter((b) => b.kind === "task").length;
-  toast(n ? `Planned ${n} block${n === 1 ? "" : "s"}${overflow.length ? ` · ${overflow.length} didn't fit today` : ""}. Tick things off in any order.` : "Nothing to plan yet: add some tasks first.");
 }
 export function renderTodo() {
   const today = todayStr();

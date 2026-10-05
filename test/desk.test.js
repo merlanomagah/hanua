@@ -211,3 +211,35 @@ test("desk: times read as words with the minutes", () => {
   assert.equal(timeLabel(90), "1h30"); // an older line or a meeting
   assert.equal(deskShape({ general: [{ id: "a", text: "x", mins: 90 }] }).sections[0].lines[0].mins, 90);
 });
+
+test("draft day: High to Low, quick first within each, blank time as Half hour", async () => {
+  const { draftOrder } = await import("../public/shared/desk.js");
+  const items = [
+    { ref: "a", pri: "l", mins: 10 }, { ref: "b", pri: "h", mins: 60 }, { ref: "c", pri: "h", mins: 15 },
+    { ref: "d", pri: "", mins: 0 }, { ref: "e", pri: "m", mins: 10 }, { ref: "f", pri: "h", mins: 15 },
+  ];
+  assert.deepEqual(draftOrder(items), ["c", "f", "b", "e", "d", "a"]);
+  // Mel's own order is kept; something new slots in where the rule would put it; gone ones drop out
+  const kept = draftOrder(items, ["a", "b", "zz", "c"]);
+  assert.deepEqual(kept.filter((r) => ["a", "b", "c"].includes(r)), ["a", "b", "c"]);
+  assert.equal(kept.length, 6);
+  assert.ok(!kept.includes("zz"));
+});
+
+test("draft day: planDay keeps Mel's order when asked; moving one in the order", async () => {
+  const { planDay, moveInOrder } = await import("../public/shared/desk.js");
+  const tasks = [{ ref: "low", pri: "l", mins: 30 }, { ref: "high", pri: "h", mins: 30 }];
+  const day = { start: "09:00", end: "17:00" };
+  assert.equal(planDay({ tasks, day }).blocks[0].ref, "high");
+  assert.equal(planDay({ tasks, day, keepOrder: true }).blocks[0].ref, "low");
+  assert.deepEqual(moveInOrder(["a", "b", "c"], "c", 0), ["c", "a", "b"]);
+  assert.deepEqual(moveInOrder(["a", "b", "c"], "a", 9), ["b", "c", "a"]);
+});
+
+test("draft day: a day planned before the draft counts as locked; the order is kept", async () => {
+  const { deskShape } = await import("../public/shared/desk.js");
+  assert.equal(deskShape({ blocks: [{ ref: "a", start: "09:00", end: "09:30", kind: "task" }] }).locked, true);
+  assert.equal(deskShape({}).locked, false);
+  assert.equal(deskShape({ locked: false, blocks: [{ ref: "a", start: "09:00", end: "09:30", kind: "task" }] }).locked, false);
+  assert.deepEqual(deskShape({ order: ["a", "bad id!", "b"] }).order, ["a", "b"]);
+});

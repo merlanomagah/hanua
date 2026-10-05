@@ -125,7 +125,7 @@ desktopFile($("open-txt"), () => openTxt());
 // dock). The first time today: the one that fits the day (Mel, 6 Oct 2026): planned → To-do.txt; started but not
 // planned → Plan my day; nothing written yet → nothing.
 function fitsToday() {
-  if (desk.blocks.length) return "todo-txt";
+  if (desk.locked) return "todo-txt";
   const written = desk.focus.some(Boolean) || desk.sections.some((x) => x.lines.some((l) => l.text)) || desk.meetings.some((m) => m.title);
   return written ? "plan-day" : null;
 }

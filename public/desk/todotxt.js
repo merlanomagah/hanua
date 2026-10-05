@@ -2,12 +2,13 @@
 // header, with its priority dot: the times live in Up next (Mel, 6 Oct 2026: the time column repeated the agenda).
 // A window like the others (window.js): drag, resize, minimise, remembered; opened by its desktop file, Plan my day's
 // title bar, Up next, and the first visit to the desk once the day is planned.
-import { openItems, planDate, stampLine } from "../shared/desk.js";
-import { $, focus, h } from "../lib.js";
-import { desk, deskDay, refInfo, save } from "./state.js";
+import { openItems, planDate, stampLine, timeLabel, TIME_PICKS, MAX_LINES } from "../shared/desk.js";
+import { $, focus, h, toast } from "../lib.js";
+import { desk, deskDay, newId, refInfo, save } from "./state.js";
 import { check, PRI_LABEL, renderPlanWidget, renderTodo } from "./page.js";
 import { renderAgenda } from "./agenda.js";
 import { noteClosed, noteOpen, registerWindow, resizable, restorePlace, windowBar } from "./window.js";
+import { openDraft } from "./draft.js";
 
 const txt = $("todo-txt");
 const ready = resizable(txt);
@@ -50,5 +51,31 @@ export function renderTxt() {
     all.length ? h("p", { className: "txt-count", textContent: left ? `${left} to go` : "All done today ✓" }) : null,
     ...sections.flatMap((name) => [h("h4", { textContent: name }), h("ul", { className: "txt-list" }, all.filter((x) => (x.section || "General") === name).map((x) => row(x.ref)))]),
     !all.length ? h("p", { className: "txt-empty", textContent: focus.on ? "No Work tasks today." : "Nothing on the list yet: open Plan my day." }) : null);
-  txt.replaceChildren(bar, body);
+  txt.replaceChildren(bar, body, addTaskEl());
+}
+
+// + Add task, right here (Mel, 6 Oct 2026): what, priority, time and section; then the draft day opens with it
+// picked out, to drop where it fits best and lock in
+function addTaskEl() {
+  const secs = desk.sections.filter((x) => !focus.on || x.work);
+  if (!secs.length) return null;
+  const text = h("input", { type: "text", className: "shop-add", placeholder: "+ Add a task", ariaLabel: "New task", maxLength: 200, autocomplete: "off" });
+  const pri = h("select", { className: "at-pick", ariaLabel: "Priority" }, ["h", "m", "l"].map((v) => h("option", { value: v, textContent: PRI_LABEL[v], selected: v === "m" })));
+  const mins = h("select", { className: "at-pick", ariaLabel: "Roughly how long" }, TIME_PICKS.map((m) => h("option", { value: String(m), textContent: timeLabel(m), selected: m === 30 })));
+  const sec = h("select", { className: "at-pick at-sec", ariaLabel: "Section" }, secs.map((x) => h("option", { value: x.id, textContent: x.name || "General" })));
+  const go = h("button", { type: "button", className: "pl-go", textContent: "Add and place it" });
+  const add = () => {
+    const t = text.value.trim();
+    if (!t) { text.focus(); return; }
+    const target = desk.sections.find((x) => x.id === sec.value) || desk.sections[0];
+    if (target.lines.filter((l) => l.text).length >= MAX_LINES) { toast("That section's full"); return; }
+    const line = stampLine({ id: newId(), text: t, done: false, pri: pri.value, mins: Number(mins.value) });
+    const blank = target.lines.findIndex((l) => !l.text);
+    if (blank >= 0) target.lines[blank] = line; else target.lines.push(line);
+    save(); renderTodo(); renderTxt();
+    openDraft(line.id);
+  };
+  go.addEventListener("click", add);
+  text.addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.isComposing) { e.preventDefault(); add(); } });
+  return h("div", { className: "txt-add" }, text, h("div", { className: "at-row" }, pri, mins, sec, go));
 }

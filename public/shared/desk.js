@@ -24,7 +24,7 @@ export const DEFAULT_MINS = 30, GAP = 5, MEETING_PAD = 5, BREAK_AFTER = 90, BREA
 export const WORKDAY = { start: "08:30", end: "17:30" };
 // How a day is saved. Raise it whenever deskShape learns a new field: the page and server must agree, or a save is
 // refused (never quietly trimmed). On 6 Oct 2026 a page newer than the running server lost its meetings that way.
-export const DESK_VERSION = 3; // 3: no Tasks, fixed sections, time words, when things happened (6 Oct 2026)
+export const DESK_VERSION = 4; // 3: no Tasks, fixed sections, time words, when things happened; 4: the draft day (order, locked)
 // Who's out of date when a save arrives: null when they match, "page" (reload it), "server" (Restart Hanua)
 export function versionClash(sent, mine = DESK_VERSION) {
   const v = Number.isInteger(sent) ? sent : 0; // pages from before the check sent none
@@ -106,7 +106,11 @@ export function deskShape(x) {
   const overflow = refsOf(o.overflow);
   // every Save & plan / Re-plan kept (newest last, at most PLANS_KEPT), so plan vs. what happened can be compared later
   const plans = list(o.plans).filter((p) => when(p?.at)).slice(-PLANS_KEPT).map((p) => ({ at: p.at, blocks: blocksOf(p.blocks), overflow: refsOf(p.overflow) }));
-  return { focus, sections, meetings, day, blocks, overflow, plans, settled, settledAt, started: Boolean(o.started) };
+  // the draft day (part F): Mel's order for the day's tasks while she arranges it, and whether it's locked in.
+  // Days planned before the draft existed count as locked when they have blocks.
+  const order = refsOf(o.order);
+  const locked = typeof o.locked === "boolean" ? o.locked : blocks.length > 0;
+  return { focus, sections, meetings, day, blocks, overflow, plans, order, locked, settled, settledAt, started: Boolean(o.started) };
 }
 
 // Which column a new section goes in: the shorter one (General always heads the left)
@@ -199,6 +203,31 @@ export function stampLine(line, now = new Date()) {
   return line;
 }
 
+// The draft day's first order (Mel, 6 Oct 2026): High, Medium, Low, and within each the quick ones first, so the
+// day builds momentum (blank time counts as Half hour); ties keep the order written. Refs already in Mel's own order
+// (from earlier today) keep it, and anything new slots in where the rule would put it.
+export function draftOrder(items, mine = []) {
+  const rank = (x) => [RANK[x.pri || ""], x.mins || DEFAULT_MINS];
+  const byRule = items.map((x, i) => ({ ...x, i })).sort((a, b) => rank(a)[0] - rank(b)[0] || rank(a)[1] - rank(b)[1] || a.i - b.i);
+  const known = new Set(items.map((x) => x.ref));
+  const kept = mine.filter((r) => known.has(r));
+  if (!kept.length) return byRule.map((x) => x.ref);
+  const out = [...kept];
+  for (const x of byRule) {
+    if (out.includes(x.ref)) continue;
+    // before the first kept item the rule would put after it
+    const at = out.findIndex((r) => { const y = items.find((z) => z.ref === r); return rank(y)[0] > rank(x)[0] || (rank(y)[0] === rank(x)[0] && rank(y)[1] > rank(x)[1]); });
+    out.splice(at < 0 ? out.length : at, 0, x.ref);
+  }
+  return out;
+}
+// Move one ref to a new place in the order
+export function moveInOrder(order, ref, to) {
+  const out = order.filter((r) => r !== ref);
+  out.splice(Math.max(0, Math.min(to, out.length)), 0, ref);
+  return out;
+}
+
 // Keep a plan when it's made (Save & plan / Re-plan), and make it the current one
 export function keepPlan(d, { blocks, overflow }, now = new Date()) {
   d.blocks = blocks; d.overflow = overflow;
@@ -225,7 +254,7 @@ export function openItems(d, atWork = false) {
 // meeting is the buffer, and after at least 45 minutes of unbroken work, anything that would go past about 90 gets a
 // 10-minute break first. A task never splits; what doesn't fit before the end of the day is overflow.
 // Times are "HH:MM"; fixed: [{ start, end }]; from: plan from now if that's later than the day's start.
-export function planDay({ tasks, fixed = [], from = "00:00", day = WORKDAY }) {
+export function planDay({ tasks, fixed = [], from = "00:00", day = WORKDAY, keepOrder = false }) {
   const end = toMin(day.end);
   const begin = up5(Math.max(toMin(day.start), toMin(from)));
   const fixedBusy = fixed.filter((f) => HHMM.test(f.start) && HHMM.test(f.end)).map((f) => [toMin(f.start) - GAP, toMin(f.end) + MEETING_PAD]);
@@ -243,7 +272,8 @@ export function planDay({ tasks, fixed = [], from = "00:00", day = WORKDAY }) {
     for (let p; (p = placed.find((b) => b.kind === "task" && b.e <= cur && cur - b.e <= GAP));) { run += p.e - p.s; cur = p.s; last ??= p.e; }
     return { run, last };
   };
-  const order = tasks.map((t, i) => ({ ...t, first: Boolean(t.first), i })).sort((a, b) => Number(b.first) - Number(a.first) || (a.first ? a.i - b.i : RANK[a.pri || ""] - RANK[b.pri || ""] || a.i - b.i));
+  // keepOrder: Mel's own order from the draft day, as given; otherwise High, Medium, Low
+  const order = keepOrder ? tasks.map((t, i) => ({ ...t, i })) : tasks.map((t, i) => ({ ...t, first: Boolean(t.first), i })).sort((a, b) => Number(b.first) - Number(a.first) || (a.first ? a.i - b.i : RANK[a.pri || ""] - RANK[b.pri || ""] || a.i - b.i));
   const overflow = [];
   for (const task of order) {
     const len = task.mins || DEFAULT_MINS;
