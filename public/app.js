@@ -227,7 +227,8 @@ export function renderClock() {
 export let moneyHidden = store("room-money") === "hidden";
 // At work (Focus) money is always hidden and the TV is off, whatever the remote was last set to
 export const moneyOff = () => moneyHidden || focus.on;
-export const CHANNELS = ["Overview", "Expenses", "Income"];
+// CH 4 "This pay" shows Pūtea's pay-cycle plan (docs/plans/2026-10-tv-this-pay.md): a probe, cut if it isn't watched
+export const CHANNELS = ["Overview", "Expenses", "Income", "This pay"];
 export let channel = Math.min(CHANNELS.length - 1, Math.max(0, Number(store("room-channel")) || 0));
 
 export const row = (name, mid, amt, cls = "") =>
@@ -241,7 +242,36 @@ export function renderMoneyScreen() {
   const month = parseDay(`${m.month.ym}-01`).toLocaleDateString(undefined, { month: "long" });
   const total = (n) => h("span", { className: "total" }, h("span", { className: "cur", textContent: "$" }), h("span", { className: "num", textContent: num(n) }));
   let body;
-  if (channel === 1) {
+  if (channel === 3) {
+    const p = m.thisPay;
+    const day = (d) => fmtDay(d, { weekday: "short", day: "numeric", month: "short" });
+    const STATUS = { landed: "landed", waiting: "not yet", missed: "not seen", due: "due", late: "not seen yet", partial: "part paid", bounced: "bounced" };
+    if (!p) {
+      body = [h("span", { className: "screen-title", textContent: "This pay" }), h("span", { className: "screen-title", textContent: "Update Pūtea to see this pay here" })];
+    } else if (!p.hasPlan || !p.safe) {
+      body = [
+        h("span", { className: "screen-top" }, h("span", { className: "screen-title", textContent: `This pay · day ${p.day} of ${p.days}` })),
+        h("span", { className: "screen-title", textContent: "No plan yet: plan the year in Pūtea → Plan & Goals" }),
+      ];
+    } else {
+      const f = p.flexible;
+      body = [
+        h("span", { className: "screen-top" },
+          h("span", { className: "screen-title", textContent: `Safe to spend · day ${p.day} of ${p.days}` }),
+          h("span", { className: `delta${p.safe.pay <= 0 ? " up" : ""}`, textContent: `${money(p.safe.perDay)} a day · payday ${day(p.nextPayday)}` })),
+        total(p.safe.pay),
+        h("span", { className: "cats" },
+          // the bar is how far through this pay's flexible money; its title says the target
+          f ? row("Flexible",
+            h("span", { className: "track", title: `${money(f.spent)} of ${money(f.target)} this pay` },
+              Object.assign(h("span", { className: `fill${f.spent > f.target ? " over" : ""}` }), { style: `width:${Math.min(100, (f.spent / Math.max(1, f.target)) * 100)}%` })),
+            money(f.spent)) : null,
+          p.dues.map((d) => row(d.name, h("span", { className: "when", textContent: `${day(d.date)} · ${STATUS[d.status] || d.status}` }), money(d.amount, 2))),
+          p.moves.map((t) => row(t.label, h("span", { className: "when", textContent: STATUS[t.status] || t.status }), money(t.amount), t.status === "landed" ? "in" : "")),
+          p.dues.length || p.moves.length ? null : h("span", { className: "screen-title", textContent: p.practice ? "Practice run for next year's plan" : "Nothing else due before payday" })),
+      ];
+    }
+  } else if (channel === 1) {
     const list = m.month.recentExpenses || [];
     body = [
       h("span", { className: "screen-top" },

@@ -2,7 +2,7 @@
 // Pūtea's own (src/main/services/finance.ts: getMonthData, listTransactions, getSubscriptions).
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { label, shapeMonth, shapeSubscriptions, isMonthKey, getMoney } from "../server/money.js";
+import { label, shapeMonth, shapeSubscriptions, shapeThisPay, isMonthKey, getMoney } from "../server/money.js";
 
 const month = {
   income: 3240, expenses: 1868.4, net: 1371.6, prevIncome: 3000, prevExpenses: 2410.75,
@@ -68,4 +68,29 @@ test("with Pūtea closed, the room gets sample money and is told why", async () 
   } finally {
     if (before === undefined) delete process.env.PUTEA_URL; else process.env.PUTEA_URL = before;
   }
+});
+
+// Shaped like Pūtea's GET /api/this-pay (src/main/services/probes.ts getThisPay)
+test("this pay keeps Pūtea's figures and trims to what one screen shows", () => {
+  const p = shapeThisPay({
+    hasPlan: true, practice: true,
+    cycle: { start: "2026-09-23", end: "2026-10-06", day: 13, days: 14, daysLeft: 2, nextPayday: "2026-10-07" },
+    safeToSpend: { pay: 0, perDay: 0, week: 0, weekNumber: 2 },
+    groups: [{ key: "essentials", spent: 2108, target: 2068, status: "mindful" }, { key: "flexible", spent: 462.4, target: 346.15, status: "over" }],
+    debts: { owed: 21296.32, dueThisPay: [1, 2, 3, 4, 5].map((i) => ({ name: `Debt ${i}`, date: "2026-10-0" + i, amount: 50.86, status: "due" })) },
+    payday: [{ label: "To Expenses", amount: 415, status: "landed" }],
+  });
+  assert.equal(p.day, 13);
+  assert.equal(p.nextPayday, "2026-10-07");
+  assert.deepEqual(p.safe, { pay: 0, perDay: 0 });
+  assert.deepEqual(p.flexible, { spent: 462.4, target: 346.15, status: "over" });
+  assert.equal(p.owed, 21296.32);
+  assert.equal(p.dues.length, 4); // one screen: the next four
+  assert.equal(p.dues[0].amount, 50.86);
+  assert.deepEqual(p.moves, [{ label: "To Expenses", amount: 415, status: "landed" }]);
+});
+
+test("an older Pūtea without plans gives no This pay rather than made-up figures", () => {
+  assert.equal(shapeThisPay(null), null);
+  assert.equal(shapeThisPay({}), null);
 });

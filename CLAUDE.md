@@ -36,6 +36,10 @@ The reasoning behind Hanua lives in [Hanua OS](https://app.notion.com/p/3ee16603
 
 **Ask Mel:** which other Apple calendars to show (Savings, Admin/Planning, G + M, Viktual+, NZ Holidays, Birthdays); how the book animation and Money book feel in Safari.
 
+## 5 Oct 2026, evening: the TV's "This pay" channel (CH 4)
+
+Pūtea now plans each pay. Hanua shows it as a **fourth TV channel**, not on the desk (the 5 Oct cut list keeps the desk for daily planning; Mel chose the TV). `server/money.js` `shapeThisPay()` reads Pūtea's read-only `GET /api/this-pay`; `public/app.js` CH 4 draws safe to spend, the next payday, flexible spending, debt payments due and payday moves. Same rules as CH 1–3 (blank At work and when the remote hides money). A probe: cut it if it isn't watched (look from ~2 Nov 2026). Brief: `docs/plans/2026-10-tv-this-pay.md`. To test with real Pūtea figures and no Notion: the `sample-putea` launch config (port 3033).
+
 ## Where we left off (5 Oct 2026, night)
 
 Read this first if you're picking Hanua up in a new session or a different Claude account. Fuller context: the Hanua OS Context page and the latest Session Diary rows in Notion (5 Oct: "Goals Backlog view…", "Room life…", "The canary redrawn…", "The wall rearranged, a typed menu…", "Plan the week…").

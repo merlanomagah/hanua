@@ -61,6 +61,23 @@ export const shapeSubscriptions = (list) =>
   (list || []).filter((s) => !s.isLikelyInactive).sort((a, b) => b.monthlyAmount - a.monthlyAmount).slice(0, 8)
     .map((s) => ({ name: s.name, monthly: round2(s.monthlyAmount), frequency: s.frequency || "", last: String(s.lastCharge || "").slice(0, 10) }));
 
+// The TV's "This pay" channel: Pūtea's GET /api/this-pay (its src/main/services/probes.ts getThisPay),
+// trimmed to what one screen can show. Pūtea owns every figure; Hanua keeps nothing.
+export function shapeThisPay(p) {
+  if (!p || !p.cycle) return null;
+  const flex = (p.groups || []).find((g) => g.key === "flexible");
+  return {
+    hasPlan: !!p.hasPlan,
+    practice: !!p.practice,
+    day: p.cycle.day, days: p.cycle.days, daysLeft: p.cycle.daysLeft, nextPayday: p.cycle.nextPayday,
+    safe: p.safeToSpend ? { pay: round2(p.safeToSpend.pay), perDay: round2(p.safeToSpend.perDay) } : null,
+    flexible: flex ? { spent: round2(flex.spent), target: round2(flex.target), status: flex.status } : null,
+    owed: p.debts ? round2(p.debts.owed) : null,
+    dues: (p.debts?.dueThisPay || []).slice(0, 4).map((d) => ({ name: d.name, date: d.date, amount: round2(d.amount), status: d.status })),
+    moves: (p.payday || []).map((m) => ({ label: m.label, amount: round2(m.amount), status: m.status })),
+  };
+}
+
 async function liveMonth(key) {
   const [month, cur] = await Promise.all([putea(`/api/finance/month/${key}`), putea(txPath(key))]);
   return shapeMonth(key, month, cur.transactions || []);
@@ -80,9 +97,10 @@ export async function getMoney(now = new Date()) {
       putea("/api/akahu/last-sync").catch(() => ({})),
     ]);
     // Open but not yet connected to the bank: the book says how, instead of showing zeros as if they were real
-    const [akahu, accounts] = await Promise.all([
+    const [akahu, accounts, thisPay] = await Promise.all([
       putea("/api/akahu/config").catch(() => ({})),
       putea("/api/finance/accounts").catch(() => []),
+      putea("/api/this-pay").catch(() => null), // an older Pūtea has no plan yet: the channel says so
     ]);
     const month = shapeMonth(ym(now), summary, cur.transactions || []);
     const spend = [...(cur.transactions || []), ...(before.transactions || [])].filter(isSpend);
@@ -97,6 +115,7 @@ export async function getMoney(now = new Date()) {
       setup: { akahu: !!akahu?.configured, accounts: Array.isArray(accounts) ? accounts.length : 0 },
       month,
       subscriptions: shapeSubscriptions(subs),
+      thisPay: shapeThisPay(thisPay),
       week: {
         spent: round2(days.reduce((s, d) => s + d.spent, 0)),
         usual: Math.round((month.prevExpenses / daysIn(prev)) * 7),
@@ -173,5 +192,16 @@ function sampleMoney(now) {
       { name: "Anthropic", monthly: 36, frequency: "Monthly", last: ymd(new Date(now.getFullYear(), now.getMonth(), 1)) },
     ].sort((a, b) => b.monthly - a.monthly),
     week: { spent: days.reduce((s, d) => s + d.spent, 0), usual: 480, days },
+    thisPay: {
+      hasPlan: true, practice: false, day: 6, days: 14, daysLeft: 9, nextPayday: ymd(new Date(now.getFullYear(), now.getMonth(), now.getDate() + 9)),
+      safe: { pay: 212, perDay: 23.56 },
+      flexible: { spent: 134, target: 346, status: "ok" },
+      owed: 8420,
+      dues: [
+        { name: "Car loan", date: ymd(new Date(now.getFullYear(), now.getMonth(), now.getDate() + 2)), amount: 268.63, status: "due" },
+        { name: "Afterpay", date: ymd(new Date(now.getFullYear(), now.getMonth(), now.getDate() + 5)), amount: 57.5, status: "due" },
+      ],
+      moves: [{ label: "To Bills", amount: 415, status: "landed" }, { label: "To Emergency Fund", amount: 200, status: "landed" }],
+    },
   };
 }
