@@ -9,10 +9,21 @@ import { renderAgenda } from "./agenda.js";
 const txt = $("todo-txt");
 let txtPos = null;
 try { txtPos = JSON.parse(localStorage.getItem("todo-txt-pos") || "null"); } catch { txtPos = null; }
+// its size, when Mel has resized it from the corner (this browser only)
+let txtSize = null;
+try { txtSize = JSON.parse(localStorage.getItem("todo-txt-size") || "null"); } catch { txtSize = null; }
+let sizing = false;
+new ResizeObserver(() => {
+  if (txt.hidden || !sizing) return;
+  txtSize = { w: txt.offsetWidth, h: txt.offsetHeight };
+  try { localStorage.setItem("todo-txt-size", JSON.stringify(txtSize)); } catch { /* fine */ }
+}).observe(txt);
 export function openTxt() {
   txt.hidden = false;
   renderTxt();
   if (txtPos) { txt.style.left = `${txtPos.x}px`; txt.style.top = `${txtPos.y}px`; }
+  if (txtSize) { txt.style.width = `${txtSize.w}px`; txt.style.height = `${txtSize.h}px`; txt.style.maxHeight = "none"; }
+  requestAnimationFrame(() => { sizing = true; }); // only Mel's own resizing is kept, not the window first appearing
   txt.querySelector(".txt-body")?.focus({ preventScroll: true });
 }
 function toggleRef(ref) {

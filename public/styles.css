@@ -735,7 +735,7 @@ button.frame:hover { transform: translateY(-2px); box-shadow: inset 1px 1px 0 rg
 }
 .desk-top::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 22px; background: linear-gradient(180deg, #8a5a38, #5e3a22); box-shadow: inset 0 1px 0 rgb(255 230 200 / 0.35); }
 /* To-do.txt: a small window on the desktop, dragged by its title bar */
-.txt-win { position: absolute; z-index: 6; left: var(--pc-left); top: 200px; width: min(540px, calc(100% - 32px)); max-height: 70%; display: flex; flex-direction: column; overflow: hidden;
+.txt-win { position: absolute; z-index: 6; left: var(--pc-left); top: 200px; width: min(540px, calc(100% - 32px)); max-height: calc(100% - 120px); display: flex; flex-direction: column; overflow: hidden;
   border-radius: 10px; background: #FCFBF8; box-shadow: 0 0 0 1px rgb(0 0 0 / 0.12), 0 24px 48px -16px rgb(0 0 0 / 0.5); }
 .txt-win[hidden] { display: none; }
 .txt-bar { cursor: grab; touch-action: none; grid-template-columns: 60px 1fr auto; }
@@ -2466,3 +2466,27 @@ dialog.lock::backdrop { background: #14110e; }
 .pl-mins-pick { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; font-size: 16px; }
 .pl-picks .pl-mins:has(.pl-mins-pick:focus-visible) { border-color: var(--border-2); }
 .pl-picks .pl-mins:hover { border-color: var(--border-2); }
+/* ---- arranging the desk (public/desk/arrange.js): once something's moved, every file and widget has its own place ---- */
+.desk.arranged .widgets, .desk.arranged .wg-pair, .desk.arranged .desktop-icons { display: contents; }
+.desk.arranged [data-arrange] { position: absolute; z-index: 3; margin: 0; box-sizing: border-box; }
+.desk.arranged .wg-agenda { flex: none; }
+.desk.arranged .wg-pair .widget { min-height: 0; }
+[data-arrange].dragging { z-index: 7 !important; opacity: 0.92; box-shadow: 0 18px 40px -12px rgb(0 0 0 / 0.45); cursor: grabbing; }
+.desk-file { touch-action: none; }
+/* a widget's grip (drag to move) and ⋯ (its size), shown on hover or focus */
+.wg-grip, .wg-more { position: absolute; z-index: 2; top: 3px; height: 14px; display: grid; place-items: center; border-radius: 7px; opacity: 0; transition: opacity 150ms; cursor: grab; touch-action: none; }
+.wg-grip { left: 50%; width: 36px; margin-left: -18px; }
+.wg-grip::before { content: ""; width: 22px; height: 4px; border-radius: 2px; background: rgb(28 24 20 / 0.28); }
+.wg-more { right: 6px; width: 22px; font: 14px/14px var(--ui); color: var(--ink-3); cursor: pointer; }
+.widget:hover > .wg-grip, .widget:hover > .wg-more, .wg-grip:focus-visible, .wg-more:focus-visible { opacity: 1; }
+.wg-grip:focus-visible, .wg-more:focus-visible { outline: 2px solid var(--terra); outline-offset: 1px; }
+@media (hover: none) { .wg-grip, .wg-more { opacity: 0.6; } }
+@media (max-width: 900px) { .wg-grip, .wg-more { display: none; } }
+.wg-menu { position: absolute; z-index: 9; min-width: 150px; padding: 5px; border-radius: 8px; background: rgb(250 247 242 / 0.96); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 0 0 1px rgb(0 0 0 / 0.1), 0 12px 28px -8px rgb(0 0 0 / 0.35); }
+.wg-menu button { display: block; width: 100%; padding: 6px 10px 6px 24px; border: 0; border-radius: 5px; background: transparent; text-align: left; font: 13px var(--ui); color: var(--ink); cursor: pointer; position: relative; }
+.wg-menu button.on::before { content: "✓"; position: absolute; left: 8px; }
+.wg-menu button:hover, .wg-menu button:focus-visible { background: var(--terra); color: #fff; outline: none; }
+.wg-menu hr { margin: 4px 6px; border: 0; border-top: 1px solid rgb(0 0 0 / 0.1); }
+/* To-do.txt resizes from its corner, like a Mac window */
+.txt-win { resize: both; min-width: 300px; min-height: 180px; }

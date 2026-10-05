@@ -13,6 +13,7 @@ import { openPlan, renderTodo, resetSweep } from "./desk/page.js";
 import { renderAgenda } from "./desk/agenda.js";
 import { openTxt } from "./desk/todotxt.js";
 import "./desk/timer.js";
+import "./desk/arrange.js"; // drag files and widgets, widget sizes, Reset layout
 
 export { backup } from "./desk/state.js";
 export { openArchive, openPlan, renderTodo } from "./desk/page.js";
