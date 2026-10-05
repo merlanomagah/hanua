@@ -92,6 +92,22 @@
       ],
       "port": 3035,
       "autoPort": true
+    },
+    {
+      "name": "sample-planner",
+      "runtimeExecutable": "env",
+      "runtimeArgs": [
+        "PORT=3041",
+        "NOTION_TOKEN=",
+        "ANTHROPIC_API_KEY=",
+        "ANTHROPIC_AUTH_TOKEN=",
+        "PUTEA_URL=http://127.0.0.1:1",
+        "LOCK_FILE=data/lock-sample-planner.json",
+        "APPLE_CAL=0",
+        "node",
+        "server/index.js"
+      ],
+      "port": 3041
     }
   ]
 }

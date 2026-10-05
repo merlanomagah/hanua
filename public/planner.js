@@ -116,19 +116,40 @@ function heading(name, key) {
   const prompt = prompts[key] || "";
   return h("div", { className: "pl-head" }, h("h3", { textContent: name }), prompt ? h("span", { className: "pl-prompt", textContent: prompt, title: prompt }) : null);
 }
-// a line you type on; Enter or ↓ goes to the next line, ↑ back
+// a line you type on; Enter or ↓ goes to the next line, ↑ back. A long line wraps onto the next ruled line
+// rather than being cut off (Mel, 6 Oct 2026), so it's a one-line textarea that grows a whole line at a time.
 function lineInput(value, { placeholder = "", label, onInput, section, index }) {
-  const input = h("input", { type: "text", className: "pl-input", value, placeholder, ariaLabel: label, autocomplete: "off", spellcheck: true, maxLength: 200 });
-  input.addEventListener("input", () => onInput(input.value));
+  const input = h("textarea", { className: "pl-input", value, placeholder, ariaLabel: label, autocomplete: "off", spellcheck: true, maxLength: 200, rows: 1 });
+  input.addEventListener("input", () => {
+    if (/\n/.test(input.value)) input.value = input.value.replace(/\s*\n\s*/g, " "); // a pasted list stays one line
+    fitLine(input);
+    onInput(input.value);
+  });
   input.addEventListener("keydown", (e) => {
     if (e.isComposing) return;
-    if (e.key === "Enter" || e.key === "ArrowDown") { e.preventDefault(); focusLine(section, index + 1); }
-    if (e.key === "ArrowUp") { e.preventDefault(); focusLine(section, index - 1); }
+    const wrapped = input.offsetHeight > lineH(input) * 1.5;
+    const atEnd = input.selectionStart === input.value.length, atStart = input.selectionEnd === 0;
+    if (e.key === "Enter" || (e.key === "ArrowDown" && (!wrapped || atEnd))) { e.preventDefault(); focusLine(section, index + 1); }
+    if (e.key === "ArrowUp" && (!wrapped || atStart)) { e.preventDefault(); focusLine(section, index - 1); }
   });
   return input;
 }
+const lineH = (el) => parseFloat(getComputedStyle(el).lineHeight) || 36;
+// as tall as its text, in whole ruled lines, so the rules stay under the writing
+function fitLine(el) {
+  if (!el.isConnected || !el.offsetWidth) return;
+  const line = lineH(el);
+  el.style.height = `${line}px`;
+  el.style.height = `${Math.max(1, Math.round(el.scrollHeight / line)) * line}px`;
+}
+// the window opening, or its width changing, re-wraps every line
+const refit = new ResizeObserver(() => document.querySelectorAll("#todo .pl-input").forEach(fitLine));
+refit.observe($("todo"));
 function focusLine(section, index) {
-  document.querySelectorAll(`#todo [data-section="${section}"] .pl-input`)[index]?.focus({ preventScroll: true });
+  const el = document.querySelectorAll(`#todo [data-section="${section}"] .pl-input`)[index];
+  if (!el) return;
+  el.focus({ preventScroll: true });
+  el.setSelectionRange(el.value.length, el.value.length);
 }
 const dayWord = (day) => parseDay(day).toLocaleDateString("en-NZ", { weekday: "short", day: "numeric", month: "short" });
 
@@ -272,8 +293,10 @@ function meetingsEl() {
     const ensure = () => { while (desk.meetings.length <= i) desk.meetings.push({ id: newId(), time: "", mins: 0, title: "", work: focus.on }); return desk.meetings[i]; };
     const m = desk.meetings[i];
     if (focus.on && m && !m.work) continue; // at work, only work meetings
-    const time = h("input", { type: "time", className: "pl-time", value: m?.time || "", ariaLabel: `Meeting ${i + 1} time`, step: 300 });
-    time.addEventListener("change", () => { ensure().time = time.value; save(); renderAgenda(); });
+    // an empty time says "Time", not a grey made-up time (Safari draws "12:30 PM" in an empty box)
+    const time = h("input", { type: "time", className: `pl-time${m?.time ? "" : " blank"}`, value: m?.time || "", ariaLabel: `Meeting ${i + 1} time`, step: 300 });
+    time.addEventListener("change", () => { ensure().time = time.value; time.classList.toggle("blank", !time.value); save(); renderAgenda(); });
+    const timeBox = h("span", { className: "pl-timebox" }, time);
     const len = h("select", { className: `pl-mins${m?.mins ? "" : " unset"}`, ariaLabel: "How long", title: "How long (blank counts as 30 min)" },
       h("option", { value: "0", textContent: "30m?" }), TIME_PICKS.map((v) => h("option", { value: String(v), textContent: minsLabel(v), selected: m?.mins === v })));
     len.addEventListener("change", () => { ensure().mins = Number(len.value); len.classList.toggle("unset", !Number(len.value)); save(); });
@@ -281,7 +304,7 @@ function meetingsEl() {
       ensure().title = v; save(); renderAgenda();
       if (v && i === rows - 1 && rows < MAX_MEETINGS) renderTodo();
     } });
-    list.append(h("li", { className: "pl-line pl-meet" }, time, title, len, focus.on ? null : workChip(Boolean(m?.work), "Meeting", () => { const x = ensure(); x.work = !x.work; save(); return x.work; })));
+    list.append(h("li", { className: "pl-line pl-meet" }, timeBox, title, len, focus.on ? null : workChip(Boolean(m?.work), "Meeting", () => { const x = ensure(); x.work = !x.work; save(); return x.work; })));
   }
   return tagged(h("section", { className: "pl-sec pl-meetings" }, heading("Meetings & events", "meetings"), list), "meet");
 }
@@ -386,6 +409,7 @@ export function renderTodo() {
   $("todo").replaceChildren(bar, page);
   if (old && !archive) page.scrollTop = old.scrollTop;
   renderTxt();
+  page.querySelectorAll(".pl-input").forEach(fitLine);
   if (active?.name) $("todo").querySelector(`[data-section="${active.sec}"] .pl-sec-name`)?.focus({ preventScroll: true });
   else if (active && active.i >= 0) focusLine(active.sec, active.i);
 }

@@ -931,7 +931,7 @@ button.frame:hover { transform: translateY(-2px); box-shadow: inset 1px 1px 0 rg
 .pl-sec-x:disabled { cursor: default; opacity: 0 !important; }
 @media (hover: none) { .pl-sec-x { opacity: 0.7; } }
 /* quick picks on each written line: priority and a rough time (hidden until the line has text) */
-.pl-picks { flex: none; display: flex; gap: 2px; margin-left: 4px; }
+.pl-picks { flex: none; display: flex; gap: 2px; margin-left: 4px; --h: 22px; }
 .pl-line.empty .pl-picks { visibility: hidden; }
 .pl-pri, .pl-mins { height: 22px; padding: 0 4px; border: 1px solid transparent; border-radius: 3px; background: transparent; cursor: pointer; -webkit-appearance: none; appearance: none;
   font: 10px var(--mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-3); }
@@ -944,7 +944,7 @@ button.frame:hover { transform: translateY(-2px); box-shadow: inset 1px 1px 0 rg
 @media (hover: none) { .pl-line .pl-pri.p-none, .pl-line .pl-mins.unset { opacity: 1; } }
 /* Work: a small briefcase chip on a section's header (and each meeting); at work only Work shows */
 .pl-head .pl-work { margin-left: auto; }
-.pl-work { flex: none; display: inline-flex; align-items: center; gap: 3px; height: 20px; padding: 0 6px; border: 1px solid var(--border-2); border-radius: 3px; background: transparent; cursor: pointer;
+.pl-work { --h: 20px; flex: none; display: inline-flex; align-items: center; gap: 3px; height: 20px; padding: 0 6px; border: 1px solid var(--border-2); border-radius: 3px; background: transparent; cursor: pointer;
   font: 9px var(--mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--faint); }
 .pl-work svg { width: 11px; height: 11px; fill: none; stroke: currentColor; stroke-width: 1.4; }
 .pl-work.on { border-color: var(--ink-3); background: var(--ink); color: var(--cream); }
@@ -953,13 +953,16 @@ button.frame:hover { transform: translateY(-2px); box-shadow: inset 1px 1px 0 rg
 .pl-datebar { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
 .pl-daybar { display: flex; align-items: center; gap: 6px; height: var(--line); margin-top: calc(var(--line) / 2); font: 11px var(--ui); color: var(--ink-3); }
 .pl-daylabel { font: 9px var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-4); }
-.pl-time { height: 24px; padding: 0 4px; border: 1px solid var(--border-2); border-radius: 3px; background: #fff; font: 12px var(--ui); color: var(--ink); }
+.pl-time { --h: 24px; height: 24px; padding: 0 4px; border: 1px solid var(--border-2); border-radius: 3px; background: #fff; font: 12px var(--ui); color: var(--ink); }
 .pl-go { margin-left: 8px; height: 28px; padding: 0 12px; border: 0; border-radius: 4px; background: var(--terra); cursor: pointer; font: 500 12px var(--ui); color: #fff; }
 .pl-go:hover { filter: brightness(1.06); }
 /* Meetings & events: time, what, how long, work */
 .pl-meetings { margin-bottom: var(--line); }
 .pl-meet { gap: 8px; }
-.pl-meet .pl-time { flex: none; width: 92px; }
+.pl-meet .pl-timebox { --h: 24px; position: relative; width: 92px; }
+.pl-meet .pl-time { width: 100%; box-sizing: border-box; }
+.pl-time.blank:not(:focus), .pl-time.blank:not(:focus)::-webkit-datetime-edit { color: transparent; }
+.pl-timebox:has(.pl-time.blank:not(:focus))::after { content: "Time"; position: absolute; left: 6px; top: 0; line-height: 24px; pointer-events: none; font: italic 12px/24px var(--ui); color: var(--faint); }
 .pl-meet .pl-work { margin-left: 0; }
 /* the morning sweep, before the page */
 .pl-sweep { max-width: 760px; }
@@ -968,7 +971,7 @@ button.frame:hover { transform: translateY(-2px); box-shadow: inset 1px 1px 0 rg
 .sw-list { list-style: none; margin: 0; padding: 0; }
 .sw-item { display: grid; grid-template-columns: 150px 1fr auto; align-items: center; gap: 12px; min-height: var(--line); }
 .sw-from { font: 9px var(--mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-4); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.sw-text { min-width: 0; font: calc(var(--line) * 0.6)/var(--line) var(--display); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sw-text { min-width: 0; font: calc(var(--line) * 0.6)/var(--line) var(--display); overflow-wrap: anywhere; }
 .sw-acts { display: flex; gap: 4px; }
 .sw-act { padding: 2px 7px; border: 1px solid #ddd5c7; border-radius: 3px; background: #fff; cursor: pointer; font: 11px var(--ui); color: var(--ink-3); white-space: nowrap; }
 .sw-act:hover { color: var(--terra); border-color: var(--terra); }
@@ -999,16 +1002,20 @@ ul.ar-list { list-style: none; }
 .pl-head h3 { flex: none; margin: 0; font: italic 500 calc(var(--line) * 0.78)/var(--line) var(--display); color: var(--terra); }
 .pl-prompt { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: italic 400 calc(var(--line) * 0.52)/var(--line) var(--display); color: var(--ink-4); }
 .pl-list { list-style: none; margin: 0; padding: 0; }
-.pl-line { display: flex; align-items: center; gap: 8px; height: var(--line); min-width: 0; }
-.pl-num { flex: none; width: 22px; font: 500 calc(var(--line) * 0.62) var(--display); color: var(--terra); }
+/* a line is one ruled row, or more when its text wraps; everything beside the text stays centred on the first row */
+.pl-line { display: flex; align-items: flex-start; gap: 8px; min-height: var(--line); min-width: 0; }
+.pl-line > :not(.pl-input) { flex: none; align-self: flex-start; margin-top: calc((var(--line) - var(--h, 22px)) / 2); }
+.pl-num { flex: none; width: 22px; --h: var(--line); line-height: var(--line); font: 500 calc(var(--line) * 0.62)/var(--line) var(--display); color: var(--terra); }
 .pl-line.empty .check { visibility: hidden; } /* a tick box only once something's written */
 .pl-input {
   flex: 1; min-width: 0; height: var(--line); margin: 0; padding: 0; border: 0; border-radius: 0; background: transparent; -webkit-appearance: none; appearance: none;
-  font: 400 calc(var(--line) * 0.7) var(--display); color: var(--ink); line-height: normal;
+  font: 400 calc(var(--line) * 0.7)/var(--line) var(--display); color: var(--ink);
+  resize: none; overflow: hidden; white-space: pre-wrap; overflow-wrap: anywhere; display: block;
 }
 .pl-input::placeholder { color: var(--faint); font-style: italic; }
 .pl-input:focus { outline: none; background: linear-gradient(90deg, rgb(196 96 42 / 0.06), transparent 80%); }
 .planner .check {
+  --h: calc(var(--line) * 0.5);
   position: relative; flex: none; width: calc(var(--line) * 0.5); height: calc(var(--line) * 0.5); padding: 0; border: 1px solid var(--ink-3); border-radius: 2px;
   background: transparent; cursor: pointer; display: grid; place-items: center;
 }
