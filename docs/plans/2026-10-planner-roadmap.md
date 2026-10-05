@@ -6,7 +6,7 @@ Sorted by what each item touches, so the saved day's shape changes once, `public
 
 | Step | Batch | Items (CLAUDE.md "Start here") | Why here | Lane | State |
 |---|---|---|---|---|---|
-| 1 | Safety first | 18i long lines wrap, empty meeting time says "Time"; 11 version check (an old server or page refuses, never drops fields); interim nightly copy of `data/room/` to a private iCloud folder | Every later step changes the saved day; days live only on this Mac | Fix + Small | 18i done 6 Oct |
+| 1 | Safety first | 18i long lines wrap, empty meeting time says "Time"; 11 version check (an old server or page refuses, never drops fields); interim nightly copy of `data/room/` to a private iCloud folder | Every later step changes the saved day; days live only on this Mac | Fix + Small | Done 6 Oct |
 | 2 | Tidy the planner code | 17: split `planner.js` into page / To-do.txt / timer / agenda | Nearly every later batch edits it; no visible change | Small | |
 | 3 | The page's new shape | 18b drop Tasks to complete (old days still open), 18a time labels incl. Quick (10m), 18c fixed sections (General, Spark NZ, Jump issues), 12 record when (added/ticked, plan kept on Re-plan, carried tasks know their first day) | One change to `deskShape`, one migration, one set of tests | Medium | |
 | 4 | Faster on the page | 18h multi-select and H/M/L then Tab; 17 Undo on the sweep, delete a meeting row | Builds on the new shape | Medium | |

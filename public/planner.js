@@ -4,12 +4,12 @@
 // Plan my day opens over the whole page (Mel, 6 Oct 2026): the date (Tue 06-Oct-2026), Today's focuses (3 numbered
 // lines) and a To-Do List of empty lines, on faint rows with the text in the middle of each. Kept in a small file per
 // day on this Mac. Rules: public/shared/desk.js (tested).
-import { bringForward, deskSections, deskShape, fromMin, lastFocus, leftovers, openItems, planDay, planDate, shorterCol, startDay, stepDay, stickiesUp, stickyShape, toMin, DEFAULT_MINS, GENERAL, MAX_LINES, MAX_MEETINGS, MAX_NAME, MAX_SECTIONS, SECTION_ROWS, STICKY_COLOURS, STICKY_MAX, STICKY_TEXT, TIME_PICKS } from "./shared/desk.js";
+import { bringForward, versionClash, CLASH_TEXT, DESK_VERSION, deskSections, deskShape, fromMin, lastFocus, leftovers, openItems, planDay, planDate, shorterCol, startDay, stepDay, stickiesUp, stickyShape, toMin, DEFAULT_MINS, GENERAL, MAX_LINES, MAX_MEETINGS, MAX_NAME, MAX_SECTIONS, SECTION_ROWS, STICKY_COLOURS, STICKY_MAX, STICKY_TEXT, TIME_PICKS } from "./shared/desk.js";
 import { showBoard } from "./goals/board.js";
-import { dayOf, parseDay, timeOf, todayStr } from "./shared/dates.js";
+import { dayOf, parseDay, timeOf, todayStr, ymd } from "./shared/dates.js";
 import { $, focus, h, longDate, reducedMotion, toast } from "./lib.js";
 import { openGoal } from "./goals/form.js";
-import { bookEl, calendarItems, ensureApple, openBook, openInCalendar, openTurntable, ROLE, sortByTime } from "./app.js";
+import { bookEl, renderNotes, calendarItems, ensureApple, openBook, openInCalendar, openTurntable, ROLE, sortByTime } from "./app.js";
 
 // ---- the desk as a pane ----
 export let onDesk = false;
@@ -79,6 +79,8 @@ addEventListener("wheel", (e) => {
 // ---- the page: focuses and tasks at the top, the To-Do List in sections, a morning sweep and an archive ----
 let deskDay = todayStr(), desk = deskShape({}), earlier = {}, prompts = {}, loaded = false;
 let saveTimer = 0, sweepLater = false;
+export let backup = null; // the nightly backup's status (/api/backup): a line in the Archive, a note on the desk if it fails
+let stale = null; // "page" or "server" when the two save a day differently: saving stops and the page says so
 let archive = null; // null = today's page; { days: [...], day, page } while looking back
 const newId = () => Math.random().toString(36).slice(2, 10);
 
@@ -89,6 +91,7 @@ export async function loadDesk() {
     const res = await fetch(`/api/desk/${deskDay}`);
     if (res.ok) {
       const j = await res.json();
+      stale = versionClash(j.v); // an old server answers without one
       earlier = j.earlier || {};
       desk = startDay(j.day, earlier, deskDay); // a new day: yesterday's section headers, empty
       if (!j.day?.started) save();
@@ -98,12 +101,21 @@ export async function loadDesk() {
   renderTodo();
   renderAgenda(); // the day's plan shows in Up next
   try { prompts = (await (await fetch("/api/desk/prompts")).json()).prompts || {}; renderTodo(); } catch { /* headings alone */ }
+  loadBackup();
+}
+setInterval(() => loadBackup(), 3600_000); // a failure that happens while Hanua sits open still reaches the desk
+export async function loadBackup() {
+  try { backup = await (await fetch("/api/backup")).json(); } catch { backup = null; }
+  renderNotes();
+  if (archive) renderTodo();
 }
 function save() {
   clearTimeout(saveTimer);
   saveTimer = setTimeout(async () => {
+    if (stale) { toast(CLASH_TEXT[stale], true); return; }
     try {
-      const res = await fetch(`/api/desk/${deskDay}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(desk) });
+      const res = await fetch(`/api/desk/${deskDay}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...desk, v: DESK_VERSION }) });
+      if (res.status === 409) { stale = (await res.json().catch(() => ({}))).stale || "server"; renderTodo(); toast(CLASH_TEXT[stale], true); return; }
       if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || `Request failed (${res.status})`);
     }
     catch (err) { toast(`Today's page couldn't be saved: ${err.message}`, true); }
@@ -259,8 +271,9 @@ function sweepEl(items) {
 }
 
 // the archive: earlier days, read-only
-async function openArchive() {
+export async function openArchive() {
   archive = { days: [], day: null, page: null };
+  loadBackup();
   renderTodo();
   try { archive.days = (await (await fetch("/api/desk/days")).json()).filter((d) => d < deskDay); } catch { archive.days = []; }
   if (archive.days[0]) await showArchiveDay(archive.days[0]); else renderTodo();
@@ -282,7 +295,16 @@ function archiveEl() {
       h("h4", { textContent: "Focuses" }), h("ol", { className: "ar-list" }, p.focus.filter(Boolean).map((f) => h("li", { textContent: f }))),
       h("h4", { textContent: "Tasks to complete" }), h("ul", { className: "ar-list" }, p.key.filter((k) => k.text).map((k) => read(k.text, k.done))),
       ...p.sections.filter((s) => s.lines.some((l) => l.text)).flatMap((s) => [h("h4", { textContent: s.name || "Untitled" }), h("ul", { className: "ar-list" }, s.lines.filter((l) => l.text).map((l) => read(l.text, l.done)))]));
-  return h("div", { className: "pl-archive" }, pick, page);
+  return h("div", { className: "pl-archive" }, h("div", {}, pick, backupLine()), page);
+}
+
+// under the archive's days: when the room's data was last copied to iCloud Drive
+function backupLine() {
+  if (!backup || backup.off) return null;
+  const when = (iso) => { const d = new Date(iso);
+    return `${ymd(d) === todayStr() ? "today" : d.toLocaleDateString("en-NZ", { weekday: "short", day: "numeric", month: "short" })}, ${d.toLocaleTimeString("en-NZ", { hour: "numeric", minute: "2-digit" })}`; };
+  const text = backup.good ? `Backed up ${when(backup.good)}` : "Not backed up yet";
+  return h("p", { className: `ar-backup${backup.warning ? " bad" : ""}`, title: backup.where ? `Copied to ${backup.where}` : "", textContent: backup.warning ? `${text}. ${backup.warning}.` : text });
 }
 
 // meetings and events for the day: a time, roughly how long, what, and whether it's work. Planned round, never over.
@@ -398,6 +420,7 @@ export function renderTodo() {
       items.length ? (() => { const b = h("button", { type: "button", className: "pl-later", textContent: `${items.length} from earlier still waiting` }); b.addEventListener("click", () => { sweepLater = false; renderTodo(); }); return b; })() : null,
     ];
   }
+  if (stale) body.unshift(h("p", { className: "pl-stale", role: "alert", textContent: CLASH_TEXT[stale] }));
   const page = h("div", { className: `pl-page${archive ? " is-archive" : ""}`, ariaLabel: `Plan for ${planDate(today)}` }, ...body);
   // a window with a title bar: the red button closes it, like a Mac window; Archive looks back
   const close = h("button", { type: "button", className: "pw-close", ariaLabel: "Close Plan my day", title: "Close (Esc)" });

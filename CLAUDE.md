@@ -26,6 +26,10 @@ The reasoning behind Hanua lives in [Hanua OS](https://app.notion.com/p/3ee16603
 5. A preference stated or something deliberately cut → Preferences (and its cut list). A new image → full-size original in `prototypes/room-dashboard/assets/`, resized copy in `public/assets/`, and a row in the image library.
 6. At the end of every new room, run the promotion check (unpromoted Learning Log rows up; Playbook patterns not adopted, offered as proposals) and update Hanua OS's row in the OS Registry with the sweep date.
 
+## Step by step through #11–18 (6 Oct 2026, from 10 am)
+
+Mel approved an order for all of #11–18 (each step still gets a panel brief): `docs/plans/2026-10-planner-roadmap.md`. **Step 1 is done**: long planner lines wrap onto the next ruled line (a one-line `textarea`, `fitLine`); an empty meeting time says *Time*; **version check** (`DESK_VERSION` / `versionClash` in `public/shared/desk.js`: a save from an older page or to an older server gets a 409 and the page says which, `.pl-stale`; **raise `DESK_VERSION` whenever `deskShape` learns a field**); **nightly backup** (`server/backup.js`: `data/room/` → iCloud Drive "Hanua backup/<day>/", last 30 kept, once a day and again after 9 pm, `/api/backup`; a failure or two days without one is a desk note, and the Archive says when it last ran; the sample server backs up to `data/room-sample-backup/`; `BACKUP_DIR` in `.env` can move it or say `off`; no Pūtea data, Mel's choice). **Next: step 2** (split `public/planner.js`). Preview: launch config `sample-planner` (port 3041).
+
 ## Start here (6 Oct 2026, evening close-out)
 
 **First, before anything else:** ask Mel to use **Restart Hanua** if she hasn't since the evening's push. A page newer than the running server makes the server drop fields it doesn't know (meetings, priorities, blocks) when the day saves. Then ask the three questions from the planner assessment (below).

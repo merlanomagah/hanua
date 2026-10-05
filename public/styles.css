@@ -2455,3 +2455,7 @@ dialog.lock::backdrop { background: #14110e; }
 /* narrower desks: the meal slip and the Plan my day file can't sit side by side, so the slip hangs under the file */
 @media (min-width: 901px) and (max-width: 1365px) { .meal-slip { top: 340px; left: auto; right: var(--pc-right); } }
 @media (max-width: 900px) { .txt-win { position: fixed; left: 8px; right: 8px; top: auto; bottom: 8px; width: auto; max-height: 70vh; } .txt-bar { cursor: default; } }
+/* the page and server save a day differently (an old tab, or Hanua not restarted): saving stops and says so */
+.pl-stale { margin: 0 0 var(--line); padding: 8px 12px; border-left: 3px solid var(--terra); background: rgb(196 96 42 / 0.08); font: 13px/20px var(--ui); color: var(--ink); }
+.ar-backup { margin: var(--line) 0 0; padding: 0 8px; font: 11px/16px var(--ui); color: var(--ink-4); }
+.ar-backup.bad { color: var(--terra); }

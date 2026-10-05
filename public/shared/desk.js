@@ -15,6 +15,18 @@ export const PRIORITIES = ["h", "m", "l"];
 export const TIME_PICKS = [15, 30, 45, 60, 90, 120];
 export const DEFAULT_MINS = 30, GAP = 5, MEETING_PAD = 5, BREAK_AFTER = 90, BREAK_MINS = 10, MAX_MEETINGS = 12;
 export const WORKDAY = { start: "08:30", end: "17:30" };
+// How a day is saved. Raise it whenever deskShape learns a new field: the page and server must agree, or a save is
+// refused (never quietly trimmed). On 6 Oct 2026 a page newer than the running server lost its meetings that way.
+export const DESK_VERSION = 2;
+// Who's out of date when a save arrives: null when they match, "page" (reload it), "server" (Restart Hanua)
+export function versionClash(sent, mine = DESK_VERSION) {
+  const v = Number.isInteger(sent) ? sent : 0; // pages from before the check sent none
+  return v === mine ? null : v < mine ? "page" : "server";
+}
+export const CLASH_TEXT = {
+  page: "This page is older than Hanua: reload it (⌘R) to keep saving. What you typed is still on the page.",
+  server: "Hanua was updated but is still running the old version: use Restart Hanua to keep saving. What you typed is still on the page.",
+};
 
 // A real day, written YYYY-MM-DD, or null (guards /api/desk/:day like weekKey does for the menu)
 export function dayKey(s) {

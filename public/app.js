@@ -15,7 +15,7 @@ import "./menu-plan.js"; // Plan the week ✦ on the menu board
 import { onKitchen, renderMealSlip, showKitchen } from "./kitchen.js"; // swipe left: the weather window and the menu
 import { weatherLine } from "./weather-window.js";
 import "./bird.js"; // the canary: just for life
-import { loadDesk, loadStickies, renderAgenda, renderStickies, renderTodo, showDesk } from "./planner.js"; // the desk: desktop, planner, stickies, agenda
+import { backup, openArchive, openPlan, loadDesk, loadStickies, renderAgenda, renderStickies, renderTodo, showDesk } from "./planner.js"; // the desk: desktop, planner, stickies, agenda
 
 // Which Notion area plays which part on the page (ids from config/areas.json)
 export const ROLE = { tasks: "work", events: "calendar", notes: "learning", people: "relationships" };
@@ -737,6 +737,8 @@ export function renderNotes() {
     if (/blocked/i.test(r.status || "")) notes.push({ text: `${r.title} is blocked`, meta: "Work · needs a nudge", book: ROLE.tasks, rid: r.id });
   }
   if (reviewDue() && !focus.on) notes.unshift({ text: "Weekly review due", meta: "Goals · ten minutes", run: () => { showBoard(true); openReview(); } });
+  // the nightly backup failed or hasn't run for two days: said out loud, first (opens the archive, which says more)
+  if (backup?.warning) notes.unshift({ text: backup.warning, meta: "Backup · tell Claude", run: () => { showDesk(true); openPlan(); openArchive(); } });
   const box = $("notes");
   // on the desk wall above the stickies since 5 Oct 2026 (the wall has the frames); nothing pinned, nothing shown
   box.hidden = !notes.length;

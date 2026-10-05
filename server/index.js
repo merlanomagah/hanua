@@ -13,9 +13,11 @@ import { toGoal, goalProperties, goalOptions } from "./goals.js";
 import { rollUp } from "../public/shared/goals.js";
 import { weekKey } from "../public/shared/dates.js";
 import { MEALS, menuShape } from "../public/shared/menu.js";
-import { dayKey, deskShape, stepDay, stickyShape, CARRY_DAYS } from "../public/shared/desk.js";
+import { dayKey, deskShape, stepDay, stickyShape, versionClash, CARRY_DAYS, CLASH_TEXT, DESK_VERSION } from "../public/shared/desk.js";
 import { lockStatus, setPin, checkPin } from "./lock.js";
 import { getWeather } from "./weather.js";
+import { backupDue, backupRoom, backupWarning, readStatus } from "./backup.js";
+import os from "node:os";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const config = JSON.parse(await readFile(path.join(root, "config/areas.json"), "utf8"));
@@ -210,15 +212,44 @@ app.get("/api/desk/:day", async (req, res) => {
   const read = async (d) => deskShape(await readJson(path.join(deskDir, `${d}.json`), {}));
   const earlier = {};
   for (let i = 1; i <= CARRY_DAYS; i++) { const d = stepDay(day, -i); earlier[d] = await read(d); }
-  res.set("Cache-Control", "no-store").json({ day: await read(day), earlier });
+  res.set("Cache-Control", "no-store").json({ day: await read(day), earlier, v: DESK_VERSION });
 });
 app.put("/api/desk/:day", async (req, res) => {
   const day = dayKey(req.params.day);
   if (!day) return res.status(400).json({ error: "That day's notes couldn't be saved" });
+  // page and server must save a day the same way, or fields would be dropped without a word: refuse instead
+  const clash = versionClash(req.body?.v);
+  if (clash) return res.status(409).json({ error: CLASH_TEXT[clash], stale: clash });
   const desk = deskShape(req.body);
   await mkdir(deskDir, { recursive: true });
   await writeFile(path.join(deskDir, `${day}.json`), JSON.stringify(desk, null, 2) + "\n");
   res.json(desk);
+});
+
+// The nightly backup of the room's data (server/backup.js): checked every 15 minutes while Hanua runs. The sample
+// server backs up its own folder beside it; BACKUP_DIR in .env can point elsewhere, or say "off".
+const backupDir = process.env.BACKUP_DIR === "off" ? null : path.resolve(root, process.env.BACKUP_DIR
+  || (roomDir.endsWith("room-sample") ? "data/room-sample-backup" : path.join(os.homedir(), "Library/Mobile Documents/com~apple~CloudDocs/Hanua backup")));
+let backupStatus = null, backingUp = false;
+async function backupTick() {
+  if (!backupDir || backingUp) return;
+  backingUp = true;
+  try {
+    backupStatus ??= await readStatus(backupDir);
+    if (backupDue(backupStatus)) {
+      await mkdir(roomDir, { recursive: true });
+      backupStatus = await backupRoom({ from: roomDir, to: backupDir });
+      if (!backupStatus.ok) console.error(`Backup failed: ${backupStatus.error}`);
+    }
+  } finally { backingUp = false; }
+}
+if (backupDir) { setTimeout(backupTick, 5_000); setInterval(backupTick, 15 * 60_000); }
+app.get("/api/backup", async (_req, res) => {
+  res.set("Cache-Control", "no-store");
+  if (!backupDir) return res.json({ off: true });
+  backupStatus ??= await readStatus(backupDir); // asked before the first check has run
+  res.json({ at: backupStatus?.at || null, ok: backupStatus?.ok ?? null, good: backupStatus?.good || null, warning: backupWarning(backupStatus),
+    where: backupDir.includes("CloudDocs") ? `iCloud Drive › ${path.basename(backupDir)}` : path.relative(root, backupDir) || backupDir });
 });
 
 app.get("/api/status", (_req, res) => {
