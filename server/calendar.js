@@ -47,6 +47,8 @@ async function ensureHelper() {
     await fs.mkdir(path.dirname(EXE), { recursive: true });
     await fs.writeFile(path.join(APP, "Contents", "Info.plist"), PLIST);
     await run("xcrun", ["swiftc", "-O", SOURCE, "-o", EXE], { timeout: 180_000 });
+    // Finder tags left by a trip through iCloud Drive (6 Oct 2026) make codesign refuse: clear them first
+    await run("xattr", ["-cr", APP], { timeout: 30_000 }).catch(() => {});
     await run("codesign", ["--force", "--sign", "-", APP], { timeout: 30_000 });
   })().finally(() => { building = null; });
   await building;
