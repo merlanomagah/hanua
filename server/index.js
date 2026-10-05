@@ -68,7 +68,9 @@ const app = express();
 // small JSON everywhere; the whiteboard's drawings (a few hundred KB) have their own, larger limit
 const smallJson = express.json({ limit: "100kb" });
 app.use((req, res, next) => (req.path.startsWith("/api/board/") ? next() : smallJson(req, res, next)));
-app.use(express.static(path.join(root, "public")));
+// "no-cache" = Safari must ask each time whether a file changed (a quick 304 when it hasn't), so after an update
+// it never keeps showing the old page from its cache (6 Oct 2026)
+app.use(express.static(path.join(root, "public"), { setHeaders: (res) => res.set("Cache-Control", "no-cache") }));
 
 // The sleep screen's PIN (a hash in data/lock.json, or LOCK_FILE; the sample preview uses its own file)
 const lockFile = path.resolve(root, process.env.LOCK_FILE || "data/lock.json");
