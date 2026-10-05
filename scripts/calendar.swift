@@ -1,5 +1,6 @@
-// Hanua's window onto Apple Calendar: reads events (never writes) with EventKit, which gives every
-// occurrence of a repeating event and covers every account without Calendar.app running.
+// Hanua's window onto Apple Calendar and Reminders, with EventKit. Calendar events are only read; reminders are read
+// and, when Mel adds or ticks one in Hanua, written (6 Oct 2026: the Shopping list and Add reminder).
+// EventKit gives every occurrence of a repeating event and covers every account without Calendar.app running.
 // Built by server/calendar.js into bin/HanuaCalendar.app, so macOS asks once for "Hanua Calendar"
 // (whatever started Hanua), and run through `open`, writing JSON to the file named by --stdout.
 //
@@ -7,6 +8,10 @@
 //   HanuaCalendar status                      → {"status":"granted" | "notDetermined" | "denied" | …}
 //   HanuaCalendar events FROM TO [names…]     → {"events":[…],"calendars":[…]} or {"error":"denied"}
 //   FROM and TO are days (YYYY-MM-DD, TO included); names, if given, limit it to those calendars.
+//   HanuaCalendar reminders LIST              → {"list":…,"items":[{id,title}]} open items (LIST made if missing)
+//   HanuaCalendar remind-add LIST TITLE [DUE] → {"id":…} (LIST "" = the default list; DUE yyyy-MM-ddTHH:mm, with an alert)
+//   HanuaCalendar remind-done ID 1|0          → {"ok":true}   ticked or unticked
+//   HanuaCalendar remind-remove ID            → {"ok":true}   (Undo of an add)
 import AppKit
 import EventKit
 import Foundation
@@ -40,18 +45,80 @@ let store = EKEventStore()
 var status = EKEventStore.authorizationStatus(for: .event)
 if mode == "status" { out(["status": statusName(status)]) }
 
-guard mode == "ask" || (mode == "events" && args.count >= 4) else { out(["error": "usage"]) }
-
-// first time: macOS asks. It shows its question for a proper app in front, so be one (no Dock icon)
-// and keep the run loop turning until there's an answer
-if status == .notDetermined {
+// macOS shows its question for a proper app in front, so be one (no Dock icon) and turn the run loop until answered
+func waitFor(_ start: (@escaping () -> Void) -> Void) {
   let app = NSApplication.shared
   app.setActivationPolicy(.accessory)
   app.activate(ignoringOtherApps: true)
-  var answered = false
-  store.requestFullAccessToEvents { _, _ in answered = true }
+  var done = false
+  start { done = true }
   let giveUp = Date().addingTimeInterval(180)
-  while !answered && Date() < giveUp { RunLoop.main.run(until: Date().addingTimeInterval(0.1)) }
+  while !done && Date() < giveUp { RunLoop.main.run(until: Date().addingTimeInterval(0.1)) }
+}
+
+// ---- reminders: the Shopping list and Add reminder ----
+if mode.hasPrefix("remind") {
+  var rstatus = EKEventStore.authorizationStatus(for: .reminder)
+  if mode == "reminders-status" { out(["status": statusName(rstatus)]) }
+  if rstatus == .notDetermined {
+    waitFor { finish in store.requestFullAccessToReminders { _, _ in finish() } }
+    rstatus = EKEventStore.authorizationStatus(for: .reminder)
+  }
+  guard rstatus == .fullAccess else { out(["error": statusName(rstatus)]) }
+  let local = DateFormatter()
+  local.locale = Locale(identifier: "en_US_POSIX")
+  local.timeZone = .current
+  local.dateFormat = "yyyy-MM-dd'T'HH:mm"
+  func list(_ name: String) -> EKCalendar? {
+    if name.isEmpty { return store.defaultCalendarForNewReminders() }
+    if let found = store.calendars(for: .reminder).first(where: { $0.title.lowercased() == name.lowercased() }) { return found }
+    guard let source = store.defaultCalendarForNewReminders()?.source else { return nil }
+    let made = EKCalendar(for: .reminder, eventStore: store)
+    made.title = name
+    made.source = source
+    do { try store.saveCalendar(made, commit: true) } catch { return nil }
+    return made
+  }
+  func item(_ id: String) -> EKReminder? { store.calendarItem(withIdentifier: id) as? EKReminder }
+  switch mode {
+  case "reminders":
+    guard args.count >= 3, let cal = list(args[2]) else { out(["error": "list"]) }
+    var found: [EKReminder] = []
+    waitFor { finish in
+      store.fetchReminders(matching: store.predicateForIncompleteReminders(withDueDateStarting: nil, ending: nil, calendars: [cal])) { r in found = r ?? []; finish() }
+    }
+    found.sort { ($0.creationDate ?? .distantPast) < ($1.creationDate ?? .distantPast) }
+    out(["list": cal.title, "items": found.map { ["id": $0.calendarItemIdentifier, "title": $0.title ?? ""] }])
+  case "remind-add":
+    guard args.count >= 4, let cal = list(args[2]) else { out(["error": "list"]) }
+    let r = EKReminder(eventStore: store)
+    r.calendar = cal
+    r.title = args[3]
+    if args.count >= 5, let due = local.date(from: args[4]) {
+      r.dueDateComponents = Calendar.current.dateComponents([.year, .month, .day, .hour, .minute], from: due)
+      r.addAlarm(EKAlarm(absoluteDate: due))
+    }
+    do { try store.save(r, commit: true) } catch { out(["error": "save"]) }
+    out(["id": r.calendarItemIdentifier, "list": cal.title])
+  case "remind-done":
+    guard args.count >= 4, let r = item(args[2]) else { out(["error": "missing"]) }
+    r.isCompleted = args[3] == "1"
+    do { try store.save(r, commit: true) } catch { out(["error": "save"]) }
+    out(["ok": true])
+  case "remind-remove":
+    guard args.count >= 3, let r = item(args[2]) else { out(["error": "missing"]) }
+    do { try store.remove(r, commit: true) } catch { out(["error": "save"]) }
+    out(["ok": true])
+  default:
+    out(["error": "usage"])
+  }
+}
+
+guard mode == "ask" || (mode == "events" && args.count >= 4) else { out(["error": "usage"]) }
+
+// first time: macOS asks
+if status == .notDetermined {
+  waitFor { finish in store.requestFullAccessToEvents { _, _ in finish() } }
   status = EKEventStore.authorizationStatus(for: .event)
 }
 if mode == "ask" {

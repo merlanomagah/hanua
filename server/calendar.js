@@ -1,4 +1,5 @@
-// Apple Calendar, read-only, through a tiny helper app built from scripts/calendar.swift (EventKit).
+// Apple Calendar (read-only) and Reminders (the Shopping list and Add reminder, 6 Oct 2026), through a tiny helper
+// app built from scripts/calendar.swift (EventKit).
 // Built on this Mac the first time it's needed (Command Line Tools' swiftc) into bin/, which git ignores.
 // Events are held in memory for a minute and never written anywhere. Without access, or with
 // APPLE_CAL=0 (the sample server), the room gets sample events and is told why.
@@ -29,6 +30,7 @@ const PLIST = `<?xml version="1.0" encoding="UTF-8"?>
   <key>CFBundleVersion</key><string>1</string>
   <key>LSUIElement</key><true/>
   <key>NSCalendarsFullAccessUsageDescription</key><string>Hanua shows your calendar events on its wall calendar and agenda. It only reads them.</string>
+  <key>NSRemindersFullAccessUsageDescription</key><string>Hanua shows your Shopping list on its desk, adds what you jot there, and adds reminders you set from Add reminder.</string>
 </dict></plist>
 `;
 
@@ -116,6 +118,56 @@ export async function showDay(date) {
     "end run",
   ];
   await run("osascript", [...script.flatMap((l) => ["-e", l]), String(y), String(m), String(d)], { timeout: 8000 });
+  return { ok: true };
+}
+
+// ---------- Reminders: the Shopping list and Add reminder ----------
+// Lists by name (.env): REMINDERS_SHOPPING (default "Shopping", made if missing) and REMINDERS_LIST (Add reminder's
+// list; blank = the default one). Nothing is kept here: each read asks Reminders. The sample server has a pretend list.
+const shoppingList = () => process.env.REMINDERS_SHOPPING?.trim() || "Shopping";
+const reminderList = () => process.env.REMINDERS_LIST?.trim() || "";
+const why = (e) => (e === "denied" || e === "restricted" ? "denied" : e === "notDetermined" ? "ask" : "error");
+const fail = (res) => Object.assign(new Error(res.error === "denied" ? "Hanua isn't allowed to use Reminders yet: System Settings → Privacy & Security → Reminders → Hanua Calendar" : "Reminders didn't answer"), { status: 503, reason: why(res.error) });
+let sampleShop = [{ id: "sh1", title: "Milk" }, { id: "sh2", title: "Bananas" }, { id: "sh3", title: "Rolled oats" }];
+const sampleDone = new Set();
+
+export async function getShopping() {
+  if (appleOff()) return { live: false, list: "Shopping", items: sampleShop.filter((i) => !sampleDone.has(i.id)) };
+  const res = await helper(["reminders", shoppingList()]);
+  if (res.error) return { live: false, reason: why(res.error), list: shoppingList(), items: [] };
+  return { live: true, list: res.list, items: res.items || [] };
+}
+const clean = (t) => String(t ?? "").replace(/\s+/g, " ").trim().slice(0, 200);
+const DUE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/;
+// to: "shopping" or "reminders"; due only for reminders (local time, yyyy-mm-ddThh:mm)
+export async function addReminder({ to, title, due }) {
+  const t = clean(title);
+  if (!t) throw Object.assign(new Error("Write something first"), { status: 400 });
+  if (due && !DUE.test(due)) throw Object.assign(new Error("When looks like 2026-10-06T17:00"), { status: 400 });
+  if (appleOff()) { const id = `s${Date.now()}`; if (to === "shopping") sampleShop.push({ id, title: t }); return { id, live: false }; }
+  const res = await helper(["remind-add", to === "shopping" ? shoppingList() : reminderList(), t, ...(to !== "shopping" && due ? [due] : [])]);
+  if (res.error) throw fail(res);
+  return { id: res.id, list: res.list, live: true };
+}
+const ID = /^[\w:\-.]{1,200}$/;
+export async function setReminderDone(id, done) {
+  if (!ID.test(String(id))) throw Object.assign(new Error("Which one?"), { status: 400 });
+  if (appleOff()) { done ? sampleDone.add(id) : sampleDone.delete(id); return { ok: true }; }
+  const res = await helper(["remind-done", id, done ? "1" : "0"]);
+  if (res.error) throw fail(res);
+  return { ok: true };
+}
+export async function removeReminder(id) {
+  if (!ID.test(String(id))) throw Object.assign(new Error("Which one?"), { status: 400 });
+  if (appleOff()) { sampleShop = sampleShop.filter((i) => i.id !== id); return { ok: true }; }
+  const res = await helper(["remind-remove", id]);
+  if (res.error) throw fail(res);
+  return { ok: true };
+}
+// Open the Reminders app (where the list lives: edit, share, or set it to Groceries there)
+export async function showReminders() {
+  if (appleOff()) return { ok: false };
+  await run("open", ["-a", "Reminders"], { timeout: 8000 });
   return { ok: true };
 }
 

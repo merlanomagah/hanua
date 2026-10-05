@@ -1277,6 +1277,7 @@ export function setFocus(on) {
   applyScreen(false);
   applyRemote();
   renderAll();
+  document.dispatchEvent(new CustomEvent("hanua:focus", { detail: on })); // the desk's lists put themselves away
 }
 $("ts-focus").addEventListener("click", () => setFocus(!focus.on));
 const typing = (t) => t?.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t?.tagName || "");

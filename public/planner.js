@@ -14,6 +14,7 @@ import { renderAgenda } from "./desk/agenda.js";
 import { openTxt } from "./desk/todotxt.js";
 import "./desk/timer.js";
 import "./desk/arrange.js"; // drag files and widgets, widget sizes, Reset layout
+import { initLists } from "./desk/lists.js"; // the Shopping list and Add reminder (Apple Reminders)
 
 export { backup } from "./desk/state.js";
 export { openArchive, openPlan, renderTodo } from "./desk/page.js";
@@ -103,7 +104,7 @@ export async function loadBackup() {
 
 // ---- the desktop: double-click a file to open it (Enter or a tap work too), like a real desktop ----
 let lastPointer = "mouse";
-function desktopFile(el, open) {
+export function desktopFile(el, open) {
   el.addEventListener("pointerdown", (e) => { lastPointer = e.pointerType; });
   el.addEventListener("click", (e) => {
     if (e.detail === 0 || lastPointer === "touch") { el.classList.remove("sel"); return open(); } // keyboard or touch: one press opens it
@@ -115,6 +116,7 @@ function desktopFile(el, open) {
 document.addEventListener("pointerdown", (e) => { if (!e.target.closest?.(".desk-file")) document.querySelectorAll(".desk-file.sel").forEach((f) => f.classList.remove("sel")); });
 const file = $("open-plan");
 desktopFile(file, () => openPlan());
+initLists(desktopFile);
 $("plan-day").addEventListener("close", () => { if (!$("todo-txt").contains(document.activeElement)) file.focus({ preventScroll: true }); });
 
 // the dock, like a Mac's: Calendar opens the Calendar app on today, Notion the Hanua page, the record player the turntable

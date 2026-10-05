@@ -2490,3 +2490,16 @@ dialog.lock::backdrop { background: #14110e; }
 .wg-menu hr { margin: 4px 6px; border: 0; border-top: 1px solid rgb(0 0 0 / 0.1); }
 /* To-do.txt resizes from its corner, like a Mac window */
 .txt-win { resize: both; min-width: 300px; min-height: 180px; }
+/* the Shopping list and Add reminder windows (public/desk/lists.js), like To-do.txt */
+.list-win { width: min(380px, calc(100% - 32px)); left: auto; right: calc(var(--pc-right) + 20px); top: 120px; }
+.rem-win { width: min(420px, calc(100% - 32px)); top: 260px; min-height: 0; }
+.shop-add { width: 100%; box-sizing: border-box; height: 36px; margin: 4px 0 8px; padding: 0 10px; border: 1px solid var(--border-2); border-radius: 5px; background: #fff; font: 15px var(--ui); color: var(--ink); }
+.shop-add:focus { outline: 2px solid var(--terra); outline-offset: -1px; }
+.list-from { margin: 12px 0 0; font: 9px var(--mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--faint); }
+.rem-body { padding-bottom: 16px; }
+.rem-picks { display: flex; flex-wrap: wrap; gap: 6px; margin: 2px 0 10px; }
+.rem-pick { padding: 5px 10px; border: 1px solid var(--border-2); border-radius: 4px; background: #fff; cursor: pointer; font: 12px var(--ui); color: var(--ink-3); }
+.rem-pick.on { border-color: var(--terra); background: rgb(196 96 42 / 0.08); color: var(--terra); }
+.rem-row { display: flex; align-items: center; gap: 10px; }
+.rem-at { flex: 1; min-width: 0; height: 32px; padding: 0 8px; border: 1px solid var(--border-2); border-radius: 4px; background: #fff; font: 13px var(--ui); color: var(--ink); }
+.rem-row .pl-go { margin-left: 0; height: 32px; }
