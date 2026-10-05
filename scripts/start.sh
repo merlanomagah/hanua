@@ -25,17 +25,6 @@ open_browser() {
   if command -v open >/dev/null 2>&1; then open "$URL"; else echo "Open $URL in your browser."; fi
 }
 
-# Kept running by macOS (scripts/agent.sh)? Make sure it's loaded, wait for it, open it.
-LABEL="local.hanua.server"; PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"; DOMAIN="gui/$(id -u)"
-if [ -f "$PLIST" ]; then
-  launchctl print "$DOMAIN/$LABEL" >/dev/null 2>&1 || launchctl bootstrap "$DOMAIN" "$PLIST"
-  for _ in $(seq 1 30); do
-    if curl -fs "$URL/api/status" >/dev/null 2>&1; then open_browser; echo "Hanua is running at $URL"; exit 0; fi
-    sleep 0.5
-  done
-  echo "Hanua didn't answer. The last lines of logs/hanua.log:"; tail -n 20 logs/hanua.log; exit 1
-fi
-
 # Already running? Just open it.
 if curl -fs "$URL/api/status" >/dev/null 2>&1; then
   open_browser
@@ -49,7 +38,8 @@ if [ ! -d node_modules ] || [ package-lock.json -nt node_modules/.package-lock.j
 fi
 
 mkdir -p logs
-nohup node server/index.js >> logs/hanua.log 2>&1 &
+# HANUA_MAIN: this is the real Hanua, which restarts itself when main is updated (server/updates.js)
+HANUA_MAIN=1 nohup node server/index.js >> logs/hanua.log 2>&1 &
 echo $! > .hanua.pid
 
 # Wait up to 15 seconds for the server to answer.

@@ -32,7 +32,7 @@ Mel approved an order for all of #11–18 (each step still gets a panel brief): 
 
 ## Start here (6 Oct 2026, evening close-out)
 
-**First, before anything else:** ask Mel to use **Restart Hanua** if she hasn't since the evening's push. A page newer than the running server makes the server drop fields it doesn't know (meetings, priorities, blocks) when the day saves. Then ask the three questions from the planner assessment (below).
+**First:** (since 6 Oct, 10:30 Hanua restarts itself when `main` moves and refuses mismatched saves, so no Restart needed). Then ask the three questions from the planner assessment (below).
 
 **The planner assessment (6 Oct, evening)**: Plan my day works day to day but isn't yet built for longevity or insight. In order (each through the panel):
 | # | Step | Size | Why |
@@ -151,6 +151,7 @@ Read this first if you're picking Hanua up in a new session or a different Claud
 
 ## Running and checking
 
+- **Hanua keeps itself up to date (6 Oct 2026).** The real Hanua (`scripts/start.sh` sets `HANUA_MAIN=1`) checks every 30 s whether `main` moved in this folder; if so (and nothing was saved in the last 15 s) it starts a fresh copy of itself on the new code and steps aside (`server/updates.js`, `restartSelf`; the new copy retries the port for 10 s). It never restarts while another branch is checked out, so **finish work on a branch, then fast-forward `main`: that is the release.** `POST /api/restart` (header `X-Hanua: restart`) does it on demand; `scripts/restart.sh` (the shortcut) just sends that, so Shortcuts has nothing to cut off. An open page polls `/api/status` `boot`: it reloads itself while Hanua is asleep, else offers Reload (`public/updates.js`). Page files are sent `Cache-Control: no-cache`. A macOS launch agent was tried and dropped: macOS won't let one read `~/Documents`. So Mel shouldn't need Restart Hanua any more; after a push, check `.hanua.pid`'s start time moved within a minute.
 - `npm start`, or `scripts/start.sh` (it backgrounds the server, then opens a new Safari window). `scripts/restart.sh` ("Restart Hanua.command") stops it and starts it fresh, for after an update. The owner also has a macOS Shortcuts shortcut, "Restart Hanua", with a keyboard shortcut, that runs `scripts/restart.sh` (its Run Shell Script step must be `bash "/Users/melmanueli/Documents/GitHub/hanua/scripts/restart.sh"`, nothing else: on 6 Oct 2026 it opened `Restart Hanua.command` in Terminal and then quit Terminal, which killed the restart, so the server kept running morning code): after a change, tell them to use that. To check a restart happened, compare `ps -o lstart -p $(cat .hanua.pid)` with the time. Port comes from `.env` (`PORT`), default 3000.
 - Without keys, everything runs on sample data (`data/sample.json`, dates shifted to today) and sample money. Use that to check changes in a browser at desktop and phone widths before pushing.
 

@@ -18,13 +18,14 @@ import { lockStatus, setPin, checkPin } from "./lock.js";
 import { getWeather } from "./weather.js";
 import { backupDue, backupRoom, backupWarning, readStatus } from "./backup.js";
 import os from "node:os";
-import { watchForUpdates } from "./updates.js";
+import { restartSelf, watchForUpdates } from "./updates.js";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-// Running as the Mac's launch agent (scripts/agent.sh): restart on the new code when main moves (server/updates.js)
-const agent = process.env.HANUA_AGENT === "1";
+// The real Hanua (scripts/start.sh sets HANUA_MAIN=1, not the sample servers): restarts itself on the new code when
+// main moves, and on POST /api/restart (server/updates.js)
+const isMain = process.env.HANUA_MAIN === "1";
 const bootAt = new Date().toISOString();
-const updates = agent ? watchForUpdates({ root }) : null;
+let updates = null, server = null;
 const config = JSON.parse(await readFile(path.join(root, "config/areas.json"), "utf8"));
 const sample = JSON.parse(await readFile(path.join(root, "data/sample.json"), "utf8"));
 
@@ -259,6 +260,14 @@ app.get("/api/backup", async (_req, res) => {
   backupStatus ??= await readStatus(backupDir); // asked before the first check has run
   res.json({ at: backupStatus?.at || null, ok: backupStatus?.ok ?? null, good: backupStatus?.good || null, warning: backupWarning(backupStatus),
     where: backupDir.includes("CloudDocs") ? `iCloud Drive › ${path.basename(backupDir)}` : path.relative(root, backupDir) || backupDir });
+});
+
+// Restart Hanua (scripts/restart.sh, so the shortcut only sends this and finishes; nothing for it to cut off).
+// The custom header means another website can't trigger it from Safari.
+app.post("/api/restart", (req, res) => {
+  if (!isMain || req.get("X-Hanua") !== "restart") return res.status(403).json({ error: "Not this Hanua" });
+  res.json({ restarting: true });
+  setTimeout(() => restartSelf({ root, server }), 100);
 });
 
 app.get("/api/status", (_req, res) => {
@@ -655,9 +664,21 @@ app.use((err, _req, res, _next) => {
 
 const port = Number(process.env.PORT) || 3000;
 // Bind to localhost only: this server holds your Notion and Claude keys.
-app.listen(port, "127.0.0.1", () => {
-  console.log(`Hanua running at http://localhost:${port}${agent ? " (kept running by macOS; restarts itself when main is updated)" : ""}`);
-  if (agent) writeFile(path.join(root, ".hanua.pid"), `${process.pid}\n`).catch(() => {});
-  console.log(`  Notion: ${notionEnabled() ? "connected" : "not configured (showing sample data)"}`);
-  console.log(`  Claude: ${claudeEnabled() ? "connected" : "not configured"}`);
-});
+// A fresh copy started by restartSelf may find the old one still letting go of the port: it tries again for 10 s
+function listen(tries = 0) {
+  server = app.listen(port, "127.0.0.1", () => {
+    console.log(`Hanua running at http://localhost:${port}${isMain ? " (restarts itself when main is updated)" : ""}`);
+    console.log(`  Notion: ${notionEnabled() ? "connected" : "not configured (showing sample data)"}`);
+    console.log(`  Claude: ${claudeEnabled() ? "connected" : "not configured"}`);
+    if (isMain) {
+      writeFile(path.resolve(root, process.env.HANUA_PID_FILE || ".hanua.pid"), `${process.pid}\n`).catch(() => {});
+      updates = watchForUpdates({ root, server });
+    }
+  });
+  server.on("error", (err) => {
+    if (err.code === "EADDRINUSE" && tries < 30) { setTimeout(() => listen(tries + 1), 350); return; }
+    console.error(err.message);
+    process.exit(1);
+  });
+}
+listen();

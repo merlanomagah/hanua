@@ -5,13 +5,24 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
-# Kept running by macOS (scripts/agent.sh): one command restarts it, nothing left running for Shortcuts to cut off
-LABEL="local.hanua.server"
-if [ -f "$HOME/Library/LaunchAgents/$LABEL.plist" ]; then
-  launchctl print "gui/$(id -u)/$LABEL" >/dev/null 2>&1 && launchctl kickstart -k "gui/$(id -u)/$LABEL"
-  exec scripts/start.sh
+PORT=$(grep -E '^PORT=' .env 2>/dev/null | cut -d= -f2 | tr -d '[:space:]' || true)
+PORT=${PORT:-3000}
+URL="http://localhost:$PORT"
+
+# Hanua restarts itself: ask it to, and wait for the fresh copy to answer. It's Hanua's own child, so this script
+# (and Shortcuts, which runs it) can finish straight away without cutting anything off (6 Oct 2026).
+boot() { curl -fs "$URL/api/status" 2>/dev/null | sed -n 's/.*"boot":"\([^"]*\)".*/\1/p'; }
+BEFORE=$(boot)
+if [ -n "$BEFORE" ] && curl -fs -X POST -H "X-Hanua: restart" "$URL/api/restart" >/dev/null 2>&1; then
+  for _ in $(seq 1 40); do
+    sleep 0.5
+    NOW=$(boot)
+    if [ -n "$NOW" ] && [ "$NOW" != "$BEFORE" ]; then exec scripts/start.sh; fi
+  done
+  echo "Hanua didn't come back. The last lines of logs/hanua.log:"; tail -n 20 logs/hanua.log; exit 1
 fi
 
+# Not running, or an older Hanua without /api/restart: stop it and start it the old way
 scripts/stop.sh
 
 # Also stop a Hanua from this folder that was started some other way (e.g. npm start).
