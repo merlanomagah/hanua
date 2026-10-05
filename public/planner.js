@@ -4,7 +4,7 @@
 // Plan my day opens over the whole page (Mel, 6 Oct 2026): the date (Tue 06-Oct-2026), Today's focuses (3 numbered
 // lines) and a To-Do List of empty lines, on faint rows with the text in the middle of each. Kept in a small file per
 // day on this Mac. Rules: public/shared/desk.js (tested).
-import { bringForward, deskSections, deskShape, lastFocus, leftovers, planDate, shorterCol, startDay, stepDay, stickiesUp, stickyShape, GENERAL, MAX_LINES, MAX_NAME, MAX_SECTIONS, SECTION_ROWS, STICKY_COLOURS, STICKY_MAX, STICKY_TEXT } from "./shared/desk.js";
+import { bringForward, deskSections, deskShape, fromMin, lastFocus, leftovers, openItems, planDay, planDate, shorterCol, startDay, stepDay, stickiesUp, stickyShape, toMin, DEFAULT_MINS, GENERAL, MAX_LINES, MAX_MEETINGS, MAX_NAME, MAX_SECTIONS, SECTION_ROWS, STICKY_COLOURS, STICKY_MAX, STICKY_TEXT, TIME_PICKS } from "./shared/desk.js";
 import { showBoard } from "./goals/board.js";
 import { dayOf, parseDay, timeOf, todayStr } from "./shared/dates.js";
 import { $, focus, h, longDate, reducedMotion, toast } from "./lib.js";
@@ -96,6 +96,7 @@ export async function loadDesk() {
   } catch { /* the server's away: an empty page */ }
   loaded = true;
   renderTodo();
+  renderAgenda(); // the day's plan shows in Up next
   try { prompts = (await (await fetch("/api/desk/prompts")).json()).prompts || {}; renderTodo(); } catch { /* headings alone */ }
 }
 function save() {
@@ -131,8 +132,27 @@ function focusLine(section, index) {
 }
 const dayWord = (day) => parseDay(day).toLocaleDateString("en-NZ", { weekday: "short", day: "numeric", month: "short" });
 
+// quick picks on a written line: priority and a rough time (blank = Medium, 30 min); not precise, just structure
+const PRI_LABEL = { "": "Priority", h: "High", m: "Med", l: "Low" };
+const minsLabel = (m) => (m >= 60 ? `${Math.floor(m / 60)}h${m % 60 ? String(m % 60) : ""}` : `${m}m`); // 15m … 1h30, 2h
+function picks(get, set) {
+  const pri = h("select", { className: `pl-pri p-${get().pri || "none"}`, ariaLabel: "Priority", title: "Priority" },
+    ["", "h", "m", "l"].map((v) => h("option", { value: v, textContent: PRI_LABEL[v], selected: get().pri === v })));
+  const time = h("select", { className: `pl-mins${get().mins ? "" : " unset"}`, ariaLabel: "Roughly how long", title: "Roughly how long (blank counts as 30 min)" },
+    h("option", { value: "0", textContent: "Time" }), TIME_PICKS.map((m) => h("option", { value: String(m), textContent: minsLabel(m), selected: get().mins === m })));
+  pri.addEventListener("change", () => { set({ pri: pri.value }); pri.className = `pl-pri p-${pri.value || "none"}`; });
+  time.addEventListener("change", () => { set({ mins: Number(time.value) }); time.classList.toggle("unset", !Number(time.value)); });
+  return h("span", { className: "pl-picks" }, pri, time);
+}
+const workChip = (on, label, toggle) => {
+  const b = h("button", { type: "button", className: `pl-work${on ? " on" : ""}`, ariaPressed: String(on), title: on ? "Work: shows at work" : "Mark as work, so it shows at work", ariaLabel: `${label}: work`,
+    innerHTML: '<svg viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="5" width="12" height="8" rx="1.5"/><path d="M6 5V3.5h4V5"/></svg><span>Work</span>' });
+  b.addEventListener("click", () => { const v = toggle(); b.classList.toggle("on", v); b.ariaPressed = String(v); });
+  return b;
+};
+
 // a tickable line kept in its place: typing on it makes it real, a tick only once something's written
-function tickLine(line, { label, section, index, onText, onTick }) {
+function tickLine(line, { label, section, index, onText, onTick, ensure }) {
   const li = h("li", { className: `pl-line${line?.done ? " done" : ""}${line?.text ? "" : " empty"}` });
   const tick = check(Boolean(line?.done), `Mark ${label} done`);
   tick.addEventListener("click", () => {
@@ -146,6 +166,7 @@ function tickLine(line, { label, section, index, onText, onTick }) {
     if (!v) { li.classList.remove("done"); tick.classList.remove("on"); }
   } });
   li.append(tick, input);
+  if (ensure) li.append(picks(() => line || { pri: "", mins: 0 }, (v) => { line = ensure(); Object.assign(line, v); save(); }));
   return li;
 }
 
@@ -157,8 +178,10 @@ function focusesEl() {
       lineInput(text, { label: `Focus ${i + 1}`, placeholder: hint[i] || "", section: "focus", index: i, onInput: (v) => { desk.focus[i] = v; save(); renderPlanWidget(); } }))))), "focus");
 }
 function tasksEl() {
-  return tagged(h("section", { className: "pl-sec pl-key" }, heading("Tasks to complete", "key tasks"),
-    h("ol", { className: "pl-list" }, desk.key.map((k, i) => tickLine(k, { label: `Task ${i + 1}`, section: "key", index: i,
+  const head = heading("Tasks to complete", "key tasks");
+  head.append(workChip(desk.keyWork, "Tasks to complete", () => { desk.keyWork = !desk.keyWork; save(); return desk.keyWork; }));
+  return tagged(h("section", { className: "pl-sec pl-key" }, head,
+    h("ol", { className: "pl-list" }, desk.key.map((k, i) => tickLine(k, { label: `Task ${i + 1}`, section: "key", index: i, ensure: () => k,
       onText: (v) => { k.text = v; if (!v) k.done = false; save(); renderPlanWidget(); },
       onTick: () => { if (!k.text) return null; k.done = !k.done; save(); renderPlanWidget(); return k.done; } })))), "key");
 }
@@ -167,10 +190,10 @@ function sectionEl(sec) {
   const rows = Math.min(MAX_LINES, Math.max(SECTION_ROWS, sec.lines.length + 1));
   const list = h("ul", { className: "pl-list" });
   for (let i = 0; i < rows; i++) {
-    list.append(tickLine(sec.lines[i], { label: `${sec.name || "section"} line ${i + 1}`, section: key, index: i,
+    const ensure = () => { while (sec.lines.length <= i) sec.lines.push({ id: newId(), text: "", done: false, pri: "", mins: 0 }); return sec.lines[i]; };
+    list.append(tickLine(sec.lines[i], { label: `${sec.name || "section"} line ${i + 1}`, section: key, index: i, ensure,
       onText: (v) => {
-        while (sec.lines.length <= i) sec.lines.push({ id: newId(), text: "", done: false });
-        sec.lines[i].text = v;
+        ensure().text = v;
         if (!v) sec.lines[i].done = false;
         while (sec.lines.length && !sec.lines.at(-1).text) sec.lines.pop();
         save();
@@ -190,6 +213,7 @@ function sectionEl(sec) {
     x.addEventListener("click", () => { desk.sections = desk.sections.filter((s) => s !== sec); save(); renderTodo(); });
     head = h("div", { className: "pl-head" }, name, x);
   }
+  head.append(workChip(sec.work, sec.name || "section", () => { sec.work = !sec.work; save(); return sec.work; }));
   return tagged(h("section", { className: "pl-sec pl-todo-sec" }, head, list), key);
 }
 
@@ -240,6 +264,76 @@ function archiveEl() {
   return h("div", { className: "pl-archive" }, pick, page);
 }
 
+// meetings and events for the day: a time, roughly how long, what, and whether it's work. Planned round, never over.
+function meetingsEl() {
+  const rows = Math.min(MAX_MEETINGS, Math.max(3, desk.meetings.length + 1));
+  const list = h("ul", { className: "pl-list pl-meets" });
+  for (let i = 0; i < rows; i++) {
+    const ensure = () => { while (desk.meetings.length <= i) desk.meetings.push({ id: newId(), time: "", mins: 0, title: "", work: focus.on }); return desk.meetings[i]; };
+    const m = desk.meetings[i];
+    if (focus.on && m && !m.work) continue; // at work, only work meetings
+    const time = h("input", { type: "time", className: "pl-time", value: m?.time || "", ariaLabel: `Meeting ${i + 1} time`, step: 300 });
+    time.addEventListener("change", () => { ensure().time = time.value; save(); renderAgenda(); });
+    const len = h("select", { className: `pl-mins${m?.mins ? "" : " unset"}`, ariaLabel: "How long", title: "How long (blank counts as 30 min)" },
+      h("option", { value: "0", textContent: "30m?" }), TIME_PICKS.map((v) => h("option", { value: String(v), textContent: minsLabel(v), selected: m?.mins === v })));
+    len.addEventListener("change", () => { ensure().mins = Number(len.value); len.classList.toggle("unset", !Number(len.value)); save(); });
+    const title = lineInput(m?.title || "", { label: `Meeting ${i + 1}`, placeholder: i === 0 && !m ? "e.g. Coffee with Sam" : "", section: "meet", index: i, onInput: (v) => {
+      ensure().title = v; save(); renderAgenda();
+      if (v && i === rows - 1 && rows < MAX_MEETINGS) renderTodo();
+    } });
+    list.append(h("li", { className: "pl-line pl-meet" }, time, title, len, focus.on ? null : workChip(Boolean(m?.work), "Meeting", () => { const x = ensure(); x.work = !x.work; save(); return x.work; })));
+  }
+  return tagged(h("section", { className: "pl-sec pl-meetings" }, heading("Meetings & events", "meetings"), list), "meet");
+}
+
+// the working day and Save & plan
+const nowHHMM = () => { const d = new Date(); return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`; };
+function dayBar() {
+  const field = (k, label) => { const t = h("input", { type: "time", className: "pl-time", value: desk.day[k], ariaLabel: label, step: 900 }); t.addEventListener("change", () => { if (t.value) { desk.day[k] = t.value; save(); } }); return t; };
+  const go = h("button", { type: "button", className: "pl-go", textContent: desk.blocks.length ? "Re-plan from now" : "Save & plan", title: "Time-block the day round your meetings, then open To-do.txt" });
+  go.addEventListener("click", savePlan);
+  return h("div", { className: "pl-daybar" }, h("span", { className: "pl-daylabel", textContent: "My day" }), field("start", "Day starts"), h("span", { textContent: "–" }), field("end", "Day ends"), go);
+}
+// fixed things today: jotted meetings, and timed events already in the calendars
+function fixedToday() {
+  const today = todayStr();
+  const cal = calendarItems().filter((x) => dayOf(x.date) === today && timeOf(x.date) && x.kind !== "Due" && !x.goal)
+    .map((x) => ({ start: timeOf(x.date), end: x.end && dayOf(x.end) === today && timeOf(x.end) ? timeOf(x.end) : fromMin(Math.min(1439, toMin(timeOf(x.date)) + DEFAULT_MINS)) }));
+  const meets = desk.meetings.filter((m) => m.time).map((m) => ({ start: m.time, end: fromMin(Math.min(1439, toMin(m.time) + (m.mins || DEFAULT_MINS))) }));
+  return [...cal, ...meets];
+}
+function savePlan() {
+  const { blocks, overflow } = planDay({ tasks: openItems(desk, focus.on), fixed: fixedToday(), from: nowHHMM(), day: desk.day });
+  desk.blocks = blocks; desk.overflow = overflow;
+  save();
+  $("plan-day").close();
+  renderAgenda();
+  openTxt();
+  const n = blocks.filter((b) => b.kind === "task").length;
+  toast(n ? `Planned ${n} block${n === 1 ? "" : "s"}${overflow.length ? ` · ${overflow.length} didn't fit today` : ""}. Tick things off in any order.` : "Nothing to plan yet: add some tasks first.");
+}
+// what a block or list entry points at: a Task (k0..k2) or a line in a section
+function refInfo(ref) {
+  const k = /^k(\d)$/.exec(ref);
+  if (k) { const obj = desk.key[Number(k[1])]; return obj && { obj, work: desk.keyWork, where: "Tasks" }; }
+  for (const s of desk.sections) { const obj = s.lines.find((l) => l.id === ref); if (obj) return { obj, work: s.work, where: s.name || "General" }; }
+  return null;
+}
+// the plan as agenda entries for Up next (today only): blocks still to do, breaks, and the jotted meetings
+export function planEntries(day) {
+  if (day !== deskDay) return [];
+  const busy = (work) => focus.on && !work;
+  const out = [];
+  for (const b of desk.blocks) {
+    if (b.kind === "break") { out.push({ plan: "break", title: "Break", date: `${day}T${b.start}`, until: b.end }); continue; }
+    const info = refInfo(b.ref);
+    if (!info?.obj.text || info.obj.done) continue; // ticked off: out of the time-blocked agenda
+    out.push({ plan: "task", title: busy(info.work) ? "Busy" : info.obj.text, busy: busy(info.work), date: `${day}T${b.start}`, until: b.end, pri: info.obj.pri });
+  }
+  for (const m of desk.meetings) if (m.time && m.title) out.push({ plan: "meet", title: busy(m.work) ? "Busy" : m.title, busy: busy(m.work), date: `${day}T${m.time}`, until: fromMin(Math.min(1439, toMin(m.time) + (m.mins || DEFAULT_MINS))) });
+  return out;
+}
+
 export function renderTodo() {
   const today = todayStr();
   if (deskDay !== today && loaded) { archive = null; loadDesk(); return; } // a new day: a fresh page
@@ -252,7 +346,16 @@ export function renderTodo() {
 
   let body;
   const items = shows.length && !archive ? leftovers({ ...earlier, [today]: desk }, today) : [];
-  if (!shows.length) body = [h("p", { className: "pl-date", textContent: planDate(today) }), h("p", { className: "pl-covered", textContent: "Today's page is put away at work." })];
+  if (!shows.length) {
+    // at work: only what's marked Work (meetings, Tasks if marked, Work sections); the rest is put away
+    const work = desk.sections.filter((x) => x.work);
+    body = [
+      h("div", { className: "pl-datebar" }, h("p", { className: "pl-date", textContent: planDate(today) }), dayBar()),
+      h("div", { className: "pl-cols pl-top" }, meetingsEl(), desk.keyWork ? tasksEl() : h("div")),
+      work.length ? h("div", { className: "pl-cols" }, h("div", { className: "pl-col" }, work.filter((_, i) => i % 2 === 0).map(sectionEl)), h("div", { className: "pl-col" }, work.filter((_, i) => i % 2 === 1).map(sectionEl))) : null,
+      h("p", { className: "pl-covered", textContent: work.length || desk.keyWork ? "Personal parts of the page are put away at work." : "Mark a section Work (at home) and it shows here. The rest is put away at work." }),
+    ];
+  }
   else if (archive) body = [archiveEl()];
   else if (items.length && !sweepLater) body = [h("p", { className: "pl-date", textContent: planDate(today) }), sweepEl(items)];
   else {
@@ -264,8 +367,9 @@ export function renderTodo() {
     });
     const col = (n) => h("div", { className: "pl-col" }, desk.sections.filter((s) => s.col === n).map(sectionEl));
     body = [
-      h("p", { className: "pl-date", textContent: planDate(today) }),
+      h("div", { className: "pl-datebar" }, h("p", { className: "pl-date", textContent: planDate(today) }), dayBar()),
       h("div", { className: "pl-cols pl-top" }, focusesEl(), tasksEl()),
+      meetingsEl(),
       h("div", { className: "pl-todo-head" }, h("h2", { textContent: "To-Do List" }), add),
       h("div", { className: "pl-cols" }, col(0), col(1)),
       items.length ? (() => { const b = h("button", { type: "button", className: "pl-later", textContent: `${items.length} from earlier still waiting` }); b.addEventListener("click", () => { sweepLater = false; renderTodo(); }); return b; })() : null,
@@ -275,12 +379,13 @@ export function renderTodo() {
   // a window with a title bar: the red button closes it, like a Mac window; Archive looks back
   const close = h("button", { type: "button", className: "pw-close", ariaLabel: "Close Plan my day", title: "Close (Esc)" });
   close.addEventListener("click", () => $("plan-day").close());
-  const swap = h("button", { type: "button", className: "pw-btn", textContent: archive ? "← Today" : "Archive", title: archive ? "Back to today's page" : "Earlier days' pages", hidden: !shows.length });
+  const swap = h("button", { type: "button", className: "pw-btn", textContent: archive ? "← Today" : "Archive", title: archive ? "Back to today's page" : "Earlier days' pages", hidden: focus.on });
   swap.addEventListener("click", () => { if (archive) { archive = null; renderTodo(); } else openArchive(); });
   const bar = h("div", { className: "pw-bar" }, h("span", { className: "pw-dots" }, close, h("i", { ariaHidden: "true" }), h("i", { ariaHidden: "true" })),
     h("span", { className: "pw-title", textContent: archive ? "Archive" : "Plan my day.txt" }), h("span", { className: "pw-tools" }, swap));
   $("todo").replaceChildren(bar, page);
   if (old && !archive) page.scrollTop = old.scrollTop;
+  renderTxt();
   if (active?.name) $("todo").querySelector(`[data-section="${active.sec}"] .pl-sec-name`)?.focus({ preventScroll: true });
   else if (active && active.i >= 0) focusLine(active.sec, active.i);
 }
@@ -306,13 +411,21 @@ export function renderAgenda() {
   const key = padDay;
   const rel = Math.round((parseDay(key) - parseDay(today)) / 86_400_000);
   // today's tasks are in the notebook, so today shows events only; other days show what's due too
-  const items = sortByTime(calendarItems().filter((x) => dayOf(x.date) === key && (key !== today || (x.kind !== "Due" && !x.goal))));
+  const items = sortByTime([...calendarItems().filter((x) => dayOf(x.date) === key && (key !== today || (x.kind !== "Due" && !x.goal))), ...planEntries(key)]);
   const now = new Date(), nowHM = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
   const list = h("ol", { className: "ip-list" });
   let nowPlaced = key !== today;
   for (const x of items) {
     const t = timeOf(x.date);
     if (!nowPlaced && t && t > nowHM) { list.append(h("li", { className: "now-line" }, h("span", { textContent: `NOW ${nowHM}` }))); nowPlaced = true; }
+    if (x.plan) { // the day's time-blocks and jotted meetings (desk only; the wall's calendar stays high level)
+      const word = x.plan === "break" ? "Break" : x.plan === "meet" ? "Meeting" : x.pri === "h" ? "Block · High" : "Block";
+      const inner = [h("span", { className: "t", textContent: x.title }), h("span", { className: "k", textContent: x.busy ? "" : `${word} · until ${x.until}` })];
+      const open = x.busy || x.plan === "break" ? h("span", { className: "slot-open busy" }, ...inner) : h("button", { type: "button", className: "slot-open", title: "Open To-do.txt" }, ...inner);
+      if (open.tagName === "BUTTON") open.addEventListener("click", openTxt);
+      list.append(h("li", { className: `slot plan-${x.plan}${t < nowHM && x.until <= nowHM ? " past" : ""}` }, h("time", { textContent: t }), open));
+      continue;
+    }
     const inner = [h("span", { className: "t", textContent: x.kind === "Due" ? `Due: ${x.title}` : x.title }), h("span", { className: "k", textContent: x.goal ? x.kind : x.busy ? "" : x.kind })];
     const open = x.busy ? h("span", { className: "slot-open busy" }, ...inner) : h("button", { type: "button", className: "slot-open", title: x.goal ? "Open the goal" : x.apple ? "Open in Calendar" : "Open in your book" }, ...inner);
     if (!x.busy) open.addEventListener("click", () => (x.goal ? openGoal(x.goal) : x.apple ? openInCalendar(x) : openBook(x.kind === "Due" ? ROLE.tasks : ROLE.events, bookEl(x.kind === "Due" ? ROLE.tasks : ROLE.events), x.id)));
@@ -367,21 +480,154 @@ $("agenda").addEventListener("keydown", (e) => {
   if (e.key === "ArrowRight") { e.preventDefault(); movePad(1); }
 });
 
-// ---- the desktop on the bricks: double-click "Plan my day" to open it over the whole page (Enter or a tap work too) ----
-const file = $("open-plan");
+// ---- the desktop: double-click a file to open it (Enter or a tap work too), like a real desktop ----
 let lastPointer = "mouse";
-file.addEventListener("pointerdown", (e) => { lastPointer = e.pointerType; });
-file.addEventListener("click", (e) => {
-  if (e.detail === 0 || lastPointer === "touch") return openPlan(); // keyboard or touch: one press opens it
-  file.classList.add("sel");
-});
-file.addEventListener("dblclick", openPlan);
-document.addEventListener("pointerdown", (e) => { if (!file.contains(e.target)) file.classList.remove("sel"); });
+function desktopFile(el, open) {
+  el.addEventListener("pointerdown", (e) => { lastPointer = e.pointerType; });
+  el.addEventListener("click", (e) => {
+    if (e.detail === 0 || lastPointer === "touch") { el.classList.remove("sel"); return open(); } // keyboard or touch: one press opens it
+    document.querySelectorAll(".desk-file.sel").forEach((f) => f.classList.remove("sel"));
+    el.classList.add("sel");
+  });
+  el.addEventListener("dblclick", () => { el.classList.remove("sel"); open(); });
+}
+document.addEventListener("pointerdown", (e) => { if (!e.target.closest?.(".desk-file")) document.querySelectorAll(".desk-file.sel").forEach((f) => f.classList.remove("sel")); });
+const file = $("open-plan");
+desktopFile(file, () => openPlan());
+desktopFile($("open-txt"), () => openTxt());
 export function openPlan() {
-  file.classList.remove("sel");
   if (!$("plan-day").open) $("plan-day").showModal();
 }
-$("plan-day").addEventListener("close", () => file.focus({ preventScroll: true }));
+$("plan-day").addEventListener("close", () => { if (!$("todo-txt").contains(document.activeElement)) file.focus({ preventScroll: true }); });
+
+// ---- To-do.txt: the day's list, in plan order, to tick off in any order (ticked → out of the time-blocked agenda) ----
+const txt = $("todo-txt");
+let txtPos = null;
+try { txtPos = JSON.parse(localStorage.getItem("todo-txt-pos") || "null"); } catch { txtPos = null; }
+export function openTxt() {
+  txt.hidden = false;
+  renderTxt();
+  if (txtPos) { txt.style.left = `${txtPos.x}px`; txt.style.top = `${txtPos.y}px`; }
+  txt.querySelector(".txt-body")?.focus({ preventScroll: true });
+}
+function toggleRef(ref) {
+  const info = refInfo(ref);
+  if (!info?.obj.text) return;
+  info.obj.done = !info.obj.done;
+  save(); renderTodo(); renderAgenda(); renderPlanWidget();
+}
+export function renderTxt() {
+  if (txt.hidden) return;
+  const all = openItems({ ...desk, key: desk.key.map((k) => ({ ...k, done: false })), sections: desk.sections.map((x) => ({ ...x, lines: x.lines.map((l) => ({ ...l, done: false })) })) }, focus.on);
+  const byRef = new Map(all.map((x) => [x.ref, x]));
+  const row = (ref, time) => {
+    const info = refInfo(ref);
+    if (!info?.obj.text) return null;
+    const done = info.obj.done;
+    const tick = check(done, `Mark ${info.obj.text} ${done ? "not done" : "done"}`);
+    tick.addEventListener("click", () => toggleRef(ref));
+    return h("li", { className: `txt-line${done ? " done" : ""}` }, tick, h("span", { className: "txt-time", textContent: time || "" }),
+      h("i", { className: `txt-pri p-${info.obj.pri || "none"}`, title: PRI_LABEL[info.obj.pri || ""] }), h("span", { className: "txt-text", textContent: info.obj.text }));
+  };
+  const planned = desk.blocks.filter((b) => b.kind === "task" && byRef.has(b.ref));
+  const plannedRefs = new Set(planned.map((b) => b.ref));
+  const over = desk.overflow.filter((r) => byRef.has(r) && !plannedRefs.has(r));
+  const rest = all.filter((x) => !plannedRefs.has(x.ref) && !over.includes(x.ref));
+  const group = (title, rows) => (rows.filter(Boolean).length ? [title ? h("h4", { textContent: title }) : null, h("ul", { className: "txt-list" }, rows)] : []);
+  const close = h("button", { type: "button", className: "pw-close", ariaLabel: "Close To-do.txt", title: "Close" });
+  close.addEventListener("click", () => { txt.hidden = true; $("open-txt").focus({ preventScroll: true }); });
+  const bar = h("div", { className: "pw-bar txt-bar" }, h("span", { className: "pw-dots" }, close, h("i", { ariaHidden: "true" }), h("i", { ariaHidden: "true" })),
+    h("span", { className: "pw-title", textContent: "To-do.txt" }), h("span", { className: "pw-tools txt-date", textContent: planDate(deskDay) }));
+  const body = h("div", { className: "txt-body", tabIndex: -1 },
+    ...group(planned.length ? "The plan" : "", planned.map((b) => row(b.ref, b.start))),
+    ...group("Didn't fit today", over.map((r) => row(r))),
+    ...group(planned.length ? "Not planned yet" : "To do", rest.map((x) => row(x.ref))),
+    !all.length ? h("p", { className: "txt-empty", textContent: focus.on ? "No Work tasks today." : "Nothing on the list yet: open Plan my day." } ) : null,
+    all.length && !planned.length ? h("p", { className: "txt-empty", textContent: "Press Save & plan in Plan my day to time-block these." }) : null);
+  txt.replaceChildren(bar, body);
+  // drag it by the title bar, like a window
+  bar.addEventListener("pointerdown", (e) => {
+    if (e.target.closest("button")) return;
+    const box = txt.getBoundingClientRect(), host = txt.offsetParent.getBoundingClientRect();
+    const dx = e.clientX - box.left, dy = e.clientY - box.top;
+    bar.setPointerCapture(e.pointerId);
+    const move = (ev) => {
+      const x = Math.max(0, Math.min(host.width - box.width, ev.clientX - host.left - dx)), y = Math.max(0, Math.min(host.height - 60, ev.clientY - host.top - dy));
+      txt.style.left = `${x}px`; txt.style.top = `${y}px`; txtPos = { x: Math.round(x), y: Math.round(y) };
+    };
+    const up = () => { bar.removeEventListener("pointermove", move); try { localStorage.setItem("todo-txt-pos", JSON.stringify(txtPos)); } catch { /* fine */ } };
+    bar.addEventListener("pointermove", move);
+    bar.addEventListener("pointerup", up, { once: true });
+  });
+}
+
+// ---- the focus timer: 25 minutes on, 5 off (a soft chime at the end, mutable); the rail shows it while it runs ----
+const FOCUS_MS = 25 * 60_000, BREAK_MS = 5 * 60_000;
+let timer = { mode: "focus", left: FOCUS_MS, endsAt: 0, muted: false };
+try { timer = { ...timer, ...JSON.parse(localStorage.getItem("focus-timer") || "{}") }; } catch { /* a fresh timer */ }
+const keepTimer = () => { try { localStorage.setItem("focus-timer", JSON.stringify(timer)); } catch { /* fine */ } };
+const fullOf = (mode) => (mode === "focus" ? FOCUS_MS : BREAK_MS);
+const leftNow = () => (timer.endsAt ? Math.max(0, timer.endsAt - Date.now()) : timer.left);
+const mmss = (ms) => { const sec = Math.ceil(ms / 1000); return `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, "0")}`; };
+function chime() {
+  if (timer.muted) return;
+  try {
+    const ac = new (window.AudioContext || window.webkitAudioContext)();
+    [[660, 0], [880, 0.22]].forEach(([f, at]) => {
+      const o = ac.createOscillator(), g = ac.createGain();
+      o.type = "sine"; o.frequency.value = f;
+      g.gain.setValueAtTime(0.0001, ac.currentTime + at);
+      g.gain.exponentialRampToValueAtTime(0.18, ac.currentTime + at + 0.03);
+      g.gain.exponentialRampToValueAtTime(0.0001, ac.currentTime + at + 0.9);
+      o.connect(g).connect(ac.destination); o.start(ac.currentTime + at); o.stop(ac.currentTime + at + 1);
+    });
+  } catch { /* no sound available */ }
+}
+function timerAct(what) {
+  if (what === "go") { if (timer.endsAt) { timer.left = leftNow(); timer.endsAt = 0; } else timer.endsAt = Date.now() + timer.left; }
+  if (what === "reset") { timer.endsAt = 0; timer.left = fullOf(timer.mode); }
+  if (what === "switch") { timer.mode = timer.mode === "focus" ? "break" : "focus"; timer.endsAt = 0; timer.left = fullOf(timer.mode); }
+  if (what === "mute") timer.muted = !timer.muted;
+  keepTimer(); renderTimer();
+}
+function renderTimer() {
+  const left = leftNow(), running = Boolean(timer.endsAt);
+  if (running && left <= 0) { // finished: chime, and the other half is ready to start
+    const was = timer.mode;
+    timer.mode = was === "focus" ? "break" : "focus"; timer.endsAt = 0; timer.left = fullOf(timer.mode); keepTimer();
+    chime();
+    toast(was === "focus" ? "Focus done. Take five." : "Break's over. Ready when you are.", false, { label: was === "focus" ? "Start break" : "Start focus", run: () => timerAct("go") });
+    return renderTimer();
+  }
+  const frac = left / fullOf(timer.mode), r = 34, c = 2 * Math.PI * r;
+  const chip = $("ts-timer");
+  chip.hidden = !running;
+  chip.textContent = `${timer.mode === "focus" ? "●" : "☕"} ${mmss(left)}`;
+  // each second only the numbers and the ring move (the buttons stay put, so keyboard focus isn't lost)
+  const shape = `${timer.mode}|${running}|${timer.muted}|${left < fullOf(timer.mode)}`;
+  if ($("w-timer").dataset.shape === shape) {
+    $("w-timer").querySelector(".tm-left").textContent = mmss(left);
+    $("w-timer").querySelector(".tm-ring").setAttribute("stroke-dashoffset", String(c * (1 - frac)));
+    return;
+  }
+  $("w-timer").dataset.shape = shape;
+  const btn = (label, what, cls = "") => { const b = h("button", { type: "button", className: `tm-btn ${cls}`, textContent: label }); b.addEventListener("click", () => timerAct(what)); return b; };
+  const ring = `<svg viewBox="0 0 80 80" aria-hidden="true"><circle cx="40" cy="40" r="${r}" class="tm-track"/><circle cx="40" cy="40" r="${r}" class="tm-ring" stroke-dasharray="${c}" stroke-dashoffset="${c * (1 - frac)}" transform="rotate(-90 40 40)"/></svg>`;
+  $("w-timer").className = `widget wg-timer tm-${timer.mode}${running ? " running" : ""}`;
+  $("w-timer").replaceChildren(
+    h("span", { className: "wg-label", textContent: timer.mode === "focus" ? "Focus timer" : "Break" }),
+    h("div", { className: "tm-row" },
+      h("div", { className: "tm-dial", innerHTML: ring }, h("b", { className: "tm-left", textContent: mmss(left), role: "timer", ariaLabel: `${mmss(left)} left` })),
+      h("div", { className: "tm-btns" }, btn(running ? "Pause" : left < fullOf(timer.mode) ? "Resume" : "Start", "go", "tm-go"), btn("Reset", "reset"),
+        btn(timer.mode === "focus" ? "Break" : "Focus", "switch"),
+        (() => { const m = h("button", { type: "button", className: "tm-btn tm-mute", ariaPressed: String(timer.muted), title: timer.muted ? "Chime off" : "Chime on", textContent: timer.muted ? "🔕" : "🔔" }); m.addEventListener("click", () => timerAct("mute")); return m; })())));
+  // the rail: the countdown follows you round the room while it runs
+  chip.dataset.tip = timer.mode === "focus" ? "Focusing: open the desk" : "On a break: open the desk";
+}
+$("ts-timer").addEventListener("click", () => showDesk(true));
+renderTimer();
+setInterval(() => { if (timer.endsAt) renderTimer(); }, 1000);
+
 // the dock, like a Mac's: Calendar opens the Calendar app on today, Notion the Hanua page, the record player the turntable
 $("dock-records").addEventListener("click", openTurntable);
 $("dock-goals").addEventListener("click", () => showBoard(true));

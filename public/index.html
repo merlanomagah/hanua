@@ -52,6 +52,7 @@
       </div>
       <!-- earnings on the right (Mel, 5 Oct 2026: where the music controls were) -->
       <div class="ts-centre ts-right">
+        <button type="button" class="ts-timer" id="ts-timer" data-tip="Focus timer: open the desk" aria-label="Focus timer" hidden></button>
         <button type="button" class="ts-earn" id="ts-earn" data-tip="Open the treat shop" aria-label="Earnings: open the treat shop">
           <span class="ts-periods" id="ts-periods"></span>
         </button>
@@ -412,7 +413,11 @@
             <div class="ww-frame" aria-hidden="true"><i></i><i></i></div>
             <figcaption class="ww-sill"><span class="ww-place"></span><span class="ww-summary"></span></figcaption>
           </figure>
-          <button type="button" class="widget wg-plan" id="w-plan" aria-label="Today's plan: open Plan my day"></button>
+          <!-- two small ones side by side: Today's plan, and a focus timer (25 on, 5 off; the countdown shows in the top rail while it runs) -->
+          <div class="wg-pair">
+            <button type="button" class="widget wg-plan" id="w-plan" aria-label="Today's plan: open Plan my day"></button>
+            <article class="widget wg-timer" id="w-timer" aria-label="Focus timer"></article>
+          </div>
         </aside>
         <!-- today's meals, pinned beside it -->
         <button type="button" class="meal-slip" id="meal-slip" title="Open the kitchen" hidden></button>
@@ -422,7 +427,14 @@
             <svg viewBox="0 0 48 60" aria-hidden="true"><path d="M4 2h28l12 12v42a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z" fill="#fdfcf9" stroke="#cfc8bb"/><path d="M32 2v10a2 2 0 0 0 2 2h10" fill="#ebe6dc" stroke="#cfc8bb"/><path d="M9 24h28M9 30h28M9 36h28M9 42h20" stroke="#b9b2a5" stroke-width="1.6"/><text x="24" y="54" text-anchor="middle" font-family="DM Mono, monospace" font-size="6.5" letter-spacing=".5" fill="#8a8275">TXT</text></svg>
             <span>Plan my day</span>
           </button>
+          <!-- the day's timed list, opened by Save & plan: tick things off in any order -->
+          <button type="button" class="desk-file" id="open-txt" title="Double-click to open" aria-label="To-do.txt: open today's timed list">
+            <svg viewBox="0 0 48 60" aria-hidden="true"><path d="M4 2h28l12 12v42a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z" fill="#fdfcf9" stroke="#cfc8bb"/><path d="M32 2v10a2 2 0 0 0 2 2h10" fill="#ebe6dc" stroke="#cfc8bb"/><path d="M9 22l2 2 4-4M9 31l2 2 4-4M9 40l2 2 4-4" fill="none" stroke="#3f7a5a" stroke-width="1.6"/><path d="M19 22h18M19 31h18M19 40h12" stroke="#b9b2a5" stroke-width="1.6"/><text x="24" y="54" text-anchor="middle" font-family="DM Mono, monospace" font-size="6.5" letter-spacing=".5" fill="#8a8275">TXT</text></svg>
+            <span>To-do.txt</span>
+          </button>
         </div>
+        <!-- To-do.txt: a small window on the desktop, dragged by its title bar -->
+        <section class="txt-win" id="todo-txt" aria-label="To-do.txt" hidden></section>
         <!-- the dock along the bottom of the screen: Goals, Calendar (the app, on today), Notion (the Hanua page), the record player, then Stickies -->
         <nav class="desk-dock" aria-label="Dock">
           <button type="button" class="dock-app dock-goals" id="dock-goals" aria-label="Goals board" title="Goals"><svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="10.5" fill="#fff" stroke="#c4602a" stroke-width="2.4"/><circle cx="16" cy="16" r="6" fill="#fff" stroke="#c4602a" stroke-width="2.4"/><circle cx="16" cy="16" r="2.2" fill="#c4602a"/><path d="M16 16l9-9M22 7h3v3" fill="none" stroke="#1c1814" stroke-width="1.8" stroke-linecap="round"/></svg></button>

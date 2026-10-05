@@ -734,6 +734,31 @@ button.frame:hover { transform: translateY(-2px); box-shadow: inset 1px 1px 0 rg
   background-size: 100% 100%, 100% 100%, cover; background-position: 0 0, 0 0, center; background-color: #A87650;
 }
 .desk-top::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 22px; background: linear-gradient(180deg, #8a5a38, #5e3a22); box-shadow: inset 0 1px 0 rgb(255 230 200 / 0.35); }
+/* To-do.txt: a small window on the desktop, dragged by its title bar */
+.txt-win { position: absolute; z-index: 6; left: var(--pc-left); top: 240px; width: min(360px, calc(100% - 32px)); max-height: 58%; display: flex; flex-direction: column; overflow: hidden;
+  border-radius: 10px; background: #FCFBF8; box-shadow: 0 0 0 1px rgb(0 0 0 / 0.12), 0 24px 48px -16px rgb(0 0 0 / 0.5); }
+.txt-win[hidden] { display: none; }
+.txt-bar { cursor: grab; touch-action: none; grid-template-columns: 60px 1fr auto; }
+.txt-date { font: 9px var(--mono); letter-spacing: 0.1em; color: var(--ink-4); }
+.txt-body { flex: 1; min-height: 0; overflow-y: auto; padding: 8px 16px 14px; outline: none; }
+.txt-body h4 { margin: 10px 0 2px; font: 9px var(--mono); letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-4); }
+.txt-list { list-style: none; margin: 0; padding: 0; }
+.txt-line { display: flex; align-items: center; gap: 8px; min-height: 28px; border-bottom: 1px solid #efebe3; --line: 30px; }
+.txt-time { flex: none; width: 38px; font: 11px var(--mono); font-variant-numeric: tabular-nums; color: var(--ink-4); }
+.txt-pri { flex: none; width: 7px; height: 7px; border-radius: 50%; background: #e3ddd2; }
+.txt-pri.p-h { background: var(--terra); } .txt-pri.p-m { background: #d9b45c; } .txt-pri.p-l { background: #8fb39d; }
+.txt-text { min-width: 0; font: 16px/1.3 var(--display); }
+.txt-line.done .txt-text { color: var(--muted); text-decoration: line-through; }
+.txt-win .check { position: relative; flex: none; width: 15px; height: 15px; padding: 0; border: 1px solid var(--ink-3); border-radius: 2px; background: transparent; cursor: pointer; display: grid; place-items: center; }
+.txt-win .check svg { width: 100%; height: 100%; stroke: var(--green); stroke-width: 3; fill: none; stroke-dasharray: 20; stroke-dashoffset: 20; transition: stroke-dashoffset 300ms ease; }
+.txt-win .check.on svg { stroke-dashoffset: 0; }
+.txt-empty { margin: 10px 0 0; font: italic 15px var(--display); color: var(--muted); }
+/* the day's time-blocks and jotted meetings in Up next (desk only) */
+.slot.plan-task .t { color: var(--ink); }
+.slot.plan-task time::before { background: var(--terra) !important; border-radius: 1px !important; }
+.slot.plan-meet time::before { background: var(--ink) !important; }
+.slot.plan-break .t { font-style: italic; color: var(--muted); }
+.slot.plan-break time::before { background: transparent !important; box-shadow: inset 0 0 0 1px var(--faint); }
 /* widgets down the right of the desktop, like a Mac's (6 Oct 2026): Up next fills what Weather and Today's plan leave */
 .widgets { position: absolute; z-index: 3; right: var(--pad-r); top: 64px; bottom: calc(var(--top-h) + 16px); width: var(--wg-w); display: flex; flex-direction: column; gap: 14px; }
 .widget { position: relative; box-sizing: border-box; padding: 12px 14px; border: 0; border-radius: 12px; text-align: left; color: var(--ink); container-type: inline-size;
@@ -741,13 +766,38 @@ button.frame:hover { transform: translateY(-2px); box-shadow: inset 1px 1px 0 rg
   box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.55), 0 10px 24px -14px rgb(28 24 20 / 0.5); }
 .widget:focus-visible { outline: 2px solid var(--terra); outline-offset: 3px; }
 .wg-label { display: block; margin-bottom: 4px; font: 9px var(--mono); letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-4); }
-.wg-agenda { flex: 1; min-height: 150px; display: flex; flex-direction: column; padding-bottom: 8px; }
+.wg-agenda { flex: 1; min-height: 110px; display: flex; flex-direction: column; padding-bottom: 8px; }
 .wg-agenda .ip-screen { flex: 1; min-height: 0; padding: 0; }
 .wg-weather { flex: none; }
 .wg-wx { display: flex; align-items: center; gap: 8px; }
 .wg-emoji { font-size: 26px; line-height: 1; }
 .wg-wx b { font: 400 34px/1.1 var(--display); }
 .wg-meta { margin: 4px 0 0; font: 12px var(--ui); color: var(--ink-3); }
+/* Today's plan and the focus timer: two small squares side by side */
+.wg-pair { flex: none; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.wg-pair .widget { min-width: 0; min-height: 128px; }
+.wg-pair .wg-focus { padding-left: 16px; font-size: 14px; }
+.wg-pair .wg-empty { font-size: 13px; }
+.wg-pair .wg-meta { font-size: 11px; }
+.wg-timer { display: flex; flex-direction: column; }
+.tm-row { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.tm-dial { position: relative; width: 62px; height: 62px; }
+.tm-dial svg { width: 100%; height: 100%; }
+.tm-track { fill: none; stroke: rgb(28 24 20 / 0.1); stroke-width: 6; }
+.tm-ring { fill: none; stroke: var(--terra); stroke-width: 6; stroke-linecap: round; transition: stroke-dashoffset 900ms linear; }
+.tm-break .tm-ring { stroke: var(--green); }
+.tm-left { position: absolute; inset: 0; display: grid; place-items: center; font: 500 15px var(--ui); font-variant-numeric: tabular-nums; color: var(--ink); }
+.tm-btns { display: flex; flex-wrap: wrap; justify-content: center; gap: 3px; }
+.tm-btn { padding: 2px 6px; border: 1px solid rgb(28 24 20 / 0.15); border-radius: 4px; background: rgb(255 255 255 / 0.6); cursor: pointer; font: 10px var(--ui); color: var(--ink-3); }
+.tm-btn:hover { color: var(--ink); border-color: var(--ink-4); }
+.tm-go { background: var(--terra); border-color: var(--terra); color: #fff; }
+.tm-go:hover { color: #fff; filter: brightness(1.06); }
+.tm-break .tm-go { background: var(--green); border-color: var(--green); }
+.tm-mute { padding: 2px 4px; }
+@media (prefers-reduced-motion: reduce) { .tm-ring { transition: none; } }
+/* the rail's countdown while a focus session (or break) runs */
+.ts-timer { margin-right: 10px; padding: 3px 8px; border: 1px solid rgb(196 96 42 / 0.4); border-radius: 4px; background: rgb(255 255 255 / 0.5); cursor: pointer; font: 11px var(--mono); font-variant-numeric: tabular-nums; color: var(--terra); }
+.ts-timer:hover { background: rgb(255 255 255 / 0.8); }
 /* the weather window, small: a slim cream frame round the same sky, the sill underneath */
 .wg-window.weather-window { flex: none; margin: 0; padding: 0; overflow: hidden; background: #EFE8DC; }
 .wg-window .ww-glass { height: clamp(104px, 9vw, 130px); margin: 6px 6px 0; border-radius: 7px 7px 2px 2px; }
@@ -880,6 +930,37 @@ button.frame:hover { transform: translateY(-2px); box-shadow: inset 1px 1px 0 rg
 .pl-sec:hover .pl-sec-x, .pl-sec-x:focus-visible { opacity: 1; }
 .pl-sec-x:disabled { cursor: default; opacity: 0 !important; }
 @media (hover: none) { .pl-sec-x { opacity: 0.7; } }
+/* quick picks on each written line: priority and a rough time (hidden until the line has text) */
+.pl-picks { flex: none; display: flex; gap: 2px; margin-left: 4px; }
+.pl-line.empty .pl-picks { visibility: hidden; }
+.pl-pri, .pl-mins { height: 22px; padding: 0 4px; border: 1px solid transparent; border-radius: 3px; background: transparent; cursor: pointer; -webkit-appearance: none; appearance: none;
+  font: 10px var(--mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-3); }
+.pl-pri:hover, .pl-mins:hover, .pl-pri:focus-visible, .pl-mins:focus-visible { border-color: var(--border-2); outline: none; }
+.pl-pri.p-none, .pl-mins.unset { color: var(--faint); }
+.pl-pri.p-h { color: #fff; background: var(--terra); }
+.pl-pri.p-m { color: #6b4a12; background: #f1dfae; }
+.pl-pri.p-l { color: #3c5a4c; background: #d9e6dc; }
+.pl-line:not(:hover):not(:focus-within) .pl-pri.p-none, .pl-line:not(:hover):not(:focus-within) .pl-mins.unset { opacity: 0; }
+@media (hover: none) { .pl-line .pl-pri.p-none, .pl-line .pl-mins.unset { opacity: 1; } }
+/* Work: a small briefcase chip on a section's header (and each meeting); at work only Work shows */
+.pl-head .pl-work { margin-left: auto; }
+.pl-work { flex: none; display: inline-flex; align-items: center; gap: 3px; height: 20px; padding: 0 6px; border: 1px solid var(--border-2); border-radius: 3px; background: transparent; cursor: pointer;
+  font: 9px var(--mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--faint); }
+.pl-work svg { width: 11px; height: 11px; fill: none; stroke: currentColor; stroke-width: 1.4; }
+.pl-work.on { border-color: var(--ink-3); background: var(--ink); color: var(--cream); }
+.pl-work:not(.on) { opacity: 0.6; } .pl-sec:hover .pl-work, .pl-line:hover .pl-work, .pl-work:focus-visible { opacity: 1; }
+/* the date, then the working day and Save & plan */
+.pl-datebar { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.pl-daybar { display: flex; align-items: center; gap: 6px; height: var(--line); margin-top: calc(var(--line) / 2); font: 11px var(--ui); color: var(--ink-3); }
+.pl-daylabel { font: 9px var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-4); }
+.pl-time { height: 24px; padding: 0 4px; border: 1px solid var(--border-2); border-radius: 3px; background: #fff; font: 12px var(--ui); color: var(--ink); }
+.pl-go { margin-left: 8px; height: 28px; padding: 0 12px; border: 0; border-radius: 4px; background: var(--terra); cursor: pointer; font: 500 12px var(--ui); color: #fff; }
+.pl-go:hover { filter: brightness(1.06); }
+/* Meetings & events: time, what, how long, work */
+.pl-meetings { margin-bottom: var(--line); }
+.pl-meet { gap: 8px; }
+.pl-meet .pl-time { flex: none; width: 92px; }
+.pl-meet .pl-work { margin-left: 0; }
 /* the morning sweep, before the page */
 .pl-sweep { max-width: 760px; }
 .pl-sweep h3 { margin: 0; height: var(--line); font: italic 500 calc(var(--line) * 0.78)/var(--line) var(--display); color: var(--terra); }
@@ -2365,4 +2446,5 @@ dialog.lock::backdrop { background: #14110e; }
 .bg-row.done .t { color: var(--faint); text-decoration: line-through; text-decoration-thickness: 1px; }
 
 /* narrower desks: the meal slip and the Plan my day file can't sit side by side, so the slip hangs under the file */
-@media (min-width: 901px) and (max-width: 1365px) { .meal-slip { top: 184px; left: auto; right: var(--pc-right); } }
+@media (min-width: 901px) and (max-width: 1365px) { .meal-slip { top: 340px; left: auto; right: var(--pc-right); } }
+@media (max-width: 900px) { .txt-win { position: fixed; left: 8px; right: 8px; top: auto; bottom: 8px; width: auto; max-height: 70vh; } .txt-bar { cursor: default; } }

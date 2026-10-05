@@ -24,8 +24,8 @@ test("desk: shape keeps three focus areas, three key tasks and caps the lists", 
   const s = deskShape({ focus: ["  Calm  ", "Sydney", "Health", "extra"], key: [{ text: "Call", done: 1 }], general: Array.from({ length: 60 }, (_, i) => ({ id: `g${i}`, text: "x".repeat(400) })), settled: { "2026-10-04:g1": "gone", "bad": "today", "2026-10-04:g2": "maybe" } });
   assert.deepEqual(s.focus, ["Calm", "Sydney", "Health"]);
   assert.equal(s.key.length, 3);
-  assert.deepEqual(s.key[0], { text: "Call", done: true });
-  assert.deepEqual(s.key[2], { text: "", done: false });
+  assert.deepEqual(s.key[0], { text: "Call", done: true, pri: "", mins: 0 });
+  assert.deepEqual(s.key[2], { text: "", done: false, pri: "", mins: 0 });
   // an older file's plain list opens as the General section
   assert.equal(s.sections[0].id, "general");
   assert.equal(s.sections[0].lines.length, MAX_LINES);
@@ -112,4 +112,41 @@ test("desk: sticky notes are tidied, taken-down ones are kept but not shown, and
   assert.deepEqual(stickiesUp(s).map((n) => n.id), ["a", "l2"]);
   assert.equal(stickiesUp(Array.from({ length: 20 }, (_, i) => ({ id: `n${i}`, text: "t" }))).length, STICKY_MAX);
   assert.deepEqual(stickyShape("nope"), []);
+});
+
+test("plan: Tasks first, then High, Medium, Low; blank time is 30 min; a 5-minute buffer round blocks and meetings", async () => {
+  const { planDay } = await import("../public/shared/desk.js");
+  const { blocks, overflow } = planDay({
+    tasks: [{ ref: "low", pri: "l", mins: 15 }, { ref: "hi", pri: "h" }, { ref: "k0", first: true, mins: 45 }, { ref: "mid", pri: "m", mins: 30 }],
+    fixed: [{ start: "10:00", end: "11:00" }], from: "08:00",
+  });
+  assert.deepEqual(blocks.map((b) => [b.ref, b.start, b.end]), [["k0", "08:30", "09:15"], ["hi", "09:20", "09:50"], ["mid", "11:05", "11:35"], ["low", "11:40", "11:55"]]);
+  assert.deepEqual(overflow, []);
+});
+
+test("plan: from now, a break after about 90 minutes, and what doesn't fit is overflow", async () => {
+  const { planDay } = await import("../public/shared/desk.js");
+  const { blocks, overflow } = planDay({ tasks: [{ ref: "a", mins: 60 }, { ref: "b", mins: 60 }, { ref: "c", mins: 120 }], from: "13:02", day: { start: "08:30", end: "17:30" } });
+  // c (2 h) would end at 17:35, past the day's end, so it's overflow (and the break before it goes too)
+  assert.deepEqual(blocks.map((b) => [b.kind, b.start, b.end]), [["task", "13:05", "14:05"], ["break", "14:10", "14:20"], ["task", "14:25", "15:25"]]);
+  assert.deepEqual(overflow, ["c"]);
+});
+
+test("plan: a short task uses an earlier gap a long one couldn't; no break after only a little work", async () => {
+  const { planDay } = await import("../public/shared/desk.js");
+  const { blocks, overflow } = planDay({ tasks: [{ ref: "warm", first: true, mins: 15 }, { ref: "long", pri: "h", mins: 90 }, { ref: "short", pri: "l", mins: 30 }], fixed: [{ start: "10:30", end: "11:00" }], from: "08:30" });
+  // 15 min of work isn't enough for a break, so the 90-minute task follows straight on and fits before 10:30
+  assert.deepEqual(blocks.map((b) => [b.ref, b.start, b.end]), [["warm", "08:30", "08:45"], ["long", "08:50", "10:20"], ["short", "11:05", "11:35"]]);
+  assert.deepEqual(overflow, []);
+  const gap = planDay({ tasks: [{ ref: "long", pri: "h", mins: 120 }, { ref: "short", pri: "l", mins: 30 }], fixed: [{ start: "09:30", end: "10:00" }], from: "08:30" });
+  assert.deepEqual(gap.blocks.map((b) => [b.ref, b.start]), [["short", "08:30"], ["long", "10:05"]]);
+});
+
+test("plan: only open items are planned, and at work only Work ones", async () => {
+  const { openItems, deskShape } = await import("../public/shared/desk.js");
+  const d = deskShape({ key: [{ text: "Call", pri: "h", mins: 15 }, { text: "Done", done: true }], sections: [{ id: "general", lines: [{ id: "a", text: "Milk" }] }, { id: "s1", name: "Sprint", work: true, lines: [{ id: "b", text: "Review PR", mins: 45 }] }] });
+  assert.deepEqual(openItems(d).map((x) => x.ref), ["k0", "a", "b"]);
+  assert.deepEqual(openItems(d, true).map((x) => x.ref), ["b"]);
+  assert.equal(d.key[0].mins, 15);
+  assert.equal(deskShape({ key: [{ text: "x", mins: 37, pri: "urgent" }] }).key[0].mins, 0);
 });
