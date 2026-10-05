@@ -1168,6 +1168,7 @@ button.frame:hover { transform: translateY(-2px); box-shadow: inset 1px 1px 0 rg
 .mb-turn:hover:not(:disabled) { background: rgb(28 24 20 / 0.06); }
 .mb-turn:disabled { opacity: 0.3; cursor: default; }
 .money-note { margin: -4px 0 16px; padding: 10px 12px; border-left: 2px solid var(--terra); background: rgb(196 96 42 / 0.07); font: 13px/1.45 var(--ui); color: var(--ink-2); }
+.money-aside { margin: -10px 2px 18px; font: 12px/1.4 var(--ui); color: var(--muted); }
 .stat.good b { color: var(--green); }
 .stat.over b { color: var(--terra); }
 .money-big { display: grid; gap: 2px; margin: 0 0 18px; }

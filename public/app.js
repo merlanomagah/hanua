@@ -342,7 +342,7 @@ export function renderMoneyScreen() {
     ];
   } else if (channel === 2) {
     const income = m.month.income ?? 0;
-    const kept = income - m.month.expenses;
+    const kept = m.month.net ?? income - m.month.expenses; // Pūtea's: the household share counts
     const ratio = income ? Math.min(1, m.month.expenses / income) : 1;
     body = [
       h("span", { className: "screen-top" },
@@ -894,6 +894,8 @@ export function moneyPages() {
        [money(Math.abs(mo.net)), mo.net >= 0 ? "kept" : "more out than in", mo.net >= 0 ? "good" : "over"],
        [change === null ? "—" : `${change > 0 ? "+" : ""}${change}%`, "out vs the month before", change > 0 ? "over" : change < 0 ? "good" : ""]]
         .map(([v, l, cls]) => h("div", { className: `stat ${cls || ""}` }, h("b", { textContent: v }), h("span", { textContent: l })))),
+    // so in, out and kept add up: kept counts the household share, which isn't income (as in Pūtea)
+    mo.shared ? h("p", { className: "money-aside", textContent: `Kept includes ${money(mo.shared)} household share` }) : null,
     mo.biggest ? h("p", { className: "money-big" }, h("span", { className: "eyebrow", textContent: "Biggest single spend" }),
       h("b", { textContent: `${mo.biggest.name} · ${money(mo.biggest.amount, 2)}` }),
       h("small", { textContent: [fmtDay(mo.biggest.date, { day: "numeric", month: "short" }), mo.biggest.category].filter(Boolean).join(" · ") })) : null,

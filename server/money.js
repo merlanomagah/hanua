@@ -46,7 +46,10 @@ export function shapeMonth(key, month, transactions) {
     prevExpenses: round2(month.prevExpenses || 0),
     income: round2(inTotal),
     prevIncome: round2(month.prevIncome || 0),
-    net: round2(inTotal - (month.expenses || 0)),
+    // Pūtea's net adds back the household share and paybacks (out of Money In, still real cash), so the
+    // Finances book agrees with Pūtea's Overview. Worked out here only for an older Pūtea that doesn't send it
+    net: round2(typeof month.net === "number" ? month.net : inTotal - (month.expenses || 0)),
+    shared: round2((month.partnerIn || 0) - (month.partnerOut || 0) + (month.reimbursedIn || 0)),
     categories: (month.categoryBreakdown || []).slice(0, 8).map((c) => ({ name: c.category || "Other", total: round2(c.total), count: c.count || 0 })),
     places: (month.topMerchants || []).filter((p) => p.name).slice(0, 6).map((p) => ({ name: p.name, total: round2(p.total), count: p.count || 0 })),
     biggest: big ? { name: big.other_party || "One payment", amount: round2(big.amount), date: String(big.date).slice(0, 10), category: big.category || "" } : null,

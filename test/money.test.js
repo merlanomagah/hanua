@@ -36,6 +36,17 @@ test("a month keeps Pūtea's totals and leaves transfers out", () => {
   assert.deepEqual(m.biggest, { name: "Rent", amount: 725, date: "2026-10-01", category: "Housing" });
 });
 
+test("kept matches Pūtea's: the household share and paybacks count, though they aren't income", () => {
+  // September 2026 as Pūtea sent it: income less spending is −1,353.21, but 3,490 in from the household share
+  // (less 50 back) makes it 2,086.79 kept, which is what Pūtea's Overview says
+  const sep = { income: 5993.89, expenses: 7347.1, net: 2086.79, partnerIn: 3490, partnerOut: 50, reimbursedIn: 0 };
+  const m = shapeMonth("2026-09", sep, []);
+  assert.equal(m.net, 2086.79);
+  assert.equal(m.shared, 3440);
+  // an older Pūtea without a net: income less spending, as before
+  assert.equal(shapeMonth("2026-09", { income: 100, expenses: 40 }, []).net, 60);
+});
+
 test("a month with nothing in it still has a shape", () => {
   const m = shapeMonth("2026-01", { income: 0, expenses: 0 }, []);
   assert.deepEqual([m.net, m.categories.length, m.places.length, m.biggest], [0, 0, 0, null]);
