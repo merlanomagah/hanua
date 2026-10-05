@@ -1,10 +1,12 @@
-// ---------- the desk, seen front-on: the bricks are a Mac desktop (a "Plan my day" file and a dock), the agenda pinned on the wall ----------
+// ---------- the desk, seen front-on: the whole screen is a Mac desktop (a "Plan my day" file, widgets, a dock along the bottom) ----------
 // The desk is its own pane, one slide down from the wall (or the kitchen), and one slide back up (Mel, 5 Oct 2026),
 // except on phones, where the stacked room is taller than the screen and the page just scrolls.
 // Plan my day opens over the whole page (Mel, 6 Oct 2026): the date (Tue 06-Oct-2026), Today's focuses (3 numbered
 // lines) and a To-Do List of empty lines, on faint rows with the text in the middle of each. Kept in a small file per
 // day on this Mac. Rules: public/shared/desk.js (tested).
-import { deskSections, deskShape, lastFocus, planDate, stepDay, stickiesUp, stickyShape, MAX_LINES, STICKY_COLOURS, STICKY_MAX, STICKY_TEXT, TODO_ROWS } from "./shared/desk.js";
+import { bringForward, deskSections, deskShape, lastFocus, leftovers, planDate, shorterCol, startDay, stepDay, stickiesUp, stickyShape, GENERAL, MAX_LINES, MAX_NAME, MAX_SECTIONS, SECTION_ROWS, STICKY_COLOURS, STICKY_MAX, STICKY_TEXT } from "./shared/desk.js";
+import { KINDS } from "./shared/weather.js";
+import { showBoard } from "./goals/board.js";
 import { dayOf, parseDay, timeOf, todayStr } from "./shared/dates.js";
 import { $, focus, h, longDate, reducedMotion, toast } from "./lib.js";
 import { openGoal } from "./goals/form.js";
@@ -75,16 +77,23 @@ addEventListener("wheel", (e) => {
   if (Math.abs(flick) > 240) { flick = 0; e.preventDefault(); showDesk(down); }
 }, { passive: false });
 
-// ---- the page: Today's focuses and a To-Do List ----
+// ---- the page: focuses and tasks at the top, the To-Do List in sections, a morning sweep and an archive ----
 let deskDay = todayStr(), desk = deskShape({}), earlier = {}, prompts = {}, loaded = false;
-let saveTimer = 0;
+let saveTimer = 0, sweepLater = false;
+let archive = null; // null = today's page; { days: [...], day, page } while looking back
 const newId = () => Math.random().toString(36).slice(2, 10);
 
 export async function loadDesk() {
   deskDay = todayStr();
+  sweepLater = false;
   try {
     const res = await fetch(`/api/desk/${deskDay}`);
-    if (res.ok) { const j = await res.json(); desk = deskShape(j.day); earlier = j.earlier || {}; }
+    if (res.ok) {
+      const j = await res.json();
+      earlier = j.earlier || {};
+      desk = startDay(j.day, earlier, deskDay); // a new day: yesterday's section headers, empty
+      if (!j.day?.started) save();
+    }
   } catch { /* the server's away: an empty page */ }
   loaded = true;
   renderTodo();
@@ -102,12 +111,12 @@ function save() {
 }
 
 const check = (done, label) => h("button", { type: "button", className: `check${done ? " on" : ""}`, ariaLabel: label, ariaPressed: String(done), innerHTML: '<svg viewBox="0 0 16 16"><path d="M3 8.5l3 3 7-7"/></svg>' });
-const secEl = (name, ...kids) => { const el = h("section", { className: `pl-sec pl-${name}` }, ...kids); el.dataset.section = name; return el; };
+const tagged = (el, section) => { el.dataset.section = section; return el; };
 function heading(name, key) {
   const prompt = prompts[key] || "";
   return h("div", { className: "pl-head" }, h("h3", { textContent: name }), prompt ? h("span", { className: "pl-prompt", textContent: prompt, title: prompt }) : null);
 }
-// a line you type on; Enter goes to the next line, arrows move between lines
+// a line you type on; Enter or ↓ goes to the next line, ↑ back
 function lineInput(value, { placeholder = "", label, onInput, section, index }) {
   const input = h("input", { type: "text", className: "pl-input", value, placeholder, ariaLabel: label, autocomplete: "off", spellcheck: true, maxLength: 200 });
   input.addEventListener("input", () => onInput(input.value));
@@ -121,67 +130,193 @@ function lineInput(value, { placeholder = "", label, onInput, section, index }) 
 function focusLine(section, index) {
   document.querySelectorAll(`#todo [data-section="${section}"] .pl-input`)[index]?.focus({ preventScroll: true });
 }
+const dayWord = (day) => parseDay(day).toLocaleDateString("en-NZ", { weekday: "short", day: "numeric", month: "short" });
+
+// a tickable line kept in its place: typing on it makes it real, a tick only once something's written
+function tickLine(line, { label, section, index, onText, onTick }) {
+  const li = h("li", { className: `pl-line${line?.done ? " done" : ""}${line?.text ? "" : " empty"}` });
+  const tick = check(Boolean(line?.done), `Mark ${label} done`);
+  tick.addEventListener("click", () => {
+    const done = onTick();
+    if (done === null) return;
+    li.classList.toggle("done", done); tick.classList.toggle("on", done); tick.ariaPressed = String(done);
+  });
+  const input = lineInput(line?.text || "", { label, section, index, onInput: (v) => {
+    onText(v);
+    li.classList.toggle("empty", !v);
+    if (!v) { li.classList.remove("done"); tick.classList.remove("on"); }
+  } });
+  li.append(tick, input);
+  return li;
+}
+
+function focusesEl() {
+  const hint = lastFocus(earlier, deskDay) || [];
+  return tagged(h("section", { className: "pl-sec pl-focus" }, heading("Today's focuses", "focus"),
+    h("ol", { className: "pl-list" }, desk.focus.map((text, i) => h("li", { className: "pl-line" },
+      h("span", { className: "pl-num", textContent: `${i + 1}.` }),
+      lineInput(text, { label: `Focus ${i + 1}`, placeholder: hint[i] || "", section: "focus", index: i, onInput: (v) => { desk.focus[i] = v; save(); renderPlanWidget(); } }))))), "focus");
+}
+function tasksEl() {
+  return tagged(h("section", { className: "pl-sec pl-key" }, heading("Tasks to complete", "key tasks"),
+    h("ol", { className: "pl-list" }, desk.key.map((k, i) => tickLine(k, { label: `Task ${i + 1}`, section: "key", index: i,
+      onText: (v) => { k.text = v; if (!v) k.done = false; save(); renderPlanWidget(); },
+      onTick: () => { if (!k.text) return null; k.done = !k.done; save(); renderPlanWidget(); return k.done; } })))), "key");
+}
+function sectionEl(sec) {
+  const key = `s:${sec.id}`;
+  const rows = Math.min(MAX_LINES, Math.max(SECTION_ROWS, sec.lines.length + 1));
+  const list = h("ul", { className: "pl-list" });
+  for (let i = 0; i < rows; i++) {
+    list.append(tickLine(sec.lines[i], { label: `${sec.name || "section"} line ${i + 1}`, section: key, index: i,
+      onText: (v) => {
+        while (sec.lines.length <= i) sec.lines.push({ id: newId(), text: "", done: false });
+        sec.lines[i].text = v;
+        if (!v) sec.lines[i].done = false;
+        while (sec.lines.length && !sec.lines.at(-1).text) sec.lines.pop();
+        save();
+        if (v && i === rows - 1 && rows < MAX_LINES) renderTodo(); // writing on the last line: one more appears
+      },
+      onTick: () => { const l = sec.lines[i]; if (!l?.text) return null; l.done = !l.done; save(); return l.done; } }));
+  }
+  let head;
+  if (sec.id === GENERAL) head = heading("General", "general");
+  else {
+    const name = h("input", { type: "text", className: "pl-sec-name", value: sec.name, placeholder: "Name this section", ariaLabel: "Section name", maxLength: MAX_NAME, autocomplete: "off" });
+    name.addEventListener("input", () => { sec.name = name.value; save(); });
+    name.addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.isComposing) { e.preventDefault(); focusLine(key, 0); } });
+    const used = sec.lines.some((l) => l.text);
+    const x = h("button", { type: "button", className: "pl-sec-x", textContent: "×", ariaLabel: `Remove the ${sec.name || "unnamed"} section`,
+      title: used ? "Clear its lines first to remove it" : "Remove this section", disabled: used });
+    x.addEventListener("click", () => { desk.sections = desk.sections.filter((s) => s !== sec); save(); renderTodo(); });
+    head = h("div", { className: "pl-head" }, name, x);
+  }
+  return tagged(h("section", { className: "pl-sec pl-todo-sec" }, head, list), key);
+}
+
+// the morning sweep: unfinished things from the last week, each done, brought into today, or let go
+function sweepEl(items) {
+  const settle = (item, how) => { if (how === "today") bringForward(desk, item, newId()); else desk.settled[item.key] = how; };
+  const act = (label, title, run) => { const b = h("button", { type: "button", className: "sw-act", textContent: label, title }); b.addEventListener("click", () => { run(); save(); renderTodo(); renderPlanWidget(); }); return b; };
+  return h("div", { className: "pl-sweep" },
+    h("h3", { textContent: "Before you start" }),
+    h("p", { className: "sw-lede", textContent: `${items.length} ${items.length === 1 ? "thing" : "things"} from earlier ${items.length === 1 ? "wasn't" : "weren't"} ticked off. Done already, bring into today, or let go?` }),
+    h("ul", { className: "sw-list" }, items.map((it) => h("li", { className: "sw-item" },
+      h("span", { className: "sw-from", textContent: `${dayWord(it.day)} · ${it.section || "Tasks"}` }),
+      h("span", { className: "sw-text", textContent: it.text }),
+      h("span", { className: "sw-acts" },
+        act("✓ Done", "It got done: tick it off", () => settle(it, "done")),
+        act("→ Today", "Bring it into today", () => settle(it, "today")),
+        act("✕ Remove", "Let it go", () => settle(it, "gone")))))),
+    h("div", { className: "sw-foot" },
+      act("All to today", "Bring every one into today", () => items.forEach((it) => settle(it, "today"))),
+      act("Let all go", "Let every one go", () => items.forEach((it) => settle(it, "gone"))),
+      act("Later", "Plan first; these wait until next time", () => { sweepLater = true; })));
+}
+
+// the archive: earlier days, read-only
+async function openArchive() {
+  archive = { days: [], day: null, page: null };
+  renderTodo();
+  try { archive.days = (await (await fetch("/api/desk/days")).json()).filter((d) => d < deskDay); } catch { archive.days = []; }
+  if (archive.days[0]) await showArchiveDay(archive.days[0]); else renderTodo();
+}
+async function showArchiveDay(day) {
+  try { archive.page = deskShape((await (await fetch(`/api/desk/${day}`)).json()).day); archive.day = day; } catch { archive.page = null; }
+  renderTodo();
+}
+function archiveEl() {
+  const pick = h("ul", { className: "ar-days" }, archive.days.map((d) => {
+    const b = h("button", { type: "button", className: `ar-day${d === archive.day ? " on" : ""}`, textContent: planDate(d) });
+    b.addEventListener("click", () => showArchiveDay(d));
+    return h("li", {}, b);
+  }));
+  const p = archive.page;
+  const read = (text, done) => h("li", { className: `ar-line${done ? " done" : ""}` }, h("span", { className: "ar-tick", textContent: done ? "✓" : "○" }), h("span", { textContent: text }));
+  const page = !p ? h("p", { className: "pl-covered", textContent: archive.days.length ? "Choose a day." : "No earlier days yet: yesterday's page lands here tomorrow." })
+    : h("div", { className: "ar-page" }, h("p", { className: "pl-date", textContent: planDate(archive.day) }),
+      h("h4", { textContent: "Focuses" }), h("ol", { className: "ar-list" }, p.focus.filter(Boolean).map((f) => h("li", { textContent: f }))),
+      h("h4", { textContent: "Tasks to complete" }), h("ul", { className: "ar-list" }, p.key.filter((k) => k.text).map((k) => read(k.text, k.done))),
+      ...p.sections.filter((s) => s.lines.some((l) => l.text)).flatMap((s) => [h("h4", { textContent: s.name || "Untitled" }), h("ul", { className: "ar-list" }, s.lines.filter((l) => l.text).map((l) => read(l.text, l.done)))]));
+  return h("div", { className: "pl-archive" }, pick, page);
+}
 
 export function renderTodo() {
   const today = todayStr();
-  if (deskDay !== today && loaded) { loadDesk(); return; } // a new day: a fresh page
+  if (deskDay !== today && loaded) { archive = null; loadDesk(); return; } // a new day: a fresh page
+  renderPlanWidget();
   const shows = deskSections(focus.on);
-  const sections = [];
-
-  if (shows.includes("focus")) {
-    const hint = lastFocus(earlier, today) || [];
-    sections.push(secEl("focus", heading("Today's focuses", "focus"),
-      h("ol", { className: "pl-list" }, desk.focus.map((text, i) => h("li", { className: "pl-line" },
-        h("span", { className: "pl-num", textContent: `${i + 1}.` }),
-        lineInput(text, { label: `Focus ${i + 1}`, placeholder: hint[i] || "", section: "focus", index: i, onInput: (v) => { desk.focus[i] = v; save(); } }))))));
-  }
-  if (shows.includes("todo")) {
-    // empty lines to write on, kept in place: a line typed halfway down stays halfway down
-    const rows = Math.min(MAX_LINES, Math.max(TODO_ROWS, desk.general.length + 1));
-    const list = h("ul", { className: "pl-list" });
-    for (let i = 0; i < rows; i++) {
-      const l = desk.general[i];
-      const tick = check(Boolean(l?.done), "Mark done");
-      const li = h("li", { className: `pl-line${l?.done ? " done" : ""}${l?.text ? "" : " empty"}` });
-      const input = lineInput(l?.text || "", { label: `To-do line ${i + 1}`, section: "todo", index: i, onInput: (v) => {
-        while (desk.general.length <= i) desk.general.push({ id: newId(), text: "", done: false });
-        desk.general[i].text = v;
-        if (!v) desk.general[i].done = false;
-        while (desk.general.length && !desk.general.at(-1).text) desk.general.pop(); // no trailing blanks kept
-        li.classList.toggle("empty", !v);
-        if (!v) li.classList.remove("done");
-        save();
-      } });
-      tick.addEventListener("click", () => {
-        const line = desk.general[i];
-        if (!line?.text) return;
-        line.done = !line.done; li.classList.toggle("done", line.done); tick.classList.toggle("on", line.done); tick.ariaPressed = String(line.done); save();
-      });
-      li.append(tick, input);
-      list.append(li);
-    }
-    sections.push(secEl("todo", heading("To-Do List", "to-do"), list));
-  }
-
   // keep the cursor where it was across a re-render
   const at = document.activeElement?.closest?.("#todo [data-section]");
-  const active = at ? { sec: at.dataset.section, i: [...at.querySelectorAll(".pl-input")].indexOf(document.activeElement) } : null;
+  const active = at ? { sec: at.dataset.section, i: [...at.querySelectorAll(".pl-input")].indexOf(document.activeElement), name: document.activeElement.classList.contains("pl-sec-name") } : null;
   const old = $("todo").querySelector(".pl-page");
-  const page = h("div", { className: "pl-page", ariaLabel: `Plan for ${planDate(today)}` },
-    h("p", { className: "pl-date", textContent: planDate(today) }),
-    shows.length ? h("div", { className: "pl-cols" }, ...sections)
-      : h("p", { className: "pl-covered", textContent: "Today's page is put away at work." }));
-  // a window over the whole page with a title bar; its red button closes it, like a Mac window
+
+  let body;
+  const items = shows.length && !archive ? leftovers({ ...earlier, [today]: desk }, today) : [];
+  if (!shows.length) body = [h("p", { className: "pl-date", textContent: planDate(today) }), h("p", { className: "pl-covered", textContent: "Today's page is put away at work." })];
+  else if (archive) body = [archiveEl()];
+  else if (items.length && !sweepLater) body = [h("p", { className: "pl-date", textContent: planDate(today) }), sweepEl(items)];
+  else {
+    const add = h("button", { type: "button", className: "pl-add", textContent: "+ Add a section", disabled: desk.sections.length >= MAX_SECTIONS });
+    add.addEventListener("click", () => {
+      const sec = { id: `s${newId()}`, name: "", col: shorterCol(desk.sections), lines: [] };
+      desk.sections.push(sec); save(); renderTodo();
+      $("todo").querySelector(`[data-section="s:${sec.id}"] .pl-sec-name`)?.focus();
+    });
+    const col = (n) => h("div", { className: "pl-col" }, desk.sections.filter((s) => s.col === n).map(sectionEl));
+    body = [
+      h("p", { className: "pl-date", textContent: planDate(today) }),
+      h("div", { className: "pl-cols pl-top" }, focusesEl(), tasksEl()),
+      h("div", { className: "pl-todo-head" }, h("h2", { textContent: "To-Do List" }), add),
+      h("div", { className: "pl-cols" }, col(0), col(1)),
+      items.length ? (() => { const b = h("button", { type: "button", className: "pl-later", textContent: `${items.length} from earlier still waiting` }); b.addEventListener("click", () => { sweepLater = false; renderTodo(); }); return b; })() : null,
+    ];
+  }
+  const page = h("div", { className: `pl-page${archive ? " is-archive" : ""}`, ariaLabel: `Plan for ${planDate(today)}` }, ...body);
+  // a window with a title bar: the red button closes it, like a Mac window; Archive looks back
   const close = h("button", { type: "button", className: "pw-close", ariaLabel: "Close Plan my day", title: "Close (Esc)" });
   close.addEventListener("click", () => $("plan-day").close());
+  const swap = h("button", { type: "button", className: "pw-btn", textContent: archive ? "← Today" : "Archive", title: archive ? "Back to today's page" : "Earlier days' pages", hidden: !shows.length });
+  swap.addEventListener("click", () => { if (archive) { archive = null; renderTodo(); } else openArchive(); });
   const bar = h("div", { className: "pw-bar" }, h("span", { className: "pw-dots" }, close, h("i", { ariaHidden: "true" }), h("i", { ariaHidden: "true" })),
-    h("span", { className: "pw-title", textContent: "Plan my day.txt" }));
+    h("span", { className: "pw-title", textContent: archive ? "Archive" : "Plan my day.txt" }), h("span", { className: "pw-tools" }, swap));
   $("todo").replaceChildren(bar, page);
-  if (old) page.scrollTop = old.scrollTop;
-  if (active && active.i >= 0) focusLine(active.sec, active.i);
+  if (old && !archive) page.scrollTop = old.scrollTop;
+  if (active?.name) $("todo").querySelector(`[data-section="${active.sec}"] .pl-sec-name`)?.focus({ preventScroll: true });
+  else if (active && active.i >= 0) focusLine(active.sec, active.i);
 }
+$("plan-day").addEventListener("close", () => { if (archive) { archive = null; renderTodo(); } });
 
-// ---- the agenda on a ruled sheet pinned to the wall: swipe (or ‹ ›) through the days ----
+// ---- widgets on the desktop: Up next (the agenda), Weather, Today's plan ----
+export function renderPlanWidget() {
+  const w = $("w-plan");
+  if (!w) return;
+  w.hidden = focus.on; // personal: put away at work
+  const f = desk.focus.filter(Boolean);
+  const tasks = desk.key.filter((k) => k.text), done = tasks.filter((k) => k.done).length;
+  w.replaceChildren(h("span", { className: "wg-label", textContent: "Today's plan" }),
+    f.length ? h("ol", { className: "wg-focus" }, f.map((x) => h("li", { textContent: x }))) : h("p", { className: "wg-empty", textContent: "No focuses yet. Open Plan my day." }),
+    h("p", { className: "wg-meta", textContent: tasks.length ? `${done} of ${tasks.length} task${tasks.length === 1 ? "" : "s"} done` : "No tasks set" }));
+}
+async function renderWeatherWidget() {
+  const w = $("w-weather");
+  try {
+    const j = await (await fetch("/api/weather")).json();
+    const day = j.days?.[0];
+    if (!day) throw new Error("no forecast");
+    const k = KINDS[j.now?.kind || day.kind] || KINDS.cloudy;
+    const rain = Math.max(...(day.parts || []).map((p) => p.rain || 0));
+    w.replaceChildren(h("span", { className: "wg-label", textContent: j.place || "Weather" }),
+      h("div", { className: "wg-wx" }, h("span", { className: "wg-emoji", textContent: k.emoji }), h("b", { textContent: `${Math.round(j.now?.temp ?? day.max)}°` })),
+      h("p", { className: "wg-meta", textContent: `${k.words} · H ${Math.round(day.max)}° L ${Math.round(day.min)}°${rain >= 30 ? ` · ${rain}% rain` : ""}` }));
+    w.hidden = false;
+  } catch { w.hidden = true; }
+}
+renderWeatherWidget();
+setInterval(renderWeatherWidget, 30 * 60_000);
+$("w-plan").addEventListener("click", () => openPlan());
+
+// ---- the agenda, as the Up next widget: swipe (or ‹ ›) through the days ----
 let padDay = todayStr();
 export function renderAgenda() {
   const today = todayStr();
@@ -212,9 +347,8 @@ export function renderAgenda() {
       h("div", { className: "ip-title" }, h("h2", { textContent: word }), h("span", { className: "ip-date", textContent: longDate(parseDay(key), false) })),
       nav("›", 1)),
     rel ? h("div", { className: "ip-back" }, back) : null,
-    h("div", { className: "ip-body" }, items.length ? list : h("p", { className: "empty", textContent: key === today ? "No meetings today." : "Nothing on this day." })),
-    h("div", { className: "ip-dots", ariaHidden: "true" }, [-2, -1, 0, 1, 2].map((n) => h("i", { className: n === 0 ? "on" : "" }))));
-  $("agenda").replaceChildren(h("span", { className: "ag-pin", ariaHidden: "true" }), screen);
+    h("div", { className: "ip-body" }, items.length ? list : h("p", { className: "empty", textContent: key === today ? "No meetings today." : "Nothing on this day." })));
+  $("agenda").replaceChildren(h("span", { className: "wg-label", textContent: "Up next" }), screen);
 }
 function movePad(step) {
   padDay = stepDay(padDay, step);
@@ -267,6 +401,7 @@ export function openPlan() {
 $("plan-day").addEventListener("close", () => file.focus({ preventScroll: true }));
 // the dock, like a Mac's: Calendar opens the Calendar app on today, Notion the Hanua page, the record player the turntable
 $("dock-records").addEventListener("click", openTurntable);
+$("dock-goals").addEventListener("click", () => showBoard(true));
 $("dock-calendar").addEventListener("click", () => openInCalendar({ date: todayStr() }));
 function dockDate() { // the Calendar tile shows today, like the real one
   const d = parseDay(todayStr());

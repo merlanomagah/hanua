@@ -31,7 +31,7 @@ const PERCHES = [
   { sel: ".mb-tray .marker.ink", x: [0.45, 0.6], y: -0.1, w: 1, name: "marker" },
   { sel: ".note", x: [0.3, 0.7], y: 0, w: 1 },
   { sel: ".desk-dock", x: [0.2, 0.8], y: 0, w: 1 },
-  { sel: ".agenda-sheet", x: [0.2, 0.8], y: 0, w: 1 },
+  { sel: ".wg-agenda", x: [0.2, 0.8], y: 0, w: 1 },
   { sel: ".desk-sticky", x: [0.3, 0.7], y: 0, w: 1 },
   { sel: ".player-shelf .now-playing", x: [0.2, 0.8], y: 0, w: 1 },
 ];

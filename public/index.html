@@ -399,8 +399,12 @@
           <!-- sticky notes on the wall: typed here, kept on this Mac until taken down (the × in each corner) -->
           <div class="stickies" id="stickies" aria-label="Sticky notes"></div>
         </div>
-        <!-- the agenda on lined paper pinned at the right, above the lamp: swipe, or ‹ ›, for other days -->
-        <article class="agenda-sheet" id="agenda" aria-label="Agenda" tabindex="0"></article>
+        <!-- widgets down the right, like a Mac's (Mel, 6 Oct 2026): Up next (swipe or ‹ › for other days), Weather, Today's plan -->
+        <aside class="widgets" aria-label="Widgets">
+          <article class="widget wg-agenda" id="agenda" aria-label="Up next" tabindex="0"></article>
+          <article class="widget wg-weather" id="w-weather" aria-label="Weather" hidden></article>
+          <button type="button" class="widget wg-plan" id="w-plan" aria-label="Today's plan: open Plan my day"></button>
+        </aside>
         <!-- today's meals, pinned beside it -->
         <button type="button" class="meal-slip" id="meal-slip" title="Open the kitchen" hidden></button>
         <!-- the bricks are a Mac desktop (Mel, 6 Oct 2026): double-click "Plan my day" to open it over the whole page -->
@@ -410,14 +414,15 @@
             <span>Plan my day</span>
           </button>
         </div>
-        <!-- the dock: Calendar opens the Calendar app on today, Notion the Hanua page, the record player the turntable -->
+        <!-- the dock along the bottom of the screen: Goals, Calendar (the app, on today), Notion (the Hanua page), the record player, then Stickies -->
         <nav class="desk-dock" aria-label="Dock">
+          <button type="button" class="dock-app dock-goals" id="dock-goals" aria-label="Goals board" title="Goals"><svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="10.5" fill="#fff" stroke="#c4602a" stroke-width="2.4"/><circle cx="16" cy="16" r="6" fill="#fff" stroke="#c4602a" stroke-width="2.4"/><circle cx="16" cy="16" r="2.2" fill="#c4602a"/><path d="M16 16l9-9M22 7h3v3" fill="none" stroke="#1c1814" stroke-width="1.8" stroke-linecap="round"/></svg></button>
           <button type="button" class="dock-app dock-cal" id="dock-calendar" aria-label="Calendar: open the Calendar app on today" title="Calendar"><b id="dock-cal-day"></b><span id="dock-cal-date"></span></button>
           <a class="dock-app dock-notion" id="dock-notion" href="https://www.notion.so" target="_blank" rel="noopener" aria-label="Notion: open the Hanua page" title="Notion"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M7 5.5h13.5L26 10v16.5H7z" fill="#fff" stroke="#1c1814" stroke-width="2" stroke-linejoin="round"/><path d="M12 22V11l8.5 11V11" fill="none" stroke="#1c1814" stroke-width="2.4" stroke-linecap="square" stroke-linejoin="miter"/></svg></a>
           <button type="button" class="dock-app" id="dock-records" aria-label="Record player" title="Record player"><img src="assets/obj/record-player-top.png" alt=""></button>
+          <i class="dock-sep" aria-hidden="true"></i>
+          <button type="button" class="dock-app dock-sticky" id="add-sticky" title="New sticky note" aria-label="Add a sticky note"><span aria-hidden="true">+</span></button>
         </nav>
-        <!-- a pad of sticky notes on the desk: click it and a fresh note goes up on the wall -->
-        <button type="button" class="sticky-pad-btn" id="add-sticky" title="Add a sticky note to the wall" aria-label="Add a sticky note"><img src="assets/obj/sticky-pad.png" alt=""><span aria-hidden="true">+</span></button>
         <div class="desk-dim" aria-hidden="true"></div>
       </section>
       </div>

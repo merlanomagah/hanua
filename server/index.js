@@ -199,6 +199,11 @@ app.put("/api/stickies", async (req, res) => {
   await writeFile(stickiesFile, JSON.stringify(notes, null, 2) + "\n");
   res.json(notes);
 });
+// The archive: every day that has a page, newest first (each one read with /api/desk/:day)
+app.get("/api/desk/days", async (_req, res) => {
+  const files = await readdir(deskDir).catch(() => []);
+  res.set("Cache-Control", "no-store").json(files.map((f) => dayKey(f.replace(/\.json$/, ""))).filter(Boolean).sort().reverse());
+});
 app.get("/api/desk/:day", async (req, res) => {
   const day = dayKey(req.params.day);
   if (!day) return res.status(400).json({ error: "Which day?" });

@@ -713,12 +713,11 @@ button.frame:hover { transform: translateY(-2px); box-shadow: inset 1px 1px 0 rg
 .desk {
   --pad-r: clamp(24px, 4vw, 52px);
   --top-h: 30%;                                   /* the desk top's band, from the bottom of the screen */
-  /* the agenda sheet hangs at the right and ends well above the desk top */
-  --sheet-h: clamp(220px, calc((100vh - var(--rail-h)) * 0.7 - 140px), 420px);
+  --wg-w: clamp(250px, 21vw, 310px);             /* the widgets' column at the right */
   --edge: clamp(28px, 4.5vw, 64px);
   --stick: clamp(72px, 5.6vw, 88px);             /* a sticky note: 7.6 cm, about an eighth of a 27" screen's width */
   --pc-left: calc(var(--edge) + var(--stick) * 2 + 12px + clamp(20px, 2.4vw, 36px));
-  --pc-right: calc(var(--pad-r) + var(--sheet-h) * 0.707 + clamp(20px, 2.4vw, 36px));
+  --pc-right: calc(var(--pad-r) + var(--wg-w) + clamp(20px, 2.4vw, 36px));
   position: relative; box-sizing: border-box; min-height: calc(100vh - var(--rail-h)); overflow: clip;
   /* the same painted bricks as the wall, so it reads as the same room looking down a little */
   background-color: var(--wall-base);
@@ -735,15 +734,25 @@ button.frame:hover { transform: translateY(-2px); box-shadow: inset 1px 1px 0 rg
   background-size: 100% 100%, 100% 100%, cover; background-position: 0 0, 0 0, center; background-color: #A87650;
 }
 .desk-top::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 22px; background: linear-gradient(180deg, #8a5a38, #5e3a22); box-shadow: inset 0 1px 0 rgb(255 230 200 / 0.35); }
-/* the agenda sheet, pinned to the bricks at the right */
-.agenda-sheet {
-  position: absolute; z-index: 2; right: var(--pad-r); top: 64px; height: var(--sheet-h); aspect-ratio: 21 / 29.7; box-sizing: border-box;
-  transform: rotate(-1.2deg); outline-offset: 6px; container-type: inline-size;
-  background: #FBFAF6 repeating-linear-gradient(180deg, transparent 0 25px, #D3DBE4 25px 26px) 0 56px / 100% calc(100% - 56px) no-repeat;
-  box-shadow: 0 1px 1px rgb(28 24 20 / 0.12), 6px 14px 20px -8px rgb(28 24 20 / 0.45);
-}
-.agenda-sheet::before { content: ""; position: absolute; top: 0; bottom: 0; left: 34px; width: 1px; background: rgb(196 96 42 / 0.35); }
-.ag-pin { position: absolute; z-index: 3; top: -6px; left: calc(50% - 8px); width: 16px; height: 16px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #f4a37a, #c4602a 60%, #8a3d17); box-shadow: 2px 4px 4px rgb(0 0 0 / 0.35); }
+/* widgets down the right of the desktop, like a Mac's (6 Oct 2026): Up next fills what Weather and Today's plan leave */
+.widgets { position: absolute; z-index: 3; right: var(--pad-r); top: 64px; bottom: calc(var(--top-h) + 16px); width: var(--wg-w); display: flex; flex-direction: column; gap: 14px; }
+.widget { position: relative; box-sizing: border-box; padding: 12px 14px; border: 0; border-radius: 12px; text-align: left; color: var(--ink); container-type: inline-size;
+  background: rgb(250 247 242 / 0.78); -webkit-backdrop-filter: blur(14px) saturate(1.2); backdrop-filter: blur(14px) saturate(1.2);
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.55), 0 10px 24px -14px rgb(28 24 20 / 0.5); }
+.widget:focus-visible { outline: 2px solid var(--terra); outline-offset: 3px; }
+.wg-label { display: block; margin-bottom: 4px; font: 9px var(--mono); letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-4); }
+.wg-agenda { flex: 1; min-height: 150px; display: flex; flex-direction: column; padding-bottom: 8px; }
+.wg-agenda .ip-screen { flex: 1; min-height: 0; padding: 0; }
+.wg-weather { flex: none; }
+.wg-wx { display: flex; align-items: center; gap: 8px; }
+.wg-emoji { font-size: 26px; line-height: 1; }
+.wg-wx b { font: 400 34px/1.1 var(--display); }
+.wg-meta { margin: 4px 0 0; font: 12px var(--ui); color: var(--ink-3); }
+.wg-plan { flex: none; display: block; width: 100%; cursor: pointer; font: inherit; }
+.wg-plan:hover { background: rgb(250 247 242 / 0.9); }
+.wg-focus { margin: 2px 0 0; padding-left: 18px; font: 16px/1.35 var(--display); }
+.wg-focus li { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wg-empty { margin: 2px 0 0; font: italic 15px/1.35 var(--display); color: var(--muted); }
 /* the bricks are a Mac desktop (Mel, 6 Oct 2026): a text file at the top right, as on a Mac, left of the agenda sheet */
 .desktop-icons { position: absolute; z-index: 3; top: 64px; right: var(--pc-right); display: flex; flex-direction: column; align-items: center; gap: 14px; }
 .desk-file { display: flex; flex-direction: column; align-items: center; gap: 5px; width: 96px; padding: 8px 4px 6px; border: 1px solid transparent; border-radius: 5px; background: transparent; cursor: default; }
@@ -753,8 +762,8 @@ button.frame:hover { transform: translateY(-2px); box-shadow: inset 1px 1px 0 rg
 .desk-file.sel { background: rgb(28 24 20 / 0.1); border-color: rgb(28 24 20 / 0.14); }
 .desk-file.sel span { background: #2f6fd1; color: #fff; }
 .desk-file:focus-visible { outline: 2px solid var(--terra); outline-offset: 2px; }
-/* the dock: frosted glass along the bottom of the bricks, just above the desk top */
-.desk-dock { position: absolute; z-index: 3; left: 50%; bottom: calc(var(--top-h) + 14px); transform: translateX(-50%); display: flex; align-items: flex-end; gap: 8px; padding: 6px 8px; border-radius: 14px;
+/* the dock: frosted glass along the bottom of the screen, on the desk, like a Mac's */
+.desk-dock { position: absolute; z-index: 3; left: 50%; bottom: 14px; transform: translateX(-50%); display: flex; align-items: flex-end; gap: 8px; padding: 6px 8px; border-radius: 14px;
   background: rgb(250 247 242 / 0.4); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.45), 0 10px 22px -10px rgb(28 24 20 / 0.45); }
 .dock-app { position: relative; display: grid; place-items: center; width: 52px; height: 52px; padding: 0; border: 0; border-radius: 12px; cursor: pointer;
   background: linear-gradient(180deg, #fbf8f2, #e6dfd2); box-shadow: 0 1px 2px rgb(28 24 20 / 0.3); transition: transform 160ms ease; }
@@ -762,7 +771,12 @@ button.frame:hover { transform: translateY(-2px); box-shadow: inset 1px 1px 0 rg
 .dock-cal { grid-template-rows: 15px 1fr; place-items: stretch; overflow: hidden; background: #fff; }
 .dock-cal b { display: grid; place-items: center; background: #e2675c; color: #fff; font: 600 8px var(--ui); letter-spacing: 0.08em; }
 .dock-cal span { display: grid; place-items: center; font: 300 25px/1 var(--ui); color: var(--ink); }
-.dock-notion { background: #fff; text-decoration: none; }
+.dock-notion, .dock-goals { background: #fff; text-decoration: none; }
+.dock-goals svg { width: 70%; height: auto; }
+.dock-sep { align-self: center; width: 1px; height: 40px; margin: 0 2px; background: rgb(28 24 20 / 0.2); }
+.dock-sticky { background: linear-gradient(160deg, #f8eab0, #f0d97c); }
+.dock-sticky span { font: 300 26px/1 var(--ui); color: rgb(28 24 20 / 0.55); }
+.dock-sticky:disabled { opacity: 0.55; cursor: default; }
 .dock-notion svg { width: 62%; height: auto; }
 .dock-app:hover, .dock-app:focus-visible { transform: translateY(-4px) scale(1.08); }
 .dock-app:focus-visible { outline: 2px solid var(--terra); outline-offset: 3px; }
@@ -784,13 +798,6 @@ button.frame:hover { transform: translateY(-2px); box-shadow: inset 1px 1px 0 rg
 .desk-sticky:hover .st-x, .desk-sticky:focus-within .st-x, .st-x:focus-visible { opacity: 1; }
 .st-x:hover { background: rgb(28 24 20 / 0.08); color: var(--ink); }
 @media (hover: none) { .st-x { opacity: 0.7; } }
-/* the pad of sticky notes on the desk: click it to put a new one on the wall */
-.sticky-pad-btn { position: absolute; z-index: 4; left: var(--edge); bottom: calc(var(--top-h) - 70px); width: clamp(72px, 6vw, 92px); padding: 0; border: 0; background: none; cursor: pointer; transform: rotate(-6deg); }
-.sticky-pad-btn img { width: 100%; height: auto; filter: drop-shadow(4px 8px 6px rgb(28 24 20 / 0.35)); }
-.sticky-pad-btn span { position: absolute; top: 30%; left: 0; right: 0; text-align: center; font: 300 26px var(--ui); color: rgb(28 24 20 / 0.5); }
-.sticky-pad-btn:hover { transform: rotate(-6deg) translateY(-2px); }
-.sticky-pad-btn:hover span { color: var(--terra); }
-.sticky-pad-btn:disabled { opacity: 0.6; cursor: default; }
 /* back up to the wall */
 .desk-up { position: absolute; z-index: 4; top: 14px; left: 0; right: 0; display: flex; justify-content: center; pointer-events: none; }
 .desk-up button {
@@ -823,25 +830,69 @@ button.frame:hover { transform: translateY(-2px); box-shadow: inset 1px 1px 0 rg
 
 /* ---- Plan my day: today's page over the whole screen, rail and desk included (Mel, 6 Oct 2026); faint rows, one
    --line sets each row's height and the rule spacing, so typed text sits in the middle of every row ---- */
-.plan-dialog { position: fixed; inset: 0; width: 100%; height: 100%; max-width: none; max-height: none; margin: 0; box-sizing: border-box; padding: 0; border: 0; border-radius: 0; overflow: hidden;
-  background: #FCFBF8; }
+.plan-dialog { --gap: max(24px, 4vmin); position: fixed; inset: var(--gap); width: auto; height: auto; max-width: none; max-height: none; margin: 0; box-sizing: border-box; padding: 0; border: 0; border-radius: 10px; overflow: hidden;
+  background: #FCFBF8; box-shadow: 0 0 0 1px rgb(0 0 0 / 0.12), 0 40px 80px -20px rgb(0 0 0 / 0.55); }
+@media (max-width: 760px) { .plan-dialog { inset: 0; border-radius: 0; } }
 .plan-dialog[open] { animation: plan-in 220ms ease-out; }
 @keyframes plan-in { from { opacity: 0; transform: scale(0.97); } }
 @media (prefers-reduced-motion: reduce) { .plan-dialog[open] { animation: none; } }
-.plan-dialog::backdrop { background: rgb(28 24 20 / 0.45); -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px); }
+.plan-dialog::backdrop { background: rgb(28 24 20 / 0.22); }
 .plan-dialog .planner { height: 100%; display: flex; flex-direction: column; container-type: inline-size; }
-.pw-bar { flex: none; display: flex; align-items: center; gap: 10px; height: 38px; padding: 0 14px; background: linear-gradient(180deg, #f3f0ea, #e9e5dd); border-bottom: 1px solid #ddd6c9; }
+.pw-bar { flex: none; display: grid; grid-template-columns: 110px 1fr 110px; align-items: center; gap: 10px; height: 38px; padding: 0 14px; background: linear-gradient(180deg, #f3f0ea, #e9e5dd); border-bottom: 1px solid #ddd6c9; }
 .pw-dots { display: flex; gap: 8px; }
 .pw-dots > * { width: 12px; height: 12px; padding: 0; border: 0; border-radius: 50%; background: #e9b949; }
 .pw-dots > i:last-child { background: #6cbf5a; }
 .pw-close { background: #e2675c !important; cursor: pointer; position: relative; }
 .pw-close::after { content: "×"; position: absolute; inset: 0; display: grid; place-items: center; font: 600 10px/1 var(--ui); color: rgb(80 20 10 / 0.75); opacity: 0; }
 .pw-bar:hover .pw-close::after, .pw-close:focus-visible::after { opacity: 1; }
-.pw-title { flex: 1; text-align: center; margin-right: 54px; font: 10px var(--mono); letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-4); }
+.pw-tools { justify-self: end; }
+.pw-btn { padding: 3px 9px; border: 1px solid #d6cfc2; border-radius: 4px; background: #fbf9f5; cursor: pointer; font: 11px var(--ui); color: var(--ink-3); }
+.pw-btn:hover { color: var(--ink); border-color: var(--ink-4); }
+.pw-title { text-align: center; font: 10px var(--mono); letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-4); }
 /* the date across the top (two rows high), then Today's focuses | To-Do List side by side; one column on phones */
 .pl-date { margin: 0 0 var(--line); height: calc(var(--line) * 2); white-space: nowrap; font: 500 min(calc(var(--line) * 1.5), 10vw)/calc(var(--line) * 2) var(--display); color: var(--ink); letter-spacing: 0.01em; }
-.pl-cols { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); column-gap: 8%; align-items: start; }
+.pl-cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: 8%; align-items: start; }
 .pl-cols > .pl-sec + .pl-sec { margin-top: 0; }
+.pl-top { margin-bottom: var(--line); }
+.pl-col { min-width: 0; }
+/* the To-Do List: its header across the page with + Add a section; General on the left, Mel's own sections beside it */
+.pl-todo-head { display: flex; align-items: center; justify-content: space-between; height: var(--line); }
+.pl-todo-head h2 { margin: 0; font: 500 calc(var(--line) * 0.85)/var(--line) var(--display); color: var(--ink); }
+.pl-add, .pl-later { padding: 2px 8px; border: 1px dashed var(--ink-4); border-radius: 3px; background: transparent; cursor: pointer; font: 10px var(--mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-3); }
+.pl-add:hover, .pl-later:hover { color: var(--terra); border-color: var(--terra); }
+.pl-add:disabled { opacity: 0.4; cursor: default; }
+.pl-later { margin-top: var(--line); border-style: solid; }
+.pl-sec-name { flex: 1; min-width: 0; height: var(--line); padding: 0; border: 0; background: transparent; font: italic 500 calc(var(--line) * 0.78)/var(--line) var(--display); color: var(--terra); }
+.pl-sec-name::placeholder { color: rgb(196 96 42 / 0.45); }
+.pl-sec-name:focus { outline: none; background: linear-gradient(90deg, rgb(196 96 42 / 0.06), transparent 80%); }
+.pl-sec-x { flex: none; width: 22px; height: 22px; padding: 0; border: 0; border-radius: 3px; background: transparent; cursor: pointer; font: 16px/1 var(--ui); color: var(--ink-4); opacity: 0; }
+.pl-sec:hover .pl-sec-x, .pl-sec-x:focus-visible { opacity: 1; }
+.pl-sec-x:disabled { cursor: default; opacity: 0 !important; }
+@media (hover: none) { .pl-sec-x { opacity: 0.7; } }
+/* the morning sweep, before the page */
+.pl-sweep { max-width: 760px; }
+.pl-sweep h3 { margin: 0; height: var(--line); font: italic 500 calc(var(--line) * 0.78)/var(--line) var(--display); color: var(--terra); }
+.sw-lede { margin: 0 0 var(--line); min-height: var(--line); font: italic 17px/var(--line) var(--display); color: var(--ink-3); }
+.sw-list { list-style: none; margin: 0; padding: 0; }
+.sw-item { display: grid; grid-template-columns: 150px 1fr auto; align-items: center; gap: 12px; min-height: var(--line); }
+.sw-from { font: 9px var(--mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-4); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sw-text { min-width: 0; font: calc(var(--line) * 0.6)/var(--line) var(--display); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sw-acts { display: flex; gap: 4px; }
+.sw-act { padding: 2px 7px; border: 1px solid #ddd5c7; border-radius: 3px; background: #fff; cursor: pointer; font: 11px var(--ui); color: var(--ink-3); white-space: nowrap; }
+.sw-act:hover { color: var(--terra); border-color: var(--terra); }
+.sw-foot { display: flex; gap: 8px; margin-top: var(--line); }
+@media (max-width: 760px) { .sw-item { grid-template-columns: 1fr; gap: 2px; padding: 6px 0; } }
+/* the archive: earlier days, read-only */
+.pl-archive { display: grid; grid-template-columns: 200px 1fr; gap: 6%; align-items: start; }
+.ar-days { list-style: none; margin: 0; padding: 0; }
+.ar-day { width: 100%; height: var(--line); padding: 0 8px; border: 0; border-radius: 3px; background: transparent; text-align: left; cursor: pointer; font: 14px var(--ui); color: var(--ink-3); }
+.ar-day:hover { color: var(--ink); } .ar-day.on { background: rgb(196 96 42 / 0.1); color: var(--terra); }
+.ar-page h4 { margin: 0; height: var(--line); font: italic 500 calc(var(--line) * 0.62)/var(--line) var(--display); color: var(--terra); }
+.ar-list { margin: 0 0 var(--line); padding-left: 0; list-style-position: inside; font: calc(var(--line) * 0.6)/var(--line) var(--display); }
+ul.ar-list { list-style: none; }
+.ar-line { display: flex; gap: 10px; } .ar-line.done span:last-child { color: var(--muted); text-decoration: line-through; }
+.ar-tick { width: 14px; color: var(--green); }
+@media (max-width: 760px) { .pl-archive { grid-template-columns: 1fr; } }
 @media (max-width: 760px) { .pl-cols { grid-template-columns: 1fr; } .pl-cols > .pl-sec + .pl-sec { margin-top: var(--line); } }
 .pl-page {
   --line: 36px; --paper: #FCFBF8; --rule: #ECE8E0;
@@ -858,7 +909,7 @@ button.frame:hover { transform: translateY(-2px); box-shadow: inset 1px 1px 0 rg
 .pl-list { list-style: none; margin: 0; padding: 0; }
 .pl-line { display: flex; align-items: center; gap: 8px; height: var(--line); min-width: 0; }
 .pl-num { flex: none; width: 22px; font: 500 calc(var(--line) * 0.62) var(--display); color: var(--terra); }
-.pl-todo .pl-line.empty .check { visibility: hidden; } /* a tick box only once something's written */
+.pl-line.empty .check { visibility: hidden; } /* a tick box only once something's written */
 .pl-input {
   flex: 1; min-width: 0; height: var(--line); margin: 0; padding: 0; border: 0; border-radius: 0; background: transparent; -webkit-appearance: none; appearance: none;
   font: 400 calc(var(--line) * 0.7) var(--display); color: var(--ink); line-height: normal;
@@ -877,14 +928,14 @@ button.frame:hover { transform: translateY(-2px); box-shadow: inset 1px 1px 0 rg
 .pl-covered { margin: 0; height: var(--line); font: italic 18px/var(--line) var(--display); color: var(--ink-4); }
 
 /* ---- the agenda sheet's contents: the day at the top, ‹ › at the sides, events on the ruled lines ---- */
-.ip-screen { position: relative; height: 100%; box-sizing: border-box; display: flex; flex-direction: column; padding: 14px 18px 12px 44px; }
+.ip-screen { position: relative; height: 100%; box-sizing: border-box; display: flex; flex-direction: column; }
 .ip-head { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 6px; height: 42px; }
 .ip-title { display: flex; flex-direction: column; align-items: center; gap: 2px; text-align: center; min-width: 0; }
 .ip-title h2 { margin: 0; font: italic 400 clamp(20px, 9cqw, 30px)/1 var(--display); letter-spacing: -0.01em; }
 .ip-date { font: 8px var(--mono); letter-spacing: 0.18em; color: var(--ink-4); text-transform: uppercase; }
 .ip-nav { width: 26px; height: 26px; border: 0; border-radius: 3px; background: transparent; cursor: pointer; font-size: 18px; color: var(--ink-3); }
 .ip-nav:hover { background: rgb(28 24 20 / 0.06); color: var(--ink); }
-.ip-back { position: absolute; top: 60px; right: 14px; }
+.ip-back { position: absolute; top: 46px; right: 0; }
 .ip-today { padding: 2px 6px; border: 1px solid var(--terra); border-radius: 3px; background: transparent; color: var(--terra); cursor: pointer; font: 8px var(--mono); letter-spacing: 0.12em; text-transform: uppercase; }
 .ip-body { flex: 1; min-height: 0; overflow-y: auto; scrollbar-width: none; }
 .ip-body .empty { margin: 0; line-height: 26px; font: italic 17px/26px var(--display); color: var(--muted); }
@@ -896,9 +947,6 @@ button.frame:hover { transform: translateY(-2px); box-shadow: inset 1px 1px 0 rg
 .ip-list .slot .k { margin: 0; line-height: 26px; }
 .ip-list .slot-out { bottom: auto; top: 30px; }
 .ip-list .now-line { margin: 0; }
-.ip-dots { display: flex; justify-content: center; gap: 5px; padding-top: 6px; }
-.ip-dots i { width: 4px; height: 4px; border-radius: 50%; background: var(--border-2); }
-.ip-dots i.on { background: var(--ink-3); }
 
 .slots { list-style: none; padding: 0; margin: -10px 0 0; position: relative; }
 .slot { position: relative; display: grid; grid-template-columns: 54px 1fr; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--hair); align-items: baseline; }
@@ -1926,16 +1974,14 @@ dialog h3 { margin: 0 0 4px; font: italic 300 32px/1.1 var(--display); }
   .topshelf { flex-wrap: wrap; gap: 8px 10px; }
   /* phones: one scrolling column on the bricks, the Plan my day file first, then notes, the agenda sheet and the dock */
   .desk { display: flex; flex-direction: column; gap: 28px; padding: 110px 16px 60px; min-height: 0; }
-  .desk-top, .sticky-pad-btn img { display: none; }
+  .desk-top { display: none; }
   .desktop-icons { position: static; order: 1; align-self: flex-end; }
   .desk-dock { position: static; order: 5; align-self: center; transform: none; }
   .desk-left { display: contents; }
   .desk-notes { order: 2; }
   .stickies { position: static; order: 2; grid-template-columns: repeat(auto-fill, 96px); justify-content: center; --stick: 96px; }
-  .sticky-pad-btn { position: static; order: 3; align-self: center; width: auto; transform: none; padding: 8px 14px; border: 1px dashed var(--ink-4); border-radius: 3px; }
-  .sticky-pad-btn span { position: static; font-size: 14px; }
-  .sticky-pad-btn span::after { content: " Add a sticky note"; font: 10px var(--mono); letter-spacing: 0.14em; text-transform: uppercase; }
-  .agenda-sheet { position: relative; order: 4; right: auto; top: auto; height: 420px; width: 100%; aspect-ratio: auto; transform: none; }
+  .widgets { position: static; order: 4; width: 100%; }
+  .wg-agenda { height: 360px; flex: none; }
   .open-book { grid-template-columns: 1fr; height: calc(100vh - 48px); }
   .open-book .page.left { display: none; }
   .open-book .page.right { border-radius: 2px; }

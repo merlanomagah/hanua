@@ -1,13 +1,15 @@
-// The desk's notebook: rules shared by the page and the server (no page imports here).
-// One small file per day on this Mac (data/room/desk/<day>.json) holds the day's page: three focuses and the to-do
-// lines (`general`, kept in place so a line typed halfway down stays there). Since 6 Oct 2026 the page is just
-// Today's focuses and a To-Do List (Mel); older files may still carry key tasks and Work lines, which are ignored.
+// Plan my day: rules shared by the page and the server (no page imports here).
+// One small file per day on this Mac (data/room/desk/<day>.json) holds the day's page (Mel, 6 Oct 2026): three focuses,
+// three tasks to complete, and the To-Do List in sections (General first, then her own, each with its own header).
+// Earlier days are the archive and are never rewritten: what the morning sweep decides about an unfinished item is
+// written into *today's* file (`settled`). Older files with a plain `general` list open as the General section.
 import { addDays } from "./dates.js";
 
 export const FOCUS_N = 3, KEY_N = 3;
-export const MAX_TEXT = 200, MAX_LINES = 40;
-export const CARRY_DAYS = 7; // how far back the server looks for the last focuses (shown faintly as a hint)
-export const TODO_ROWS = 14; // the To-Do List always has at least this many lines to write on
+export const MAX_TEXT = 200, MAX_LINES = 40, MAX_SECTIONS = 12, MAX_NAME = 40;
+export const CARRY_DAYS = 7; // the sweep looks back a week; anything older stays in the archive
+export const SECTION_ROWS = 4; // every section has at least this many lines to write on
+export const GENERAL = "general";
 
 // A real day, written YYYY-MM-DD, or null (guards /api/desk/:day like weekKey does for the menu)
 export function dayKey(s) {
@@ -20,23 +22,88 @@ export function dayKey(s) {
 // The day n days away (calendar days, so daylight saving never skips or repeats one)
 export const stepDay = (day, n) => addDays(day, n);
 
-const clip = (v) => String(v ?? "").replace(/\s+/g, " ").trim().slice(0, MAX_TEXT);
-const idOf = (v, i) => (typeof v === "string" && /^[\w-]{1,40}$/.test(v) ? v : `l${i}`);
+const clip = (v, n = MAX_TEXT) => String(v ?? "").replace(/\s+/g, " ").trim().slice(0, n);
+const idOf = (v, i, p = "l") => (typeof v === "string" && /^[\w-]{1,40}$/.test(v) ? v : `${p}${i}`);
+const list = (a) => (Array.isArray(a) ? a : []);
+const linesOf = (a) => {
+  const out = list(a).slice(0, MAX_LINES).map((l, i) => ({ id: idOf(l?.id, i), text: clip(l?.text), done: Boolean(l?.text && l?.done) }));
+  while (out.length && !out.at(-1).text) out.pop(); // no trailing blanks kept; blanks in the middle stay (lines keep their place)
+  return out;
+};
 
 // Whatever was sent or saved, tidied into the one shape: never more lines than fit, text trimmed and capped
 export function deskShape(x) {
   const o = x && typeof x === "object" ? x : {};
-  const list = (a) => (Array.isArray(a) ? a : []);
   const focus = Array.from({ length: FOCUS_N }, (_, i) => clip(list(o.focus)[i]));
-  const key = Array.from({ length: KEY_N }, (_, i) => { const k = list(o.key)[i] || {}; return { text: clip(k.text), done: Boolean(k.done) }; });
-  const general = list(o.general).slice(0, MAX_LINES).map((g, i) => ({ id: idOf(g?.id, i), text: clip(g?.text), done: Boolean(g?.done) }));
-  const work = list(o.work).slice(0, MAX_LINES).map((w, i) => ({ id: idOf(w?.id, i), text: clip(w?.text), edited: Number(w?.edited) || 0 }));
-  // carried jottings already dealt with: "<day>:<id>" → "today" (brought into this day) or "gone" (let go)
+  const key = Array.from({ length: KEY_N }, (_, i) => { const k = list(o.key)[i] || {}; return { text: clip(k.text), done: Boolean(k.text && k.done) }; });
+  const given = list(o.sections).slice(0, MAX_SECTIONS);
+  const gen = given.find((s) => s?.id === GENERAL);
+  const sections = [{ id: GENERAL, name: "General", col: 0, lines: linesOf(gen ? gen.lines : o.general) }];
+  given.forEach((s, i) => {
+    if (!s || s.id === GENERAL) return;
+    const id = idOf(s.id, i, "s");
+    if (sections.some((x) => x.id === id)) return;
+    sections.push({ id, name: clip(s.name, MAX_NAME), col: s.col === 1 ? 1 : 0, lines: linesOf(s.lines) });
+  });
+  // unfinished items from earlier days, dealt with in the morning sweep: "<day>:<id>" → today / done / gone
   const settled = {};
   for (const [k, v] of Object.entries(o.settled && typeof o.settled === "object" ? o.settled : {})) {
-    if (/^\d{4}-\d{2}-\d{2}:[\w-]{1,40}$/.test(k) && (v === "today" || v === "gone")) settled[k] = v;
+    if (/^\d{4}-\d{2}-\d{2}:[\w-]{1,40}$/.test(k) && ["today", "done", "gone"].includes(v)) settled[k] = v;
   }
-  return { focus, key, general, work, settled };
+  return { focus, key, sections, settled, started: Boolean(o.started) };
+}
+
+// Which column a new section goes in: the shorter one (General always heads the left)
+const height = (s) => 1 + Math.max(SECTION_ROWS, s.lines.length + 1);
+export function shorterCol(sections) {
+  const h = [0, 0];
+  for (const s of sections) h[s.col] += height(s);
+  return h[1] < h[0] ? 1 : 0;
+}
+
+// A new day starts with yesterday's section headers (empty), so "House" or "Admin" is waiting each morning.
+// Only once: after that the day is Mel's to change (a section she removes doesn't come back).
+export function startDay(day, earlier, today) {
+  const d = deskShape(day);
+  if (d.started) return d;
+  const last = Object.keys(earlier || {}).filter((k) => dayKey(k) && k < today).sort().reverse()
+    .map((k) => deskShape(earlier[k])).find((x) => x.sections.length > 1);
+  for (const s of last?.sections.slice(1) || []) {
+    if (!d.sections.some((x) => x.name.toLowerCase() === s.name.toLowerCase())) d.sections.push({ id: s.id, name: s.name, col: s.col, lines: [] });
+  }
+  d.started = true;
+  return d;
+}
+
+// The morning sweep: unfinished tasks and lines from the last week that haven't been dealt with yet.
+// days: { "YYYY-MM-DD": shape } including today's (whose `settled` says what's been dealt with).
+export function leftovers(days, today) {
+  const settled = {};
+  for (const d of Object.values(days)) Object.assign(settled, deskShape(d).settled);
+  const out = [];
+  for (const [day, raw] of Object.entries(days).sort(([a], [b]) => a.localeCompare(b))) {
+    if (!dayKey(day) || day >= today || day < stepDay(today, -CARRY_DAYS)) continue;
+    const d = deskShape(raw);
+    d.key.forEach((k, i) => { if (k.text && !k.done) out.push({ key: `${day}:k${i}`, day, section: null, text: k.text }); });
+    for (const s of d.sections) for (const l of s.lines) if (l.text && !l.done) out.push({ key: `${day}:${l.id}`, day, section: s.name, text: l.text });
+  }
+  return out.filter((x) => !settled[x.key]);
+}
+
+// Bring an unfinished item into today: a task into an empty task slot (else General), a line back under its own
+// header (made again if today hasn't got it). Changes and returns today's shape.
+export function bringForward(d, item, newId) {
+  d.settled[item.key] = "today";
+  if (!item.section) {
+    const slot = d.key.find((k) => !k.text);
+    if (slot) { slot.text = item.text; slot.done = false; return d; }
+  }
+  const name = item.section || "General";
+  let sec = d.sections.find((s) => s.name.toLowerCase() === name.toLowerCase());
+  if (!sec) { sec = { id: `s${newId}`, name, col: shorterCol(d.sections), lines: [] }; d.sections.push(sec); }
+  const blank = sec.lines.find((l) => !l.text);
+  if (blank) { blank.text = item.text; blank.done = false; } else sec.lines.push({ id: newId, text: item.text, done: false });
+  return d;
 }
 
 // The focus areas last written on an earlier day (shown faintly as a hint; they never carry by themselves)
@@ -50,7 +117,7 @@ export function lastFocus(days, today) {
 }
 
 // Which sections show: none at work (the page has no Work/personal split, so all of it counts as personal)
-export const deskSections = (atWork) => (atWork ? [] : ["focus", "todo"]);
+export const deskSections = (atWork) => (atWork ? [] : ["focus", "key", "todo"]);
 
 // The page's date, always written the same way: "Tue 06-Oct-2026"
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
