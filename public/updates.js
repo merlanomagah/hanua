@@ -4,10 +4,17 @@
 import { asleep } from "./lock.js";
 import { toast } from "./lib.js";
 
-let boot = null, pending = false, offered = false;
+let boot = null, pending = false, offered = false, saidBlocked = null;
+// an update that didn't take (server/updates.js): said once per update, out loud, never silently
+const WHY = { install: "its new add-ons wouldn't install", start: "the new version wouldn't start" };
 async function check() {
   try {
-    const now = (await (await fetch("/api/status", { cache: "no-store" })).json()).boot;
+    const j = await (await fetch("/api/status", { cache: "no-store" })).json();
+    const now = j.boot;
+    if (j.update && j.update.commit !== saidBlocked) {
+      saidBlocked = j.update.commit;
+      toast(`Hanua couldn't update (${WHY[j.update.why] || "something went wrong"}), so it's still running the previous version. Nothing was lost.`, true);
+    }
     if (!now) return;
     if (!boot) boot = now;
     else if (now !== boot) pending = true;

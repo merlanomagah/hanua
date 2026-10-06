@@ -19,8 +19,11 @@ import { lockStatus, setPin, checkPin } from "./lock.js";
 import { getWeather } from "./weather.js";
 import { backupDue, backupRoom, backupWarning, readStatus } from "./backup.js";
 import os from "node:os";
-import { restartSelf, watchForUpdates } from "./updates.js";
+import { watchForUpdates } from "./updates.js";
 import { createRoom } from "./room.js";
+import { localOnly, roomChoice } from "./guard.js";
+import { parse as parseEnv } from "dotenv";
+import { readFileSync } from "node:fs";
 import { fileTooNew, mergeStickies, mergeWatered } from "../public/shared/sync.js";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -74,6 +77,9 @@ async function recordsFor(area, { fresh = false } = {}) {
 }
 
 const app = express();
+const port = Number(process.env.PORT) || 3000;
+// only this Mac's own Hanua pages (and scripts on this Mac) may talk to it: server/guard.js
+app.use(localOnly(port));
 // small JSON everywhere; the whiteboard's drawings (a few hundred KB) have their own, larger limit
 const smallJson = express.json({ limit: "100kb" });
 app.use((req, res, next) => (req.path.startsWith("/api/board/") ? next() : smallJson(req, res, next)));
@@ -96,9 +102,13 @@ app.post("/api/lock/check", async (req, res) => res.json(await checkPin(lockFile
 // In data/room/ (gitignored), or, with ROOM_DATA in .env, one iCloud Drive folder both Macs share (6 Oct 2026):
 // every read and write goes through server/room.js (still-coming files never read as empty, whole writes, a save
 // refused if the other Mac changed the file since, the folder watched for the other Mac's changes).
-// The sample preview keeps its own folder so tests never touch Mel's.
+// The sample preview keeps its own folder so tests never touch Mel's: a sample server (NOTION_TOKEN blanked) ignores
+// the ROOM_DATA / BACKUP_DIR it would inherit from .env (server/guard.js roomChoice).
+const fileEnv = (() => { try { return parseEnv(readFileSync(path.join(process.cwd(), ".env"))); } catch { return {}; } })();
+const choice = roomChoice(process.env, fileEnv);
+if (choice.ignored.length) console.log(`Hanua: a sample server, so .env's ${choice.ignored.join(" and ")} (Mel's real folder) is ignored`);
 const home = (p) => (p && p.startsWith("~/") ? path.join(os.homedir(), p.slice(2)) : p); // the same .env line on both Macs
-const roomDir = path.resolve(root, home(process.env.ROOM_DATA) || (notionEnabled() ? "data/room" : "data/room-sample"));
+const roomDir = path.resolve(root, home(choice.room) || (notionEnabled() ? "data/room" : "data/room-sample"));
 const sharedRoom = ![path.resolve(root, "data/room"), path.resolve(root, "data/room-sample")].includes(roomDir); // a folder of its own (iCloud): shared
 const room = createRoom(roomDir, { shared: sharedRoom });
 if (room.missing()) console.error(`Hanua: the shared room folder isn't there (${roomDir}). Nothing will save until it is (iCloud Drive on?)`);
@@ -306,7 +316,7 @@ room.start((what) => { if (what.kind === "settings") reloadSettings().catch(() =
 // server backs up its own folder beside it; BACKUP_DIR in .env can point elsewhere, or say "off".
 // With a shared room folder (in iCloud), the backup goes to this Mac's own disk, outside iCloud, so a wiped file can't
 // carry into the copies; only one Mac backs up (the other sets BACKUP_DIR=off).
-const backupDir = process.env.BACKUP_DIR === "off" ? null : path.resolve(root, process.env.BACKUP_DIR
+const backupDir = choice.backup === "off" ? null : path.resolve(root, choice.backup
   || (roomDir.endsWith("room-sample") ? "data/room-sample-backup"
     : sharedRoom ? path.join(os.homedir(), "Hanua backup")
       : path.join(os.homedir(), "Library/Mobile Documents/com~apple~CloudDocs/Hanua backup")));
@@ -339,7 +349,7 @@ app.get("/api/backup", async (_req, res) => {
 app.post("/api/restart", (req, res) => {
   if (!isMain || req.get("X-Hanua") !== "restart") return res.status(403).json({ error: "Not this Hanua" });
   res.json({ restarting: true });
-  setTimeout(() => restartSelf({ root, server }), 100);
+  setTimeout(() => updates?.restart(), 100);
 });
 
 // Apple Reminders (server/calendar.js): the desk's Shopping list and Add reminder. Personal: the page puts them away
@@ -357,7 +367,8 @@ app.post("/api/reminders/show", remindersRoute(() => showReminders()));
 
 app.get("/api/status", (_req, res) => {
   // boot changes on every start, so an open page can tell Hanua was updated (public/updates.js)
-  res.set("Cache-Control", "no-store").json({ notion: notionEnabled(), claude: claudeEnabled(), boot: bootAt });
+  // pid: how a fresh copy is told apart from this one; update: an update that didn't take (server/updates.js)
+  res.set("Cache-Control", "no-store").json({ notion: notionEnabled(), claude: claudeEnabled(), boot: bootAt, pid: process.pid, update: updates?.state.blocked || null });
 });
 
 app.get("/api/areas", async (_req, res, next) => {
@@ -747,7 +758,6 @@ app.use((err, _req, res, _next) => {
   res.status(500).json({ error: err.message || "Something went wrong." });
 });
 
-const port = Number(process.env.PORT) || 3000;
 // Bind to localhost only: this server holds your Notion and Claude keys.
 // A fresh copy started by restartSelf may find the old one still letting go of the port: it tries again for 10 s
 function listen(tries = 0) {
@@ -755,9 +765,9 @@ function listen(tries = 0) {
     console.log(`Hanua running at http://localhost:${port}${isMain ? " (restarts itself when main is updated)" : ""}`);
     console.log(`  Notion: ${notionEnabled() ? "connected" : "not configured (showing sample data)"}`);
     console.log(`  Claude: ${claudeEnabled() ? "connected" : "not configured"}`);
-    if (isMain) {
+    if (isMain && !updates) { // once: a failed restart takes the port back with listen() again
       writeFile(path.resolve(root, process.env.HANUA_PID_FILE || ".hanua.pid"), `${process.pid}\n`).catch(() => {});
-      updates = watchForUpdates({ root, server });
+      updates = watchForUpdates({ root, getServer: () => server, port, relisten: () => listen() });
     }
   });
   server.on("error", (err) => {

@@ -1,5 +1,16 @@
 # Panel brief: desk health check (after the 6 Oct 2026 build day)
 
+**Mel's answers (6 Oct 2026, night):** yes to all three: a Foundations step before Close the day, merged with Phase 1 of `2026-10-two-device-build-principles.md`, safety first ("especially the security reasons").
+
+**Progress:**
+| Part | State |
+|---|---|
+| Sample previews isolated (Fix lane) | Done (a56d6c2) |
+| F3 Host / Origin guard (`server/guard.js` `localOnly`, tested) | Done |
+| F2 Restart only once the new copy answers; else keep running and say so (`server/updates.js` `restartSelf`, `newCopyAnswers`; `/api/status` `update`, a note on the page); `npm ci` first when the add-on list changed (Phase 1 step 2, part) | Done; tried live both ways (a new copy that starts, one that crashes) |
+| F1 A sample server (NOTION_TOKEN blanked) ignores .env's ROOM_DATA / BACKUP_DIR (`roomChoice`, tested) | Done |
+| Next: Phase 1 steps 1 (`npm run check`), 3 (pin Node), 4 (`.env.example`), the rest of 2 (pull state reported); then F4, F5–F7, Phase 1 steps 5–7 | To do |
+
 **Request (as the problem):** About 37 commits built the desk in one day. Is it set up well enough (best practice, room to grow, capability) to carry Close the day, Routines, the weekly summary and Patterns without breaking or being rebuilt?
 **Lane:** Large (an assessment, with no build) · **Seats:** Chair, Sceptic, Backend engineer, Frontend engineer, Data steward, Test lead (the last four each read the code on their own), Privacy and safety, Release keeper
 **Gate:** worth it. The Learning Log's "polish ahead of plumbing" pattern applies: a day of features with nothing behind it to steady them.
