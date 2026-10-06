@@ -64,6 +64,16 @@ export function clamp({ x, y }, box, area) {
   const maxX = Math.max(EDGE, area.w - box.w - EDGE), maxY = Math.max(TOP, area.h - box.h - EDGE);
   return { x: Math.round(Math.min(Math.max(n(x), EDGE), maxX)), y: Math.round(Math.min(Math.max(n(y), TOP), maxY)) };
 }
+// A desk window (To-do.txt, Settings, the lists) restored from a place kept on a wider screen: shrunk to fit if it
+// must (never under its smallest, unless the desk itself is smaller) and pulled back fully on screen (6 Oct 2026: at
+// 375 px To-do.txt came back at x 272, 540 wide). The kept place itself isn't changed, so a wider screen gets it back.
+export const WIN_MIN = { w: 300, h: 180 };
+export function fitWindow(p, area) {
+  const side = (v, min, span) => Math.max(Math.min(min, span), Math.min(Math.max(n(v), 0), span));
+  const w = side(p.w, WIN_MIN.w, area.w), h = side(p.h, WIN_MIN.h, area.h);
+  const x = Math.round(Math.min(Math.max(n(p.x), 0), area.w - w)), y = Math.round(Math.min(Math.max(n(p.y), 0), area.h - h));
+  return { x, y, w: Math.round(w), h: Math.round(h) };
+}
 // files sit on a grid (measured from the top right, where they start, like a Mac); widgets on a fine one
 export function snapFile({ x, y }, box, area) {
   const fromRight = area.w - EDGE - box.w - x;

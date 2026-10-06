@@ -4,6 +4,7 @@
 // Places and sizes are kept in this browser (a view preference).
 import { $, h, reducedMotion } from "../lib.js";
 import { todayStr } from "../shared/dates.js";
+import { fitWindow } from "../shared/layout.js";
 
 const KEY = "desk-windows";
 const wins = new Map(); // id → { title, icon, show(), hide(), shown(), remember }
@@ -41,7 +42,7 @@ export function dots(id, onClose) {
 export function windowBar(win, title, tools, onClose) {
   const bar = h("div", { className: "pw-bar txt-bar" }, dots(win.id, onClose), h("span", { className: "pw-title", textContent: title }), h("span", { className: "pw-tools txt-date" }, ...tools));
   bar.addEventListener("pointerdown", (e) => {
-    if (e.target.closest("button, a, input")) return;
+    if (phone() || e.target.closest("button, a, input")) return; // on a phone the window sits along the bottom
     const box = win.getBoundingClientRect(), host = win.offsetParent.getBoundingClientRect();
     const dx = e.clientX - box.left, dy = e.clientY - box.top;
     bar.setPointerCapture(e.pointerId);
@@ -56,20 +57,66 @@ export function windowBar(win, title, tools, onClose) {
   return bar;
 }
 const placeKey = (win) => `win-${win.id}`;
+// Under 901 px the stylesheet lays the windows along the bottom, full width (like Plan my day): no kept place there
+const PHONE = matchMedia("(max-width: 900px)");
+const phone = () => PHONE.matches;
+const placed = new Set(); // windows whose place has been set this visit (re-fitted when the screen changes)
+const settling = new WeakMap(); // a window being placed by Hanua, not resized by Mel: don't keep that size
+function settle(win) {
+  const n = (settling.get(win) || 0) + 1;
+  settling.set(win, n);
+  requestAnimationFrame(() => requestAnimationFrame(() => { if (settling.get(win) === n) settling.delete(win); }));
+}
 function keepPlace(win) {
+  if (phone()) return; // a phone's full-width window would overwrite the desk's own place
   try { localStorage.setItem(placeKey(win), JSON.stringify({ x: win.offsetLeft, y: win.offsetTop, w: win.offsetWidth, h: win.offsetHeight })); } catch { /* fine */ }
 }
+// The kept place, fitted fully on screen (a place kept on a wider screen is shrunk and pulled back, not changed)
 export function restorePlace(win) {
+  placed.add(win);
+  settle(win);
+  const s = win.style;
+  if (phone()) { s.left = s.top = s.width = s.height = s.maxHeight = ""; return; }
   let p = null;
   try { p = JSON.parse(localStorage.getItem(placeKey(win)) || "null"); } catch { p = null; }
-  if (!p) return;
-  win.style.left = `${p.x}px`; win.style.top = `${p.y}px`;
-  if (p.w) { win.style.width = `${p.w}px`; win.style.height = `${p.h}px`; win.style.maxHeight = "none"; }
+  const host = win.offsetParent || win.parentElement;
+  if (host && !hosts.has(host)) { hosts.add(host); hostWatch.observe(host); }
+  const area = host ? { w: host.clientWidth, h: host.clientHeight } : { w: 0, h: 0 };
+  if (!p) {
+    // never moved: the stylesheet's place, unless the screen is too small for it (then pulled back like a kept one)
+    s.left = s.top = "";
+    if (!area.w || win.hidden) return;
+    p = { x: win.offsetLeft, y: win.offsetTop };
+    if (p.x + win.offsetWidth <= area.w && p.y + win.offsetHeight <= area.h) return;
+  }
+  const keepSize = !!p.w;
+  if (area.w && area.h) p = fitWindow({ ...p, w: p.w || win.offsetWidth, h: p.h || win.offsetHeight }, area);
+  s.left = `${p.x}px`; s.top = `${p.y}px`;
+  if (keepSize) { s.width = `${p.w}px`; s.height = `${p.h}px`; s.maxHeight = "none"; }
+  else { s.width = s.height = s.maxHeight = ""; }
 }
-// keep Mel's own resizing (from the corner), not the window first appearing
+// the screen got smaller or bigger (or crossed the phone width): every open window is placed again
+let refit = 0;
+function refitAll() {
+  for (const win of placed) settle(win);
+  cancelAnimationFrame(refit);
+  refit = requestAnimationFrame(() => { for (const win of placed) restorePlace(win); }); // hidden ones too: they open again where they fit
+}
+addEventListener("resize", refitAll);
+PHONE.addEventListener?.("change", refitAll);
+const hosts = new WeakSet(), hostWatch = new ResizeObserver(refitAll); // the desk itself changing size, too
+// keep Mel's own resizing (from the corner), not the window appearing again, or being fitted to the screen: only a
+// change of size while it shows, from the size it last had, is hers
 export function resizable(win) {
-  let ready = false;
-  new ResizeObserver(() => { if (ready && !win.hidden) keepPlace(win); }).observe(win);
+  let ready = false, last = "";
+  new ResizeObserver(() => {
+    if (win.hidden || !win.offsetWidth) return;
+    const size = `${win.offsetWidth}x${win.offsetHeight}`;
+    if (size === last) return;
+    const was = last;
+    last = size;
+    if (ready && was && !settling.has(win)) keepPlace(win);
+  }).observe(win);
   return () => { ready = false; requestAnimationFrame(() => { ready = true; }); };
 }
 

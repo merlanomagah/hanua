@@ -103,3 +103,15 @@ test("layout: resizing from a corner snaps to the grid, stays on screen and stop
   assert.deepEqual([small.w, small.h], lim.min);
   assert.ok(fitResize(start, 0, 5000, { fromLeft: true, ...lim, area }).h <= area.h - 12 - start.y);
 });
+
+test("layout: a desk window kept on a wide screen comes back fully on a smaller one, shrunk only if it must be", async () => {
+  const { fitWindow, WIN_MIN } = await import("../public/shared/layout.js");
+  // the 6 Oct bug: kept at 1440, opened at 375
+  assert.deepEqual(fitWindow({ x: 272, y: 200, w: 540, h: 500 }, { w: 375, h: 700 }), { x: 0, y: 200, w: 375, h: 500 });
+  // fits already: untouched
+  assert.deepEqual(fitWindow({ x: 100, y: 80, w: 540, h: 400 }, { w: 1440, h: 900 }), { x: 100, y: 80, w: 540, h: 400 });
+  // off the right and bottom: pulled back, size kept
+  assert.deepEqual(fitWindow({ x: 1200, y: 800, w: 540, h: 400 }, { w: 1024, h: 700 }), { x: 484, y: 300, w: 540, h: 400 });
+  // never smaller than its smallest while the desk has room; nonsense is put at the top left
+  assert.deepEqual(fitWindow({ x: -50, y: NaN, w: 10, h: 10 }, { w: 1024, h: 700 }), { x: 0, y: 0, w: WIN_MIN.w, h: WIN_MIN.h });
+});
