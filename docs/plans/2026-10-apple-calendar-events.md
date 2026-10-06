@@ -1,5 +1,7 @@
 # Panel brief: add events to Apple Calendar from Hanua
 
+**Mel's answers (7 Oct 2026): approved.** (1) The default calendar is picked from her own Apple calendars (Settings → Calendar lists the ones Hanua can write to). (2) Yes: the day window's add goes to Apple. (3) No tick on Up next's +: Up next is for managing the day's meetings in the plan.
+
 **Request (as the problem):** Mel sees her Apple calendars on the wall and desk, but adding an event still means leaving Hanua for Calendar.app; she wants to add (and so manage) events where she's looking, with the usual fields, landing in Apple Calendar.
 **Lane:** Large (a new write path into a data source; helper, server and page) · **Seats:** Chair, Sceptic, Daily-use coach, Experience designer, Room designer, Data steward, Frontend, Backend, Test lead, Privacy and safety, Release keeper. Seats run in one pass by Claude from the code (`scripts/calendar.swift`, `server/calendar.js`, `public/app.js` `openDay`), not as separate agents.
 **Gate:** worth it. It serves the purpose sentence (know where data is sent: Apple stays the home, Hanua keeps no copy) and the reminders work already writes to Apple the same way. Not polish ahead of plumbing: the read side is live and relied on.
