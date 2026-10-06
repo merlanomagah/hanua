@@ -318,7 +318,9 @@ app.get("/api/backup", async (_req, res) => {
   if (!backupDir) return res.json({ off: true });
   backupStatus ??= await readStatus(backupDir); // asked before the first check has run
   res.json({ at: backupStatus?.at || null, ok: backupStatus?.ok ?? null, good: backupStatus?.good || null, warning: backupWarning(backupStatus),
-    where: backupDir.includes("CloudDocs") ? `iCloud Drive › ${path.basename(backupDir)}` : path.relative(root, backupDir) || backupDir });
+    where: backupDir.includes("CloudDocs") ? `iCloud Drive › ${path.basename(backupDir)}`
+      : backupDir.startsWith(os.homedir()) && !backupDir.startsWith(root) ? `${path.basename(backupDir)}, in your home folder on this Mac`
+        : path.relative(root, backupDir) || backupDir });
 });
 
 // Restart Hanua (scripts/restart.sh, so the shortcut only sends this and finishes; nothing for it to cut off).
