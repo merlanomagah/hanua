@@ -22,6 +22,8 @@
         "PUTEA_URL=http://127.0.0.1:1",
         "LOCK_FILE=data/lock-sample.json",
         "APPLE_CAL=0",
+        "ROOM_DATA=data/room-sample",
+        "BACKUP_DIR=off",
         "node",
         "server/index.js"
       ],
@@ -37,6 +39,8 @@
         "PUTEA_URL=http://127.0.0.1:1",
         "LOCK_FILE=data/lock-sample.json",
         "APPLE_CAL=0",
+        "ROOM_DATA=data/room-sample",
+        "BACKUP_DIR=off",
         "node",
         "server/index.js"
       ],
@@ -52,8 +56,9 @@
         "ANTHROPIC_AUTH_TOKEN=",
         "PUTEA_URL=http://127.0.0.1:1",
         "LOCK_FILE=data/lock-test.json",
-        "ROOM_DATA=data/room-sample",
         "APPLE_CAL=0",
+        "ROOM_DATA=data/room-sample",
+        "BACKUP_DIR=off",
         "node",
         "server/index.js"
       ],
@@ -70,6 +75,8 @@
         "PUTEA_URL=http://127.0.0.1:3456",
         "LOCK_FILE=data/lock-sample.json",
         "APPLE_CAL=0",
+        "ROOM_DATA=data/room-sample",
+        "BACKUP_DIR=off",
         "node",
         "server/index.js"
       ],
@@ -85,8 +92,9 @@
         "ANTHROPIC_AUTH_TOKEN=",
         "PUTEA_URL=http://127.0.0.1:3456",
         "LOCK_FILE=data/lock-frames.json",
-        "ROOM_DATA=data/room-sample",
         "APPLE_CAL=0",
+        "ROOM_DATA=data/room-sample",
+        "BACKUP_DIR=off",
         "node",
         "server/index.js"
       ],
@@ -104,6 +112,8 @@
         "PUTEA_URL=http://127.0.0.1:1",
         "LOCK_FILE=data/lock-sample-planner.json",
         "APPLE_CAL=0",
+        "ROOM_DATA=data/room-sample",
+        "BACKUP_DIR=off",
         "node",
         "server/index.js"
       ],
@@ -120,6 +130,8 @@
         "PUTEA_URL=http://127.0.0.1:1",
         "LOCK_FILE=data/lock-sample-planner.json",
         "APPLE_CAL=0",
+        "ROOM_DATA=data/room-sample",
+        "BACKUP_DIR=off",
         "node",
         "/Users/melmanueli/Documents/GitHub/hanua-work/server/index.js"
       ],
