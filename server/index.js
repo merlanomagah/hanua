@@ -14,7 +14,7 @@ import { toGoal, goalProperties, goalOptions } from "./goals.js";
 import { rollUp } from "../public/shared/goals.js";
 import { weekKey } from "../public/shared/dates.js";
 import { MEALS, menuShape } from "../public/shared/menu.js";
-import { dayKey, deskShape, stepDay, stickyShape, versionClash, CARRY_DAYS, CLASH_TEXT, DESK_VERSION } from "../public/shared/desk.js";
+import { dayKey, daySummary, deskShape, stepDay, stickyShape, versionClash, CARRY_DAYS, CLASH_TEXT, DESK_VERSION } from "../public/shared/desk.js";
 import { lockStatus, setPin, checkPin } from "./lock.js";
 import { getWeather } from "./weather.js";
 import { backupDue, backupRoom, backupWarning, readStatus } from "./backup.js";
@@ -261,6 +261,17 @@ app.get("/api/reminders/lists", async (_req, res) => { try { res.json(await getR
 app.get("/api/desk/days", async (_req, res) => {
   const files = await readdir(deskDir).catch(() => []);
   res.set("Cache-Control", "no-store").json(files.map((f) => dayKey(f.replace(/\.json$/, ""))).filter(Boolean).sort().reverse());
+});
+// What each of several days holds, in a line (the week view, days ahead): ?days=YYYY-MM-DD,… (at most 31). A day
+// with no file is { written: false }; one still coming from iCloud is null (the page says so, never "nothing")
+app.get("/api/desk/summary", async (req, res) => {
+  const days = String(req.query.days || "").split(",").map(dayKey).filter(Boolean).slice(0, 31);
+  const out = {};
+  for (const d of days) {
+    const r = await room.read(path.join(deskDir, `${d}.json`));
+    out[d] = r.state === "ok" ? daySummary(r.data) : r.state === "missing" ? daySummary({}) : null;
+  }
+  res.set("Cache-Control", "no-store").json(out);
 });
 app.get("/api/desk/:day", roomRoute(async (req, res) => {
   const day = dayKey(req.params.day);

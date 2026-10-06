@@ -2,10 +2,12 @@
 // header, with its priority dot: the times live in Up next (Mel, 6 Oct 2026: the time column repeated the agenda).
 // A window like the others (window.js): drag, resize, minimise, remembered; opened by its desktop file, Plan my day's
 // title bar, Up next, and the first visit to the desk once the day is planned.
-// Tidied the same evening (Mel): the day, date and time stay in a header that never scrolls; + in the title bar
-// opens Add a task; each section folds away (▸ on the right of its header, "3 left" when folded); a ticked line moves
-// into Completed at the foot (folded unless opened), with Undo; unticking it there sends it back. What's folded is
-// remembered for today only, so each morning starts with everything open.
+// Tidied the same evening (Mel): the day, date and time stay in a header that never scrolls; each section folds away
+// (▸ on the right of its header, "3 left" when folded); a ticked line moves into Completed at the foot (folded unless
+// opened), with Undo; unticking it there sends it back. What's folded is remembered for today only, so each morning
+// starts with everything open. Later that evening (Mel): a + appears when you hover a section's header (the title
+// bar's + went): type the task, pick its priority and time, Enter, and it's added at the bottom of that section; the
+// row stays for the next one (Esc puts it away). Always today's list, whatever day Plan my day is showing.
 import { openItems, planDate, stampLine, timeLabel, TIME_PICKS, MAX_LINES } from "../shared/desk.js";
 import { todayStr } from "../shared/dates.js";
 import { $, focus, h, toast } from "../lib.js";
@@ -25,7 +27,7 @@ function show() {
   renderTxt();
   txt.querySelector(".txt-body")?.focus({ preventScroll: true });
 }
-const hide = () => { txt.hidden = true; adding = false; noteClosed("todo-txt"); };
+const hide = () => { txt.hidden = true; adding = null; noteClosed("todo-txt"); };
 registerWindow("todo-txt", { title: "To-do.txt", icon: ICON, show, hide, shown: () => !txt.hidden });
 export function openTxt() { show(); noteOpen("todo-txt"); }
 
@@ -51,7 +53,7 @@ function toggleRef(ref) {
   if (info.obj.done) toast(`Done: ${info.obj.text}`, false, { label: "Undo", run: () => { if (refInfo(ref)?.obj.done) toggleRef(ref); } });
 }
 
-let adding = false; // the Add a task panel under the header
+let adding = null; // the section (id) a task is being added to, or null
 export function renderTxt() {
   if (txt.hidden) return;
   freshFolds();
@@ -74,23 +76,28 @@ export function renderTxt() {
     b.addEventListener("click", onFold);
     return b;
   };
-  const names = [...new Set(all.map((x) => x.section || "General"))];
+  // every section of the day (at work: the Work ones), so a task can be added even to one that's empty so far
+  const secs = desk.sections.filter((x) => !focus.on || x.work);
   const open = all.filter((x) => !isDone(x)), done = all.filter(isDone);
-  const sections = names.map((name) => {
-    const mine = open.filter((x) => (x.section || "General") === name);
-    const folded = isFolded(name);
-    const count = !mine.length ? "all done ✓" : folded ? `${mine.length} left` : String(mine.length);
-    return h("section", { className: `txt-group${folded ? " folded" : ""}${mine.length ? "" : " empty"}` },
-      foldHead(name, count, folded, () => fold(name)),
-      folded || !mine.length ? null : h("ul", { className: "txt-list" }, mine.map((x) => row(x.ref))));
+  const sections = secs.map((sec) => {
+    const name = sec.name || "General";
+    const mine = open.filter((x) => (x.section || "General") === name), had = all.some((x) => (x.section || "General") === name);
+    const folded = isFolded(name) && adding !== sec.id;
+    const count = !mine.length ? (had ? "all done ✓" : "") : folded ? `${mine.length} left` : String(mine.length);
+    const plus = h("button", { type: "button", className: `txt-plus${adding === sec.id ? " on" : ""}`, textContent: "+", ariaLabel: `Add a task to ${name}`, title: `Add a task to ${name}`, ariaExpanded: String(adding === sec.id) });
+    plus.addEventListener("click", () => { adding = adding === sec.id ? null : sec.id; renderTxt(); (adding ? txt.querySelector(".txt-add .shop-add") : txt.querySelector(`.txt-group[data-sec="${sec.id}"] .txt-plus`))?.focus(); });
+    const group = h("section", { className: `txt-group${folded ? " folded" : ""}${mine.length ? "" : " empty"}${had ? "" : " blank"}` },
+      h("div", { className: "txt-ghead" }, foldHead(name, count, folded, () => fold(name)), plus),
+      folded || !mine.length ? null : h("ul", { className: "txt-list" }, mine.map((x) => row(x.ref))),
+      adding === sec.id ? addTaskEl(sec) : null);
+    group.dataset.sec = sec.id;
+    return group;
   });
   const completed = done.length ? h("section", { className: `txt-group txt-completed${folds.completed ? "" : " folded"}` },
     foldHead("Completed", String(done.length), !folds.completed, () => { folds.completed = !folds.completed; keepFolds(); renderTxt(); }, " tf-done"),
     folds.completed ? h("ul", { className: "txt-list" }, done.map((x) => row(x.ref))) : null) : null;
 
-  const plus = h("button", { type: "button", className: `txt-plus${adding ? " on" : ""}`, ariaLabel: "Add a task", ariaExpanded: String(adding), title: "Add a task", textContent: "+" });
-  plus.addEventListener("click", () => { adding = !adding; renderTxt(); if (adding) txt.querySelector(".txt-add .shop-add")?.focus(); else plus.focus(); });
-  const bar = windowBar(txt, "To-do.txt", [focus.on && !desk.sections.some((x) => x.work) ? null : plus].filter(Boolean), () => { hide(); $("open-txt").focus({ preventScroll: true }); });
+  const bar = windowBar(txt, "To-do.txt", [], () => { hide(); $("open-txt").focus({ preventScroll: true }); });
   // the header: never scrolls with the list
   const head = h("header", { className: "txt-head" },
     h("span", { className: "th-day", textContent: planDate(deskDay) }),
@@ -98,44 +105,55 @@ export function renderTxt() {
     h("span", { className: "th-left", textContent: all.length ? (open.length ? `${open.length} to go` : "All done today ✓") : "" }));
   const body = h("div", { className: "txt-body", tabIndex: -1 },
     ...sections, completed,
-    !all.length ? h("p", { className: "txt-empty", textContent: focus.on ? "No Work tasks today." : "Nothing on the list yet: open Plan my day, or press + above." } ) : null);
+    !all.length ? h("p", { className: "txt-empty", textContent: focus.on && !secs.length ? "No Work sections today." : "Nothing on the list yet: hover a section's name and press +, or open Plan my day." } ) : null);
   const scroll = txt.querySelector(".txt-body")?.scrollTop || 0;
-  txt.replaceChildren(...[bar, head, adding ? addTaskEl() : null, body].filter(Boolean));
+  // keep what's being typed in the add row across a redraw (a tick, the other Mac)
+  const typed = txt.querySelector(".txt-add .shop-add")?.value || "", typing = txt.querySelector(".txt-add")?.contains(document.activeElement);
+  txt.replaceChildren(bar, head, body);
   body.scrollTop = scroll;
+  const field = txt.querySelector(".txt-add .shop-add");
+  if (field && typed) field.value = typed;
+  if (field && typing) field.focus({ preventScroll: true });
 }
 const clockNow = () => new Date().toLocaleTimeString("en-NZ", { hour: "numeric", minute: "2-digit" });
 setInterval(() => { const t = txt.querySelector(".th-time"); if (t && !txt.hidden) t.textContent = clockNow(); }, 15_000);
 
-// + Add a task (Mel, 6 Oct 2026): what, priority, time and section, in a panel under the header; then the draft day
-// opens with it picked out, to drop where it fits best and lock in. Esc puts the panel away.
-function addTaskEl() {
-  const secs = desk.sections.filter((x) => !focus.on || x.work);
-  if (!secs.length) return null;
-  const text = h("input", { type: "text", className: "shop-add", placeholder: "What needs doing?", ariaLabel: "New task", maxLength: 200, autocomplete: "off" });
+// Add a task to a section (Mel, 6 Oct 2026, evening): what, priority and time, under the section's last line; Enter
+// adds it and the row waits for the next one; Esc (or the + again) puts it away. On a locked-in day it isn't in Up next
+// until it's placed: the toast offers the draft day with it picked out.
+function addTaskEl(sec) {
+  const text = h("input", { type: "text", className: "shop-add", placeholder: `Add to ${sec.name || "General"}…`, ariaLabel: `New task in ${sec.name || "General"}`, maxLength: 200, autocomplete: "off" });
   const pri = h("select", { className: "at-pick", ariaLabel: "Priority" }, ["h", "m", "l"].map((v) => h("option", { value: v, textContent: PRI_LABEL[v], selected: v === "m" })));
   const mins = h("select", { className: "at-pick", ariaLabel: "Roughly how long" }, TIME_PICKS.map((m) => h("option", { value: String(m), textContent: timeLabel(m), selected: m === 30 })));
-  const sec = h("select", { className: "at-pick at-sec", ariaLabel: "Section" }, secs.map((x) => h("option", { value: x.id, textContent: x.name || "General" })));
-  const go = h("button", { type: "button", className: "pl-go", textContent: "Add and place it" });
+  const go = h("button", { type: "button", className: "pl-go", textContent: "Add" });
   const add = () => {
     const t = text.value.trim();
     if (!t) { text.focus(); return; }
-    const target = desk.sections.find((x) => x.id === sec.value) || desk.sections[0];
-    if (target.lines.filter((l) => l.text).length >= MAX_LINES) { toast("That section's full"); return; }
+    const target = desk.sections.find((x) => x.id === sec.id);
+    if (!target) { adding = null; renderTxt(); return; }
+    while (target.lines.length && !target.lines.at(-1).text) target.lines.pop();
+    if (target.lines.length >= MAX_LINES) { toast(`${target.name || "General"} is full`); return; }
     const line = stampLine({ id: newId(), text: t, done: false, pri: pri.value, mins: Number(mins.value) });
-    const blank = target.lines.findIndex((l) => !l.text);
-    if (blank >= 0) target.lines[blank] = line; else target.lines.push(line);
-    folds.sections = folds.sections.filter((x) => x !== (target.name || "General")); keepFolds(); // show where it went
-    adding = false;
-    save(); renderTodo(); renderTxt();
-    openDraft(line.id);
+    target.lines.push(line); // at the bottom of the section
+    save(); renderTodo(); renderAgenda();
+    text.value = "";
+    renderTxt();
+    txt.querySelector(".txt-add .shop-add")?.focus();
+    if (desk.locked) toast(`Added to ${target.name || "General"}. It's not in Up next yet.`, false, [
+      { label: "Place it", run: () => openDraft(line.id, { today: true }) },
+      { label: "Undo", run: () => { const s = desk.sections.find((x) => x.id === sec.id); if (s) s.lines = s.lines.filter((l) => l.id !== line.id); save(); renderTodo(); renderTxt(); } },
+    ]);
+    else toast(`Added to ${target.name || "General"}`, false, { label: "Undo", run: () => { const s = desk.sections.find((x) => x.id === sec.id); if (s) s.lines = s.lines.filter((l) => l.id !== line.id); save(); renderTodo(); renderTxt(); } });
   };
   go.addEventListener("click", add);
   text.addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.isComposing) { e.preventDefault(); add(); } });
-  const panel = h("div", { className: "txt-add" }, text, h("div", { className: "at-row" }, pri, mins, sec, go));
+  // Enter on the picks adds too, so text → Tab → priority → Tab → time → Enter works without the mouse
+  for (const p of [pri, mins]) p.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); add(); } });
+  const panel = h("div", { className: "txt-add" }, text, h("div", { className: "at-row" }, pri, mins, go));
   panel.addEventListener("keydown", (e) => {
     if (e.key !== "Escape") return;
     e.preventDefault(); e.stopPropagation();
-    adding = false; renderTxt(); txt.querySelector(".txt-plus")?.focus();
+    adding = null; renderTxt(); txt.querySelector(`.txt-group[data-sec="${sec.id}"] .txt-plus`)?.focus();
   });
   return panel;
 }

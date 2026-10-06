@@ -2681,3 +2681,85 @@ dialog.lock::backdrop { background: #14110e; }
 .set-check { display: flex; align-items: flex-start; gap: 8px; font: 13px/1.4 var(--ui); color: var(--ink); cursor: pointer; }
 .set-check input { margin-top: 2px; }
 @media (max-width: 520px) { .set-label { width: auto; } .set-words { grid-template-columns: 1fr; } }
+
+/* ---- Plan ahead (6 Oct 2026, evening): the week, a day ahead's page, Up next's Reorder and days ahead, To-do.txt's
+   + per section, Up next resized by hand ---- */
+/* the week: seven cards, today marked, past days quieter; what's planned on each in a few words */
+.pl-week { max-width: 1100px; margin: 0 auto; }
+.wk-head { display: grid; grid-template-columns: auto 1fr auto auto; align-items: center; gap: 10px; margin-bottom: var(--line); }
+.wk-title { text-align: center; }
+.wk-title h2 { margin: 0; font: italic 500 calc(var(--line) * 0.85)/1.1 var(--display); color: var(--terra); }
+.wk-title span { font: 10px var(--mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-4); }
+.wk-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 10px; }
+.wk-day { position: relative; display: flex; flex-direction: column; align-items: flex-start; gap: 4px; min-height: 168px; padding: 12px 12px 14px; border: 1px solid #e6e0d5; border-radius: 5px; background: #fff; text-align: left; cursor: pointer; color: var(--ink); transition: border-color 120ms, box-shadow 120ms; }
+.wk-day:hover { border-color: var(--terra-soft); box-shadow: 0 6px 16px -10px rgb(0 0 0 / 0.35); }
+.wk-day:focus-visible { outline: 2px solid var(--terra); outline-offset: 2px; }
+.wk-day.today { border-color: var(--terra); box-shadow: inset 0 3px 0 var(--terra); }
+.wk-day.past { background: #f6f3ee; color: var(--ink-4); }
+.wk-name { font: 10px var(--mono); letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-4); }
+.wk-date { font: 500 26px/1 var(--display); }
+.wk-tag { position: absolute; top: 10px; right: 10px; font: 8px var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--terra); }
+.wk-sum { display: flex; flex-direction: column; gap: 2px; margin-top: 6px; font: 12px/1.35 var(--ui); color: var(--ink-3); }
+.wk-day.past .wk-sum { color: var(--muted); }
+.wk-lock, .wk-go { margin-top: auto; font: 9px var(--mono); letter-spacing: 0.12em; text-transform: uppercase; }
+.wk-lock { color: var(--green); }
+.wk-lock::before { content: "✓ "; }
+.wk-go { color: var(--terra); opacity: 0; transition: opacity 120ms; }
+.wk-day:hover .wk-go, .wk-day:focus-visible .wk-go { opacity: 1; }
+@media (hover: none) { .wk-go { opacity: 1; } }
+.wk-hint { margin: 14px 0 0; font: italic 15px var(--display); color: var(--muted); }
+.wk-further { margin-top: var(--line); }
+.wk-further h4 { margin: 0 0 6px; font: 10px var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-4); }
+.wk-further ul { display: flex; flex-wrap: wrap; gap: 6px; list-style: none; margin: 0; padding: 0; }
+.wk-chip { padding: 5px 10px; border: 1px solid var(--border-2); border-radius: 4px; background: #fff; cursor: pointer; font: 12px var(--ui); color: var(--ink-3); }
+.wk-chip:hover { color: var(--terra); border-color: var(--terra-soft); }
+.pl-page.is-week { background: var(--paper); }
+@media (max-width: 1000px) { .wk-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@media (max-width: 600px) { .wk-grid { grid-template-columns: 1fr 1fr; } .wk-day { min-height: 120px; } .wk-head { grid-template-columns: auto 1fr auto; } .wk-head .pw-btn { grid-column: 1 / -1; justify-self: center; } }
+/* a day ahead: plainly not today (a faint warm tint, a tag by the date, no ticks) */
+.pl-page.ahead { --paper: #FBF6EE; }
+.pl-ahead-tag { align-self: center; margin-right: auto; padding: 3px 8px; border-radius: 3px; background: rgb(196 96 42 / 0.12); font: 9px var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--terra-hover); }
+.pl-page.ahead .check:disabled { opacity: 0.25; cursor: default; }
+.bk-date { height: 28px; padding: 0 8px; border: 1px solid var(--border-2); border-radius: 4px; background: #fff; font: 12px var(--ui); color: var(--ink); }
+/* Up next: Reorder today's blocks; a day ahead's plan (faint) and what's waiting on it */
+.ip-back { display: flex; gap: 6px; }
+.ip-reorder { padding: 2px 6px; border: 1px solid var(--border-2); border-radius: 3px; background: transparent; cursor: pointer; font: 8px var(--mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-3); }
+.ip-reorder:hover { border-color: var(--terra); color: var(--terra); }
+.ip-ahead { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 4px 0 6px; padding: 8px 10px; border-radius: 6px; background: rgb(196 96 42 / 0.07); font: 12px var(--ui); color: var(--ink-3); }
+.ip-ahead span { flex: 1; min-width: 120px; }
+.ip-plan { flex: none; padding: 4px 10px; border: 0; border-radius: 4px; background: var(--terra); cursor: pointer; font: 500 11px var(--ui); color: #fff; }
+.slot.ahead { opacity: 0.6; }
+.slot.ahead:hover { opacity: 1; }
+.ro-screen { display: flex; flex-direction: column; }
+.ro-head { grid-template-columns: 1fr; height: auto; padding: 4px 0 10px; }
+.ro-list { flex: 1; min-height: 0; overflow-y: auto; list-style: none; margin: 0; padding: 2px 2px 0; position: relative; }
+.ro-row { position: relative; display: flex; align-items: center; gap: 8px; min-height: 40px; margin-bottom: 6px; padding: 4px 4px 4px 6px; border-radius: 6px; background: #fff; box-shadow: 0 0 0 1px #ebe5da; cursor: grab; touch-action: none; user-select: none; }
+.ro-row:focus-visible { outline: 2px solid var(--terra); outline-offset: 1px; }
+.ro-row.dragging { z-index: 2; cursor: grabbing; box-shadow: 0 10px 24px -8px rgb(0 0 0 / 0.35); }
+.ro-row.drop-before::before, .ro-list.drop-end::after { content: ""; position: absolute; left: 0; right: 0; top: -4px; height: 2px; border-radius: 1px; background: var(--terra); }
+.ro-list.drop-end::after { position: relative; display: block; top: 0; }
+.ro-row::after { content: ""; position: absolute; left: 0; top: 6px; bottom: 6px; width: 3px; border-radius: 2px; background: #e3ddd2; }
+.ro-row.p-h::after { background: var(--terra); } .ro-row.p-m::after { background: #d9b45c; } .ro-row.p-l::after { background: #8fb39d; }
+.ro-row time { flex: none; width: 40px; font: 11px var(--mono); color: var(--ink-4); font-variant-numeric: tabular-nums; }
+.ro-text { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 17px/1.2 var(--display); }
+.ro-row:hover .dr-mv, .ro-row:focus-within .dr-mv { opacity: 1; }
+.ro-foot { display: flex; justify-content: space-between; align-items: center; padding-top: 8px; }
+.ro-done { margin-left: 0; }
+/* To-do.txt: + at the right of a section's header (on hover, or focus); the add row under the section */
+.txt-ghead { display: flex; align-items: center; gap: 6px; }
+.txt-ghead .txt-fold { flex: 1; min-width: 0; }
+.txt-ghead .txt-plus { flex: none; margin-top: 6px; width: 22px; height: 22px; font-size: 18px; opacity: 0; transition: opacity 120ms; }
+.txt-group:hover .txt-plus, .txt-plus:focus-visible, .txt-plus.on { opacity: 1; }
+@media (hover: none) { .txt-ghead .txt-plus { opacity: 0.7; } }
+.txt-group.blank .txt-fold { color: var(--faint); }
+.txt-group .txt-add { margin: 4px 0 6px; padding: 10px 12px 12px; border: 1px solid #efebe3; border-radius: 6px; }
+/* Up next resized by hand: a corner handle at the bottom (left when it sits at the right of the desk) */
+.wg-resize { position: absolute; z-index: 2; bottom: 2px; right: 2px; width: 16px; height: 16px; opacity: 0; cursor: nwse-resize; touch-action: none; transition: opacity 150ms;
+  background: linear-gradient(135deg, transparent 0 55%, rgb(28 24 20 / 0.35) 55% 62%, transparent 62% 72%, rgb(28 24 20 / 0.35) 72% 79%, transparent 79%); border-radius: 0 0 10px 0; }
+.widget.grow-left > .wg-resize { right: auto; left: 2px; cursor: nesw-resize; transform: scaleX(-1); }
+.widget:hover > .wg-resize, .wg-resize:focus-visible, .widget.resizing > .wg-resize { opacity: 1; }
+.wg-resize:focus-visible { outline: 2px solid var(--terra); outline-offset: 1px; }
+.widget.resizing { box-shadow: 0 0 0 2px rgb(196 96 42 / 0.5); }
+@media (hover: none) { .wg-resize { opacity: 0.6; } }
+@media (max-width: 900px) { .wg-resize { display: none; } }
+.wg-menu-note { margin: 2px 10px 2px 24px; font: italic 12px var(--ui); color: var(--ink-4); }

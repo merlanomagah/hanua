@@ -262,3 +262,57 @@ test("bulk: lines move to another section keeping their ids; several get a prior
   // and it all survives a save
   assert.deepEqual(deskShape(d).sections[1].lines.filter((l) => l.text).map((l) => l.id), ["x", "a", "y", "c"]);
 });
+
+// ---- planning another day (6 Oct 2026, evening) ----
+import { takeLines, putLines, clearDay, daySummary, weekDays, clashes } from "../public/shared/desk.js";
+
+test("desk: lines sent to another day leave this one and wait there under the same section, remembering where from", () => {
+  const today = deskShape({ sections: [{ id: "general", lines: [{ id: "a", text: "Call", pri: "h", mins: 15, added: "2026-10-06T09:00:00.000Z" }, { id: "b", text: "Keep" }] }, { id: "s1", name: "House", work: false, lines: [{ id: "c", text: "Bins", from: "2026-10-04", done: true, doneAt: "2026-10-06T10:00:00.000Z" }] }], order: ["a", "b", "c"] });
+  const taken = takeLines(today, ["a", "c", "zzz"], "2026-10-06");
+  assert.equal(taken.length, 2);
+  assert.deepEqual(today.sections[0].lines.map((l) => l.id), ["b"]);
+  assert.deepEqual(today.sections[1].lines, []);
+  assert.deepEqual(today.order, ["b"]);
+  let n = 0;
+  const tomorrow = putLines(deskShape({ sections: [{ id: "general", lines: [{ id: "x", text: "Gym" }, { id: "y", text: "" }] }] }), taken, () => `n${n++}`);
+  assert.deepEqual(tomorrow.sections[0].lines.map((l) => [l.id, l.text, l.from, l.pri]), [["x", "Gym", undefined, ""], ["a", "Call", "2026-10-06", "h"]]);
+  const house = tomorrow.sections.find((s) => s.name === "House");
+  assert.equal(house.lines[0].from, "2026-10-04"); // first written on the 4th: still says so
+  assert.equal(house.lines[0].done, false); // waiting again
+  assert.equal(house.lines[0].doneAt, undefined);
+  // the shape keeps it all (a save and a reload change nothing)
+  assert.deepEqual(deskShape(tomorrow).sections.find((s) => s.name === "House").lines[0].from, "2026-10-04");
+});
+
+test("desk: a line sent to a day that already has its id gets a new one", () => {
+  const taken = takeLines(deskShape({ sections: [{ id: "general", lines: [{ id: "a", text: "Call" }] }] }), ["a"], "2026-10-06");
+  const to = putLines(deskShape({ sections: [{ id: "general", lines: [{ id: "a", text: "Other" }] }] }), taken, () => "fresh");
+  assert.deepEqual(to.sections[0].lines.map((l) => l.id), ["a", "fresh"]);
+});
+
+test("desk: Clear this day empties what's written and keeps the sections and hours", () => {
+  const d = clearDay(deskShape({ focus: ["A"], day: { start: "07:00", end: "15:00" }, sections: [{ id: "general", lines: [{ id: "a", text: "x" }] }, { id: "s1", name: "House", lines: [{ id: "b", text: "y" }] }], meetings: [{ time: "09:00", title: "M" }], blocks: [{ ref: "a", start: "09:00", end: "09:30" }], locked: true }));
+  assert.deepEqual(daySummary(d), { focus: 0, tasks: 0, done: 0, meetings: 0, locked: false, written: false });
+  assert.deepEqual(d.sections.map((s) => s.name), ["General", "House"]);
+  assert.equal(d.day.start, "07:00");
+});
+
+test("desk: a day's summary counts focuses, open and done tasks, meetings and whether it's locked in", () => {
+  assert.deepEqual(daySummary({ focus: ["A", "", "C"], sections: [{ id: "general", lines: [{ id: "a", text: "x" }, { id: "b", text: "y", done: true }, { id: "c", text: "" }] }], meetings: [{ time: "09:00", title: "" }], blocks: [{ ref: "a", start: "09:00", end: "09:30" }], locked: true }),
+    { focus: 2, tasks: 1, done: 1, meetings: 1, locked: true, written: true });
+  assert.equal(daySummary(null).written, false);
+});
+
+test("desk: the week runs Monday to Sunday, across a month end and a daylight-saving change", () => {
+  assert.deepEqual(weekDays("2026-10-06"), ["2026-10-05", "2026-10-06", "2026-10-07", "2026-10-08", "2026-10-09", "2026-10-10", "2026-10-11"]);
+  assert.equal(weekDays("2026-10-11")[0], "2026-10-05"); // Sunday is the week's last day
+  assert.equal(weekDays("2026-10-06", 1)[0], "2026-10-12");
+  assert.deepEqual(weekDays("2026-09-30").slice(2, 5), ["2026-09-30", "2026-10-01", "2026-10-02"]);
+  assert.equal(weekDays("2026-09-27")[6], "2026-09-27"); // NZ daylight saving starts that Sunday
+});
+
+test("desk: a plan made ahead says which blocks now run into a meeting", () => {
+  const blocks = [{ ref: "a", start: "09:00", end: "09:30", kind: "task" }, { ref: "", start: "09:30", end: "09:40", kind: "break" }, { ref: "b", start: "10:00", end: "11:00", kind: "task" }];
+  assert.deepEqual(clashes(blocks, [{ start: "10:30", end: "11:30", title: "Moved" }]).map((b) => b.ref), ["b"]);
+  assert.deepEqual(clashes(blocks, [{ start: "09:30", end: "10:00" }]), []); // touching isn't running into
+});

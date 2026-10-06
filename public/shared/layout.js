@@ -36,6 +36,23 @@ export function sizeOf(id, size, area = null) {
 }
 
 const n = (v, d = 0) => (Number.isFinite(v) ? v : d);
+
+// Up next can also be sized by hand from its corner (Mel, 6 Oct 2026, evening): any size between its Small and half
+// the desk wide by the desk's full height, snapped to the grid. The other widgets keep their three sizes.
+export const RESIZABLE = { agenda: true };
+export function sizeLimits(id, area) {
+  const min = WIDGET_SIZES[id]?.s || [160, 160];
+  return { min, max: [Math.max(min[0], Math.round(area.w / 2)), Math.max(min[1], Math.round(area.h - TOP - EDGE))] };
+}
+const within = (v, lo, hi) => Math.min(Math.max(v, lo), hi);
+// a widget's box in pixels: its hand-made size if it has one (kept in limits), else its named size
+export function boxSize(id, it, area) {
+  if (RESIZABLE[id] && it?.w > 0 && it?.h > 0) {
+    const { min, max } = sizeLimits(id, area);
+    return [Math.round(within(it.w * area.w, min[0], max[0])), Math.round(within(it.h * area.h, min[1], max[1]))];
+  }
+  return sizeOf(id, it?.size, area);
+}
 export const toShare = (px, span) => (span > 0 ? Math.round((n(px) / span) * 10000) / 10000 : 0);
 
 // Where an item goes, in pixels, for a desk of area { w, h }: from its saved share, kept fully on screen
@@ -62,6 +79,8 @@ export function layoutShape(o) {
     if (!/^[\w-]{1,40}$/.test(id) || !v || typeof v !== "object") continue;
     const it = { x: Math.min(1, Math.max(0, n(v.x))), y: Math.min(1, Math.max(0, n(v.y))) };
     if (SIZES.includes(v.size)) it.size = v.size;
+    // a size dragged by hand (Up next, 6 Oct 2026), as shares of the desk like the place
+    if (RESIZABLE[id] && n(v.w) > 0 && n(v.h) > 0) { it.w = Math.min(1, n(v.w)); it.h = Math.min(1, n(v.h)); }
     items[id] = it;
   }
   return { items };
@@ -101,4 +120,25 @@ export function nearestFree(want, box, taken, area, step = GRID) {
     }
   }
   return start; // the desk is full: let it overlap rather than vanish
+}
+
+// Resizing from a corner: the box as dragged (the opposite corner stays put), snapped to the grid, kept in limits and
+// on screen, then made smaller until it touches nothing (nothing else moves, as with a drop). fromLeft: the handle is
+// on the left (a widget at the right of the desk grows leftwards).
+export function fitResize(start, dw, dh, { fromLeft = false, min, max, taken = [], area }) {
+  const right = start.x + start.w;
+  let w = within(Math.round((start.w + (fromLeft ? -dw : dw)) / GRID) * GRID, min[0], max[0]);
+  let h = within(Math.round((start.h + dh) / GRID) * GRID, min[1], max[1]);
+  w = Math.min(w, fromLeft ? right - EDGE : area.w - EDGE - start.x);
+  h = Math.min(h, area.h - EDGE - start.y);
+  const boxAt = (ww, hh) => ({ x: fromLeft ? right - ww : start.x, y: start.y, w: ww, h: hh });
+  const hits = (b) => taken.some((t) => overlaps(grown(b), t));
+  // shrink whichever way the drag grew until it's clear (never below where it started, or the minimum)
+  const floorW = Math.min(start.w, w), floorH = Math.min(start.h, h);
+  while (hits(boxAt(w, h)) && (w > floorW || h > floorH)) {
+    if (w > floorW && hits(boxAt(w, floorH))) w = Math.max(floorW, w - GRID);
+    else if (h > floorH) h = Math.max(floorH, h - GRID);
+    else w = Math.max(floorW, w - GRID);
+  }
+  return boxAt(w, h);
 }

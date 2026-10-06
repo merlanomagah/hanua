@@ -8,7 +8,9 @@
 // text or a button), widgets by the grip at their top. Arrow keys move a selected file or a focused grip.
 // Anything marked data-move is arranged; new ones (a sticky, a reminder) take the first free spot from the top right.
 // Not on phones, where the desk is one scrolling page.
-import { freeSpot, layoutShape, nearestFree, place, sizeName, sizeOf, snapFile, snapGrid, toShare, EDGE, FILE_GRID, GRID, SPACE, TOP, SIZES, SIZE_NAMES, WIDGET_SIZES } from "../shared/layout.js";
+// Up next also resizes by hand (Mel, 6 Oct 2026, evening): a handle at its bottom corner (the one away from the screen's
+// edge), snapped to the grid, never over a neighbour; double-click the handle to go back to its picked size.
+import { boxSize, fitResize, freeSpot, layoutShape, nearestFree, place, sizeLimits, sizeName, sizeOf, snapFile, snapGrid, toShare, EDGE, FILE_GRID, GRID, SPACE, TOP, SIZES, SIZE_NAMES, RESIZABLE, WIDGET_SIZES } from "../shared/layout.js";
 import { $, h, toast } from "../lib.js";
 
 const KEY = "desk-layout", DEFAULT = "desk-layout-default";
@@ -75,9 +77,9 @@ for (const el of desk.querySelectorAll(".desk-file")) el.dataset.move = "file";
 
 // Put everything where the layout says, sizes first; then, in order (Up next, files, widgets, notes), anything that would
 // overlap what's already placed goes to the nearest free spot; anything new takes the first free spot
-let applying = false;
+let applying = false, resizing = false;
 export function applyLayout() {
-  if (applying) return;
+  if (applying || resizing) return;
   applying = true;
   try {
     const on = !stacked();
@@ -91,12 +93,13 @@ export function applyLayout() {
     for (const el of items().sort((x, y) => rank(x) - rank(y))) {
       const it = layout.items[el.id];
       if (!it) { fresh.push(el); continue; }
-      const size = kind(el) === "widget" && sizeOf(el.id, it.size, a);
+      const size = kind(el) === "widget" && boxSize(el.id, it, a);
       if (size) { el.style.width = `${size[0]}px`; el.style.height = size[1] ? `${size[1]}px` : ""; }
       const box = boxOf(el);
       const p = nearestFree(place(it, box, a), box, placed, a, kind(el) === "file" ? FILE_GRID.h / 2 : GRID);
       el.style.left = `${p.x}px`; el.style.top = `${p.y}px`;
       placed.push({ ...p, ...box });
+      if (RESIZABLE[el.id]) el.classList.toggle("grow-left", p.x + box.w / 2 > a.w / 2); // the handle on the side away from the edge
     }
     // where the stylesheet would put each new one (a post-it at the top right, a sticky on the left…), measured
     // with the arranging switched off for a moment; then the nearest free spot to that
@@ -209,7 +212,9 @@ const closeMenu = () => { menu?.remove(); menu = null; };
 function openMenu(el, at) {
   closeMenu();
   const opt = (label, on, run, role = "menuitem") => { const b = h("button", { type: "button", role, ariaChecked: role === "menuitemradio" ? String(on) : null, className: on ? "on" : "", textContent: label }); b.addEventListener("click", () => { closeMenu(); run(); }); return b; };
-  const sizes = el && kind(el) === "widget" ? [...SIZES.map((s) => opt(SIZE_NAMES[s], sizeName(el.id, layout.items[el.id]?.size, area()) === s, () => setSize(el, s), "menuitemradio")), h("hr")] : [];
+  const custom = el && RESIZABLE[el.id] && layout.items[el.id]?.w > 0;
+  const sizes = el && kind(el) === "widget" ? [...SIZES.map((s) => opt(SIZE_NAMES[s], !custom && sizeName(el.id, layout.items[el.id]?.size, area()) === s, () => setSize(el, s), "menuitemradio")),
+    custom ? h("p", { className: "wg-menu-note", textContent: "Your own size (drag its corner)" }) : null, h("hr")] : [];
   const hasDefault = Boolean(read(DEFAULT));
   menu = h("div", { className: "wg-menu", role: "menu", ariaLabel: "Desk layout" }, ...sizes,
     opt("Save current layout as default", false, saveDefault),
@@ -233,8 +238,49 @@ desk.addEventListener("contextmenu", (e) => {
 
 const redraw = () => { applyLayout(); window.dispatchEvent(new Event("resize")); }; // the weather window redraws for its width
 function setSize(el, size) {
-  layout.items[el.id] = { ...layout.items[el.id], size };
+  const { w, h: hh, ...rest } = layout.items[el.id] || {}; // a picked size replaces one dragged by hand
+  layout.items[el.id] = { ...rest, size };
   keep(); redraw();
+}
+
+// Resizing Up next from its corner: the opposite corner stays put; it snaps to the grid and stops at a neighbour.
+// Kept as shares of the desk, like its place; Undo puts the size before back.
+function resizeFrom(el, e) {
+  if (stacked() || e.button !== 0) return;
+  e.preventDefault(); e.stopPropagation();
+  const a = area(), fromLeft = el.classList.contains("grow-left"), sx = e.clientX, sy = e.clientY;
+  const start = { x: el.offsetLeft, y: el.offsetTop, w: el.offsetWidth, h: el.offsetHeight };
+  const taken = items().filter((o) => o !== el).map((o) => ({ x: o.offsetLeft, y: o.offsetTop, w: o.offsetWidth, h: o.offsetHeight }));
+  const before = layout.items[el.id];
+  let box = start;
+  resizing = true; el.classList.add("resizing");
+  const move = (ev) => {
+    box = fitResize(start, ev.clientX - sx, ev.clientY - sy, { fromLeft, ...sizeLimits(el.id, a), taken, area: a });
+    Object.assign(el.style, { left: `${box.x}px`, top: `${box.y}px`, width: `${box.w}px`, height: `${box.h}px` });
+  };
+  const up = () => {
+    removeEventListener("pointermove", move); removeEventListener("pointerup", up); removeEventListener("pointercancel", up);
+    resizing = false; el.classList.remove("resizing");
+    if (box === start) return;
+    keepBox(el, box, a, before);
+  };
+  addEventListener("pointermove", move); addEventListener("pointerup", up); addEventListener("pointercancel", up);
+}
+function keepBox(el, box, a, before) {
+  layout.items[el.id] = { ...layout.items[el.id], x: toShare(box.x, a.w), y: toShare(box.y, a.h), w: toShare(box.w, a.w), h: toShare(box.h, a.h) };
+  keep(); redraw();
+  toast(`${WIDGETS[el.id]}: ${box.w} × ${box.h}`, false, { label: "Undo", run: () => { layout.items[el.id] = before; keep(); redraw(); } });
+}
+// the keyboard: ← → make it wider or narrower (towards the free side), ↑ ↓ shorter or taller, a grid step at a time
+function resizeKey(el, e) {
+  const d = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[e.key];
+  if (!d) return;
+  e.preventDefault(); e.stopPropagation();
+  const a = area(), fromLeft = el.classList.contains("grow-left");
+  const start = { x: el.offsetLeft, y: el.offsetTop, w: el.offsetWidth, h: el.offsetHeight };
+  const taken = items().filter((o) => o !== el).map((o) => ({ x: o.offsetLeft, y: o.offsetTop, w: o.offsetWidth, h: o.offsetHeight }));
+  const step = GRID * (e.shiftKey ? 4 : 1);
+  keepBox(el, fitResize(start, d[0] * step, d[1] * step, { fromLeft, ...sizeLimits(el.id, a), taken, area: a }), a, layout.items[el.id]);
 }
 function withUndo(text, change) {
   const before = layout, beforeDefault = read(DEFAULT);
@@ -270,9 +316,22 @@ for (const [id, name] of Object.entries(WIDGETS)) {
   more.addEventListener("pointerdown", stop);
   more.addEventListener("click", show);
   more.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") show(e); });
-  el.append(grip, more);
-  // Up next and the timer redraw themselves (replaceChildren): put the grip and ⋯ back each time
-  new MutationObserver(() => { if (!grip.isConnected) el.append(grip, more); }).observe(el, { childList: true });
+  // Up next: a corner to resize it by hand (drag; or focus it and use the arrow keys; double-click: its picked size)
+  const corner = RESIZABLE[id] ? h("span", { className: "wg-resize", role: "button", tabIndex: 0, ariaLabel: `Resize ${name} (drag, or arrow keys; double-click for its usual size)`, title: "Drag to resize · double-click for its usual size" }) : null;
+  corner?.addEventListener("pointerdown", (e) => resizeFrom(el, e));
+  corner?.addEventListener("click", stop);
+  corner?.addEventListener("keydown", (e) => resizeKey(el, e));
+  corner?.addEventListener("dblclick", (e) => {
+    stop(e);
+    const it = layout.items[id], before = it;
+    if (!it?.w) return;
+    setSize(el, sizeName(id, it.size, area()));
+    toast(`${name}: back to ${SIZE_NAMES[sizeName(id, it.size, area())]}`, false, { label: "Undo", run: () => { layout.items[id] = before; keep(); redraw(); } });
+  });
+  const extras = [grip, more, corner].filter(Boolean);
+  el.append(...extras);
+  // Up next and the timer redraw themselves (replaceChildren): put the grip, ⋯ and corner back each time
+  new MutationObserver(() => { if (!grip.isConnected) el.append(...extras); }).observe(el, { childList: true });
 }
 // notes and post-its come and go: place them again whenever their lists change
 for (const id of ["stickies", "notes", "focus-notes", "meal-slip"]) {

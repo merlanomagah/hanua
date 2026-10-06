@@ -253,6 +253,66 @@ export function setLines(d, refs, patch, now = new Date()) {
   for (const sec of d.sections) for (const l of sec.lines) if (want.has(l.id) && l.text) { Object.assign(l, patch); if ("done" in patch) stampLine(l, now); }
   return d;
 }
+// ---- planning another day (Mel, 6 Oct 2026, evening: "it's Tuesday evening and I want to plan tomorrow") ----
+// Send lines to another day: they leave this day's page altogether (so its sweep never offers them again) and wait on
+// the other day under a section of the same name (made there if it hasn't got one), remembering the day they were
+// first written (from). takeLines changes `d` and returns what it took; putLines changes `to` and returns it.
+export function takeLines(d, refs, day) {
+  const want = new Set(refs), out = [];
+  for (const sec of d.sections) {
+    sec.lines = sec.lines.filter((l) => {
+      if (!want.has(l.id) || !l.text) return true;
+      out.push({ section: sec.name || "General", work: sec.work, line: { ...l, done: false, from: l.from || day } });
+      return false;
+    });
+    while (sec.lines.length && !sec.lines.at(-1).text) sec.lines.pop();
+  }
+  d.order = (d.order || []).filter((r) => !want.has(r));
+  return out;
+}
+export function putLines(to, taken, newId) {
+  for (const t of taken) {
+    const { section, work, line } = t;
+    let sec = to.sections.find((s) => sameName(s.name || "General", section));
+    if (!sec) { sec = { id: `s${newId()}`, name: section, col: shorterCol(to.sections), work: Boolean(work), lines: [] }; to.sections.push(sec); }
+    while (sec.lines.length && !sec.lines.at(-1).text) sec.lines.pop();
+    if (sec.lines.length >= MAX_LINES) continue; // a full section keeps what it has (the page says how many went)
+    const id = to.sections.some((s) => s.lines.some((l) => l.id === line.id)) ? newId() : line.id;
+    delete line.doneAt;
+    sec.lines.push({ ...line, id });
+    t.placed = id; // where it went (Undo takes it back off that day)
+  }
+  return to;
+}
+// Take a day's page back to empty (Clear this day): its hours and sections' names stay, nothing written does
+export function clearDay(d) {
+  d.focus = d.focus.map(() => "");
+  for (const s of d.sections) s.lines = [];
+  Object.assign(d, { meetings: [], blocks: [], overflow: [], order: [], locked: false });
+  return d;
+}
+// What a day holds, in a line (the week view, Up next's days ahead)
+export function daySummary(x) {
+  const d = deskShape(x);
+  const lines = d.sections.flatMap((s) => s.lines.filter((l) => l.text));
+  const tasks = lines.filter((l) => !l.done).length, done = lines.length - tasks;
+  const focus = d.focus.filter(Boolean).length, meetings = d.meetings.filter((m) => m.title || m.time).length;
+  return { focus, tasks, done, meetings, locked: d.locked && d.blocks.length > 0, written: Boolean(focus || lines.length || meetings) };
+}
+// Monday to Sunday of the week `day` is in (shift: weeks either side)
+export function weekDays(day, shift = 0) {
+  const [y, m, dd] = day.split("-").map(Number);
+  const back = (new Date(Date.UTC(y, m - 1, dd)).getUTCDay() + 6) % 7;
+  const monday = stepDay(day, shift * 7 - back);
+  return Array.from({ length: 7 }, (_, i) => stepDay(monday, i));
+}
+// A plan made ahead, on the morning: the blocks that now run into a fixed thing (a meeting moved in the calendar
+// since). The plan stays as Mel made it; the page offers Re-plan.
+export function clashes(blocks, fixed) {
+  const busy = fixed.filter((f) => HHMM.test(f.start) && HHMM.test(f.end)).map((f) => [toMin(f.start), toMin(f.end), f.title]);
+  return blocks.filter((b) => b.kind === "task").filter((b) => busy.some(([s, e]) => toMin(b.start) < e && s < toMin(b.end)));
+}
+
 export function removeMeeting(d, id) {
   d.meetings = d.meetings.filter((m) => m.id !== id);
   return d;

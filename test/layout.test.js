@@ -71,3 +71,35 @@ test("layout: a drop onto something goes to the nearest free spot; nothing else 
   assert.equal(overlaps({ ...p, ...box }, other), false);
   assert.ok(Math.hypot(p.x - 420, p.y - 300) <= 120 + GRID); // close by, not across the desk
 });
+
+import { boxSize, fitResize, sizeLimits, GRID } from "../public/shared/layout.js";
+
+test("layout: Up next keeps a size dragged by hand, in limits; other widgets don't take one", () => {
+  const a = { w: 1200, h: 800 };
+  assert.deepEqual(layoutShape({ items: { agenda: { x: 0.5, y: 0, w: 0.3, h: 0.9 }, "w-timer": { x: 0, y: 0, w: 0.3, h: 0.5 } } }),
+    { items: { agenda: { x: 0.5, y: 0, w: 0.3, h: 0.9 }, "w-timer": { x: 0, y: 0 } } });
+  assert.deepEqual(boxSize("agenda", { w: 0.3, h: 0.5 }, a), [360, 400]);
+  const { min, max } = sizeLimits("agenda", a);
+  assert.deepEqual(boxSize("agenda", { w: 0.01, h: 0.01 }, a), min);
+  assert.deepEqual(boxSize("agenda", { w: 1, h: 1 }, a), max);
+  assert.equal(max[0], 600); // never wider than half the desk
+  assert.deepEqual(boxSize("agenda", { size: "s" }, a), sizeOf("agenda", "s", a)); // a picked size, as before
+});
+
+test("layout: resizing from a corner snaps to the grid, stays on screen and stops at a neighbour", () => {
+  const area = { w: 1200, h: 800 }, lim = sizeLimits("agenda", area);
+  const start = { x: 800, y: 56, w: 380, h: 400 };
+  // from the left corner: grows leftwards, the right edge stays
+  const wide = fitResize(start, -101, 37, { fromLeft: true, ...lim, area });
+  assert.equal(wide.x + wide.w, 1180);
+  assert.equal(wide.w % GRID, 0);
+  assert.equal(wide.h % GRID, 0);
+  // a neighbour to the left: it stops short of it (with the gap), it doesn't cover it
+  const n = { x: 500, y: 100, w: 150, h: 100 };
+  const stopped = fitResize(start, -400, 0, { fromLeft: true, ...lim, area, taken: [n] });
+  assert.ok(stopped.x >= n.x + n.w);
+  // never below the minimum, never off the bottom
+  const small = fitResize(start, 500, -900, { fromLeft: true, ...lim, area });
+  assert.deepEqual([small.w, small.h], lim.min);
+  assert.ok(fitResize(start, 0, 5000, { fromLeft: true, ...lim, area }).h <= area.h - 12 - start.y);
+});

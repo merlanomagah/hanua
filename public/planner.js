@@ -5,12 +5,14 @@
 // saving), page.js (Plan my day and its widget), agenda.js (Up next), todotxt.js, timer.js, stickies.js.
 // Rules: public/shared/desk.js (tested).
 import { showBoard } from "./goals/board.js";
-import { parseDay, todayStr } from "./shared/dates.js";
-import { $, reducedMotion } from "./lib.js";
-import { openInCalendar, renderNotes } from "./app.js";
+import { parseDay, todayStr, ymd } from "./shared/dates.js";
+import { clashes, planDate } from "./shared/desk.js";
+import { $, reducedMotion, toast } from "./lib.js";
+import { ensureApple, openInCalendar, renderNotes } from "./app.js";
 import { dayReady, desk, fetchBackup, fetchDay, fetchPrompts } from "./desk/state.js";
 import { restoreWindows } from "./desk/window.js";
-import { openPlan, renderPlanWidget, renderTodo, resetSweep } from "./desk/page.js";
+import { fixedToday, openPlan, renderPlanWidget, renderTodo, resetSweep } from "./desk/page.js";
+import { openDraft } from "./desk/draft.js";
 import { renderAgenda } from "./desk/agenda.js";
 import { openTxt, renderTxt } from "./desk/todotxt.js";
 import "./sync.js"; // the other Mac's changes, live (hanua:room)
@@ -102,6 +104,18 @@ export async function loadDesk() {
   renderAgenda(); // the day's plan shows in Up next
   if (await fetchPrompts()) renderTodo();
   loadBackup();
+  checkPlannedAhead();
+}
+// A day planned ahead (Mel, 6 Oct 2026, evening): on the morning the plan stays as she made it, order and times; if a
+// block now runs into a meeting (the calendar changed since), say so once and offer Re-plan.
+async function checkPlannedAhead() {
+  const today = todayStr(), last = desk.plans.at(-1);
+  if (!desk.locked || !last || ymd(new Date(last.at)) >= today) return;
+  try { if (localStorage.getItem("planned-ahead-checked") === today) return; localStorage.setItem("planned-ahead-checked", today); } catch { /* once this visit */ }
+  await ensureApple(today);
+  const hit = clashes(desk.blocks, fixedToday());
+  const made = planDate(ymd(new Date(last.at)));
+  if (hit.length) toast(`Your plan for today (made ${made}) has ${hit.length} block${hit.length === 1 ? "" : "s"} that now run into a meeting.`, true, { label: "Re-plan", run: () => openDraft(null, { today: true }) });
 }
 setInterval(() => loadBackup(), 3600_000); // a failure that happens while Hanua sits open still reaches the desk
 export async function loadBackup() {
@@ -123,7 +137,7 @@ export function desktopFile(el, open) {
 }
 document.addEventListener("pointerdown", (e) => { if (!e.target.closest?.(".desk-file")) document.querySelectorAll(".desk-file.sel").forEach((f) => f.classList.remove("sel")); });
 const file = $("open-plan");
-desktopFile(file, () => openPlan());
+desktopFile(file, () => openPlan({ week: true })); // the week first: click the day to plan (Mel, 6 Oct 2026)
 initLists(desktopFile);
 desktopFile($("open-txt"), () => openTxt());
 
