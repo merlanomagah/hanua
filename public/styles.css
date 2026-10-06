@@ -948,7 +948,7 @@ button.frame:hover { transform: translateY(-2px); box-shadow: inset 1px 1px 0 rg
 @media (prefers-reduced-motion: reduce) { .plan-dialog[open] { animation: none; } }
 .plan-dialog::backdrop { background: rgb(28 24 20 / 0.22); }
 .plan-dialog .planner { height: 100%; display: flex; flex-direction: column; container-type: inline-size; }
-.pw-bar { flex: none; display: grid; grid-template-columns: 110px 1fr 110px; align-items: center; gap: 10px; height: 38px; padding: 0 14px; background: linear-gradient(180deg, #f3f0ea, #e9e5dd); border-bottom: 1px solid #ddd6c9; }
+.pw-bar { flex: none; display: grid; grid-template-columns: minmax(110px, 1fr) auto minmax(110px, 1fr); /* equal sides keep the title centred; they grow so To-do.txt, Week and Archive stay on one row */ align-items: center; gap: 10px; height: 38px; padding: 0 14px; background: linear-gradient(180deg, #f3f0ea, #e9e5dd); border-bottom: 1px solid #ddd6c9; }
 .pw-dots { display: flex; gap: 8px; }
 .pw-dots > * { width: 12px; height: 12px; padding: 0; border: 0; border-radius: 50%; background: #e9b949; }
 .pw-dots > i:last-child { background: #6cbf5a; }
@@ -958,7 +958,7 @@ button.frame:hover { transform: translateY(-2px); box-shadow: inset 1px 1px 0 rg
 .pw-close { background: #e2675c !important; cursor: pointer; position: relative; }
 .pw-close::after { content: "×"; position: absolute; inset: 0; display: grid; place-items: center; font: 600 10px/1 var(--ui); color: rgb(80 20 10 / 0.75); opacity: 0; }
 .pw-bar:hover .pw-close::after, .pw-close:focus-visible::after { opacity: 1; }
-.pw-tools { justify-self: end; }
+.pw-tools { justify-self: end; display: flex; gap: 6px; white-space: nowrap; }
 .pw-btn { padding: 3px 9px; border: 1px solid #d6cfc2; border-radius: 4px; background: #fbf9f5; cursor: pointer; font: 11px var(--ui); color: var(--ink-3); }
 .pw-btn:hover { color: var(--ink); border-color: var(--ink-4); }
 .pw-title { text-align: center; font: 10px var(--mono); letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-4); }
@@ -2763,3 +2763,54 @@ dialog.lock::backdrop { background: #14110e; }
 @media (hover: none) { .wg-resize { opacity: 0.6; } }
 @media (max-width: 900px) { .wg-resize { display: none; } }
 .wg-menu-note { margin: 2px 10px 2px 24px; font: italic 12px var(--ui); color: var(--ink-4); }
+
+/* ---------- dark (brief docs/plans/2026-10-dark-mode.md, Mel 6 Oct 2026): Mac things go dark the way macOS does;
+   real objects (bricks, oak, walnut, books, stickies, post-its, the whiteboard, clocks) keep their colours and only dim
+   with the lights. `dark` on <html> comes from public/appearance.js. Inside the desk's windows, widgets and dock the
+   room's own colour names are swapped for Bula's walnut-dark ones, so every rule that already uses them follows; the
+   few hard-coded colours there get their dark twin below. The probe covers the desk; the rest of the room follows
+   once Mel has lived with it. test/appearance.test.js checks these pairs can be read. ---------- */
+html.dark :is(#plan-day, #draft-day, .txt-win, .widgets .widget, .desk-dock, .wg-menu) {
+  --cream: #26201B; --page: #2F2822; --hair: #3A3129; --border: #4A3F34; --border-2: #5A4D3F;
+  --ink: #F3ECE0; --ink-2: #E8DECD; --ink-3: #D6C9B4; --ink-4: #C2B39B; --muted: #AE9D84; --faint: #94826B;
+  --terra: #E3804A; --terra-hover: #EC9361; --terra-soft: #8A4E2E; --glow: #4A2E1F;
+  --green: #7BBA9E; --green-dark: #95CCB3; --green-mid: #68A689; --green-soft: #213A30;
+  --dk-win: #1F1A16; --dk-raised: #2C251F; --dk-line: #3A3129; --dk-tint: rgb(243 236 224 / 0.07); --dk-tint-2: rgb(243 236 224 / 0.12);
+  color-scheme: dark; color: var(--ink); /* text that doesn't set its own colour inherits it from here, not from the cream room */
+}
+/* the windows themselves */
+html.dark :is(#plan-day, #draft-day, .txt-win) { background: var(--dk-win); box-shadow: 0 0 0 1px rgb(0 0 0 / 0.6), 0 40px 80px -20px rgb(0 0 0 / 0.7); }
+html.dark .txt-head, html.dark .txt-add { background: var(--dk-win); border-color: var(--dk-line); }
+html.dark :is(.txt-line, .set-group, .txt-group.folded .txt-fold, .txt-group.empty .txt-fold, .txt-group .txt-add) { border-color: var(--dk-line); }
+html.dark .pw-bar { background: linear-gradient(180deg, #2E2721, #28221C); border-bottom-color: #14100D; }
+html.dark .pw-btn { border-color: var(--border); background: var(--dk-raised); }
+html.dark .pl-page { --paper: var(--dk-win); --rule: #332B24; }
+html.dark .pl-page.ahead { --paper: #261F19; }
+html.dark :is(.pl-bulk, .dr-foot) { border-top-color: var(--dk-line); background: #29221C; }
+/* fields, buttons and cards that were white */
+html.dark :is(.pl-time, .sw-act, .shop-add, .rem-pick, .rem-at, .at-pick, .bk-btn, .bk-sel, .bk-date, .set-reset, .set-in, .wk-chip, .txt-plus:hover, .txt-plus.on) { background: var(--dk-raised); border-color: var(--border); }
+html.dark .wk-day { background: var(--dk-raised); border-color: var(--border); }
+html.dark .wk-day.past { background: #241E19; }
+html.dark :is(.dr-row, .ro-row) { background: var(--dk-raised); box-shadow: 0 0 0 1px var(--dk-line); }
+html.dark :is(.dr-row, .ro-row).dragging { box-shadow: 0 10px 24px -8px rgb(0 0 0 / 0.7); }
+html.dark .dr-col + .dr-col { border-color: var(--dk-line); background: #231D18; }
+html.dark .dr-slot { border-bottom-color: var(--dk-line); }
+html.dark .mt-form { background: rgb(47 40 34 / 0.85); }
+/* priority marks: the same three colours, set for a dark page */
+html.dark .pl-pri.p-m, html.dark .bk-btn.p-m { color: #F1DFAE; background: #4A3B17; }
+html.dark .pl-pri.p-l, html.dark .bk-btn.p-l { color: #CFE3D6; background: #253A30; }
+html.dark :is(.txt-pri, .dr-row::after, .ro-row::after) { background: #5A4D3F; }
+html.dark :is(.dr-row.unfit .dr-when, .dr-over h4, .mt-del) { color: #F0956A; }
+/* light hovers on a dark page (they were dark hovers on paper) */
+html.dark :is(.ip-nav, .dr-mv, .set-mv, .tm-icon, .wr-btn, .ip-add):hover:not(:disabled) { background: var(--dk-tint-2); }
+html.dark .ip-add { background: var(--dk-tint); }
+html.dark .tm-track { background: var(--dk-tint-2); }
+/* widgets and dock: smoked glass instead of frosted (the music card on the wall already is) */
+html.dark .widgets .widget { background: rgb(34 28 23 / 0.8); box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.08), 0 10px 24px -14px rgb(0 0 0 / 0.7); }
+html.dark .wg-window.weather-window { background: #2A231D; }
+html.dark .desk-dock { background: rgb(30 25 21 / 0.55); box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.08), 0 10px 22px -10px rgb(0 0 0 / 0.6); }
+html.dark .dock-win { background: var(--dk-raised); }
+html.dark .wg-menu { background: rgb(38 32 27 / 0.96); box-shadow: 0 0 0 1px rgb(0 0 0 / 0.5), 0 12px 28px -8px rgb(0 0 0 / 0.6); }
+html.dark .wg-menu hr { border-top-color: var(--dk-line); }
+html.dark .wg-grip::before { background: rgb(243 236 224 / 0.35); }
+html.dark .wg-resize { background: linear-gradient(135deg, transparent 0 55%, rgb(243 236 224 / 0.4) 55% 62%, transparent 62% 72%, rgb(243 236 224 / 0.4) 72% 79%, transparent 79%); }

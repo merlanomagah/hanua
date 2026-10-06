@@ -11,6 +11,8 @@ import { renderTodo } from "./page.js";
 import { noteClosed, noteOpen, registerWindow, resizable, restorePlace, windowBar } from "./window.js";
 import { ownLayout } from "./arrange.js";
 import { saidUpdated, syncState, typingIn } from "../sync.js";
+import { APPEARANCES, DEFAULT_APPEARANCE } from "../shared/appearance.js";
+import { appearance, setAppearance } from "../appearance.js";
 
 export let settings = null;
 let base = null, lists = null;
@@ -126,6 +128,20 @@ async function loadLists() {
   try { lists = await (await fetch("/api/reminders/lists")).json(); } catch { lists = { live: false, lists: [] }; }
   render();
 }
+// Appearance (brief docs/plans/2026-10-dark-mode.md): this Mac's choice, kept in browser storage like the lights
+function appearanceGroup() {
+  const pick = h("select", { className: "set-in", ariaLabel: "Appearance" }, Object.entries(APPEARANCES).map(([v, label]) => h("option", { value: v, textContent: label, selected: appearance === v })));
+  const set = (v, undoText) => {
+    const before = appearance;
+    setAppearance(v);
+    render();
+    if (undoText) toast(undoText, false, { label: "Undo", run: () => { setAppearance(before); render(); } });
+  };
+  pick.addEventListener("change", () => set(pick.value));
+  return group("Appearance", appearance === DEFAULT_APPEARANCE ? null : () => set(DEFAULT_APPEARANCE, "Appearance back to following your Mac"),
+    row("Dark windows", pick),
+    h("p", { className: "set-note", textContent: "The desk's windows, widgets and dock go dark; the room's real things keep their colours and dim with the lights. This Mac only." }));
+}
 function deskGroup() {
   const auto = h("input", { type: "checkbox", checked: settings.desk.autoOpen });
   auto.addEventListener("change", () => change((x) => { x.desk.autoOpen = auto.checked; }));
@@ -151,7 +167,7 @@ function render() {
   if (win.hidden || !settings) return;
   const scroll = win.querySelector(".txt-body")?.scrollTop || 0;
   const bar = windowBar(win, "Settings", [h("span", { className: "set-saved", ariaLive: "polite" })], () => { hide(); $("dock-settings").focus({ preventScroll: true }); });
-  const body = h("div", { className: "txt-body set-body" }, plannerGroup(), timerGroup(), focus.on ? null : listsGroup(), deskGroup());
+  const body = h("div", { className: "txt-body set-body" }, plannerGroup(), timerGroup(), focus.on ? null : listsGroup(), appearanceGroup(), deskGroup());
   win.replaceChildren(bar, body);
   body.scrollTop = scroll;
 }
