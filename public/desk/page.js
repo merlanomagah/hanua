@@ -371,6 +371,9 @@ export function renderTodo() {
   const today = todayStr();
   if (deskDay !== today && loaded) { archive = null; loadDesk(); return; } // a new day: a fresh page
   renderPlanWidget();
+  // Priority and Time sit in two even columns down the page (Mel, 7 Oct 2026): the Time column is as wide as the
+  // longest time word, which Mel can rename in Settings
+  $("todo").style.setProperty("--mins-n", Math.max(4, ...Object.values(TIME_WORDS).map((w) => w.length)));
   const day = pageDay, ahead = day > today;
   const shows = deskSections(focus.on);
   // keep the cursor where it was across a re-render

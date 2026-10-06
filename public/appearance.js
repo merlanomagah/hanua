@@ -9,7 +9,7 @@ const mac = matchMedia("(prefers-color-scheme: dark)");
 export let appearance = appearanceOf(store("room-appearance"));
 const lightsOff = () => Boolean(document.getElementById("app")?.classList.contains("lamp-off"));
 function apply() { document.documentElement.classList.toggle("dark", darkFor(appearance, { mac: mac.matches, lightsOff: lightsOff() })); }
-export function setAppearance(a) { appearance = appearanceOf(a); store("room-appearance", appearance); apply(); }
+export function setAppearance(a) { appearance = appearanceOf(a); store("room-appearance", appearance); apply(); dispatchEvent(new CustomEvent("hanua:appearance", { detail: appearance })); }
 
 mac.addEventListener("change", apply); // macOS switched (by hand, or its own Auto at sunset)
 const app = document.getElementById("app");

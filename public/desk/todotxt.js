@@ -135,8 +135,8 @@ function addTaskEl(sec) {
     if (target.lines.length >= MAX_LINES) { toast(`${target.name || "General"} is full`); return; }
     const line = stampLine({ id: newId(), text: t, done: false, pri: pri.value, mins: Number(mins.value) });
     target.lines.push(line); // at the bottom of the section
+    text.value = ""; // first: the redraws below copy whatever's still in the field into the new row (7 Oct 2026)
     save(); renderTodo(); renderAgenda();
-    text.value = "";
     renderTxt();
     txt.querySelector(".txt-add .shop-add")?.focus();
     if (desk.locked) toast(`Added to ${target.name || "General"}. It's not in Up next yet.`, false, [
@@ -157,3 +157,12 @@ function addTaskEl(sec) {
   });
   return panel;
 }
+// a click anywhere else (the desktop, another window, a line) puts an empty add row away; one with words in it stays,
+// so nothing typed is lost (Esc or the + still close it)
+document.addEventListener("pointerdown", (e) => {
+  if (!adding || txt.hidden) return;
+  const row = txt.querySelector(".txt-add");
+  if (!row || row.contains(e.target) || e.target.closest?.(".txt-plus")) return;
+  if (row.querySelector(".shop-add")?.value.trim()) return;
+  adding = null; renderTxt();
+}, true);

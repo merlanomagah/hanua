@@ -163,6 +163,7 @@ function sharedLine() {
 }
 document.addEventListener("hanua:sync", () => { if (!win.hidden && !typingIn(win)) render(); }); // never mid-typing
 
+addEventListener("hanua:appearance", () => { if (!win.hidden) render(); }); // the rail's switch changed it
 function render() {
   if (win.hidden || !settings) return;
   const scroll = win.querySelector(".txt-body")?.scrollTop || 0;

@@ -1,6 +1,7 @@
 import "./lock.js"; // the sleep screen goes up before anything else
 import "./updates.js"; // reloads itself (while asleep) when Hanua is updated
 import "./appearance.js"; // dark mode: Settings → Appearance, the Mac, the lights
+import "./rail.js"; // the rail's bookcase button and light / dark switch
 import { aheadText, dayOf, daysBetween, lastLightSwitch, pad, parseDay, timeIn, timeOf, todayStr, ymd } from "./shared/dates.js";
 import { GREET_EVERY_MS, GREET_NAME, greetingsAt, timeOfDay } from "./shared/greetings.js";
 import { goalsInBook, isGoalDone, onCalendar, visibleGoals } from "./shared/goals.js";
