@@ -169,16 +169,6 @@ export async function removeReminder(id) {
   if (res.error) throw fail(res);
   return { ok: true };
 }
-// Open reminders due today or overdue, from Add reminder's list (the desk's reminder post-its; Mel, 6 Oct 2026)
-export async function getDueReminders() {
-  const end = `${todayStr()}T23:59`;
-  const due = (items) => items.filter((i) => i.due && i.due <= end).sort((a, b) => a.due.localeCompare(b.due));
-  if (appleOff()) return { live: false, items: due([{ id: "r1", title: "Call the plumber about the tap", due: `${todayStr()}T15:00` }, { id: "r2", title: "Book flu jab", due: addDays(todayStr(), -1) }, { id: "r3", title: "Not yet", due: addDays(todayStr(), 3) }]) };
-  const res = await helper(["reminders", reminderList()]);
-  if (res.error) return { live: false, reason: why(res.error), items: [] };
-  return { live: true, list: res.list, items: due(res.items || []) };
-}
-
 // Mel's Reminders lists, for the Settings window to pick from (no typing a name wrong)
 export async function getReminderLists() {
   if (appleOff()) return { live: false, lists: ["Reminders", "Shopping", "Family"], shopping: shoppingList(), reminders: reminderList() };

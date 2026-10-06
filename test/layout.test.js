@@ -24,8 +24,31 @@ test("layout: the saved arrangement is tidied; sizes default to Medium", () => {
   assert.deepEqual(layoutShape({ items: { agenda: { x: 2, y: -1, size: "l" }, "bad id!": { x: 0 }, w: { x: "a", y: 0.2, size: "huge" } } }),
     { items: { agenda: { x: 1, y: 0, size: "l" }, w: { x: 0, y: 0.2 } } });
   assert.deepEqual(layoutShape(null), { items: {} });
-  assert.deepEqual(sizeOf("agenda", "huge"), sizeOf("agenda", "m"));
+  assert.deepEqual(sizeOf("w-timer", "huge"), sizeOf("w-timer", "m"));
   assert.equal(sizeOf("nothing", "m"), null);
+});
+
+test("layout: Up next starts Large, and Large is a third of a wide desk, top to bottom", async () => {
+  const { sizeName, THIRD_FROM } = await import("../public/shared/layout.js");
+  assert.equal(sizeName("agenda", undefined), "l");
+  assert.equal(sizeName("w-timer", undefined), "m");
+  // unpicked on a small screen: Small (no room for Large); picked Large stays Large
+  assert.equal(sizeName("agenda", undefined, { w: 744, h: 722, screen: 1024 }), "s");
+  assert.equal(sizeName("agenda", "l", { w: 744, h: 722, screen: 1024 }), "l");
+  assert.deepEqual(sizeOf("agenda", undefined, { w: 744, h: 722, screen: 1024 }), [260, 300]);
+  const wide = { w: 1440, h: 860 };
+  const [w, h] = sizeOf("agenda", "l", wide);
+  assert.equal(w, Math.round(1440 / 3 - EDGE));
+  assert.equal(h, 860 - TOP - EDGE);
+  // the desk sits beside the bookcase: a third of the screen, not of the desk, but never past half the desk
+  assert.equal(sizeOf("agenda", "l", { w: 1160, h: 854, screen: 1440 })[0], 480 - EDGE);
+  assert.equal(sizeOf("agenda", "l", { w: 700, h: 854, screen: 1440 })[0], 350 - EDGE);
+  // a smaller desk, or no desk given: the fixed Large; Small and Medium never change
+  assert.deepEqual(sizeOf("agenda", "l", { w: THIRD_FROM - 1, h: 700 }), [400, 560]);
+  assert.deepEqual(sizeOf("agenda", "l"), [400, 560]);
+  assert.deepEqual(sizeOf("agenda", "m", wide), [360, 380]);
+  // a short desk never makes it shorter than the fixed Large
+  assert.equal(sizeOf("agenda", "l", { w: 1300, h: 400 })[1], 560);
 });
 
 test("layout: a new file goes to the first free grid spot from the top right", async () => {

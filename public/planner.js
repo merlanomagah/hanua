@@ -7,13 +7,14 @@
 import { showBoard } from "./goals/board.js";
 import { parseDay, todayStr } from "./shared/dates.js";
 import { $, reducedMotion } from "./lib.js";
-import { openInCalendar, openTurntable, renderNotes } from "./app.js";
+import { openInCalendar, renderNotes } from "./app.js";
 import { dayReady, desk, fetchBackup, fetchDay, fetchPrompts } from "./desk/state.js";
 import { restoreWindows } from "./desk/window.js";
 import { openPlan, renderTodo, resetSweep } from "./desk/page.js";
 import { renderAgenda } from "./desk/agenda.js";
 import { openTxt } from "./desk/todotxt.js";
 import "./desk/timer.js";
+import "./desk/records.js"; // the record player widget
 import "./desk/wallnotes.js"; // focus and reminder post-its
 import { settings } from "./desk/settings.js"; // the gear in the dock
 import "./desk/arrange.js"; // everything on the desk moves, on one grid
@@ -134,8 +135,8 @@ function fitsToday() {
 document.addEventListener("hanua:desk", (e) => { if (e.detail) dayReady.then(() => restoreWindows(fitsToday)); });
 $("plan-day").addEventListener("close", () => { if (!$("todo-txt").contains(document.activeElement)) file.focus({ preventScroll: true }); });
 
-// the dock, like a Mac's: Calendar opens the Calendar app on today, Notion the Hanua page, the record player the turntable
-$("dock-records").addEventListener("click", openTurntable);
+// the dock, like a Mac's: Calendar opens the Calendar app on today, Notion the Hanua page (the record player became a
+// widget, 6 Oct 2026)
 $("dock-goals").addEventListener("click", () => showBoard(true));
 $("dock-calendar").addEventListener("click", () => openInCalendar({ date: todayStr() }));
 function dockDate() { // the Calendar tile shows today, like the real one

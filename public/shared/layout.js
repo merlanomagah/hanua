@@ -10,8 +10,30 @@ export const WIDGET_SIZES = {
   agenda: { s: [260, 300], m: [360, 380], l: [400, 560] },
   "desk-window": { s: [280, 0], m: [380, 0], l: [540, 0] },
   "w-timer": { s: [170, 170], m: [220, 220], l: [290, 290] },
+  "w-records": { s: [190, 0], m: [240, 0], l: [300, 0] },
 };
-export const sizeOf = (id, size) => WIDGET_SIZES[id]?.[SIZES.includes(size) ? size : "m"] || null;
+// a widget's size when none has been picked (Up next starts Large on a screen wide enough for its third: Mel, 6 Oct
+// 2026; on a smaller one there isn't room for everything else, so Small, as before)
+export const DEFAULT_SIZE = { agenda: "l" };
+// Large Up next takes a third of the screen's width (area.screen; the desk itself is narrower, beside the bookcase)
+// and the desk's whole height (Mel, 6 Oct 2026), once the screen is wide enough for a third to be roomier than the
+// fixed Large; on a smaller screen it's the fixed Large. Never more than half the desk.
+export const THIRD = { agenda: "l" }, THIRD_FROM = 1200;
+const screenOf = (area) => area?.screen || area?.w || 0;
+export function sizeName(id, size, area = null) {
+  if (SIZES.includes(size)) return size;
+  if (THIRD[id] && area && screenOf(area) < THIRD_FROM) return "s";
+  return DEFAULT_SIZE[id] || "m";
+}
+export function sizeOf(id, size, area = null) {
+  const name = sizeName(id, size, area);
+  const s = WIDGET_SIZES[id]?.[name] || null;
+  const screen = screenOf(area);
+  if (s && THIRD[id] === name && screen >= THIRD_FROM) {
+    return [Math.round(Math.min(screen / 3, area.w / 2) - EDGE), Math.max(s[1], Math.round(area.h - TOP - EDGE))];
+  }
+  return s;
+}
 
 const n = (v, d = 0) => (Number.isFinite(v) ? v : d);
 export const toShare = (px, span) => (span > 0 ? Math.round((n(px) / span) * 10000) / 10000 : 0);

@@ -754,6 +754,28 @@ button.frame:hover { transform: translateY(-2px); box-shadow: inset 1px 1px 0 rg
 .txt-win .check { position: relative; flex: none; width: 15px; height: 15px; padding: 0; border: 1px solid var(--ink-3); border-radius: 2px; background: transparent; cursor: pointer; display: grid; place-items: center; }
 .txt-win .check svg { width: 100%; height: 100%; stroke: var(--green); stroke-width: 3; fill: none; stroke-dasharray: 20; stroke-dashoffset: 20; transition: stroke-dashoffset 300ms ease; }
 .txt-win .check.on svg { stroke-dashoffset: 0; }
+/* the header under the title bar: the day, the time and what's left, never scrolling with the list (Mel, 6 Oct 2026) */
+.txt-head { flex: none; display: flex; align-items: baseline; gap: 12px; padding: 12px 22px 10px; border-bottom: 1px solid #efebe3; background: #FCFBF8; }
+.th-day { font: italic 500 22px/1.1 var(--display); color: var(--ink); white-space: nowrap; }
+.th-time { font: 12px var(--mono); font-variant-numeric: tabular-nums; color: var(--ink-3); white-space: nowrap; }
+.th-left { margin-left: auto; font: 9px var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-4); white-space: nowrap; }
+/* + at the right of the title bar: opens Add a task under the header */
+.txt-plus { width: 24px; height: 24px; padding: 0; border: 1px solid transparent; border-radius: 5px; background: transparent; cursor: pointer; font: 300 22px/1 var(--ui); color: var(--ink-3); display: grid; place-items: center; }
+.txt-plus:hover, .txt-plus.on { border-color: var(--border-2); background: #fff; color: var(--terra); }
+.txt-plus:focus-visible { outline: 2px solid var(--terra); outline-offset: 1px; }
+/* sections that fold: the name, then the count and a triangle at the right; Completed at the foot */
+.txt-group + .txt-group { margin-top: 6px; }
+.txt-fold { display: flex; align-items: center; gap: 8px; width: 100%; margin: 8px 0 2px; padding: 6px 0 4px; border: 0; border-bottom: 1px solid transparent; background: none; cursor: pointer; text-align: left; color: var(--ink-4); }
+.txt-fold:hover { color: var(--ink-2); }
+.txt-fold:focus-visible { outline: 2px solid var(--terra); outline-offset: 2px; border-radius: 2px; }
+.tf-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 9px var(--mono); letter-spacing: 0.16em; text-transform: uppercase; }
+.tf-count { flex: none; font: 9px var(--mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-4); }
+.tf-tri { flex: none; width: 0; height: 0; border-left: 5px solid transparent; border-right: 5px solid transparent; border-top: 6px solid currentColor; transition: transform 160ms ease; }
+.txt-group.folded .tf-tri { transform: rotate(-90deg); }
+.txt-group.folded .txt-fold, .txt-group.empty .txt-fold { border-bottom-color: #efebe3; }
+.txt-group.empty .tf-count { color: var(--green); }
+.txt-completed { margin-top: 18px !important; }
+.tf-done .tf-name { color: var(--green); }
 .txt-empty { margin: 10px 0 0; font: italic 15px var(--display); color: var(--muted); }
 /* the day's time-blocks and jotted meetings in Up next (desk only) */
 .slot.plan-task .t { color: var(--ink); }
@@ -766,6 +788,25 @@ button.frame:hover { transform: translateY(-2px); box-shadow: inset 1px 1px 0 rg
 .widget { position: relative; box-sizing: border-box; padding: 12px 14px; border: 0; border-radius: 12px; text-align: left; color: var(--ink); container-type: inline-size;
   background: rgb(250 247 242 / 0.78); -webkit-backdrop-filter: blur(14px) saturate(1.2); backdrop-filter: blur(14px) saturate(1.2);
   box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.55), 0 10px 24px -14px rgb(28 24 20 / 0.5); }
+/* the record player widget (public/desk/records.js): the turntable from above, the song, ⏮ ⏯ ⏭ */
+.wg-records { display: flex; flex-direction: column; align-items: stretch; gap: 8px; padding: 12px 14px 10px; }
+.wr-deck { display: block; width: 100%; padding: 0; border: 0; cursor: pointer; aspect-ratio: 900 / 896; filter: drop-shadow(0 8px 10px rgb(0 0 0 / 0.35)); }
+.wr-deck:focus-visible { outline: 2px solid var(--terra); outline-offset: 3px; border-radius: 6px; }
+.wr-deck .vinyl { transition: opacity 300ms; }
+.wr-song { display: flex; flex-direction: column; min-width: 0; text-align: center; }
+.wr-track, .wr-artist { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wr-track { font: italic 500 16px/1.2 var(--display); color: var(--ink); }
+.wr-artist { font: 11px/1.4 var(--ui); color: var(--ink-4); }
+.wr-controls { display: flex; justify-content: center; align-items: center; gap: 14px; }
+.wr-btn { width: 30px; height: 30px; padding: 6px; border: 0; border-radius: 50%; background: transparent; color: var(--ink-2); cursor: pointer; display: grid; place-items: center; }
+.wr-btn svg { width: 100%; height: 100%; fill: currentColor; }
+.wr-btn:hover:not(:disabled) { background: rgb(28 24 20 / 0.07); }
+.wr-btn:disabled { opacity: 0.35; cursor: default; }
+.wr-btn:focus-visible { outline: 2px solid var(--terra); outline-offset: 1px; }
+.wr-play { width: 38px; height: 38px; padding: 9px; background: var(--ink); color: var(--cream); }
+.wr-play:hover:not(:disabled) { background: var(--ink-2); }
+@media (prefers-reduced-motion: reduce) { .wr-deck.spinning .vinyl { animation: none; } }
+@media (max-width: 900px) { .wg-records { width: 240px; align-self: center; } } /* phones: a record player, not a wall of one */
 .widget:focus-visible { outline: 2px solid var(--terra); outline-offset: 3px; }
 .wg-label { display: block; margin-bottom: 4px; font: 9px var(--mono); letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-4); }
 .wg-agenda { flex: 1; min-height: 110px; display: flex; flex-direction: column; padding-bottom: 8px; }
@@ -832,7 +873,7 @@ button.frame:hover { transform: translateY(-2px); box-shadow: inset 1px 1px 0 rg
 .desk-file.sel span { background: #2f6fd1; color: #fff; }
 .desk-file:focus-visible { outline: 2px solid var(--terra); outline-offset: 2px; }
 /* the dock: frosted glass along the bottom of the screen, on the desk, like a Mac's */
-.desk-dock { position: absolute; z-index: 3; left: calc(50% - (var(--wg-w) + var(--pad-r)) / 2); bottom: 14px; /* centred in the space left of the widgets, which reach down beside it */ transform: translateX(-50%); display: flex; align-items: flex-end; gap: 8px; padding: 6px 8px; border-radius: 14px;
+.desk-dock { position: absolute; z-index: 3; left: calc(50% - var(--dock-room, calc(var(--wg-w) + var(--pad-r))) / 2); bottom: 14px; /* centred in the space left of the widgets (or a tall Up next: arrange.js sets --dock-room), which reach down beside it */ transform: translateX(-50%); display: flex; align-items: flex-end; gap: 8px; padding: 6px 8px; border-radius: 14px;
   background: rgb(250 247 242 / 0.4); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.45), 0 10px 22px -10px rgb(28 24 20 / 0.45); }
 .dock-app { position: relative; display: grid; place-items: center; width: 52px; height: 52px; padding: 0; border: 0; border-radius: 12px; cursor: pointer;
   background: linear-gradient(180deg, #fbf8f2, #e6dfd2); box-shadow: 0 1px 2px rgb(28 24 20 / 0.3); transition: transform 160ms ease; }
@@ -2465,6 +2506,7 @@ dialog.lock::backdrop { background: #14110e; }
 
 /* narrower desks: the meal slip and the Plan my day file can't sit side by side, so the slip hangs under the file */
 @media (min-width: 901px) and (max-width: 1365px) { .meal-slip { top: 340px; left: auto; right: var(--pc-right); } }
+.desk.arranged .meal-slip { right: auto; } /* arranged, its place is its left and top: a right as well squeezed it narrow */
 @media (max-width: 900px) { .txt-win { position: fixed; left: 8px; right: 8px; top: auto; bottom: 8px; width: auto; max-height: 70vh; } .txt-bar { cursor: default; } }
 /* the page and server save a day differently (an old tab, or Hanua not restarted): saving stops and says so */
 .pl-stale { margin: 0 0 var(--line); padding: 8px 12px; border-left: 3px solid var(--terra); background: rgb(196 96 42 / 0.08); font: 13px/20px var(--ui); color: var(--ink); }
@@ -2520,27 +2562,24 @@ dialog.lock::backdrop { background: #14110e; }
 .dock-win svg { width: 30px; height: auto; }
 .txt-count { margin: 2px 0 0; font: 9px var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-4); }
 
-/* post-its on the wall (public/desk/wallnotes.js): today's focuses and reminders due. Before anything's been arranged
-   they sit in a row at the top right, left of the files; arranged, each has its own place like everything else */
-.focus-notes, .rem-notes { position: absolute; z-index: 3; right: calc(var(--pc-right) + 112px); display: flex; gap: 14px; }
-.focus-notes { top: 64px; }
-.rem-notes { top: calc(80px + var(--stick)); }
-.focus-notes[hidden], .rem-notes[hidden] { display: none; }
-.desk.arranged .focus-notes, .desk.arranged .rem-notes { display: contents; }
+/* post-its on the wall (public/desk/wallnotes.js): today's focuses. Before anything's been arranged they sit in a row
+   at the top right, left of the files; arranged, each has its own place like everything else. A 3×5-inch card's shape
+   (12.7 × 7.6 cm, so the sticky's height and five-thirds its width); fitFocus makes the three one size that shows
+   the longest in full */
+.focus-notes { position: absolute; z-index: 3; top: 64px; right: calc(var(--pc-right) + 112px); display: flex; gap: 14px; }
+.focus-notes[hidden] { display: none; }
+.desk.arranged .focus-notes { display: contents; }
 .post-it { position: relative; width: var(--stick); height: var(--stick); overflow: hidden; box-sizing: border-box; padding: 10px 10px 12px; display: flex; flex-direction: column; gap: 4px;
   transform: rotate(var(--tilt, 0deg)); cursor: grab; touch-action: none; box-shadow: 0 1px 1px rgb(0 0 0 / 0.08), 0 8px 14px -8px rgb(0 0 0 / 0.35); }
 .post-it:focus-visible { outline: 2px solid var(--terra); outline-offset: 2px; }
-.pi-label { font: 8px var(--mono); letter-spacing: 0.16em; text-transform: uppercase; color: rgb(28 24 20 / 0.55); }
+.pi-label { flex: none; font: 8px var(--mono); letter-spacing: 0.16em; text-transform: uppercase; color: rgb(28 24 20 / 0.55); }
 .pi-text { font: italic 400 clamp(13px, 1.1vw, 16px)/1.22 var(--display); color: var(--ink); overflow-wrap: anywhere; overflow: hidden; }
-.pi-focus { background: linear-gradient(170deg, #f7c9a8, #f1b58e); }
-.pi-rem { background: linear-gradient(170deg, #cfe6f2, #b9d9ea); padding-right: 30px; }
-.pi-rem.overdue .pi-label { color: #a2431b; }
-.pn-tick { position: absolute; right: 7px; bottom: 7px; width: 18px; height: 18px; padding: 0; border: 1.5px solid rgb(28 24 20 / 0.45); border-radius: 3px; background: rgb(255 255 255 / 0.5); cursor: pointer; }
-.pn-tick:hover { background: #fff; border-color: var(--green); }
+.pi-focus { width: calc(var(--stick) * 5 / 3); height: var(--stick); padding: 10px 12px 12px; background: linear-gradient(170deg, #f7c9a8, #f1b58e); }
+.pi-focus .pi-text { flex: none; overflow: visible; }
 .desk.arranged .desk-sticky, .desk.arranged .meal-slip, .desk.arranged #notes { cursor: grab; }
 /* phones: the desk is one scrolling page, so the post-its sit in it as a row near the top */
 @media (max-width: 900px) {
-  .focus-notes, .rem-notes { position: relative; top: auto; right: auto; order: 2; flex-wrap: wrap; justify-content: center; align-self: center; max-width: 100%; }
+  .focus-notes { position: relative; top: auto; right: auto; order: 2; flex-wrap: wrap; justify-content: center; align-self: center; max-width: 100%; }
   .post-it { cursor: default; }
 }
 /* the draft day (public/desk/draft.js): the order on the left, the day as it would run on the right */
@@ -2586,7 +2625,7 @@ dialog.lock::backdrop { background: #14110e; }
 .dr-foot .pl-go { margin-left: 0; height: 34px; padding: 0 18px; }
 @media (max-width: 760px) { .draft-dialog { inset: 0; border-radius: 0; } .dr-body { grid-template-columns: 1fr; overflow-y: auto; } .dr-col { overflow: visible; } .dr-col + .dr-col { border-left: 0; border-top: 1px solid #ece7de; } }
 /* + Add task in To-do.txt */
-.txt-add { flex: none; padding: 10px 22px 14px; border-top: 1px solid #efebe3; background: #faf8f4; }
+.txt-add { flex: none; padding: 10px 22px 14px; border-bottom: 1px solid #efebe3; background: #faf8f4; }
 .txt-add .shop-add { margin: 0 0 8px; }
 .at-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 .at-pick { height: 30px; padding: 0 6px; border: 1px solid var(--border-2); border-radius: 4px; background: #fff; font: 12px var(--ui); color: var(--ink); }

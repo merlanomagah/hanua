@@ -1330,6 +1330,7 @@ export function renderMusic() {
   $("record-player").title = playing ? `Playing ${music.playlist || music.track}` : "Play some music";
   $("lift-needle").hidden = !playing;
   if (active && record) $("tt-now").textContent = record.name;
+  document.dispatchEvent(new Event("hanua:music")); // the desk's record player widget (desk/records.js)
 }
 
 export async function refreshMusic() {
@@ -1390,7 +1391,7 @@ export async function playRecord(r) {
     music = await api("/api/music/record", { name: r.name });
     $("tt-note").textContent = music.via === "opened"
       ? `“${r.name}” isn't in your Music library yet, so it's open in the Music app: press play there, or add it to your library and Hanua can start it next time.`
-      : "Playing in the Music app. Use the controls by the greeting to pause or skip.";
+      : "Playing in the Music app. Use the controls by the record player to pause or skip.";
     renderMusic();
   } catch (err) {
     toast(err.message, true);
@@ -1407,7 +1408,7 @@ $("lift-needle").addEventListener("click", async () => {
 });
 
 // Closing only hides the player view; the music carries on in the Music app.
-let turntableFrom = null; // the record player on the wall, or the dock on the desk: focus goes back there
+let turntableFrom = null; // the record player on the wall, or the desk's record widget: focus goes back there
 export function openTurntable() {
   turntableFrom = document.activeElement;
   renderCrate();
