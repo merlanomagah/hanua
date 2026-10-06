@@ -26,20 +26,26 @@ The reasoning behind Hanua lives in [Hanua OS](https://app.notion.com/p/3ee16603
 5. A preference stated or something deliberately cut → Preferences (and its cut list). A new image → full-size original in `prototypes/room-dashboard/assets/`, resized copy in `public/assets/`, and a row in the image library.
 6. At the end of every new room, run the promotion check (unpromoted Learning Log rows up; Playbook patterns not adopted, offered as proposals) and update Hanua OS's row in the OS Registry with the sweep date.
 
-## Start here (6 Oct 2026, evening close-out)
+## Start here (6 Oct 2026, night close-out)
+
+**Next session: carry on with Foundations** (brief `docs/plans/2026-10-desk-health-check.md`, approved by Mel 6 Oct night, merged with Phase 1 of `docs/plans/2026-10-two-device-build-principles.md`; progress table at the top of the health-check brief). Done: the safety part (`server/guard.js`: Host/Origin guard `localOnly`, sample servers ignore .env's `ROOM_DATA`/`BACKUP_DIR` via `roomChoice`; `server/updates.js`: restart only once the new copy answers `/api/status` with a new `pid`, else take the port back, `npm ci` first when `package-lock.json` changed, `/api/status` `update` → a note on the page). To do, in order: Phase 1 step 1 `npm run check` (run before every release), pin Node, a full `.env.example`, pull state reported; **F4** an `origin` id on lines + markers instead of deleting (`takeLines`, `clearDay`), `DESK_VERSION` 6 with a fixture per old version; **F5** edits by day key through `state.js` (no `page as desk` aliases; Undo after "Use theirs" must save), queued toasts with alerts for errors; **F6** split `server/index.js` into routers + one file-kind registry, split `public/desk/page.js` (week, archive, sweep), page rules into `shared/desk.js` with tests, event names as constants; **F7** tests for `server/room.js` on a temp folder, route round-trips, a backup → wipe → restore round-trip and `docs/restore.md`; then Phase 1 steps 5–7. Roadmap step 7 (Close the day) and the TV build (#10) wait behind this.
+
+**Rules learnt tonight:** (1) every sample launch config sets `ROOM_DATA=data/room-sample BACKUP_DIR=off` (five of them had inherited Mel's real iCloud folder; checked: nothing written); (2) check a worktree is clean (`git status`) before any reset or branch switch, and never point review agents at a folder holding unsaved work (a reset lost a few minutes of unexplained edits in `../hanua-work`); (3) Hanua answers only `localhost` / `127.0.0.1` on its own port: open it as http://localhost:PORT on the Mac that runs it. A stray test server from the plan-ahead build may still hold port 3099 (sample data in `../hanua-work`, harmless; stop it if it's in the way).
+
+**The Mac mini gets the latest by itself:** if Hanua runs there with `main` checked out it fetches GitHub every 5 minutes, installs new add-ons first and restarts only once the new copy answers. If Hanua isn't on the mini yet, `docs/setup-mac-mini.md` (step 4 now says `git pull` if the folder already exists). Check: `git log --oneline -1` on the mini matches GitHub's `main`.
 
 **State of the two Macs.** Hanua's room data lives in iCloud Drive › Hanua (`ROOM_DATA` in the Air's `.env`; old folder `data/room-migrated-2026-10-06`). **Pūtea's home is now the Mac mini** (Mel's choice): set up there from GitHub (b19443e) with fresh keys; the Air's Pūtea was **quit** (17:10) and its database copied to `~/Pūtea backup/2026-10-06-air/bills.db` (sqlite3 .backup, integrity ok, 4,740 transactions). Until Tailscale is in, Hanua on the Air says Pūtea is closed.
 
-**Pending, in order:**
+**Pending for Mel, in order:**
 | # | What | Who |
 |---|---|---|
 | 1 | AirDrop that `bills.db` to the mini; the mini's Claude backs up its fresh DB (4,709) and swaps the Air's in (handover text given to Mel), then Sync now | Mel, then the mini's Claude |
 | 2 | Remove Pūtea+ from the Air's Login Items (asked, not yet answered; reversible) | Mel's OK |
 | 3 | Mini: System Settings → Energy → prevent automatic sleeping | Mel |
-| 4 | **Brief awaiting yes:** `docs/plans/2026-10-two-device-build-principles.md` (11 build principles each with a check; Phase 1 Hanua guardrails: `npm run check`, self-update installs on lockfile change and reports, pinned Node, full `.env.example`, bounded sweep, two-Mac test script, CLAUDE.md rules; Phase 2 Pūtea via its Money Panel: **nightly bills.db backup on the mini (none exists today)**, `HOST_ROLE` guard, fix stale setup paths, Air reads the mini's Pūtea over Tailscale; Phase 3 scale only if needed). Open questions: Tailscale (rec yes), phases (rec yes) | Mel |
-| 5 | Hanua on the mini (`docs/setup-mac-mini.md`), Keep Downloaded on the Hanua folder on both Macs, then `BACKUP_DIR=off` on the Air | Mel |
+| 4 | Hanua on the mini (`docs/setup-mac-mini.md`), Keep Downloaded on the Hanua folder on both Macs, then `BACKUP_DIR=off` on the Air | Mel |
+| 5 | Try in Safari: the week view (double-click Plan my day), planning tomorrow, Move to → Tomorrow, ↕ Reorder, Up next's corner handle, To-do.txt's + on section headers | Mel |
 
-Use Pūtea on the Air via Screen Sharing to the mini for now. Roadmap step 7 (Close the day) and the TV build (#10, from Thu 8 Oct) wait behind Phase 1.
+Phase 2 of the two-Macs brief (Pūtea: nightly `bills.db` backup on the mini, `HOST_ROLE`, the Air reading the mini's Pūtea over Tailscale) still needs Mel's yes, and her answer on Tailscale (recommended yes); ask when Phase 1 is done, then do it through Pūtea's Money Panel at the mini. The nightly `bills.db` backup is the most urgent part (none exists).
 
 ## Latest (6 Oct 2026, night): plan ahead, Reorder, a resizable Up next (brief `docs/plans/2026-10-plan-ahead-and-resizable-up-next.md`)
 
