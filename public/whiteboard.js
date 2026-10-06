@@ -10,6 +10,7 @@ import { addDays, parseDay, todayStr, weekStart } from "./shared/dates.js";
 import { DAYS, MEALS, PLATE, dailyTip, menuShape, menuTips } from "./shared/menu.js";
 import { menuIcon } from "./menu-icons.js";
 import { $, focus, fmtDay, h, toast } from "./lib.js";
+import { saidUpdated, typingIn } from "./sync.js";
 
 let week = weekStart();
 let menu = menuShape({}), lastWeek = menuShape({});
@@ -86,7 +87,17 @@ function moveFocus(e, day, meal) {
   if (next) { next.focus(); next.select(); }
 }
 
-async function loadWeek(w) {
+// Two Macs (6 Oct 2026): the week's revision travels with each save; the other Mac's changes redraw the board unless
+// Mel is typing on it or has unsaved boxes
+let rev;
+document.addEventListener("hanua:room", (e) => {
+  const { kind, key } = e.detail || {};
+  if (!(kind === "all" || (kind === "menu" && key === week)) || dirty) return;
+  const board = document.getElementById("mb-grid");
+  if (typingIn(board)) { board.addEventListener("focusout", () => setTimeout(() => { if (!dirty) loadWeek(week, true); }, 50), { once: true }); return; }
+  loadWeek(week, true);
+});
+async function loadWeek(w, quiet = false) {
   loaded = w;
   try {
     const [res, prev] = await Promise.all([fetch(`/api/menu/${w}`), fetch(`/api/menu/${addDays(w, -7)}`)]);
@@ -94,7 +105,13 @@ async function loadWeek(w) {
     const data = await res.json();
     guideUrl = data.guideUrl || null;
     lastWeek = prev.ok ? menuShape(await prev.json()) : menuShape({});
-    if (loaded === w && !dirty) { menu = menuShape(data); renderWhiteboard(); }
+    if (loaded === w && !dirty) {
+      const changed = quiet && data.rev !== rev;
+      rev = data.rev ?? null;
+      if (quiet && !changed) return;
+      menu = menuShape(data); renderWhiteboard();
+      if (changed) saidUpdated(toast);
+    }
   } catch { /* the server's away: the boxes stay empty */ }
 }
 
@@ -108,8 +125,19 @@ async function save() {
   if (!dirty || focus.on || loaded !== week) return;
   dirty = false;
   try {
-    const res = await fetch(`/api/menu/${week}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(menu), keepalive: true });
-    if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || "The menu couldn't be saved");
+    const res = await fetch(`/api/menu/${week}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...menu, base: rev }), keepalive: true });
+    const j = await res.json().catch(() => ({}));
+    if (res.status === 409 && j.conflict === "other-mac") {
+      // the other Mac changed this week first: Mel picks which to keep
+      const mineNow = menuShape(menu);
+      toast("This week's menu was changed on your other Mac.", true, [
+        { label: "Use theirs", run: () => { menu = menuShape(j.current || {}); rev = j.rev ?? null; renderWhiteboard(); } },
+        { label: "Keep mine", run: () => { menu = mineNow; rev = j.rev ?? null; scheduleSave(); } },
+      ]);
+      return;
+    }
+    if (!res.ok) throw new Error(j.error || "The menu couldn't be saved");
+    rev = j.rev ?? rev;
   } catch (err) { dirty = true; toast(err.message, true); }
 }
 const flush = () => { if (dirty) save(); };

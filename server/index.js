@@ -20,6 +20,8 @@ import { getWeather } from "./weather.js";
 import { backupDue, backupRoom, backupWarning, readStatus } from "./backup.js";
 import os from "node:os";
 import { restartSelf, watchForUpdates } from "./updates.js";
+import { createRoom } from "./room.js";
+import { fileTooNew, mergeStickies, mergeWatered } from "../public/shared/sync.js";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 // The real Hanua (scripts/start.sh sets HANUA_MAIN=1, not the sample servers): restarts itself on the new code when
@@ -90,22 +92,40 @@ app.post("/api/lock/setup", async (req, res) => {
 });
 app.post("/api/lock/check", async (req, res) => res.json(await checkPin(lockFile, req.body?.pin)));
 
-// Things the room itself keeps, with no other home: the plant's watering log and the week's menu.
-// On this Mac only (gitignored). The sample preview keeps its own folder so tests never touch Mel's.
-const roomDir = path.resolve(root, process.env.ROOM_DATA || (notionEnabled() ? "data/room" : "data/room-sample"));
-const readJson = async (file, fallback) => { try { return JSON.parse(await readFile(file, "utf8")); } catch { return fallback; } };
+// Things the room itself keeps, with no other home: planner days, menus, stickies, the plant's log, Settings.
+// In data/room/ (gitignored), or, with ROOM_DATA in .env, one iCloud Drive folder both Macs share (6 Oct 2026):
+// every read and write goes through server/room.js (still-coming files never read as empty, whole writes, a save
+// refused if the other Mac changed the file since, the folder watched for the other Mac's changes).
+// The sample preview keeps its own folder so tests never touch Mel's.
+const home = (p) => (p && p.startsWith("~/") ? path.join(os.homedir(), p.slice(2)) : p); // the same .env line on both Macs
+const roomDir = path.resolve(root, home(process.env.ROOM_DATA) || (notionEnabled() ? "data/room" : "data/room-sample"));
+const sharedRoom = ![path.resolve(root, "data/room"), path.resolve(root, "data/room-sample")].includes(roomDir); // a folder of its own (iCloud): shared
+const room = createRoom(roomDir, { shared: sharedRoom });
+if (room.missing()) console.error(`Hanua: the shared room folder isn't there (${roomDir}). Nothing will save until it is (iCloud Drive on?)`);
+const readJson = async (file, fallback) => { const r = await room.read(file); return r.state === "ok" ? r.data : fallback; }; // read-only uses (hints, the archive's neighbours)
 const isDay = (d) => /^\d{4}-\d{2}-\d{2}$/.test(String(d || ""));
+// a room route: a refused save (409, the other Mac got there first) or a file still coming from iCloud (503) is
+// answered with what the page needs to say so, never as a crash
+const roomRoute = (fn) => async (req, res, next) => {
+  try { await fn(req, res); }
+  catch (err) {
+    if (err.status === 409 || err.status === 503) return res.status(err.status).json({ error: err.message, conflict: err.conflict, stale: err.stale, pending: err.pending, current: err.current, rev: err.rev });
+    next(err);
+  }
+};
+const baseOf = (body) => (body && typeof body === "object" && "base" in body ? body.base ?? null : undefined);
 const plantFile = path.join(roomDir, "plant.json");
-app.get("/api/plant", async (_req, res) => res.json(await readJson(plantFile, { watered: [] })));
-app.post("/api/plant/water", async (req, res) => {
+app.get("/api/plant", roomRoute(async (_req, res) => {
+  const { data } = await room.load(plantFile, { watered: [] });
+  res.set("Cache-Control", "no-store").json({ watered: mergeWatered(data?.watered, []) });
+}));
+app.post("/api/plant/water", roomRoute(async (req, res) => {
   const day = req.body?.day;
   if (!isDay(day)) return res.status(400).json({ error: "Which day was it watered?" });
-  const plant = await readJson(plantFile, { watered: [] });
-  if (!plant.watered.includes(day)) plant.watered = [...plant.watered, day].sort();
-  await mkdir(roomDir, { recursive: true });
-  await writeFile(plantFile, JSON.stringify(plant, null, 2) + "\n");
-  res.json(plant);
-});
+  // waterings from both Macs simply add up: never a clash
+  const { data } = await room.write(plantFile, { watered: [day] }, { merge: (cur, v) => ({ ...(cur || {}), watered: mergeWatered(cur?.watered, v.watered) }) });
+  res.json({ watered: data.watered });
+}));
 // The whiteboard: one PNG per week, named by its Monday
 const boardDir = path.join(roomDir, "whiteboard");
 app.get("/api/board", async (_req, res) => {
@@ -117,13 +137,13 @@ app.get("/api/board/:week", async (req, res) => {
   try { res.type("png").set("Cache-Control", "no-store").send(await readFile(path.join(boardDir, `${req.params.week}.png`))); }
   catch { res.status(404).end(); }
 });
-app.put("/api/board/:week", express.json({ limit: "6mb" }), async (req, res) => {
+app.put("/api/board/:week", express.json({ limit: "6mb" }), roomRoute(async (req, res) => {
   const m = /^data:image\/png;base64,([A-Za-z0-9+/=]+)$/.exec(req.body?.image || "");
   if (!isDay(req.params.week) || !m) return res.status(400).json({ error: "That drawing couldn't be saved" });
-  await mkdir(boardDir, { recursive: true });
-  await writeFile(path.join(boardDir, `${req.params.week}.png`), Buffer.from(m[1], "base64"));
+  if (room.missing()) return res.status(503).json({ error: "Hanua can't find its shared iCloud folder: nothing was saved" });
+  await room.writeBytes(path.join(boardDir, `${req.params.week}.png`), Buffer.from(m[1], "base64"));
   res.json({ ok: true });
-});
+}));
 
 // (Before /api/menu/:week, so these aren't taken for a week's name.)
 // The household's tastes: the "Our tastes" section of the Notion Eating well guide (Notion is their home; Hanua
@@ -166,18 +186,16 @@ app.post("/api/menu/ideas", async (req, res, next) => {
 
 // The menu: one small JSON file per week, named by its Monday, holding what was typed in each box
 const menuDir = path.join(roomDir, "menu");
-app.get("/api/menu/:week", async (req, res) => {
+app.get("/api/menu/:week", roomRoute(async (req, res) => {
   if (!weekKey(req.params.week)) return res.status(400).json({ error: "Which week?" });
-  const menu = menuShape(await readJson(path.join(menuDir, `${req.params.week}.json`), {}));
-  res.set("Cache-Control", "no-store").json({ ...menu, guideUrl: config.menu?.guideUrl || null });
-});
-app.put("/api/menu/:week", async (req, res) => {
+  const { data, rev } = await room.load(path.join(menuDir, `${req.params.week}.json`), {});
+  res.set("Cache-Control", "no-store").json({ ...menuShape(data), guideUrl: config.menu?.guideUrl || null, rev });
+}));
+app.put("/api/menu/:week", roomRoute(async (req, res) => {
   if (!weekKey(req.params.week)) return res.status(400).json({ error: "That week's menu couldn't be saved" });
-  const menu = menuShape(req.body);
-  await mkdir(menuDir, { recursive: true });
-  await writeFile(path.join(menuDir, `${req.params.week}.json`), JSON.stringify(menu, null, 2) + "\n");
-  res.json(menu);
-});
+  const { data, rev } = await room.write(path.join(menuDir, `${req.params.week}.json`), menuShape(req.body), { base: baseOf(req.body) });
+  res.json({ ...data, rev });
+}));
 
 // Plan my day: one small JSON file per day (Today's focuses and the To-Do List lines). A day comes back with the week
 // before it, so the page can show the last focuses faintly as a hint (lastFocus in public/shared/desk.js).
@@ -205,26 +223,37 @@ app.get("/api/desk/prompts", async (_req, res) => {
 app.get("/api/desk/links", (_req, res) => res.json({ notion: config.planner?.notionUrl || null }));
 // Sticky notes on the desk's wall: one small file, kept until each is taken down (taken-down notes are marked, not erased)
 const stickiesFile = path.join(roomDir, "stickies.json");
-app.get("/api/stickies", async (_req, res) => res.set("Cache-Control", "no-store").json(stickyShape(await readJson(stickiesFile, []))));
-app.put("/api/stickies", async (req, res) => {
-  const notes = stickyShape(req.body);
-  await mkdir(roomDir, { recursive: true });
-  await writeFile(stickiesFile, JSON.stringify(notes, null, 2) + "\n");
-  res.json(notes);
-});
+app.get("/api/stickies", roomRoute(async (_req, res) => res.set("Cache-Control", "no-store").json(stickyShape((await room.load(stickiesFile, [])).data))));
+// both Macs' notes merge, each note by its id, the later edit winning (taken-down notes stay marked, never erased)
+app.put("/api/stickies", roomRoute(async (req, res) => {
+  const { data } = await room.write(stickiesFile, stickyShape(req.body), { merge: (cur, mine) => stickyShape(mergeStickies(stickyShape(cur || []), mine)) });
+  res.json(data);
+}));
 // Settings Mel changes herself (the desk's Settings window; public/shared/settings.js): on this Mac beside the days,
 // so the nightly backup has them. Unset ones fall back to config/areas.json, .env and the code.
 const settingsFile = path.join(roomDir, "settings.json");
 const settingBase = () => settingDefaults(config.planner?.fixedSections || []);
-let settings = settingsShape(await readJson(settingsFile, {}), settingBase());
+let settings = settingsShape(await readJson(settingsFile, {}), settingBase()), settingsRev = (await room.read(settingsFile)).rev ?? null;
 setListNames(settings.lists);
-app.get("/api/settings", (_req, res) => res.set("Cache-Control", "no-store").json({ settings, defaults: settingBase() }));
-app.put("/api/settings", async (req, res) => {
-  settings = settingsShape(req.body, settingBase());
-  await mkdir(roomDir, { recursive: true });
-  await writeFile(settingsFile, JSON.stringify(settings, null, 2) + "\n");
+// the other Mac changed Settings (or they arrived from iCloud): use them here too
+async function reloadSettings() {
+  const r = await room.read(settingsFile);
+  if (r.state !== "ok" && r.state !== "missing") return;
+  settings = settingsShape(r.data || {}, settingBase()); settingsRev = r.rev;
   setListNames(settings.lists);
-  res.json({ settings, defaults: settingBase() });
+}
+app.get("/api/settings", roomRoute(async (_req, res) => { await reloadSettings(); res.set("Cache-Control", "no-store").json({ settings, defaults: settingBase(), rev: settingsRev }); }));
+app.put("/api/settings", async (req, res, next) => {
+  try {
+    const { data, rev } = await room.write(settingsFile, settingsShape(req.body, settingBase()), { base: baseOf(req.body) });
+    settings = data; settingsRev = rev;
+    setListNames(settings.lists);
+    res.json({ settings, defaults: settingBase(), rev });
+  } catch (err) {
+    if (err.status === 409) { await reloadSettings(); return res.status(409).json({ error: err.message, conflict: err.conflict, settings, defaults: settingBase(), rev: settingsRev }); }
+    if (err.status === 503) return res.status(503).json({ error: err.message, pending: true });
+    next(err);
+  }
 });
 app.get("/api/reminders/lists", async (_req, res) => { try { res.json(await getReminderLists()); } catch (err) { res.status(500).json({ error: err.message }); } });
 
@@ -233,31 +262,43 @@ app.get("/api/desk/days", async (_req, res) => {
   const files = await readdir(deskDir).catch(() => []);
   res.set("Cache-Control", "no-store").json(files.map((f) => dayKey(f.replace(/\.json$/, ""))).filter(Boolean).sort().reverse());
 });
-app.get("/api/desk/:day", async (req, res) => {
+app.get("/api/desk/:day", roomRoute(async (req, res) => {
   const day = dayKey(req.params.day);
   if (!day) return res.status(400).json({ error: "Which day?" });
-  const read = async (d) => deskShape(await readJson(path.join(deskDir, `${d}.json`), {}));
+  // the day itself must really be read (a page that got "empty" for a day still in iCloud would save over it): 503
+  // until it's here. The week before is only hints and the sweep (never written back), so a missing one is empty.
+  const { data, rev } = await room.load(path.join(deskDir, `${day}.json`), {});
   const earlier = {};
-  for (let i = 1; i <= CARRY_DAYS; i++) { const d = stepDay(day, -i); earlier[d] = await read(d); }
+  for (let i = 1; i <= CARRY_DAYS; i++) { const d = stepDay(day, -i); earlier[d] = deskShape(await readJson(path.join(deskDir, `${d}.json`), {})); }
   // fixed: the sections every day has (config/areas.json planner.fixedSections; Settings will edit them, step 6)
-  res.set("Cache-Control", "no-store").json({ day: await read(day), earlier, v: DESK_VERSION, fixed: settings.fixedSections, usual: settings.day });
-});
-app.put("/api/desk/:day", async (req, res) => {
+  res.set("Cache-Control", "no-store").json({ day: deskShape(data), rev, earlier, v: DESK_VERSION, fixed: settings.fixedSections, usual: settings.day });
+}));
+app.put("/api/desk/:day", roomRoute(async (req, res) => {
   const day = dayKey(req.params.day);
   if (!day) return res.status(400).json({ error: "That day's notes couldn't be saved" });
   // page and server must save a day the same way, or fields would be dropped without a word: refuse instead
   const clash = versionClash(req.body?.v);
   if (clash) return res.status(409).json({ error: CLASH_TEXT[clash], stale: clash });
-  const desk = deskShape(req.body);
-  await mkdir(deskDir, { recursive: true });
-  await writeFile(path.join(deskDir, `${day}.json`), JSON.stringify(desk, null, 2) + "\n");
-  res.json(desk);
-});
+  // the file is kept with the version that wrote it, so an older Hanua (the other Mac, not yet updated) refuses to
+  // save over a newer one instead of dropping its fields
+  const guard = (cur) => { if (fileTooNew(cur?.v, DESK_VERSION)) throw Object.assign(new Error(CLASH_TEXT.server), { status: 409, stale: "server" }); };
+  const { data, rev } = await room.write(path.join(deskDir, `${day}.json`), { ...deskShape(req.body), v: DESK_VERSION }, { base: baseOf(req.body), guard });
+  res.json({ ...deskShape(data), rev });
+}));
+
+// The other Mac's changes, as they arrive (server-sent events, server/room.js), and how the sharing is going
+app.get("/api/events", (req, res) => room.events(req, res));
+app.get("/api/sync", (_req, res) => res.set("Cache-Control", "no-store").json(room.status()));
+room.start((what) => { if (what.kind === "settings") reloadSettings().catch(() => {}); });
 
 // The nightly backup of the room's data (server/backup.js): checked every 15 minutes while Hanua runs. The sample
 // server backs up its own folder beside it; BACKUP_DIR in .env can point elsewhere, or say "off".
+// With a shared room folder (in iCloud), the backup goes to this Mac's own disk, outside iCloud, so a wiped file can't
+// carry into the copies; only one Mac backs up (the other sets BACKUP_DIR=off).
 const backupDir = process.env.BACKUP_DIR === "off" ? null : path.resolve(root, process.env.BACKUP_DIR
-  || (roomDir.endsWith("room-sample") ? "data/room-sample-backup" : path.join(os.homedir(), "Library/Mobile Documents/com~apple~CloudDocs/Hanua backup")));
+  || (roomDir.endsWith("room-sample") ? "data/room-sample-backup"
+    : sharedRoom ? path.join(os.homedir(), "Hanua backup")
+      : path.join(os.homedir(), "Library/Mobile Documents/com~apple~CloudDocs/Hanua backup")));
 let backupStatus = null, backingUp = false;
 async function backupTick() {
   if (!backupDir || backingUp) return;
@@ -265,7 +306,7 @@ async function backupTick() {
   try {
     backupStatus ??= await readStatus(backupDir);
     if (backupDue(backupStatus)) {
-      await mkdir(roomDir, { recursive: true });
+      if (!room.missing()) await mkdir(roomDir, { recursive: true });
       backupStatus = await backupRoom({ from: roomDir, to: backupDir });
       if (!backupStatus.ok) console.error(`Backup failed: ${backupStatus.error}`);
     }

@@ -87,18 +87,20 @@ export async function api(path, body) {
   return json;
 }
 
-// A short message at the bottom. Pass an action ({ label, run }) to offer e.g. Undo.
+// A short message at the bottom. Pass an action ({ label, run }) to offer e.g. Undo, or a list of them for a choice
+// (which then waits longer).
 export function toast(msg, bad = false, action = null) {
   const t = $("toast");
   t.replaceChildren(msg);
-  if (action) {
-    const b = h("button", { type: "button", className: "toast-act", textContent: action.label });
-    b.addEventListener("click", () => { t.classList.remove("show"); action.run(); });
+  const acts = Array.isArray(action) ? action : action ? [action] : [];
+  for (const a of acts) {
+    const b = h("button", { type: "button", className: "toast-act", textContent: a.label });
+    b.addEventListener("click", () => { t.classList.remove("show"); a.run(); });
     t.append(b);
   }
   t.classList.toggle("bad", bad);
-  t.classList.toggle("has-action", Boolean(action));
+  t.classList.toggle("has-action", acts.length > 0);
   t.classList.add("show");
   clearTimeout(toast.timer);
-  toast.timer = setTimeout(() => t.classList.remove("show"), action ? 6000 : 3500);
+  toast.timer = setTimeout(() => t.classList.remove("show"), acts.length > 1 ? 15000 : acts.length ? 6000 : 3500);
 }

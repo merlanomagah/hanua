@@ -10,16 +10,29 @@ import { desk, save, setFixed } from "./state.js";
 import { renderTodo } from "./page.js";
 import { noteClosed, noteOpen, registerWindow, resizable, restorePlace, windowBar } from "./window.js";
 import { ownLayout } from "./arrange.js";
+import { saidUpdated, syncState, typingIn } from "../sync.js";
 
 export let settings = null;
 let base = null, lists = null;
 const win = $("settings-win");
 const ready = resizable(win);
 
-export async function loadSettings() {
-  try { ({ settings, defaults: base } = await (await fetch("/api/settings")).json()); } catch { return; }
+let rev; // the revision of Settings this window has: a change made on the other Mac since is never undone from here
+export async function loadSettings(quiet = false) {
+  let j;
+  try { const res = await fetch("/api/settings"); if (!res.ok) return; j = await res.json(); } catch { return; }
+  if (quiet && j.rev === rev) return;
+  ({ settings, defaults: base } = j); rev = j.rev ?? null;
   applySettings();
+  if (quiet) { if (!win.hidden) render(); renderTodo(); saidUpdated(toast); }
 }
+// the other Mac changed Settings: use them here too (the window redraws unless Mel is in one of its fields)
+document.addEventListener("hanua:room", (e) => {
+  const { kind } = e.detail || {};
+  if (kind !== "all" && kind !== "settings") return;
+  if (typingIn(win)) { win.addEventListener("focusout", () => setTimeout(() => loadSettings(true), 50), { once: true }); return; }
+  loadSettings(true);
+});
 function applySettings() {
   setTimeWords(settings.timeWords);
   document.dispatchEvent(new CustomEvent("hanua:settings", { detail: settings }));
@@ -30,9 +43,18 @@ let saving = 0;
 async function put(next, { undoText = null } = {}) {
   const before = settings;
   try {
-    const res = await fetch("/api/settings", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(next) });
-    if (!res.ok) throw new Error(`Request failed (${res.status})`);
-    ({ settings, defaults: base } = await res.json());
+    const res = await fetch("/api/settings", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...next, base: rev }) });
+    const j = await res.json().catch(() => ({}));
+    if (res.status === 409 && j.settings) {
+      // changed on the other Mac since this window read them: show theirs, so nothing of theirs is undone; Mel's
+      // change can then be made again on top
+      ({ settings, defaults: base } = j); rev = j.rev ?? null;
+      applySettings(); render(); renderTodo();
+      toast("Settings were just changed on your other Mac: they're shown now. Make your change again if it's still needed.", true);
+      return;
+    }
+    if (!res.ok) throw new Error(j.error || `Request failed (${res.status})`);
+    ({ settings, defaults: base } = j); rev = j.rev ?? rev;
   } catch (err) { toast(`Settings couldn't be saved: ${err.message}`, true); return; }
   // fixed sections renamed: today's section of the old name takes the new one; then today has every fixed one
   const pairs = renames(before.fixedSections, settings.fixedSections);
@@ -112,8 +134,18 @@ function deskGroup() {
   return group("Desk", null,
     h("label", { className: "set-check" }, auto, h("span", { textContent: "On my first visit each day, open To-do.txt (planned) or Plan my day (started)" })),
     h("div", { className: "set-row" }, h("span", { className: "set-label", textContent: "Layout" }), own),
-    h("p", { className: "set-note", textContent: "To save your own: right-click the desk → Save current layout as default." }));
+    h("p", { className: "set-note", textContent: "To save your own: right-click the desk → Save current layout as default." }),
+    h("p", { className: "set-note set-sync", textContent: sharedLine() }));
 }
+// where the days, menus, stickies and Settings live: this Mac only, or the iCloud folder both Macs share
+function sharedLine() {
+  const s = syncState;
+  if (!s?.shared) return "Your days, menus and stickies are kept on this Mac only.";
+  if (s.warning) return s.warning;
+  const ago = s.lastRemote ? Math.round((Date.now() - new Date(s.lastRemote)) / 60_000) : null;
+  return `Shared with your other Mac (iCloud Drive › ${s.folder}).${ago === null ? "" : ` Last change from it: ${ago < 1 ? "just now" : `${ago} min ago`}.`}`;
+}
+document.addEventListener("hanua:sync", () => { if (!win.hidden && !typingIn(win)) render(); }); // never mid-typing
 
 function render() {
   if (win.hidden || !settings) return;

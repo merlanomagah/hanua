@@ -1,5 +1,7 @@
-// The room's own data (planner days, stickies, plant, menus in data/room/) lives only on this Mac, so once a day
-// it's copied into a private iCloud Drive folder, "Hanua backup", one dated folder per day, the last 30 kept.
+// The room's own data (planner days, stickies, plant, menus in data/room/) is copied once a day into a private
+// iCloud Drive folder, "Hanua backup", one dated folder per day, the last 30 kept. When the room folder is itself
+// shared through iCloud (two Macs, ROOM_DATA), one Mac backs up to its own disk instead (server/index.js backupDir),
+// and iCloud's cloud-only placeholders and Hanua's half-written temp files are skipped.
 // Never the GitHub repo (it's public). Not Pūtea's money data: Time Machine covers that once the drive is in
 // (Mel, 6 Oct 2026). A failed or missing backup is said out loud on the desk (backupWarning), never silent.
 import { cp, mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
@@ -43,7 +45,7 @@ export async function backupRoom({ from, to, now = new Date(), keep = KEEP_DAYS 
     await mkdir(to, { recursive: true });
     const day = path.join(to, ymd(now));
     await rm(day, { recursive: true, force: true });
-    await cp(from, day, { recursive: true });
+    await cp(from, day, { recursive: true, filter: (src) => !/^\..*\.(icloud|tmp)$/.test(path.basename(src)) });
     for (const old of toPrune(await readdir(to), keep)) await rm(path.join(to, old), { recursive: true, force: true });
     status.good = status.at;
   } catch (err) {

@@ -5,6 +5,9 @@
 // Terminal) can cut it off; it waits for the port to free up. Work on other branches never restarts it.
 // POST /api/restart does the same on demand (scripts/restart.sh, the Restart Hanua shortcut).
 // (A macOS launch agent was tried first, the same day: macOS won't let one read ~/Documents.)
+// On a second Mac (the Mac mini, 6 Oct 2026) nobody moves main by hand, so every 5 minutes Hanua also fetches main
+// from GitHub and fast-forwards to it (only when main is checked out and nothing's been changed in the folder; never
+// forced); the check above then restarts it on the new code. The repo is public: no login needed.
 import { execFile, spawn } from "node:child_process";
 import { openSync } from "node:fs";
 import path from "node:path";
@@ -33,11 +36,22 @@ export function restartSelf({ root, server, log = console.log }) {
   setTimeout(() => process.exit(0), 300).unref();
 }
 
+export const PULL_EVERY = 10; // checks: every 10th (5 minutes)
+async function pullMain(root, log) {
+  if ((await git(root, "rev-parse", "--abbrev-ref", "HEAD")) !== "main") return;
+  if ((await git(root, "status", "--porcelain", "--untracked-files=no")) !== "") return; // something changed here: leave it
+  if ((await git(root, "fetch", "-q", "origin", "main")) === null) return; // offline: next time
+  const ahead = await git(root, "rev-list", "--count", "main..origin/main");
+  if (!ahead || ahead === "0") return;
+  if ((await git(root, "merge", "--ff-only", "-q", "origin/main")) === null) log("Hanua: couldn't fast-forward main to GitHub's (has this folder got its own commits?)");
+}
+
 export function watchForUpdates({ root, server, log = console.log }) {
-  let running, lastWrite = 0; // running: main's commit at start, or null if another branch was checked out
+  let running, lastWrite = 0, ticks = 0; // running: main's commit at start, or null if another branch was checked out
   const started = mainCommit(root).then((c) => { running = c; });
   const timer = setInterval(async () => {
     await started;
+    if (++ticks % PULL_EVERY === 0) await pullMain(root, log);
     const now = await mainCommit(root);
     if (!shouldRestart({ running, now, lastWrite })) return;
     log(`Hanua: main is now ${now.slice(0, 7)} (was ${running?.slice(0, 7) || "another branch"})`);

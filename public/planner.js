@@ -10,9 +10,10 @@ import { $, reducedMotion } from "./lib.js";
 import { openInCalendar, renderNotes } from "./app.js";
 import { dayReady, desk, fetchBackup, fetchDay, fetchPrompts } from "./desk/state.js";
 import { restoreWindows } from "./desk/window.js";
-import { openPlan, renderTodo, resetSweep } from "./desk/page.js";
+import { openPlan, renderPlanWidget, renderTodo, resetSweep } from "./desk/page.js";
 import { renderAgenda } from "./desk/agenda.js";
-import { openTxt } from "./desk/todotxt.js";
+import { openTxt, renderTxt } from "./desk/todotxt.js";
+import "./sync.js"; // the other Mac's changes, live (hanua:room)
 import "./desk/timer.js";
 import "./desk/records.js"; // the record player widget
 import "./desk/wallnotes.js"; // focus and reminder post-its
@@ -91,6 +92,9 @@ addEventListener("wheel", (e) => {
 }, { passive: false });
 
 // ---- the day: loaded at start and each new day (renderTodo notices the date change) ----
+// today's page changed under us (the other Mac, or it finally arrived from iCloud): draw it all again
+document.addEventListener("hanua:day-refreshed", () => { renderTodo(); renderAgenda(); renderTxt(); renderPlanWidget(); });
+
 export async function loadDesk() {
   resetSweep();
   await fetchDay();

@@ -26,7 +26,7 @@ export const DEFAULT_MINS = 30, GAP = 5, MEETING_PAD = 5, BREAK_AFTER = 90, BREA
 export const WORKDAY = { start: "08:30", end: "17:30" };
 // How a day is saved. Raise it whenever deskShape learns a new field: the page and server must agree, or a save is
 // refused (never quietly trimmed). On 6 Oct 2026 a page newer than the running server lost its meetings that way.
-export const DESK_VERSION = 4; // 3: no Tasks, fixed sections, time words, when things happened; 4: the draft day (order, locked)
+export const DESK_VERSION = 5; // 3: no Tasks, fixed sections, time words, when things happened; 4: the draft day (order, locked); 5: saves carry the revision they started from (two Macs)
 // Who's out of date when a save arrives: null when they match, "page" (reload it), "server" (Restart Hanua)
 export function versionClash(sent, mine = DESK_VERSION) {
   const v = Number.isInteger(sent) ? sent : 0; // pages from before the check sent none
@@ -362,6 +362,8 @@ export function stickyShape(list) {
     colour: STICKY_COLOURS.includes(n?.colour) ? n.colour : STICKY_COLOURS[i % STICKY_COLOURS.length],
     added: dayKey(n?.added) || null,
     down: dayKey(n?.down) || null,
+    // when it was last changed (an ISO time): on two Macs, the later edit of a note wins (shared/sync.js mergeStickies)
+    edited: typeof n?.edited === "string" && !Number.isNaN(Date.parse(n.edited)) ? new Date(n.edited).toISOString() : null,
   }));
 }
 // the notes still up, oldest first, never more than fit on the wall

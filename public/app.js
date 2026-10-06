@@ -16,6 +16,7 @@ import "./menu-plan.js"; // Plan the week ✦ on the menu board
 import { onKitchen, renderMealSlip, showKitchen } from "./kitchen.js"; // swipe left: the weather window and the menu
 import { weatherLine } from "./weather-window.js";
 import "./bird.js"; // the canary: just for life
+import { syncState } from "./sync.js";
 import { backup, openArchive, openPlan, loadDesk, loadStickies, renderAgenda, renderStickies, renderTodo, showDesk } from "./planner.js"; // the desk: desktop, planner, stickies, agenda
 
 // Which Notion area plays which part on the page (ids from config/areas.json)
@@ -724,6 +725,7 @@ export function calNav(label, aria, step) {
 export const NOTE_COLORS = ["#F5DDD0", "#D8EDE8", "#EDE5D4", "#D0E8F0"];
 export const NOTE_TILTS = ["-2deg", "1.5deg", "-0.8deg", "2.4deg", "-1.6deg"];
 
+document.addEventListener("hanua:sync", () => { try { renderNotes(); } catch { /* the room's still starting: drawn with everything else */ } });
 export function renderNotes() {
   const today = todayStr();
   const notes = [];
@@ -740,6 +742,8 @@ export function renderNotes() {
   if (reviewDue() && !focus.on) notes.unshift({ text: "Weekly review due", meta: "Goals · ten minutes", run: () => { showBoard(true); openReview(); } });
   // the nightly backup failed or hasn't run for two days: said out loud, first (opens the archive, which says more)
   if (backup?.warning) notes.unshift({ text: backup.warning, meta: "Backup · tell Claude", run: () => { showDesk(true); openPlan(); openArchive(); } });
+  // the shared iCloud folder (two Macs): missing, two versions of a file, or files still coming down (sync.js)
+  if (syncState?.warning) notes.unshift({ text: syncState.warning, meta: "Shared with your other Mac · tell Claude", run: () => { showDesk(true); } });
   const box = $("notes");
   // on the desk wall above the stickies since 5 Oct 2026 (the wall has the frames); nothing pinned, nothing shown
   box.hidden = !notes.length;

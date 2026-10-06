@@ -124,6 +124,42 @@
         "/Users/melmanueli/Documents/GitHub/hanua-work/server/index.js"
       ],
       "port": 3043
+    },
+    {
+      "name": "sync-a",
+      "runtimeExecutable": "env",
+      "runtimeArgs": [
+        "PORT=3051",
+        "NOTION_TOKEN=",
+        "ANTHROPIC_API_KEY=",
+        "ANTHROPIC_AUTH_TOKEN=",
+        "PUTEA_URL=http://127.0.0.1:1",
+        "LOCK_FILE=data/lock-sample-planner.json",
+        "APPLE_CAL=0",
+        "BACKUP_DIR=off",
+        "ROOM_DATA=/tmp/hanua-shared-room-test",
+        "node",
+        "/Users/melmanueli/Documents/GitHub/hanua-work/server/index.js"
+      ],
+      "port": 3051
+    },
+    {
+      "name": "sync-b",
+      "runtimeExecutable": "env",
+      "runtimeArgs": [
+        "PORT=3052",
+        "NOTION_TOKEN=",
+        "ANTHROPIC_API_KEY=",
+        "ANTHROPIC_AUTH_TOKEN=",
+        "PUTEA_URL=http://127.0.0.1:1",
+        "LOCK_FILE=data/lock-sample-planner.json",
+        "APPLE_CAL=0",
+        "BACKUP_DIR=off",
+        "ROOM_DATA=/tmp/hanua-shared-room-test",
+        "node",
+        "/Users/melmanueli/Documents/GitHub/hanua-work/server/index.js"
+      ],
+      "port": 3052
     }
   ]
 }
