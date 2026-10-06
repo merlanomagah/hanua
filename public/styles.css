@@ -2783,13 +2783,52 @@ dialog.lock::backdrop { background: #14110e; }
 @media (max-width: 900px) { .wg-resize { display: none; } }
 .wg-menu-note { margin: 2px 10px 2px 24px; font: italic 12px var(--ui); color: var(--ink-4); }
 
+/* ---------- the New event window (public/calendar-event.js, 7 Oct 2026): Calendar's own fields, a Mac window ---------- */
+.cal-add { width: 20px; height: 20px; padding: 0; border: 1px solid var(--border); border-radius: 50%; background: transparent; color: var(--ink-3); cursor: pointer; font: 14px/1 var(--ui); letter-spacing: 0; }
+.cal-add:hover, .cal-add:focus-visible { border-color: var(--terra); color: var(--terra); }
+.ev-dialog { width: min(520px, calc(100% - 32px)); max-height: calc(100vh - 48px); padding: 0; border: 0; border-radius: 10px; overflow: hidden; }
+.ev-dialog[open] { animation: plan-in 200ms ease-out; }
+.ev-form { display: flex; flex-direction: column; max-height: calc(100vh - 48px); }
+.ev-bar { grid-template-columns: 70px 1fr 70px; }
+.ev-body { overflow: auto; padding: 16px 20px 6px; display: grid; gap: 9px; }
+.ev-name { width: 100%; box-sizing: border-box; padding: 4px 0 8px; border: 0; border-bottom: 1px solid var(--hair); background: transparent; color: var(--ink); font: 600 20px var(--ui); }
+.ev-name:focus { outline: none; border-bottom-color: var(--terra); }
+.ev-name::placeholder, .ev-in::placeholder { color: var(--faint); }
+.ev-row { display: grid; grid-template-columns: 82px 1fr; align-items: center; gap: 10px; font: 13px var(--ui); color: var(--ink-2); }
+.ev-row[hidden] { display: none; }
+.ev-label { justify-self: end; font: 12px var(--ui); color: var(--muted); }
+.ev-field { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-width: 0; }
+.ev-in { padding: 5px 8px; border: 1px solid var(--border); border-radius: 5px; background: var(--cream); color: var(--ink); font: 13px var(--ui); }
+.ev-in:focus { outline: 2px solid var(--terra-soft); outline-offset: 0; border-color: var(--terra); }
+.ev-in[hidden] { display: none; }
+.ev-wide { flex: 1; min-width: 0; }
+.ev-num { width: 64px; }
+.ev-notes { resize: vertical; min-height: 54px; font: 13px/1.4 var(--ui); }
+.ev-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--dot, var(--green)); flex: none; }
+.ev-check input { margin: 0; accent-color: var(--terra); }
+.ev-hint { font: 12px var(--ui); color: var(--muted); }
+.ev-hint[hidden] { display: none; }
+.ev-note { margin: 4px 0 0 92px; font: 12px var(--ui); color: var(--muted); }
+.ev-status { min-height: 18px; margin: 0; padding: 0 20px; font: 12px var(--ui); color: var(--terra-hover); }
+.ev-foot { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 8px; padding: 10px 20px 16px; border-top: 1px solid var(--hair); }
+.ev-foot-l { margin-right: auto; display: flex; align-items: center; gap: 14px; font: 13px var(--ui); }
+.ev-foot button:not(.link-btn) { padding: 7px 14px; border-radius: 6px; cursor: pointer; font: 13px var(--ui); }
+.ev-foot .ghost { border: 1px solid var(--border); background: transparent; color: var(--ink); }
+.ev-foot .ghost:hover { background: var(--page); }
+.ev-save { border: 1px solid var(--terra); background: var(--terra); color: var(--cream); }
+.ev-save:hover { background: var(--terra-hover); }
+.ev-foot .ev-del { color: var(--terra-hover); }
+.ev-ask { flex: 1 0 100%; font: 13px var(--ui); color: var(--ink-2); }
+.ev-foot button:disabled { opacity: 0.55; cursor: default; }
+@media (max-width: 560px) { .ev-row { grid-template-columns: 1fr; gap: 4px; } .ev-label { justify-self: start; } .ev-note { margin-left: 0; } .ev-dialog { width: 100%; max-height: 100vh; border-radius: 0; } }
+
 /* ---------- dark (brief docs/plans/2026-10-dark-mode.md, Mel 6 Oct 2026): Mac things go dark the way macOS does;
    real objects (bricks, oak, walnut, books, stickies, post-its, the whiteboard, clocks) keep their colours and only dim
    with the lights. `dark` on <html> comes from public/appearance.js. Inside the desk's windows, widgets and dock the
    room's own colour names are swapped for Bula's walnut-dark ones, so every rule that already uses them follows; the
    few hard-coded colours there get their dark twin below. The probe covers the desk; the rest of the room follows
    once Mel has lived with it. test/appearance.test.js checks these pairs can be read. ---------- */
-html.dark :is(#plan-day, #draft-day, .txt-win, .widgets .widget, .desk-dock, .wg-menu) {
+html.dark :is(#plan-day, #draft-day, #event-dialog, .txt-win, .widgets .widget, .desk-dock, .wg-menu) {
   --cream: #26201B; --page: #2F2822; --hair: #3A3129; --border: #4A3F34; --border-2: #5A4D3F;
   --ink: #F3ECE0; --ink-2: #E8DECD; --ink-3: #D6C9B4; --ink-4: #C2B39B; --muted: #AE9D84; --faint: #94826B;
   --terra: #E3804A; --terra-hover: #EC9361; --terra-soft: #8A4E2E; --glow: #4A2E1F;
@@ -2798,8 +2837,10 @@ html.dark :is(#plan-day, #draft-day, .txt-win, .widgets .widget, .desk-dock, .wg
   color-scheme: dark; color: var(--ink); /* text that doesn't set its own colour inherits it from here, not from the cream room */
 }
 /* the windows themselves */
-html.dark :is(#plan-day, #draft-day, .txt-win) { background: var(--dk-win); box-shadow: 0 0 0 1px rgb(0 0 0 / 0.6), 0 40px 80px -20px rgb(0 0 0 / 0.7); }
+html.dark :is(#plan-day, #draft-day, #event-dialog, .txt-win) { background: var(--dk-win); box-shadow: 0 0 0 1px rgb(0 0 0 / 0.6), 0 40px 80px -20px rgb(0 0 0 / 0.7); }
 html.dark .txt-head, html.dark .txt-add { background: var(--dk-win); border-color: var(--dk-line); }
+html.dark :is(.ev-name, .ev-foot) { border-color: var(--dk-line); }
+html.dark .ev-save { color: var(--dk-win); }
 html.dark :is(.txt-line, .set-group, .txt-group.folded .txt-fold, .txt-group.empty .txt-fold, .txt-group .txt-add) { border-color: var(--dk-line); }
 html.dark .pw-bar { background: linear-gradient(180deg, #2E2721, #28221C); border-bottom-color: #14100D; }
 html.dark .pw-btn { border-color: var(--border); background: var(--dk-raised); }
@@ -2807,7 +2848,7 @@ html.dark .pl-page { --paper: var(--dk-win); --rule: #332B24; }
 html.dark .pl-page.ahead { --paper: #261F19; }
 html.dark :is(.pl-bulk, .dr-foot) { border-top-color: var(--dk-line); background: #29221C; }
 /* fields, buttons and cards that were white */
-html.dark :is(.pl-time, .sw-act, .shop-add, .rem-pick, .rem-at, .at-pick, .bk-btn, .bk-sel, .bk-date, .set-reset, .set-in, .wk-chip, .txt-plus:hover, .txt-plus.on) { background: var(--dk-raised); border-color: var(--border); }
+html.dark :is(.ev-in, .pl-time, .sw-act, .shop-add, .rem-pick, .rem-at, .at-pick, .bk-btn, .bk-sel, .bk-date, .set-reset, .set-in, .wk-chip, .txt-plus:hover, .txt-plus.on) { background: var(--dk-raised); border-color: var(--border); }
 html.dark .wk-day { background: var(--dk-raised); border-color: var(--border); }
 html.dark .wk-day.past { background: #241E19; }
 html.dark :is(.dr-row, .ro-row) { background: var(--dk-raised); box-shadow: 0 0 0 1px var(--dk-line); }

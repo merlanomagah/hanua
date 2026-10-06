@@ -7,7 +7,7 @@ import path from "node:path";
 import { notionEnabled, queryArea, getSchema, toNotionProperties, createPage, updatePage, archivePage, pageSection, pageSections, NotionError } from "./notion.js";
 import { claudeEnabled, ask, draftEntry, coachGoal, suggestChildren, suggestMeals } from "./claude.js";
 import { getMoney, getMoneyMonth, isMonthKey } from "./money.js";
-import { addReminder, getAppleEvents, getReminderLists, getShopping, removeReminder, setListNames, setReminderDone, showDay, showReminders } from "./calendar.js";
+import { addEvent, addReminder, editEvent, getAppleEvents, getEventCalendars, removeEvent, getReminderLists, getShopping, removeReminder, setListNames, setReminderDone, showDay, showReminders } from "./calendar.js";
 import { defaults as settingDefaults, settingsShape } from "../public/shared/settings.js";
 import { musicStatus, musicAction, playPlaylist } from "./music.js";
 import { toGoal, goalProperties, goalOptions } from "./goals.js";
@@ -436,6 +436,13 @@ app.post("/api/calendar/show", async (req, res, next) => {
     next(err);
   }
 });
+
+// Add, change and delete Apple Calendar events from the New event window (7 Oct 2026, brief
+// docs/plans/2026-10-apple-calendar-events.md): written straight into Calendar, nothing kept here
+app.get("/api/calendar/calendars", remindersRoute(() => getEventCalendars()));
+app.post("/api/calendar/events", remindersRoute((req) => addEvent(req.body?.event)));
+app.post("/api/calendar/events/:id", remindersRoute((req) => editEvent(req.params.id, req.body?.occurrence, req.body?.span, req.body?.event)));
+app.post("/api/calendar/events/:id/remove", remindersRoute((req) => removeEvent(req.params.id, req.body?.occurrence, req.body?.span)));
 
 // A new row in a book from a line typed on the desk (the Work list): title, due today, not started.
 // The desk only sends it after five quiet minutes on that line, and offers Undo (which moves it to Notion's trash).

@@ -14,6 +14,7 @@ test("settings: anything missing or odd falls back to Hanua's defaults", () => {
   assert.equal(s.timeWords[15], "Short");
   assert.deepEqual(s.fixedSections, [{ name: "Spark NZ", work: false }, { name: "Admin", work: true }]);
   assert.equal(settingsShape({ desk: { autoOpen: false } }, base).desk.autoOpen, false);
+  assert.equal(settingsShape({ calendar: { default: "  Personal " } }, base).calendar.default, "Personal"); // where new events go (7 Oct 2026)
   assert.deepEqual(settingsShape(null, base).fixedSections, base.fixedSections);
 });
 

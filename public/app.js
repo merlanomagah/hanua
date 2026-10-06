@@ -6,6 +6,7 @@ import { aheadText, dayOf, daysBetween, lastLightSwitch, pad, parseDay, timeIn, 
 import { GREET_EVERY_MS, GREET_NAME, greetingsAt, timeOfDay } from "./shared/greetings.js";
 import { goalsInBook, isGoalDone, onCalendar, visibleGoals } from "./shared/goals.js";
 import { appleAtWork, withoutDuplicates } from "./shared/events.js";
+import { onEventsChanged, openEvent } from "./calendar-event.js";
 import { $, ago, api, area, fmtDay, focus, focusGoals, h, hiddenInFocus, isDone, isNarrow, longDate, money, num, records, reducedMotion, state, store, toast, updatedLine } from "./lib.js";
 import { flashGoals, onBoard, renderBoard, showBoard } from "./goals/board.js";
 import { levelIcon } from "./goals/icons.js";
@@ -491,6 +492,13 @@ function appleEvents(notion) {
   const list = withoutDuplicates([...byId.values()], notion);
   return focus.on ? list.map((it) => appleAtWork(it, apple.work)) : list;
 }
+// an event added, changed or deleted in the New event window: read Calendar again for every month on show
+onEventsChanged(() => Promise.all([...apple.months.keys()].map((m) => ensureApple(`${m}-01`, { fresh: true }))));
+// An Apple event Hanua can change opens the New event window; anything else opens Calendar.app on its day
+export function openAppleEvent(x, onClose = null) {
+  if (x.writable && x.event && !x.busy) openEvent({ item: x, onClose });
+  else openInCalendar(x);
+}
 // Open Calendar.app on that day: an Apple event lives there, not in Notion
 export function openInCalendar(x) {
   api("/api/calendar/show", { date: dayOf(x.date) }).catch((err) => toast(err.message, true));
@@ -568,7 +576,9 @@ export function renderCalendar() {
         return b;
       })()),
       h("span", { className: "cal-year" }, String(now.getFullYear()),
-        calOffset ? (() => { const b = h("button", { type: "button", className: "cal-today", textContent: "Today" }); b.addEventListener("click", () => { calOffset = 0; selectedDay = todayStr(); renderCalendar(); }); return b; })() : null)),
+        calOffset ? (() => { const b = h("button", { type: "button", className: "cal-today", textContent: "Today" }); b.addEventListener("click", () => { calOffset = 0; selectedDay = todayStr(); renderCalendar(); }); return b; })() : null,
+        // + adds an event to Apple Calendar on the picked day (7 Oct 2026), under the month so the title stays centred
+        (() => { const b = h("button", { type: "button", className: "cal-add", textContent: "+", ariaLabel: "New event", title: "New event in Apple Calendar" }); b.addEventListener("click", () => openEvent({ day: selectedDay })); return b; })())),
       calNav("›", "Next month", 1)),
     h("div", { className: "dow", ariaHidden: "true" }, ["M", "T", "W", "T", "F", "S", "S"].map((d) => h("span", { textContent: d }))),
     grid,
@@ -683,6 +693,7 @@ export function openDay(key) {
       h("span", { className: "t", textContent: x.title }),
       h("span", { className: "v", textContent: label }),
       h("span", { className: "m" }, x.kind, openGoalBtn ? h("span", {}, " · ", openGoalBtn) : null, x.url ? h("span", {}, " · ", h("a", { href: x.url, target: "_blank", rel: "noopener", textContent: "Open in Notion ↗" })) : null,
+        x.apple && !x.busy && x.writable && x.event ? h("span", {}, " · ", h("button", { type: "button", className: "link-btn", textContent: "Edit", onclick: () => openAppleEvent(x, () => openDay(key)) })) : null,
         x.apple && !x.busy ? h("span", {}, " · ", h("button", { type: "button", className: "link-btn", textContent: "Open in Calendar ↗", onclick: () => openInCalendar(x) })) : null,
         x.location ? h("span", {}, ` · ${x.location}`) : null));
   };
@@ -693,7 +704,7 @@ export function openDay(key) {
       h("ul", { className: "entries" }, due.map((x) => line({ ...x, kind: "Work" }, x.status || "To do")))) : null,
     goalsDue.length ? h("div", {}, h("h4", { textContent: `${goalsDue.length} goal${goalsDue.length > 1 ? "s" : ""} due` }),
       h("ul", { className: "entries" }, goalsDue.map((x) => line(x, x.status || "New")))) : null,
-    items.length ? null : h("p", { className: "empty", textContent: "Nothing scheduled. “Add to this day” drafts something with the Feed bar." }),
+    items.length ? null : h("p", { className: "empty", textContent: "Nothing scheduled. “New event” adds one to Apple Calendar." }),
   ].filter(Boolean));
   const cal = area(ROLE.events);
   $("day-notion").hidden = !cal?.notionUrl;
@@ -705,9 +716,11 @@ $("day-prev").addEventListener("click", () => openDay(shiftDay(dialogDay, -1)));
 $("day-next").addEventListener("click", () => openDay(shiftDay(dialogDay, 1)));
 $("day-close").addEventListener("click", () => $("day-dialog").close());
 $("day-dialog").addEventListener("click", (e) => { if (e.target === $("day-dialog")) $("day-dialog").close(); });
+// New event (Mel, 7 Oct 2026: the day window adds to Apple Calendar now; ⌘S still drafts anything into Notion)
 $("day-add").addEventListener("click", () => {
-  $("day-dialog").close();
-  openSpotlight(`${fmtDay(dialogDay, { weekday: "short", day: "numeric", month: "short" })}: `);
+  const day = dialogDay;
+  const notion = () => openSpotlight(`${fmtDay(day, { weekday: "short", day: "numeric", month: "short" })}: `);
+  openEvent({ day, fallback: notion, onClose: () => openDay(day) });
 });
 
 export function calNav(label, aria, step) {

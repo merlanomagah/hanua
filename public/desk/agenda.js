@@ -5,7 +5,7 @@ import { daySummary, deskShape, fromMin, keepPlan, minsText, moveInOrder, remove
 import { dayOf, parseDay, timeOf, todayStr } from "../shared/dates.js";
 import { $, focus, h, longDate, reducedMotion, toast } from "../lib.js";
 import { openGoal } from "../goals/form.js";
-import { bookEl, calendarItems, ensureApple, openBook, openInCalendar, ROLE, sortByTime } from "../app.js";
+import { bookEl, calendarItems, ensureApple, openAppleEvent, openBook, ROLE, sortByTime } from "../app.js";
 import { desk, deskDay, newId, page, pageDay, refIn, save } from "./state.js";
 import { goDay, openPlan, renderTodo, undoable } from "./page.js";
 import { dragRows, openDraft, planFor } from "./draft.js";
@@ -104,8 +104,8 @@ export function renderAgenda() {
       continue;
     }
     const inner = [h("span", { className: "t", textContent: x.kind === "Due" ? `Due: ${x.title}` : x.title }), h("span", { className: "k", textContent: x.goal ? x.kind : x.busy ? "" : x.kind })];
-    const open = x.busy ? h("span", { className: "slot-open busy" }, ...inner) : h("button", { type: "button", className: "slot-open", title: x.goal ? "Open the goal" : x.apple ? "Open in Calendar" : "Open in your book" }, ...inner);
-    if (!x.busy) open.addEventListener("click", () => (x.goal ? openGoal(x.goal) : x.apple ? openInCalendar(x) : openBook(x.kind === "Due" ? ROLE.tasks : ROLE.events, bookEl(x.kind === "Due" ? ROLE.tasks : ROLE.events), x.id)));
+    const open = x.busy ? h("span", { className: "slot-open busy" }, ...inner) : h("button", { type: "button", className: "slot-open", title: x.goal ? "Open the goal" : x.apple ? (x.writable && x.event ? "Change this event" : "Open in Calendar") : "Open in your book" }, ...inner);
+    if (!x.busy) open.addEventListener("click", () => (x.goal ? openGoal(x.goal) : x.apple ? openAppleEvent(x) : openBook(x.kind === "Due" ? ROLE.tasks : ROLE.events, bookEl(x.kind === "Due" ? ROLE.tasks : ROLE.events), x.id)));
     list.append(h("li", { className: `slot${key === today && t && t < nowHM ? " past" : ""}`, style: `--dot:${x.color}` },
       h("time", { textContent: t || (x.kind === "Due" || x.goal ? "Due" : "All day") }), open,
       x.url ? h("a", { className: "slot-out", href: x.url, target: "_blank", rel: "noopener", title: "Open in Notion", ariaLabel: `Open ${x.title} in Notion`, textContent: "↗" }) : null));

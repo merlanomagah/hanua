@@ -1,6 +1,6 @@
 // Settings (Mel, 6 Oct 2026, roadmap step 6; brief docs/plans/2026-10-desk-settings.md): a gear in the dock opens a
-// window like the others, in four groups: Planner (fixed sections, usual day, time words), Focus timer, Lists (which
-// Reminders lists the desk uses, picked from hers) and Desk (the morning window, Hanua's own layout). Every change saves
+// window like the others, in groups: Planner (fixed sections, usual day, time words), Focus timer, Lists (which
+// Reminders lists the desk uses, picked from hers), Calendar (where new events go), Appearance and Desk (the morning window, Hanua's own layout). Every change saves
 // at once and applies at once (the hanua:settings event); each group goes back to Hanua's defaults, with Undo.
 // Kept on this Mac (data/room/settings.json via /api/settings), so the nightly backup has them.
 import { setTimeWords, TIME_PICKS, minsText, withFixed } from "../shared/desk.js";
@@ -12,10 +12,11 @@ import { noteClosed, noteOpen, registerWindow, resizable, restorePlace, windowBa
 import { ownLayout } from "./arrange.js";
 import { saidUpdated, syncState, typingIn } from "../sync.js";
 import { APPEARANCES, DEFAULT_APPEARANCE } from "../shared/appearance.js";
+import { writableCalendars } from "../shared/events.js";
 import { appearance, setAppearance } from "../appearance.js";
 
 export let settings = null;
-let base = null, lists = null;
+let base = null, lists = null, cals = null;
 const win = $("settings-win");
 const ready = resizable(win);
 
@@ -128,6 +129,23 @@ async function loadLists() {
   try { lists = await (await fetch("/api/reminders/lists")).json(); } catch { lists = { live: false, lists: [] }; }
   render();
 }
+// Calendar (7 Oct 2026, brief docs/plans/2026-10-apple-calendar-events.md): which of Mel's own Apple calendars a new
+// event goes in, picked from the ones Hanua can write to. At work the window offers only the Work calendars anyway.
+function calendarGroup() {
+  if (!cals) { loadCals(); return group("Calendar", null, h("p", { className: "set-note", textContent: "Asking Calendar for your calendars…" })); }
+  const own = writableCalendars(cals.calendars);
+  const pick = h("select", { className: "set-in", ariaLabel: "New events go in" },
+    h("option", { value: "", textContent: cals.default ? `${cals.default} (your Mac's default)` : "Your Mac's default" }),
+    own.map((c) => h("option", { value: c.title, textContent: c.title, selected: settings.calendar?.default === c.title })));
+  pick.addEventListener("change", () => change((x) => { x.calendar = { default: pick.value }; }));
+  return group("Calendar", settings.calendar?.default ? () => put({ ...settings, calendar: base.calendar }, { undoText: "New events go to your Mac's default again" }) : null,
+    row("New events go in", pick),
+    h("p", { className: "set-note", textContent: !cals.live && cals.reason !== "off" ? "Hanua can't see Calendar yet: System Settings → Privacy & Security → Calendars → Hanua Calendar → Full Access." : "You can still pick another for each event. At work, new events go in a Work calendar." }));
+}
+async function loadCals() {
+  try { cals = await (await fetch("/api/calendar/calendars")).json(); } catch { cals = { live: false, calendars: [] }; }
+  render();
+}
 // Appearance (brief docs/plans/2026-10-dark-mode.md): this Mac's choice, kept in browser storage like the lights
 function appearanceGroup() {
   const pick = h("select", { className: "set-in", ariaLabel: "Appearance" }, Object.entries(APPEARANCES).map(([v, label]) => h("option", { value: v, textContent: label, selected: appearance === v })));
@@ -168,7 +186,7 @@ function render() {
   if (win.hidden || !settings) return;
   const scroll = win.querySelector(".txt-body")?.scrollTop || 0;
   const bar = windowBar(win, "Settings", [h("span", { className: "set-saved", ariaLive: "polite" })], () => { hide(); $("dock-settings").focus({ preventScroll: true }); });
-  const body = h("div", { className: "txt-body set-body" }, plannerGroup(), timerGroup(), focus.on ? null : listsGroup(), appearanceGroup(), deskGroup());
+  const body = h("div", { className: "txt-body set-body" }, plannerGroup(), timerGroup(), focus.on ? null : listsGroup(), focus.on ? null : calendarGroup(), appearanceGroup(), deskGroup());
   win.replaceChildren(bar, body);
   body.scrollTop = scroll;
 }
@@ -176,7 +194,7 @@ let placed = false;
 function show() {
   win.hidden = false;
   if (!placed) { restorePlace(win); placed = true; ready(); }
-  lists = null;
+  lists = null; cals = null;
   render();
 }
 const hide = () => { win.hidden = true; noteClosed("settings-win"); };

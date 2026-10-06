@@ -17,6 +17,7 @@ export const defaults = (fixed = []) => ({
   timer: { focus: 25, rest: 5 },
   lists: { shopping: "", reminders: "" }, // "" = .env, else Shopping / the default list
   desk: { autoOpen: true },
+  calendar: { default: "" }, // the Apple calendar new events go in ("" = the Mac's default); 7 Oct 2026
 });
 
 // Whatever was saved or sent, tidied, with the defaults filling the gaps
@@ -32,7 +33,8 @@ export function settingsShape(o, base = defaults()) {
   const timer = { focus: minutes(x.timer?.focus, 5, 120, base.timer.focus), rest: minutes(x.timer?.rest, 1, 60, base.timer.rest) };
   const lists = { shopping: clip(x.lists?.shopping, 60), reminders: clip(x.lists?.reminders, 60) };
   const desk = { autoOpen: typeof x.desk?.autoOpen === "boolean" ? x.desk.autoOpen : base.desk.autoOpen };
-  return { fixedSections, day, timeWords, timer, lists, desk };
+  const calendar = { default: clip(x.calendar?.default, 100) };
+  return { fixedSections, day, timeWords, timer, lists, desk, calendar };
 }
 
 // Fixed sections renamed in Settings: the same place in the list, a different name. Today's section of the old name
