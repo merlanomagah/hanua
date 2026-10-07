@@ -292,14 +292,14 @@ test("desk: a line sent to a day that already has its id gets a new one", () => 
 
 test("desk: Clear this day empties what's written and keeps the sections and hours", () => {
   const d = clearDay(deskShape({ focus: ["A"], day: { start: "07:00", end: "15:00" }, sections: [{ id: "general", lines: [{ id: "a", text: "x" }] }, { id: "s1", name: "House", lines: [{ id: "b", text: "y" }] }], meetings: [{ time: "09:00", title: "M" }], blocks: [{ ref: "a", start: "09:00", end: "09:30" }], locked: true }));
-  assert.deepEqual(daySummary(d), { focus: 0, tasks: 0, done: 0, meetings: 0, locked: false, written: false });
+  assert.deepEqual(daySummary(d), { focus: 0, tasks: 0, done: 0, meetings: 0, titles: [], locked: false, written: false });
   assert.deepEqual(d.sections.map((s) => s.name), ["General", "House"]);
   assert.equal(d.day.start, "07:00");
 });
 
 test("desk: a day's summary counts focuses, open and done tasks, meetings and whether it's locked in", () => {
   assert.deepEqual(daySummary({ focus: ["A", "", "C"], sections: [{ id: "general", lines: [{ id: "a", text: "x" }, { id: "b", text: "y", done: true }, { id: "c", text: "" }] }], meetings: [{ time: "09:00", title: "" }], blocks: [{ ref: "a", start: "09:00", end: "09:30" }], locked: true }),
-    { focus: 2, tasks: 1, done: 1, meetings: 1, locked: true, written: true });
+    { focus: 2, tasks: 1, done: 1, meetings: 1, titles: ["x"], locked: true, written: true });
   assert.equal(daySummary(null).written, false);
 });
 
@@ -315,4 +315,25 @@ test("desk: a plan made ahead says which blocks now run into a meeting", () => {
   const blocks = [{ ref: "a", start: "09:00", end: "09:30", kind: "task" }, { ref: "", start: "09:30", end: "09:40", kind: "break" }, { ref: "b", start: "10:00", end: "11:00", kind: "task" }];
   assert.deepEqual(clashes(blocks, [{ start: "10:30", end: "11:30", title: "Moved" }]).map((b) => b.ref), ["b"]);
   assert.deepEqual(clashes(blocks, [{ start: "09:30", end: "10:00" }]), []); // touching isn't running into
+});
+
+test("desk: the day picker shows this week and next, Monday first, past days marked (8 Oct 2026)", async () => {
+  const { pickerDays } = await import("../public/shared/desk.js");
+  const p = pickerDays("2026-10-08"); // a Thursday
+  assert.equal(p.length, 14);
+  assert.deepEqual([p[0].day, p[13].day], ["2026-10-05", "2026-10-18"]);
+  assert.deepEqual(p.filter((x) => x.past).map((x) => x.day), ["2026-10-05", "2026-10-06", "2026-10-07"]);
+  assert.equal(p.find((x) => x.today).day, "2026-10-08");
+  assert.equal(pickerDays("2026-10-11")[0].day, "2026-10-05"); // Sunday still belongs to the week that started Monday
+});
+
+test("desk: a task added for another day lands under its section there, made if missing; titles show on the week", async () => {
+  const { addLineTo, daySummary, deskShape } = await import("../public/shared/desk.js");
+  let n = 0; const newId = () => `n${++n}`;
+  const d = deskShape({ sections: [{ id: "general", lines: [] }] });
+  addLineTo(d, "Apartment", false, { id: "a1", text: "Book cleaners", done: false, from: "2026-10-08" }, newId);
+  addLineTo(d, "General", false, { id: "a2", text: "Call bank", done: false }, newId);
+  assert.deepEqual(d.sections.map((s) => s.name || "General"), ["General", "Apartment"]);
+  assert.equal(d.sections[1].lines[0].from, "2026-10-08");
+  assert.deepEqual(daySummary(d).titles, ["Call bank", "Book cleaners"]);
 });

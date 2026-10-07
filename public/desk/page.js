@@ -10,6 +10,7 @@ import { dayOf, parseDay, timeOf, todayStr, ymd } from "../shared/dates.js";
 import { $, focus, h, toast } from "../lib.js";
 import { calendarItems, ensureApple } from "../app.js";
 import { backup, changeDay, deskDay, desk as todayDesk, fixed, loaded, newId, page as desk, pageDay, pageEarlier as earlier, planningAhead, prompts, savePage as save, showDay, stale } from "./state.js";
+import { openDayPicker } from "./daypick.js";
 import { renderAgenda } from "./agenda.js";
 import { openTxt, renderTxt } from "./todotxt.js";
 import { dots, noteClosed, noteOpen, registerWindow } from "./window.js";
@@ -128,15 +129,13 @@ function bulkBar() {
   const move = h("select", { className: "bk-sel", ariaLabel: `Move ${many} to` }, h("option", { value: "", textContent: "Move to…" }),
     h("optgroup", { label: "A section" }, desk.sections.map((x) => h("option", { value: x.id, textContent: x.name || "General" }))),
     h("optgroup", { label: "Another day" }, days.map(([v, t]) => h("option", { value: v, textContent: t }))));
-  const when = h("input", { type: "date", className: "bk-date", ariaLabel: `Send ${many} to the day`, min: tomorrow, hidden: true });
-  when.addEventListener("change", () => { if (when.value && when.value !== pageDay) sendLines(refs, when.value); });
   move.addEventListener("change", () => {
-    if (move.value === "pick") { when.hidden = false; move.hidden = true; when.focus(); when.showPicker?.(); return; }
+    if (move.value === "pick") { move.value = ""; openDayPicker(move, { not: pageDay, title: `Send ${many} to`, onPick: (day) => sendLines(refs, day) }); return; }
     if (move.value.startsWith("day:")) return sendLines(refs, move.value.slice(4));
     if (move.value) { const to = desk.sections.find((x) => x.id === move.value); undoable(`${many} moved to ${to?.name || "General"}`, () => moveLines(desk, refs, move.value)); }
   });
   return h("div", { className: "pl-bulk", role: "toolbar", ariaLabel: `${many} picked` },
-    h("span", { className: "bk-count", textContent: `${many} picked` }), ...pri, time, move, when,
+    h("span", { className: "bk-count", textContent: `${many} picked` }), ...pri, time, move,
     pageDay > todayStr() ? null : btn("✓ Done", `Tick ${many}`, () => undoable(`${many} ticked`, () => setLines(desk, refs, { done: true }))),
     btn("Clear", `Take ${many} off the page`, () => undoable(`${many} cleared`, () => { const want = new Set(refs); for (const x of desk.sections) x.lines = x.lines.filter((l) => !want.has(l.id)); selected = new Set(); })),
     btn("✕", "Let go of the picked lines (Esc)", clearPicks, "bk-x"));
@@ -226,6 +225,13 @@ function sectionEl(sec) {
         if (v && i === rows - 1 && rows < MAX_LINES) renderTodo(); // writing on the last line: one more appears
       },
       onTick: () => { const l = sec.lines[i]; if (!l?.text) return null; l.done = !l.done; stampLine(l); save(); renderPlanWidget(); return l.done; } }));
+    // → on a written line: send it to another day (Mel, 8 Oct 2026), the same picker as To-do.txt's When
+    const line = sec.lines[i];
+    if (line?.text) {
+      const send = h("button", { type: "button", className: "pl-send", textContent: "→", ariaLabel: `Send ${line.text} to another day`, title: "Send to another day" });
+      send.addEventListener("click", () => openDayPicker(send, { not: pageDay, title: "Send it to", onPick: (day) => sendLines([line.id], day) }));
+      list.lastChild.append(send);
+    }
     // a line emptied by deleting its text gets an Undo when you leave it (not while you're retyping it)
     const field = list.lastChild.querySelector(".pl-input");
     let had = null;
@@ -252,7 +258,7 @@ function sectionEl(sec) {
     const used = sec.lines.some((l) => l.text);
     const x = h("button", { type: "button", className: "pl-sec-x", textContent: "×", ariaLabel: `Remove the ${sec.name || "unnamed"} section`,
       title: used ? "Clear its lines first to remove it" : "Remove this section", disabled: used });
-    x.addEventListener("click", () => { desk.sections = desk.sections.filter((s) => s !== sec); save(); renderTodo(); });
+    x.addEventListener("click", () => undoable(`${sec.name || "Section"} removed`, () => { desk.sections = desk.sections.filter((s) => s !== sec); }));
     head = h("div", { className: "pl-head" }, name, x);
   }
   head.append(workChip(sec.work, sec.name || "section", () => { sec.work = !sec.work; save(); return sec.work; }));
@@ -449,7 +455,7 @@ $("plan-day").addEventListener("close", () => {
 // ahead open their page. Days further ahead that already have something written are listed underneath.
 export async function openWeek(shift = 0) {
   archive = null;
-  const days = weekDays(todayStr(), shift);
+  const days = [...weekDays(todayStr(), shift), ...weekDays(todayStr(), shift + 1)]; // two weeks: this and next (8 Oct 2026)
   week = { shift, days, sums: week?.shift === shift ? week.sums : {}, further: week?.further || [] };
   renderTodo();
   const mine = week;
@@ -457,7 +463,7 @@ export async function openWeek(shift = 0) {
     const sums = await (await fetch(`/api/desk/summary?days=${days.join(",")}`)).json();
     // further ahead: any day after this week (and after today) with something on it, the next eight
     const all = await (await fetch("/api/desk/days")).json();
-    const later = all.filter((d) => d > days[6] && d > todayStr()).sort().slice(0, 20);
+    const later = all.filter((d) => d > days[13] && d > todayStr()).sort().slice(0, 20);
     const more = later.length ? await (await fetch(`/api/desk/summary?days=${later.join(",")}`)).json() : {};
     if (week !== mine) return;
     week.sums = sums;
@@ -485,20 +491,21 @@ function weekEl() {
       h("span", { className: "wk-date", textContent: parseDay(d).toLocaleDateString("en-NZ", { day: "numeric", month: "short" }) }),
       d === today ? h("span", { className: "wk-tag", textContent: "Today" }) : null,
       h("span", { className: "wk-sum" }, sumText(x, past).map((t) => h("span", { textContent: t }))),
+      !past && x?.titles?.length ? h("ul", { className: "wk-titles" }, x.titles.map((t) => h("li", { textContent: t }))) : null,
       x?.locked ? h("span", { className: "wk-lock", textContent: "Locked in" }) : !past && !x?.written ? h("span", { className: "wk-go", textContent: "Plan this day →" }) : null);
     b.addEventListener("click", () => (past ? openArchive(d) : goDay(d)));
     return b;
   };
   const nav = (label, step, aria) => { const b = h("button", { type: "button", className: "ip-nav wk-nav", textContent: label, ariaLabel: aria }); b.addEventListener("click", () => openWeek(week.shift + step)); return b; };
-  const first = parseDay(week.days[0]), last = parseDay(week.days[6]);
+  const first = parseDay(week.days[0]), last = parseDay(week.days[13]);
   const span = `${first.toLocaleDateString("en-NZ", { day: "numeric", month: "short" })} – ${last.toLocaleDateString("en-NZ", { day: "numeric", month: "short", year: "numeric" })}`;
   const thisWeek = week.shift ? (() => { const b = h("button", { type: "button", className: "pw-btn", textContent: "This week" }); b.addEventListener("click", () => openWeek(0)); return b; })() : null;
   const further = week.further.length ? h("div", { className: "wk-further" }, h("h4", { textContent: "Also planned ahead" }),
     h("ul", {}, week.further.map(({ day: d, sum }) => { const b = h("button", { type: "button", className: "wk-chip", textContent: `${planDate(d)} · ${sumText(sum).join(", ")}` }); b.addEventListener("click", () => goDay(d)); return h("li", {}, b); }))) : null;
   return h("div", { className: "pl-week" },
-    h("header", { className: "wk-head" }, nav("‹", -1, "Week before"), h("div", { className: "wk-title" }, h("h2", { textContent: week.shift === 0 ? "This week" : week.shift === 1 ? "Next week" : week.shift === -1 ? "Last week" : "The week" }), h("span", { textContent: span })), nav("›", 1, "Week after"), thisWeek),
+    h("header", { className: "wk-head" }, nav("‹", -1, "Week before"), h("div", { className: "wk-title" }, h("h2", { textContent: week.shift === 0 ? "This week and next" : week.shift === -1 ? "Last week and this" : "Two weeks" }), h("span", { textContent: span })), nav("›", 1, "Week after"), thisWeek),
     h("div", { className: "wk-grid" }, week.days.map(card)),
-    h("p", { className: "wk-hint", textContent: "Click a day to plan it. Earlier days open in the Archive." }),
+    h("p", { className: "wk-hint", textContent: "Click a day to plan it. Earlier days open in the Archive. To put a task on a day without opening it: → on a line, or When in To-do.txt." }),
     further);
 }
 // Open a day's page (today, or a day ahead) in the window
@@ -522,6 +529,8 @@ const showPlan = () => { if (!$("plan-day").open) $("plan-day").showModal(); };
 registerWindow("plan-day", { title: "Plan my day", icon: PLAN_ICON, show: showPlan, hide: () => $("plan-day").close(), shown: () => $("plan-day").open });
 // opened from the desktop file: the week first (at work, today's page: the week would show personal days); from
 // anywhere else (To-do.txt, the morning, Up next): today's page
+// Plan my day open at a given day (To-do.txt's "Open that day")
+export function openDay(day) { showPlan(); noteOpen("plan-day"); goDay(day); }
 export function openPlan({ week: asWeek = false } = {}) {
   showPlan(); noteOpen("plan-day");
   if (asWeek && !focus.on) openWeek();

@@ -2738,7 +2738,7 @@ dialog.lock::backdrop { background: #14110e; }
 .wk-title h2 { margin: 0; font: italic 500 calc(var(--line) * 0.85)/1.1 var(--display); color: var(--terra); }
 .wk-title span { font: 10px var(--mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-4); }
 .wk-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 10px; }
-.wk-day { position: relative; display: flex; flex-direction: column; align-items: flex-start; gap: 4px; min-height: 168px; padding: 12px 12px 14px; border: 1px solid #e6e0d5; border-radius: 5px; background: #fff; text-align: left; cursor: pointer; color: var(--ink); transition: border-color 120ms, box-shadow 120ms; }
+.wk-day { position: relative; display: flex; flex-direction: column; align-items: flex-start; gap: 4px; min-height: 140px; padding: 12px 12px 14px; border: 1px solid #e6e0d5; border-radius: 5px; background: #fff; text-align: left; cursor: pointer; color: var(--ink); transition: border-color 120ms, box-shadow 120ms; }
 .wk-day:hover { border-color: var(--terra-soft); box-shadow: 0 6px 16px -10px rgb(0 0 0 / 0.35); }
 .wk-day:focus-visible { outline: 2px solid var(--terra); outline-offset: 2px; }
 .wk-day.today { border-color: var(--terra); box-shadow: inset 0 3px 0 var(--terra); }
@@ -2856,7 +2856,7 @@ dialog.lock::backdrop { background: #14110e; }
    room's own colour names are swapped for Bula's walnut-dark ones, so every rule that already uses them follows; the
    few hard-coded colours there get their dark twin below. The probe covers the desk; the rest of the room follows
    once Mel has lived with it. test/appearance.test.js checks these pairs can be read. ---------- */
-html.dark :is(#plan-day, #draft-day, #event-dialog, .txt-win, .widgets .widget, .desk-dock, .wg-menu) {
+html.dark :is(#plan-day, #draft-day, #event-dialog, .txt-win, .widgets .widget, .desk-dock, .wg-menu, .dp) {
   --cream: #26201B; --page: #2F2822; --hair: #3A3129; --border: #4A3F34; --border-2: #5A4D3F;
   --ink: #F3ECE0; --ink-2: #E8DECD; --ink-3: #D6C9B4; --ink-4: #C2B39B; --muted: #AE9D84; --faint: #94826B;
   --terra: #E3804A; --terra-hover: #EC9361; --terra-soft: #8A4E2E; --glow: #4A2E1F;
@@ -2865,7 +2865,7 @@ html.dark :is(#plan-day, #draft-day, #event-dialog, .txt-win, .widgets .widget, 
   color-scheme: dark; color: var(--ink); /* text that doesn't set its own colour inherits it from here, not from the cream room */
 }
 /* the windows themselves */
-html.dark :is(#plan-day, #draft-day, #event-dialog, .txt-win) { background: var(--dk-win); box-shadow: 0 0 0 1px rgb(0 0 0 / 0.6), 0 40px 80px -20px rgb(0 0 0 / 0.7); }
+html.dark :is(#plan-day, #draft-day, #event-dialog, .txt-win, .dp) { background: var(--dk-win); box-shadow: 0 0 0 1px rgb(0 0 0 / 0.6), 0 40px 80px -20px rgb(0 0 0 / 0.7); }
 html.dark .txt-head, html.dark .txt-add { background: var(--dk-win); border-color: var(--dk-line); }
 html.dark :is(.ev-name, .ev-foot) { border-color: var(--dk-line); }
 html.dark .ev-save { color: var(--dk-win); }
@@ -2916,3 +2916,36 @@ html.dark .topshelf .ts-div { background: rgb(243 236 224 / 0.16); }
 html.dark .topshelf .sw-track { background: rgb(243 236 224 / 0.18); box-shadow: inset 0 1px 2px rgb(0 0 0 / 0.4); }
 html.dark .topshelf .ts-switch[aria-checked="true"] .sw-track { background: var(--ink-4); }
 html.dark .topshelf .sw-knob { background: #F3ECE0; }
+
+/* The day picker (public/desk/daypick.js, 8 Oct 2026): a little two-week calendar under the control that opened it */
+.dp { position: fixed; z-index: 40; width: 236px; padding: 10px 12px 12px; border-radius: 10px; background: var(--cream); color: var(--ink);
+  box-shadow: 0 0 0 1px var(--border-2), 0 18px 40px -12px color-mix(in srgb, var(--ink) 45%, transparent); font: 12px var(--ui); }
+.dp-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
+.dp-title { font: italic 500 16px var(--display); color: var(--terra); }
+.dp-month { font: 9px var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-4); }
+.dp-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
+.dp-wd { text-align: center; font: 9px var(--mono); color: var(--ink-4); padding-bottom: 2px; }
+.dp-day { height: 28px; border: 0; border-radius: 6px; background: transparent; color: var(--ink); font: 13px var(--ui); cursor: pointer; }
+.dp-day:hover:not(:disabled), .dp-day:focus-visible { background: var(--border); outline: none; }
+.dp-day.today { box-shadow: inset 0 0 0 1.5px var(--terra); font-weight: 600; }
+.dp-day.on { background: var(--terra); color: var(--cream); }
+.dp-day:disabled { color: var(--ink-4); opacity: 0.45; cursor: default; }
+.dp-row { display: flex; align-items: center; gap: 8px; margin-top: 8px; color: var(--ink-3); }
+.dp-later { flex: 1; min-width: 0; height: 28px; border: 1px solid var(--border-2); border-radius: 4px; background: transparent; color: var(--ink); font: 12px var(--ui); padding: 0 6px; }
+
+/* Add to another day (8 Oct 2026): → on a written line in Plan my day; When on To-do.txt's add row; + New section;
+   the week view's first tasks per day */
+.pl-send { --h: 22px; width: 22px; height: 22px; padding: 0; border: 0; border-radius: 4px; background: transparent; cursor: pointer; color: var(--ink-4); font: 14px/1 var(--ui); opacity: 0; transition: opacity 120ms; }
+.pl-line:hover .pl-send, .pl-line:focus-within .pl-send, .pl-send:focus-visible { opacity: 1; }
+.pl-send:hover { color: var(--terra); background: var(--border); }
+@media (hover: none) { .pl-send { opacity: 0.6; } }
+.at-when { cursor: pointer; white-space: nowrap; }
+.at-when.on { color: var(--terra); border-color: var(--terra); }
+.txt-ghead .txt-del { opacity: 0; }
+.txt-group:hover .txt-del, .txt-del:focus-visible { opacity: 1; }
+.txt-newsec { display: block; margin: 10px 0 4px; padding: 4px 0; border: 0; background: none; cursor: pointer; font: 12px var(--ui); color: var(--ink-4); }
+.txt-newsec:hover, .txt-newsec:focus-visible { color: var(--terra); }
+.txt-name { flex: 1; min-width: 0; margin: 4px 0; }
+.wk-titles { list-style: none; margin: 4px 0 0; padding: 0; width: 100%; font: 11px/1.35 var(--ui); color: var(--ink-3); }
+.wk-titles li { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wk-titles li::before { content: "· "; color: var(--ink-4); }

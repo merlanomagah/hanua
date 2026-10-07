@@ -126,7 +126,7 @@ export function shorterCol(sections) {
 // The sections that are always there (config/areas.json planner.fixedSections; Mel, 6 Oct 2026: Spark NZ and Jump
 // issues, both Work), after General. One already there with the same name is adopted (it keeps its id and lines).
 // Changes and returns the day.
-const sameName = (a, b) => a.trim().toLowerCase() === b.trim().toLowerCase();
+export const sameName = (a, b) => a.trim().toLowerCase() === b.trim().toLowerCase();
 export const isFixed = (sec, fixed = []) => sec.id === GENERAL || fixed.some((f) => sameName(f.name, sec.name || ""));
 export function withFixed(d, fixed = []) {
   const rest = d.sections.slice(1);
@@ -297,7 +297,9 @@ export function daySummary(x) {
   const lines = d.sections.flatMap((s) => s.lines.filter((l) => l.text));
   const tasks = lines.filter((l) => !l.done).length, done = lines.length - tasks;
   const focus = d.focus.filter(Boolean).length, meetings = d.meetings.filter((m) => m.title || m.time).length;
-  return { focus, tasks, done, meetings, locked: d.locked && d.blocks.length > 0, written: Boolean(focus || lines.length || meetings) };
+  // titles: the first few open tasks, for the week view's cards (8 Oct 2026)
+  const titles = lines.filter((l) => !l.done).slice(0, 3).map((l) => l.text.slice(0, 60));
+  return { focus, tasks, done, meetings, titles, locked: d.locked && d.blocks.length > 0, written: Boolean(focus || lines.length || meetings) };
 }
 // Monday to Sunday of the week `day` is in (shift: weeks either side)
 export function weekDays(day, shift = 0) {
@@ -306,6 +308,11 @@ export function weekDays(day, shift = 0) {
   const monday = stepDay(day, shift * 7 - back);
   return Array.from({ length: 7 }, (_, i) => stepDay(monday, i));
 }
+// The day picker (Mel, 8 Oct 2026: add a task to next week without opening that day): this week and next, Monday
+// first, each { day, past, today }
+export const pickerDays = (today) => [...weekDays(today), ...weekDays(today, 1)].map((day) => ({ day, past: day < today, today: day === today }));
+// A new task straight onto another day's page, under the section of the same name (made there if missing)
+export const addLineTo = (d, section, work, line, newId) => putLines(d, [{ section: section || "General", work: Boolean(work), line }], newId);
 // A plan made ahead, on the morning: the blocks that now run into a fixed thing (a meeting moved in the calendar
 // since). The plan stays as Mel made it; the page offers Re-plan.
 export function clashes(blocks, fixed) {
