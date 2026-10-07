@@ -1,5 +1,7 @@
 # Panel brief: subtasks (one level) in the planner
 
+**Mel's answers (8 Oct 2026):** yes / yes / yes: together with Foundations F4 (F4's part first); Tab always indents and ⌥Tab reaches Priority and Time; all subtasks ticked → the task ticks itself. **Start next session.**
+
 **Request (as the problem):** some tasks are really a few steps. Mel wants to put the steps under the task (Tab on a line indents it under the task above) and fold them away when she doesn't need to see them, so the list stays short and the steps stay together.
 **Lane:** Large (it changes the shape of every day file) · **Seats:** Chair, Sceptic, Daily-use coach, Experience designer, Room designer, Data steward (agent), Frontend engineer (agent), Test lead (agent), Privacy and safety, Release keeper
 **Gate:** worth it. It serves the planner priority and Mel's real days (her 6 Oct page had an "Apartment Walkthrough Prep" section of 14 lines that were really steps of a few tasks). Scope and design only; no build until Mel says.
