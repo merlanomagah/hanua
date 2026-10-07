@@ -252,7 +252,7 @@ test("bulk: lines move to another section keeping their ids; several get a prior
   ], meetings: [{ id: "m1", time: "09:00", title: "Stand-up" }, { id: "m2", time: "10:00", title: "1:1" }] });
   moveLines(d, ["a", "c"], "s1");
   assert.deepEqual(d.sections[0].lines.filter((l) => l.text).map((l) => l.id), ["b"]);
-  assert.deepEqual(d.sections[1].lines.filter((l) => l.text).map((l) => l.id), ["x", "a", "y", "c"]); // a filled the blank
+  assert.deepEqual(d.sections[1].lines.filter((l) => l.text).map((l) => l.id), ["x", "y", "a", "c"]); // after the last written line, together (8 Oct 2026: filling blanks could split a task from its subtasks)
   assert.equal(d.sections[1].lines.find((l) => l.id === "a").pri, "h");
   setLines(d, ["a", "b", "nope"], { pri: "l", mins: 10 });
   assert.deepEqual(["a", "b"].map((r) => d.sections.flatMap((x) => x.lines).find((l) => l.id === r)).map((l) => [l.pri, l.mins]), [["l", 10], ["l", 10]]);
@@ -260,7 +260,7 @@ test("bulk: lines move to another section keeping their ids; several get a prior
   assert.equal(d.sections[1].lines[0].doneAt, "2026-10-06T09:00:00.000Z");
   assert.deepEqual(removeMeeting(d, "m1").meetings.map((m) => m.id), ["m2"]);
   // and it all survives a save
-  assert.deepEqual(deskShape(d).sections[1].lines.filter((l) => l.text).map((l) => l.id), ["x", "a", "y", "c"]);
+  assert.deepEqual(deskShape(d).sections[1].lines.filter((l) => l.text).map((l) => l.id), ["x", "y", "a", "c"]);
 });
 
 // ---- planning another day (6 Oct 2026, evening) ----

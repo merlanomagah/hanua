@@ -5,7 +5,7 @@
 // the file opens the week, and a click on a day opens its page. A day ahead is the same page, saying so plainly
 // ("Planning Wed 07-Oct", a faint tint, no ticks, no morning sweep), with Clear this day; Move to… sends picked lines
 // to another day. Here `desk` is the page's day (state.js `page`), which is today's unless planning ahead.
-import { carriedDays, clearDay, daySummary, moveLines, putLines, removeMeeting, setLines, takeLines, weekDays, CLASH_TEXT, deskSections, deskShape, fromMin, isFixed, keepPlan, lastFocus, leftovers, minsText, openItems, planDay, planDate, settle, shorterCol, stampLine, stepDay, timeLabel, toMin, DEFAULT_MINS, GENERAL, MAX_LINES, MAX_MEETINGS, MAX_NAME, MAX_SECTIONS, MEETING_PICKS, SECTION_ROWS, TIME_PICKS, TIME_WORDS } from "../shared/desk.js";
+import { carriedDays, clearDay, daySummary, indentLine, kidsOf, moveLines, outdentLine, putLines, removeLines, removeMeeting, setLines, takeLines, weekDays, CLASH_TEXT, deskSections, deskShape, fromMin, isFixed, keepPlan, lastFocus, leftovers, minsText, openItems, planDay, planDate, settle, shorterCol, stampLine, stepDay, timeLabel, toMin, DEFAULT_MINS, GENERAL, MAX_LINES, MAX_MEETINGS, MAX_NAME, MAX_SECTIONS, MEETING_PICKS, SECTION_ROWS, TIME_PICKS, TIME_WORDS } from "../shared/desk.js";
 import { dayOf, parseDay, timeOf, todayStr, ymd } from "../shared/dates.js";
 import { $, focus, h, toast } from "../lib.js";
 import { calendarItems, ensureApple } from "../app.js";
@@ -33,7 +33,7 @@ function heading(name, key) {
 }
 // a line you type on; Enter or ↓ goes to the next line, ↑ back. A long line wraps onto the next ruled line
 // rather than being cut off (Mel, 6 Oct 2026), so it's a one-line textarea that grows a whole line at a time.
-function lineInput(value, { placeholder = "", label, onInput, section, index }) {
+function lineInput(value, { placeholder = "", label, onInput, section, index, onKey = null }) {
   const input = h("textarea", { className: "pl-input", value, placeholder, ariaLabel: label, autocomplete: "off", spellcheck: true, maxLength: 200, rows: 1 });
   input.addEventListener("input", () => {
     if (/\n/.test(input.value)) input.value = input.value.replace(/\s*\n\s*/g, " "); // a pasted list stays one line
@@ -42,10 +42,11 @@ function lineInput(value, { placeholder = "", label, onInput, section, index }) 
   });
   input.addEventListener("keydown", (e) => {
     if (e.isComposing) return;
+    if (onKey?.(e, input)) return; // the To-Do List's Tab / Shift+Tab, and Enter / Backspace on a subtask
     const wrapped = input.offsetHeight > lineH(input) * 1.5;
     const atEnd = input.selectionStart === input.value.length, atStart = input.selectionEnd === 0;
-    if (e.key === "Enter" || (e.key === "ArrowDown" && (!wrapped || atEnd))) { e.preventDefault(); focusLine(section, index + 1); }
-    if (e.key === "ArrowUp" && (!wrapped || atStart)) { e.preventDefault(); focusLine(section, index - 1); }
+    if (e.key === "Enter" || (e.key === "ArrowDown" && (!wrapped || atEnd))) { e.preventDefault(); focusLine(section, index + 1, 1); }
+    if (e.key === "ArrowUp" && (!wrapped || atStart)) { e.preventDefault(); focusLine(section, index - 1, -1); }
   });
   return input;
 }
@@ -60,8 +61,11 @@ function fitLine(el) {
 // the window opening, or its width changing, re-wraps every line
 const refit = new ResizeObserver(() => document.querySelectorAll("#todo .pl-input").forEach(fitLine));
 refit.observe($("todo"));
-function focusLine(section, index) {
-  const el = document.querySelectorAll(`#todo [data-section="${section}"] .pl-input`)[index];
+// dir: which way to keep going past a folded subtask (rows stay in the page, hidden, so a row's place is its index)
+function focusLine(section, index, dir = 1) {
+  const all = document.querySelectorAll(`#todo [data-section="${section}"] .pl-input`);
+  while (all[index]?.closest(".pl-line.folded")) index += dir;
+  const el = all[index];
   if (!el) return;
   el.focus({ preventScroll: true });
   el.setSelectionRange(el.value.length, el.value.length);
@@ -92,7 +96,7 @@ const workChip = (on, label, toggle) => {
 
 // ---- Undo, and several lines at once (Mel, 6 Oct 2026, part G) ----
 // Anything that takes things away or changes many at once keeps a copy first and offers Undo
-const KEPT = ["focus", "sections", "meetings", "settled", "settledAt", "order", "blocks", "overflow", "locked"];
+const KEPT = ["focus", "sections", "meetings", "settled", "settledAt", "order", "blocks", "overflow", "locked", "gone"];
 const snapshot = (d) => structuredClone(Object.fromEntries(KEPT.map((k) => [k, d[k]])));
 const redrawAll = (d = desk) => { save(d); renderTodo(); renderAgenda(); renderPlanWidget(); };
 // target: the day changed (the page's, unless Up next changes today's while a day ahead is open)
@@ -138,23 +142,20 @@ function bulkBar() {
   return h("div", { className: "pl-bulk", role: "toolbar", ariaLabel: `${many} picked` },
     h("span", { className: "bk-count", textContent: `${many} picked` }), ...pri, time, move,
     pageDay > todayStr() ? null : btn("✓ Done", `Tick ${many}`, () => undoable(`${many} ticked`, () => setLines(desk, refs, { done: true }))),
-    btn("Clear", `Take ${many} off the page`, () => undoable(`${many} cleared`, () => { const want = new Set(refs); for (const x of desk.sections) x.lines = x.lines.filter((l) => !want.has(l.id)); selected = new Set(); })),
+    btn("Indent", `Make ${many} subtasks of the task above (Tab)`, () => undoable(`${many} indented`, () => { for (const r of refs) indentLine(desk, r); })),
+    btn("Outdent", `Make ${many} tasks again (Shift+Tab)`, () => undoable(`${many} outdented`, () => { for (const r of [...refs].reverse()) outdentLine(desk, r); })),
+    btn("Clear", `Take ${many} off the page`, () => undoable(`${many} cleared`, () => { removeLines(desk, refs, "cleared"); selected = new Set(); })),
     btn("✕", "Let go of the picked lines (Esc)", clearPicks, "bk-x"));
 }
 // Remove one task (Mel, 8 Oct 2026: the × left of its tick, in Plan my day and To-do.txt), with Undo. d: the day it's
 // on (the page's, or today's from To-do.txt). Its block leaves Up next with it (a block whose task is gone is skipped);
 // Undo puts back the line, its place in the order and the plan as they were.
 export function removeLine(d, id) {
-  const line = d.sections.flatMap((x) => x.lines).find((l) => l.id === id);
+  const sec = d.sections.find((x) => x.lines.some((l) => l.id === id)), line = sec?.lines.find((l) => l.id === id);
   if (!line?.text) return;
   selected.delete(id);
-  undoable(`Removed: ${line.text}`, () => {
-    for (const x of d.sections) {
-      x.lines = x.lines.filter((l) => l.id !== id);
-      while (x.lines.length && !x.lines.at(-1).text) x.lines.pop();
-    }
-    d.order = (d.order || []).filter((r) => r !== id);
-  }, d);
+  const kids = line.parent ? 0 : kidsOf(sec.lines, id).length; // a task goes with its subtasks (shared/desk.js removeLines)
+  undoable(`Removed: ${line.text}${kids ? ` and ${kids} subtask${kids === 1 ? "" : "s"}` : ""}`, () => removeLines(d, [id], "removed"), d);
 }
 // line: the line, or a function giving it (a row typed on just now has its line only once something's written)
 const delButton = (d, line) => {
@@ -169,10 +170,12 @@ export { delButton };
 // them back and takes them off that day again)
 export async function sendLines(refs, toDay) {
   const from = desk, fromDay = pageDay, before = snapshot(from);
-  const taken = takeLines(from, refs, fromDay);
+  const taken = takeLines(from, refs, fromDay, toDay);
   if (!taken.length) return;
   const ok = await changeDay(toDay, (d) => putLines(d, taken, newId));
   if (!ok) { Object.assign(from, structuredClone(before)); renderTodo(); toast(`Couldn't send them to ${dayName(toDay)}: nothing was moved.`, true); return; }
+  const left = taken.filter((t) => !t.placed).length; // a full section takes a task and its subtasks together or not at all
+  if (left) toast(`${left} didn't fit on ${dayName(toDay)} (that section is full)`, true);
   selected = new Set(); anchor = null;
   redrawAll(from);
   const n = taken.length, sent = new Set(taken.map((t) => t.placed));
@@ -195,7 +198,7 @@ $("todo").addEventListener("keydown", (e) => {
 $("plan-day").addEventListener("cancel", (e) => { if (clearPicks()) e.preventDefault(); });
 
 // a tickable line kept in its place: typing on it makes it real, a tick only once something's written
-function tickLine(line, { label, section, index, onText, onTick, ensure }) {
+function tickLine(line, { label, section, index, onText, onTick, ensure, onKey = null }) {
   const li = h("li", { className: `pl-line${line?.done ? " done" : ""}${line?.text ? "" : " empty"}` });
   const tick = check(Boolean(line?.done), `Mark ${label} done`);
   if (pageDay > todayStr()) { tick.disabled = true; tick.title = "Ticks come on the day"; } // nothing's done before the day
@@ -204,7 +207,7 @@ function tickLine(line, { label, section, index, onText, onTick, ensure }) {
     if (done === null) return;
     li.classList.toggle("done", done); tick.classList.toggle("on", done); tick.ariaPressed = String(done);
   });
-  const input = lineInput(line?.text || "", { label, section, index, onInput: (v) => {
+  const input = lineInput(line?.text || "", { label, section, index, onKey, onInput: (v) => {
     onText(v);
     li.classList.toggle("empty", !v);
     if (!v) { li.classList.remove("done"); tick.classList.remove("on"); }
@@ -233,6 +236,48 @@ function focusesEl() {
       h("span", { className: "pl-num", textContent: `${i + 1}.` }),
       lineInput(text, { label: `Focus ${i + 1}`, placeholder: hint[i] || "", section: "focus", index: i, onInput: (v) => { desk.focus[i] = v; save(); renderPlanWidget(); } }))))), "focus");
 }
+// ---- subtasks (Mel, 8 Oct 2026; brief docs/plans/2026-10-subtasks.md) ----
+// Tab on a To-Do List line tucks it under the task above (one level); Shift+Tab brings it back out. ⌥Tab is left to
+// the browser, so it reaches Priority and Time (the Mac's own "next item" key). An empty row can be indented before
+// it has words (pending), and gets its task as soon as it's typed on. Enter on a subtask makes the next empty row a
+// subtask too; Backspace in an empty indented row takes it back out.
+let pending = null; // "<section key>:<row>" of an indented empty row
+function subKeys(e, input, sec, key, i) {
+  const line = sec.lines[i], written = Boolean(line?.text);
+  if (e.key === "Tab" && !e.altKey && !e.metaKey && !e.ctrlKey) {
+    e.preventDefault();
+    if (written) {
+      const ok = e.shiftKey ? outdentLine(desk, line.id) : indentLine(desk, line.id);
+      if (!ok) toast(e.shiftKey ? "That's already a task" : kidsOf(sec.lines, line.id).length ? "It has subtasks of its own: one level only" : "There's no task above it to go under");
+      else { save(); renderTodo(); renderAgenda(); }
+    } else if (e.shiftKey) pending = null;
+    else if (sec.lines.slice(0, i).some((l) => l.text)) pending = `${key}:${i}`;
+    else toast("There's no task above it to go under");
+    if (!written) renderTodo();
+    focusLine(key, i);
+    return true;
+  }
+  if (e.key === "Enter" && !e.shiftKey && (line?.parent || pending === `${key}:${i}`) && !sec.lines[i + 1]?.text) {
+    e.preventDefault();
+    if (written) { pending = `${key}:${i + 1}`; renderTodo(); focusLine(key, i + 1); return true; }
+    return false;
+  }
+  if (e.key === "Backspace" && !input.value && pending === `${key}:${i}`) { e.preventDefault(); pending = null; renderTodo(); focusLine(key, i); return true; }
+  return false;
+}
+// folded tasks: this Mac only, for the day on the page (a view choice, never in the day file)
+const FOLDS = "desk-folds";
+const readFolds = () => { try { const f = JSON.parse(localStorage.getItem(FOLDS) || "null"); return f && typeof f === "object" ? f : {}; } catch { return {}; } };
+const isFolded = (id, day = pageDay) => (readFolds()[day] || []).includes(id);
+function fold(id, day = pageDay) {
+  const all = Object.fromEntries(Object.entries(readFolds()).filter(([d]) => d >= todayStr())); // earlier days are forgotten
+  const mine = new Set(all[day] || []);
+  if (mine.has(id)) mine.delete(id); else mine.add(id);
+  all[day] = [...mine];
+  try { localStorage.setItem(FOLDS, JSON.stringify(all)); } catch { /* this visit only */ }
+  document.dispatchEvent(new Event("hanua:folds"));
+}
+export { isFolded as subtasksFolded, fold as foldSubtasks };
 function sectionEl(sec) {
   const key = `s:${sec.id}`;
   const rows = Math.min(MAX_LINES, Math.max(SECTION_ROWS, sec.lines.length + 1));
@@ -245,11 +290,36 @@ function sectionEl(sec) {
         l.text = v;
         if (!v) l.done = false;
         stampLine(l); // when it was first written (cleared: forgotten)
+        if (v && pending === `${key}:${i}` && !l.parent) { pending = null; indentLine(desk, l.id); } // a row indented before it had words
         while (sec.lines.length && !sec.lines.at(-1).text) sec.lines.pop();
         save();
         if (v && i === rows - 1 && rows < MAX_LINES) renderTodo(); // writing on the last line: one more appears
       },
-      onTick: () => { const l = sec.lines[i]; if (!l?.text) return null; l.done = !l.done; stampLine(l); save(); renderPlanWidget(); return l.done; } }));
+      // a task ticks its subtasks with it; the last subtask ticked ticks the task (shared/desk.js setLines)
+      onTick: () => {
+        const l = sec.lines[i]; if (!l?.text) return null;
+        const family = Boolean(l.parent) || kidsOf(sec.lines, l.id).length > 0;
+        setLines(desk, [l.id], { done: !l.done }); save(); renderPlanWidget();
+        if (family) renderTodo();
+        return l.done;
+      },
+      onKey: (e, input) => subKeys(e, input, sec, key, i) }));
+    // subtasks (8 Oct 2026): indented under their task; a task's chip folds them ("1 of 3 ▾"); folded rows stay in
+    // the page, hidden, so a row's place is still its index
+    const row = list.lastChild, here = sec.lines[i];
+    const sub = Boolean(here?.text && here.parent) || pending === `${key}:${i}`;
+    row.classList.toggle("sub", sub);
+    if (here?.parent && isFolded(here.parent)) row.classList.add("folded");
+    const kids = here?.text && !here.parent ? kidsOf(sec.lines, here.id) : [];
+    if (kids.length) {
+      row.classList.add("parent");
+      const done = kids.filter((k) => k.done).length, folded = isFolded(here.id);
+      const chip = h("button", { type: "button", className: `pl-chip${done === kids.length ? " all" : ""}`, ariaExpanded: String(!folded),
+        textContent: `${done} of ${kids.length} ${done === kids.length ? "✓" : folded ? "▸" : "▾"}`, title: folded ? "Show its subtasks" : "Fold its subtasks away", ariaLabel: `${done} of ${kids.length} subtasks done: ${folded ? "show" : "fold"}` });
+      chip.addEventListener("click", () => { fold(here.id); renderTodo(); });
+      const picks = row.querySelector(".pl-picks");
+      if (picks) { picks.before(chip); picks.title = "Planned through its subtasks"; } else row.append(chip);
+    }
     // × to the left of the tick and → at the end (Mel, 8 Oct 2026): on every row, shown once the row has words in
     // it (the row's "empty" class), so a task typed just now has them too
     const lineNow = () => sec.lines[i];
@@ -306,7 +376,7 @@ function sweepEl(items) {
     h("p", { className: "sw-lede", textContent: `${items.length} ${items.length === 1 ? "thing" : "things"} from earlier ${items.length === 1 ? "wasn't" : "weren't"} ticked off. Done already, bring into today, or let go?` }),
     h("ul", { className: "sw-list" }, items.map((it) => h("li", { className: "sw-item" },
       h("span", { className: "sw-from", textContent: fromText(it), title: fromText(it) }),
-      h("span", { className: "sw-text", textContent: it.text }),
+      h("span", { className: "sw-text", textContent: it.text }, it.kids?.length ? h("span", { className: "sw-kids" }, it.kids.map((k) => h("span", { textContent: `› ${k.text}` }))) : null),
       h("span", { className: "sw-acts" },
         act("✓ Done", "It got done: tick it off", () => settleAs(it, "done"), `Done: ${it.text}`),
         act("→ Today", "Bring it into today", () => settleAs(it, "today"), `Brought into today: ${it.text}`),
@@ -338,11 +408,11 @@ function archiveEl() {
     return h("li", {}, b);
   }));
   const p = archive.page;
-  const read = (text, done) => h("li", { className: `ar-line${done ? " done" : ""}` }, h("span", { className: "ar-tick", textContent: done ? "✓" : "○" }), h("span", { textContent: text }));
+  const read = (text, done, sub = false) => h("li", { className: `ar-line${done ? " done" : ""}${sub ? " sub" : ""}` }, h("span", { className: "ar-tick", textContent: done ? "✓" : "○" }), h("span", { textContent: text }));
   const page = !p ? h("p", { className: "pl-covered", textContent: archive.days.length ? "Choose a day." : "No earlier days yet: yesterday's page lands here tomorrow." })
     : h("div", { className: "ar-page" }, h("p", { className: "pl-date", textContent: planDate(archive.day) }),
       h("h4", { textContent: "Focuses" }), h("ol", { className: "ar-list" }, p.focus.filter(Boolean).map((f) => h("li", { textContent: f }))),
-      ...p.sections.filter((s) => s.lines.some((l) => l.text)).flatMap((s) => [h("h4", { textContent: s.name || "Untitled" }), h("ul", { className: "ar-list" }, s.lines.filter((l) => l.text).map((l) => read(l.text, l.done)))]));
+      ...p.sections.filter((s) => s.lines.some((l) => l.text)).flatMap((s) => [h("h4", { textContent: s.name || "Untitled" }), h("ul", { className: "ar-list" }, s.lines.filter((l) => l.text).map((l) => read(l.text, l.done, Boolean(l.parent))))]));
   return h("div", { className: "pl-archive" }, h("div", {}, pick, backupLine()), page);
 }
 

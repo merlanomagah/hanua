@@ -1,0 +1,65 @@
+{
+  "focus": [
+    "Write the brief",
+    "",
+    "Call the bank"
+  ],
+  "sections": [
+    {
+      "id": "general",
+      "name": "General",
+      "col": 0,
+      "work": false,
+      "lines": [
+        {
+          "id": "k0",
+          "text": "Pay rent",
+          "done": true,
+          "pri": "",
+          "mins": 0
+        },
+        {
+          "id": "k1",
+          "text": "Book flights",
+          "done": false,
+          "pri": "",
+          "mins": 0
+        },
+        {
+          "id": "l0",
+          "text": "Buy milk",
+          "done": false,
+          "pri": "",
+          "mins": 0
+        },
+        {
+          "id": "l1",
+          "text": "",
+          "done": false,
+          "pri": "",
+          "mins": 0
+        },
+        {
+          "id": "l2",
+          "text": "Post parcel",
+          "done": true,
+          "pri": "",
+          "mins": 0
+        }
+      ]
+    }
+  ],
+  "meetings": [],
+  "day": {
+    "start": "08:30",
+    "end": "17:30"
+  },
+  "blocks": [],
+  "overflow": [],
+  "plans": [],
+  "order": [],
+  "locked": false,
+  "settled": {},
+  "settledAt": {},
+  "started": false
+}

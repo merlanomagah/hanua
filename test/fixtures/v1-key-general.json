@@ -1,0 +1,31 @@
+{
+  "focus": [
+    "Write the brief",
+    "",
+    "Call the bank"
+  ],
+  "key": [
+    {
+      "text": "Pay rent",
+      "done": true
+    },
+    {
+      "text": "Book flights"
+    },
+    {
+      "text": ""
+    }
+  ],
+  "general": [
+    {
+      "text": "Buy milk"
+    },
+    {
+      "text": ""
+    },
+    {
+      "text": "Post parcel",
+      "done": true
+    }
+  ]
+}

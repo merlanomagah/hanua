@@ -1,0 +1,121 @@
+{
+  "focus": [
+    "Draft the deck",
+    "Gym",
+    ""
+  ],
+  "sections": [
+    {
+      "id": "general",
+      "name": "General",
+      "col": 0,
+      "work": false,
+      "lines": [
+        {
+          "id": "a1",
+          "text": "Reply to Sam",
+          "done": false,
+          "pri": "h",
+          "mins": 15,
+          "added": "2026-10-06T08:01:00.000Z"
+        },
+        {
+          "id": "a2",
+          "text": "",
+          "done": false,
+          "pri": "",
+          "mins": 0
+        },
+        {
+          "id": "a3",
+          "text": "Water the plant",
+          "done": true,
+          "pri": "",
+          "mins": 0,
+          "added": "2026-10-06T08:02:00.000Z",
+          "doneAt": "2026-10-06T09:00:00.000Z"
+        }
+      ]
+    },
+    {
+      "id": "f-spark-nz",
+      "name": "Spark NZ",
+      "col": 1,
+      "work": true,
+      "lines": [
+        {
+          "id": "b1",
+          "text": "Deck review",
+          "done": false,
+          "pri": "m",
+          "mins": 60,
+          "added": "2026-10-05T21:00:00.000Z",
+          "from": "2026-10-05"
+        }
+      ]
+    },
+    {
+      "id": "s9",
+      "name": "House",
+      "col": 0,
+      "work": false,
+      "lines": [
+        {
+          "id": "c1",
+          "text": "Measure lounge",
+          "done": false,
+          "pri": "",
+          "mins": 45
+        }
+      ]
+    }
+  ],
+  "meetings": [
+    {
+      "id": "m1",
+      "time": "10:00",
+      "mins": 30,
+      "title": "Stand-up",
+      "work": true
+    }
+  ],
+  "day": {
+    "start": "08:30",
+    "end": "17:30"
+  },
+  "blocks": [
+    {
+      "ref": "a1",
+      "start": "09:00",
+      "end": "09:15",
+      "kind": "task"
+    }
+  ],
+  "overflow": [
+    "c1"
+  ],
+  "plans": [
+    {
+      "at": "2026-10-06T08:30:00.000Z",
+      "blocks": [
+        {
+          "ref": "a1",
+          "start": "09:00",
+          "end": "09:15",
+          "kind": "task"
+        }
+      ],
+      "overflow": []
+    }
+  ],
+  "order": [],
+  "locked": true,
+  "settled": {
+    "2026-10-05:x1": "today",
+    "2026-10-05:x2": "gone"
+  },
+  "settledAt": {
+    "2026-10-05:x1": "2026-10-06T07:50:00.000Z"
+  },
+  "started": true
+}

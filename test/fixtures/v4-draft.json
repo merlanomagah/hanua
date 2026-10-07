@@ -1,0 +1,47 @@
+{
+  "v": 4,
+  "focus": [
+    "",
+    "",
+    ""
+  ],
+  "sections": [
+    {
+      "id": "general",
+      "lines": [
+        {
+          "id": "a1",
+          "text": "Quick call",
+          "pri": "h",
+          "mins": 10
+        },
+        {
+          "id": "a2",
+          "text": "Long read",
+          "pri": "l",
+          "mins": 120
+        }
+      ]
+    }
+  ],
+  "order": [
+    "a2",
+    "a1"
+  ],
+  "locked": true,
+  "blocks": [
+    {
+      "ref": "a2",
+      "start": "09:00",
+      "end": "11:00",
+      "kind": "task"
+    },
+    {
+      "ref": "a1",
+      "start": "11:05",
+      "end": "11:15",
+      "kind": "task"
+    }
+  ],
+  "started": true
+}

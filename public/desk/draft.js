@@ -65,7 +65,7 @@ function render() {
     down.addEventListener("click", () => setOrder(moveInOrder(order, ref, i + 1), ref));
     const row = h("li", { className: `dr-row p-${x.pri || "none"}${ref === picked ? " picked" : ""}${b ? "" : " unfit"}`, tabIndex: 0, ariaLabel: `${i + 1}. ${x.title}`, title: "Drag to reorder (or Alt+↑ / ↓)" },
       h("span", { className: "dr-grip", ariaHidden: "true" }),
-      h("span", { className: "dr-text" }, h("b", { textContent: x.title }), h("small", { textContent: `${x.section || "General"} · ${timeLabel(x.mins || DEFAULT_MINS)}` })),
+      h("span", { className: "dr-text" }, h("b", { textContent: x.title }), h("small", { textContent: `${x.section || "General"}${x.under ? ` · under ${x.under}` : ""} · ${timeLabel(x.mins || DEFAULT_MINS)}` })),
       h("span", { className: "dr-when", textContent: b ? fmt(b.start) : "won't fit" }), up, down);
     row.dataset.ref = ref;
     row.addEventListener("keydown", (e) => {

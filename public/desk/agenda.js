@@ -22,7 +22,8 @@ export function planEntries(day, d = day === deskDay ? desk : ahead.get(day)) {
     if (b.kind === "break") { out.push({ plan: "break", title: "Break", date: `${day}T${b.start}`, until: b.end, ahead: later }); continue; }
     const info = refIn(d, b.ref);
     if (!info?.obj.text || info.obj.done) continue; // ticked off: out of the time-blocked agenda
-    out.push({ plan: "task", ref: b.ref, title: busy(info.work) ? "Busy" : info.obj.text, busy: busy(info.work), date: `${day}T${b.start}`, until: b.end, pri: info.obj.pri, ahead: later });
+    const up = info.obj.parent ? refIn(d, info.obj.parent)?.obj : null; // a subtask says which task it's part of
+    out.push({ plan: "task", ref: b.ref, title: busy(info.work) ? "Busy" : info.obj.text, busy: busy(info.work), date: `${day}T${b.start}`, until: b.end, pri: info.obj.pri || up?.pri, ahead: later, ...(up && !busy(info.work) ? { under: up.text } : {}) });
   }
   for (const m of d.meetings) if (m.time && m.title) out.push({ plan: "meet", meet: m.id, title: busy(m.work) ? "Busy" : m.title, busy: busy(m.work), date: `${day}T${m.time}`, until: fromMin(Math.min(1439, toMin(m.time) + (m.mins || DEFAULT_MINS))), ahead: later });
   return out;
@@ -99,7 +100,7 @@ export function renderAgenda() {
     if (x.plan === "meet" && x.meet === editing) { list.append(meetingForm(desk.meetings.find((m) => m.id === x.meet))); continue; }
     if (x.plan) { // the day's time-blocks and jotted meetings (desk only; the wall's calendar stays high level)
       const word = x.plan === "break" ? "Break" : x.plan === "meet" ? "Meeting" : x.pri === "h" ? "Block · High" : "Block";
-      const inner = [h("span", { className: "t", textContent: x.title }), h("span", { className: "k", textContent: x.busy ? "" : `${word} · until ${x.until}` })];
+      const inner = [h("span", { className: "t", textContent: x.title }), h("span", { className: "k", textContent: x.busy ? "" : `${word}${x.under ? ` · ${x.under}` : ""} · until ${x.until}` })];
       const open = x.busy || x.plan === "break" ? h("span", { className: "slot-open busy" }, ...inner) : h("button", { type: "button", className: "slot-open", title: x.ahead ? "Open that day's plan" : x.plan === "meet" ? "Change or remove this meeting" : "Open To-do.txt" }, ...inner);
       if (open.tagName === "BUTTON") open.addEventListener("click", () => { if (x.ahead) goPlan(key); else if (x.plan === "meet") { editing = x.meet; renderAgenda(); } else openTxt(); });
       list.append(h("li", { className: `slot plan-${x.plan}${x.ahead ? " ahead" : ""}${key === today && t < nowHM && x.until <= nowHM ? " past" : ""}` }, h("time", { textContent: t }), open));

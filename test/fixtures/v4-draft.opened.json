@@ -1,0 +1,60 @@
+{
+  "focus": [
+    "",
+    "",
+    ""
+  ],
+  "sections": [
+    {
+      "id": "general",
+      "name": "General",
+      "col": 0,
+      "work": false,
+      "lines": [
+        {
+          "id": "a1",
+          "text": "Quick call",
+          "done": false,
+          "pri": "h",
+          "mins": 10
+        },
+        {
+          "id": "a2",
+          "text": "Long read",
+          "done": false,
+          "pri": "l",
+          "mins": 120
+        }
+      ]
+    }
+  ],
+  "meetings": [],
+  "day": {
+    "start": "08:30",
+    "end": "17:30"
+  },
+  "blocks": [
+    {
+      "ref": "a2",
+      "start": "09:00",
+      "end": "11:00",
+      "kind": "task"
+    },
+    {
+      "ref": "a1",
+      "start": "11:05",
+      "end": "11:15",
+      "kind": "task"
+    }
+  ],
+  "overflow": [],
+  "plans": [],
+  "order": [
+    "a2",
+    "a1"
+  ],
+  "locked": true,
+  "settled": {},
+  "settledAt": {},
+  "started": true
+}

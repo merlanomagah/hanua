@@ -26,7 +26,7 @@ export const DEFAULT_MINS = 30, GAP = 5, MEETING_PAD = 5, BREAK_AFTER = 90, BREA
 export const WORKDAY = { start: "08:30", end: "17:30" };
 // How a day is saved. Raise it whenever deskShape learns a new field: the page and server must agree, or a save is
 // refused (never quietly trimmed). On 6 Oct 2026 a page newer than the running server lost its meetings that way.
-export const DESK_VERSION = 5; // 3: no Tasks, fixed sections, time words, when things happened; 4: the draft day (order, locked); 5: saves carry the revision they started from (two Macs)
+export const DESK_VERSION = 6; // 3: no Tasks, fixed sections, time words, when things happened; 4: the draft day (order, locked); 5: saves carry the revision they started from (two Macs); 6: origin and parent on lines, the gone list (F4 + subtasks, 8 Oct 2026)
 // Who's out of date when a save arrives: null when they match, "page" (reload it), "server" (Restart Hanua)
 export function versionClash(sent, mine = DESK_VERSION) {
   const v = Number.isInteger(sent) ? sent : 0; // pages from before the check sent none
@@ -58,19 +58,101 @@ const mins = (v) => (KEPT_MINS.includes(Number(v)) ? Number(v) : 0);
 const ISO = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d{1,3})?)?(Z|[+-]\d{2}:\d{2})$/;
 const when = (v) => (typeof v === "string" && ISO.test(v) ? v : undefined);
 // a line, and when things happened to it (6 Oct 2026, for Close the day, the weekly summary and Patterns):
-// added = first written, doneAt = ticked, from = the day it was first written when it's been carried forward
+// added = first written, doneAt = ticked, from = the day it was first written when it's been carried forward;
+// origin = the id it had on the day it was first written, kept wherever it's carried or sent (F4, 8 Oct 2026; absent
+// = its own id), so "carried 4 times" can be counted; parent = the task it's a subtask of (8 Oct 2026, one level)
+const ID = /^[\w-]{1,40}$/;
 const lineOf = (l, i) => {
   const text = clip(l?.text), done = Boolean(text && l?.done);
   const out = { id: idOf(l?.id, i), text, done, pri: pri(l?.pri), mins: mins(l?.mins) };
   if (text && when(l?.added)) out.added = l.added;
   if (done && when(l?.doneAt)) out.doneAt = l.doneAt;
   if (text && dayKey(l?.from)) out.from = l.from;
+  if (text && typeof l?.origin === "string" && ID.test(l.origin) && l.origin !== out.id) out.origin = l.origin;
+  if (text && typeof l?.parent === "string" && ID.test(l.parent)) out.parent = l.parent;
   return out;
 };
 const linesOf = (a) => {
   const out = list(a).slice(0, MAX_LINES).map(lineOf);
   while (out.length && !out.at(-1).text) out.pop(); // no trailing blanks kept; blanks in the middle stay (lines keep their place)
+  return tidyGroups(out);
+};
+export const originOf = (l) => l.origin || l.id;
+
+// ---- subtasks (Mel, 8 Oct 2026; brief docs/plans/2026-10-subtasks.md): one level, a subtask names its task ----
+// A parent link is kept only when it names the nearest written task above (blank rows between are fine, and so are
+// the task's other subtasks), and that task isn't a subtask itself. Anything else just becomes an ordinary task:
+// grouping can be lost, never made up, and no line is ever dropped. A task with written subtasks is done exactly when
+// all of them are (worked out, so it can't drift). Changes the lines in place and returns them.
+export function tidyGroups(lines) {
+  let top = null; // the nearest written task above that isn't a subtask
+  for (const l of lines) {
+    if (!l.text) { delete l.parent; continue; }
+    if (l.parent && (l.parent !== top || l.parent === l.id)) delete l.parent;
+    if (!l.parent) top = l.id;
+  }
+  for (const l of lines) {
+    const kids = lines.filter((k) => k.parent === l.id);
+    if (!kids.length) continue;
+    const all = kids.every((k) => k.done);
+    if (l.done !== all) l.done = all;
+    if (!all) delete l.doneAt;
+    else if (!l.doneAt) { const at = kids.map((k) => k.doneAt).filter(Boolean).sort().at(-1); if (at) l.doneAt = at; }
+  }
+  return lines;
+}
+export const tidyDay = (d) => { for (const s of d.sections) tidyGroups(s.lines); return d; };
+// a task's subtasks (its written ones, in order); a subtask has none
+export const kidsOf = (lines, id) => lines.filter((l) => l.parent === id && l.text);
+// The lines a set of refs really means: a task brings its subtasks (all of them, or only the open ones), in order on
+// the page; a subtask picked without its task comes on its own. Returns ids.
+export function withFamilies(d, refs, { openKids = false } = {}) {
+  const want = new Set(refs), out = [];
+  for (const s of d.sections) for (const l of s.lines) {
+    if (!l.text) continue;
+    if (want.has(l.id) || (l.parent && want.has(l.parent) && (!openKids || !l.done))) out.push(l.id);
+  }
   return out;
+}
+// Tab on a line: under the nearest written task above (the task itself when that's a subtask). Not on a section's
+// first task, nor on a task that has subtasks of its own (one level). true when it moved.
+export function indentLine(d, id) {
+  for (const s of d.sections) {
+    const i = s.lines.findIndex((l) => l.id === id);
+    if (i < 0) continue;
+    const l = s.lines[i];
+    if (l.parent || kidsOf(s.lines, id).length) return false;
+    const above = s.lines.slice(0, i).reverse().find((x) => x.text);
+    if (!above) return false;
+    l.parent = above.parent || above.id;
+    tidyGroups(s.lines);
+    return l.parent !== undefined;
+  }
+  return false;
+}
+// Shift+Tab: a subtask back out to a task; the subtasks after it (of the same task) become its own, so nothing on the
+// page moves. true when it moved.
+export function outdentLine(d, id) {
+  for (const s of d.sections) {
+    const i = s.lines.findIndex((l) => l.id === id);
+    if (i < 0) continue;
+    const l = s.lines[i], was = l.parent;
+    if (!was) return false;
+    delete l.parent;
+    for (const k of s.lines.slice(i + 1)) if (k.parent === was) k.parent = l.id;
+    tidyGroups(s.lines);
+    return true;
+  }
+  return false;
+}
+
+// ---- what left a day (F4, 8 Oct 2026): sent to another day, removed (×, Clear) or cleared with the whole day. The
+// line goes from its section as before; a note of it stays here, so the day's record is still true ----
+export const GONE_MAX = 200;
+const goneOf = (a) => list(a).filter((g) => typeof g?.id === "string" && ID.test(g.id) && ["sent", "removed", "cleared"].includes(g.how) && when(g.at)).slice(-GONE_MAX)
+  .map((g) => ({ id: g.id, ...(typeof g.origin === "string" && ID.test(g.origin) && g.origin !== g.id ? { origin: g.origin } : {}), text: clip(g.text), section: clip(g.section, MAX_NAME), how: g.how, ...(dayKey(g.to) ? { to: g.to } : {}), at: g.at }));
+const noteGone = (d, l, section, how, now, to) => {
+  d.gone = [...(d.gone || []), { id: l.id, ...(l.origin ? { origin: l.origin } : {}), text: l.text, section, how, ...(to ? { to } : {}), at: now.toISOString() }].slice(-GONE_MAX);
 };
 
 export const PLANS_KEPT = 10;
@@ -112,7 +194,7 @@ export function deskShape(x) {
   // Days planned before the draft existed count as locked when they have blocks.
   const order = refsOf(o.order);
   const locked = typeof o.locked === "boolean" ? o.locked : blocks.length > 0;
-  return { focus, sections, meetings, day, blocks, overflow, plans, order, locked, settled, settledAt, started: Boolean(o.started) };
+  return { focus, sections, meetings, day, blocks, overflow, plans, order, locked, settled, settledAt, started: Boolean(o.started), gone: goneOf(o.gone) };
 }
 
 // Which column a new section goes in: the shorter one (General always heads the left)
@@ -167,9 +249,11 @@ export function leftovers(days, today) {
   for (const [day, raw] of Object.entries(days).sort(([a], [b]) => a.localeCompare(b))) {
     if (!dayKey(day) || day >= today || day < stepDay(today, -CARRY_DAYS)) continue;
     const d = deskShape(raw);
-    for (const s of d.sections) for (const l of s.lines) if (l.text && !l.done) out.push({ key: `${day}:${l.id}`, day, from: l.from || day, added: l.added, section: s.name || "General", text: l.text, pri: l.pri, mins: l.mins });
+    const item = (l, s) => ({ key: `${day}:${l.id}`, day, from: l.from || day, added: l.added, origin: originOf(l), section: s.name || "General", text: l.text, pri: l.pri, mins: l.mins });
+    // a task comes with its open subtasks, as one item (kids); subtasks are never offered on their own
+    for (const s of d.sections) for (const l of s.lines) if (l.text && !l.done && !l.parent) out.push({ ...item(l, s), kids: kidsOf(s.lines, l.id).filter((k) => !k.done).map((k) => item(k, s)) });
   }
-  return out.filter((x) => !settled[x.key]);
+  return out.filter((x) => !settled[x.key]).map((x) => ({ ...x, kids: x.kids.filter((k) => !settled[k.key]) }));
 }
 
 // How many days a carried item has been waiting, counting the day it was written as day 1 ("day 3" in the sweep)
@@ -178,23 +262,29 @@ export const carriedDays = (item, today) => Math.max(1, Math.round((Date.parse(t
 // The sweep's decision about an item, and when it was made. how: "today" | "done" | "gone"
 export function settle(d, item, how, newId, now = new Date()) {
   if (how === "today") return bringForward(d, item, newId, now);
-  d.settled[item.key] = how;
-  d.settledAt[item.key] = now.toISOString();
+  for (const x of [item, ...(item.kids || [])]) { d.settled[x.key] = how; d.settledAt[x.key] = now.toISOString(); }
   return d;
 }
 
 // Bring an unfinished item into today, back under its own header (made again if today hasn't got it), remembering
 // the day it was first written (from) and when it was. Changes and returns today's shape.
+// A task comes with its open subtasks (item.kids), still under it. They go after the section's last written line
+// (8 Oct 2026: filling the first blank row could split a task from its subtasks). newId: a fresh id, or a function
+// giving them; each keeps the id it had first (origin).
 export function bringForward(d, item, newId, now = new Date()) {
-  d.settled[item.key] = "today";
+  const fresh = typeof newId === "function" ? newId : (() => { let n = 0; return () => (n++ ? `${newId}k${n - 1}` : String(newId)); })();
   d.settledAt ??= {};
-  d.settledAt[item.key] = now.toISOString();
+  for (const x of [item, ...(item.kids || [])]) { d.settled[x.key] = "today"; d.settledAt[x.key] = now.toISOString(); }
   const name = item.section || "General";
   let sec = d.sections.find((s) => sameName(s.name || "", name));
-  if (!sec) { sec = { id: `s${newId}`, name, col: shorterCol(d.sections), lines: [] }; d.sections.push(sec); }
-  const blank = sec.lines.find((l) => !l.text);
-  const line = { text: item.text, done: false, pri: item.pri || "", mins: item.mins || 0, from: item.from || item.day, ...(item.added ? { added: item.added } : {}) };
-  if (blank) Object.assign(blank, line); else sec.lines.push({ id: newId, ...line });
+  if (!sec) { sec = { id: `s${fresh()}`, name, col: shorterCol(d.sections), lines: [] }; d.sections.push(sec); }
+  while (sec.lines.length && !sec.lines.at(-1).text) sec.lines.pop();
+  const lineOfItem = (x) => ({ text: x.text, done: false, pri: x.pri || "", mins: x.mins || 0, from: x.from || x.day, ...(x.added ? { added: x.added } : {}), ...(x.origin ? { origin: x.origin } : {}) });
+  const top = { id: fresh(), ...lineOfItem(item) };
+  sec.lines.push(top);
+  for (const k of item.kids || []) if (sec.lines.length < MAX_LINES) sec.lines.push({ id: fresh(), ...lineOfItem(k), parent: top.id });
+  for (const l of sec.lines) if (l.origin === l.id) delete l.origin;
+  tidyGroups(sec.lines);
   return d;
 }
 
@@ -233,68 +323,119 @@ export function moveInOrder(order, ref, to) {
 
 // Several lines at once (part G): move them to another section (after its last written line, filling blanks), or
 // set their priority, time or tick. Lines keep their ids, so the plan, the sweep and the record still find them.
+// A task moves with its subtasks; a subtask moved without its task becomes a task there. They go after the section's
+// last written line, together (8 Oct 2026: filling blank rows could scatter a task's subtasks).
 export function moveLines(d, refs, toId) {
   const to = d.sections.find((x) => x.id === toId);
   if (!to) return d;
-  const want = new Set(refs), moving = [];
+  const want = new Set(withFamilies(d, refs)), moving = [];
   for (const sec of d.sections) {
     if (sec === to) continue;
     sec.lines = sec.lines.filter((l) => { if (want.has(l.id) && l.text) { moving.push({ ...l }); return false; } return true; }); // out of its old section altogether: no empty copy with the same id left behind
     while (sec.lines.length && !sec.lines.at(-1).text) sec.lines.pop();
+    tidyGroups(sec.lines);
   }
-  for (const l of moving) {
-    const blank = to.lines.findIndex((x) => !x.text);
-    if (blank >= 0) to.lines[blank] = l; else to.lines.push(l);
+  const ids = new Set(moving.map((l) => l.id));
+  for (const l of moving) if (l.parent && !ids.has(l.parent)) delete l.parent;
+  while (to.lines.length && !to.lines.at(-1).text) to.lines.pop();
+  to.lines.push(...moving);
+  tidyGroups(to.lines);
+  return d;
+}
+// Several lines' priority, time or tick. Ticking (or unticking) a task does the same to its subtasks; a task whose
+// subtasks are all ticked is ticked itself (tidyGroups). Priority and time are each line's own.
+export function setLines(d, refs, patch, now = new Date()) {
+  const want = new Set("done" in patch ? withFamilies(d, refs) : refs);
+  for (const sec of d.sections) {
+    const was = new Map(sec.lines.map((l) => [l, l.done]));
+    for (const l of sec.lines) if (want.has(l.id) && l.text) Object.assign(l, patch);
+    tidyGroups(sec.lines);
+    for (const l of sec.lines) if (l.text && was.get(l) !== l.done) stampLine(l, now); // only lines whose tick changed
   }
   return d;
 }
-export function setLines(d, refs, patch, now = new Date()) {
-  const want = new Set(refs);
-  for (const sec of d.sections) for (const l of sec.lines) if (want.has(l.id) && l.text) { Object.assign(l, patch); if ("done" in patch) stampLine(l, now); }
-  return d;
+// Take lines off a day altogether (× and Clear, 8 Oct 2026): a task goes with its subtasks; each is noted in the day's
+// gone list. how: "removed" | "cleared". Returns how many went.
+export function removeLines(d, refs, how = "removed", now = new Date()) {
+  const want = new Set(withFamilies(d, refs));
+  let n = 0;
+  for (const sec of d.sections) {
+    sec.lines = sec.lines.filter((l) => { if (!want.has(l.id) || !l.text) return true; noteGone(d, l, sec.name || "General", how, now); n++; return false; });
+    while (sec.lines.length && !sec.lines.at(-1).text) sec.lines.pop();
+    tidyGroups(sec.lines);
+  }
+  d.order = (d.order || []).filter((r) => !want.has(r));
+  return n;
+}
+// How many times a task has been carried to another day: the days it's been on (by its first id), less the first.
+// days: { "YYYY-MM-DD": shape }
+export function timesCarried(days, origin) {
+  const on = Object.values(days).filter((raw) => deskShape(raw).sections.some((s) => s.lines.some((l) => l.text && originOf(l) === origin)));
+  return Math.max(0, on.length - 1);
 }
 // ---- planning another day (Mel, 6 Oct 2026, evening: "it's Tuesday evening and I want to plan tomorrow") ----
 // Send lines to another day: they leave this day's page altogether (so its sweep never offers them again) and wait on
 // the other day under a section of the same name (made there if it hasn't got one), remembering the day they were
 // first written (from). takeLines changes `d` and returns what it took; putLines changes `to` and returns it.
-export function takeLines(d, refs, day) {
-  const want = new Set(refs), out = [];
+// A task goes with its open subtasks; ticked ones stay, done, on the day they were done (8 Oct 2026: sending used to
+// untick them). A line picked on its own (a task without subtasks, or a lone subtask) goes as picked. Each is noted in
+// the day's gone list (sent, to). toDay: where they're going.
+export function takeLines(d, refs, day, toDay = null, now = new Date()) {
+  const want = new Set(withFamilies(d, refs, { openKids: true })), out = [];
   for (const sec of d.sections) {
     sec.lines = sec.lines.filter((l) => {
       if (!want.has(l.id) || !l.text) return true;
-      out.push({ section: sec.name || "General", work: sec.work, line: { ...l, done: false, from: l.from || day } });
+      out.push({ section: sec.name || "General", work: sec.work, line: { ...l, done: false, from: l.from || day, ...(l.origin ? {} : { origin: l.id }) } });
+      noteGone(d, l, sec.name || "General", "sent", now, toDay);
       return false;
     });
     while (sec.lines.length && !sec.lines.at(-1).text) sec.lines.pop();
+    tidyGroups(sec.lines);
   }
+  const ids = new Set(out.map((t) => t.line.id));
+  for (const t of out) if (t.line.parent && !ids.has(t.line.parent)) delete t.line.parent;
   d.order = (d.order || []).filter((r) => !want.has(r));
   return out;
 }
+// Lines onto another day, under a section of the same name (made there if missing), after its last written line. A
+// task and its subtasks go together or not at all (a full section takes none of them); a line whose id is already on
+// that day gets a new one, and its subtasks follow it. t.placed: where each went (Undo takes them back off).
 export function putLines(to, taken, newId) {
-  for (const t of taken) {
-    const { section, work, line } = t;
+  const fams = [];
+  for (const t of taken) { if (t.line.parent && fams.length && fams.at(-1)[0].line.id === t.line.parent) fams.at(-1).push(t); else { delete t.line.parent; fams.push([t]); } }
+  for (const fam of fams) {
+    const { section, work } = fam[0];
     let sec = to.sections.find((s) => sameName(s.name || "General", section));
     if (!sec) { sec = { id: `s${newId()}`, name: section, col: shorterCol(to.sections), work: Boolean(work), lines: [] }; to.sections.push(sec); }
     while (sec.lines.length && !sec.lines.at(-1).text) sec.lines.pop();
-    if (sec.lines.length >= MAX_LINES) continue; // a full section keeps what it has (the page says how many went)
-    const id = to.sections.some((s) => s.lines.some((l) => l.id === line.id)) ? newId() : line.id;
-    delete line.doneAt;
-    sec.lines.push({ ...line, id });
-    t.placed = id; // where it went (Undo takes it back off that day)
+    if (sec.lines.length + fam.length > MAX_LINES) continue; // a full section keeps what it has (the page says how many went)
+    const map = {};
+    for (const t of fam) {
+      const line = { ...t.line };
+      const id = to.sections.some((s) => s.lines.some((l) => l.id === line.id)) ? newId() : line.id;
+      map[line.id] = id;
+      if (line.parent) line.parent = map[line.parent];
+      delete line.doneAt;
+      if (line.origin === id) delete line.origin;
+      sec.lines.push({ ...line, id });
+      t.placed = id;
+    }
+    tidyGroups(sec.lines);
   }
   return to;
 }
 // Take a day's page back to empty (Clear this day): its hours and sections' names stay, nothing written does
-export function clearDay(d) {
+export function clearDay(d, now = new Date()) {
   d.focus = d.focus.map(() => "");
-  for (const s of d.sections) s.lines = [];
+  for (const s of d.sections) { for (const l of s.lines) if (l.text) noteGone(d, l, s.name || "General", "cleared", now); s.lines = []; }
   Object.assign(d, { meetings: [], blocks: [], overflow: [], order: [], locked: false });
   return d;
 }
 // What a day holds, in a line (the week view, Up next's days ahead)
 export function daySummary(x) {
   const d = deskShape(x);
-  const lines = d.sections.flatMap((s) => s.lines.filter((l) => l.text));
+  // a task with subtasks is a heading: its subtasks are what's counted (8 Oct 2026)
+  const lines = d.sections.flatMap((s) => s.lines.filter((l) => l.text && !kidsOf(s.lines, l.id).length));
   const tasks = lines.filter((l) => !l.done).length, done = lines.length - tasks;
   const focus = d.focus.filter(Boolean).length, meetings = d.meetings.filter((m) => m.title || m.time).length;
   // titles: the first few open tasks, for the week view's cards (8 Oct 2026)
@@ -355,9 +496,15 @@ const RANK = { h: 0, m: 1, "": 1, l: 2 };
 
 // Everything open today that could be planned: each section's lines; ref is the line's id.
 // atWork: only Work items (Mel, 6 Oct 2026).
+// A task with open subtasks is a heading: its subtasks are planned instead, each with its own time, and a subtask with
+// no priority takes its task's (worked out here, never written). under: the task's words, for showing.
 export function openItems(d, atWork = false) {
   const out = [];
-  for (const s of d.sections) if (!atWork || s.work) for (const l of s.lines) if (l.text && !l.done) out.push({ ref: l.id, title: l.text, pri: l.pri, mins: l.mins, first: false, work: s.work, section: s.name });
+  for (const s of d.sections) if (!atWork || s.work) for (const l of s.lines) {
+    if (!l.text || l.done || kidsOf(s.lines, l.id).some((k) => !k.done)) continue;
+    const up = l.parent ? s.lines.find((x) => x.id === l.parent) : null;
+    out.push({ ref: l.id, title: l.text, pri: l.pri || up?.pri || "", mins: l.mins, first: false, work: s.work, section: s.name, ...(up ? { under: up.text } : {}) });
+  }
   return out;
 }
 

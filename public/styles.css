@@ -2968,3 +2968,23 @@ html.dark .topshelf .sw-knob { background: #F3ECE0; }
 .txt-line .pl-del { left: -22px; top: calc(50% - 10px); }
 @media (hover: none) { .pl-del { opacity: 0.5; } }
 .pl-line.empty .pl-del, .pl-line.empty .pl-send { display: none; }
+
+/* Subtasks (8 Oct 2026): one step in, about a tick's width; a task's chip folds them; folded rows stay, hidden */
+.pl-line.sub { padding-left: 28px; }
+.pl-line.sub .check { transform: scale(0.88); }
+.pl-line.folded { display: none; }
+.pl-chip { --h: 22px; height: 22px; padding: 0 7px; border: 1px solid var(--border-2); border-radius: 4px; background: transparent; cursor: pointer;
+  font: 11px var(--mono); letter-spacing: 0.04em; color: var(--ink-3); white-space: nowrap; }
+.pl-chip:hover { color: var(--terra); border-color: var(--terra); }
+.pl-chip.all { color: var(--green); border-color: color-mix(in srgb, var(--green) 50%, transparent); }
+.pl-line.parent .pl-picks { opacity: 0.45; }
+.sw-kids { display: block; margin-top: 2px; font-size: 0.85em; color: var(--ink-3); }
+.sw-kids span { display: block; }
+.ar-line.sub { padding-left: 22px; font-size: 0.95em; }
+.txt-line.sub { padding-left: 26px; font-size: 0.96em; }
+.txt-line .txt-chip { margin-left: auto; }
+.txt-line .txt-subplus { opacity: 0; width: 22px; height: 22px; font-size: 18px; flex: none; }
+.txt-line:hover .txt-subplus, .txt-subplus:focus-visible { opacity: 1; }
+@media (hover: none) { .txt-line .txt-subplus { opacity: 0.6; } }
+.txt-subadd { list-style: none; padding-left: 26px; }
+@media (max-width: 760px) { .pl-line.sub, .txt-line.sub, .txt-subadd { padding-left: 16px; } }

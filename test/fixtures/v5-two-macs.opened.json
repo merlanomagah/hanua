@@ -1,0 +1,77 @@
+{
+  "focus": [
+    "Plan ahead",
+    "",
+    ""
+  ],
+  "sections": [
+    {
+      "id": "general",
+      "name": "General",
+      "col": 0,
+      "work": false,
+      "lines": [
+        {
+          "id": "a1",
+          "text": "Send invoice",
+          "done": false,
+          "pri": "m",
+          "mins": 30,
+          "from": "2026-10-07"
+        }
+      ]
+    },
+    {
+      "id": "s2",
+      "name": "Apartment",
+      "col": 0,
+      "work": false,
+      "lines": [
+        {
+          "id": "c1",
+          "text": "Book cleaners",
+          "done": false,
+          "pri": "",
+          "mins": 0,
+          "added": "2026-10-08T05:00:00.000Z",
+          "from": "2026-10-08"
+        },
+        {
+          "id": "c2",
+          "text": "",
+          "done": false,
+          "pri": "",
+          "mins": 0
+        },
+        {
+          "id": "c3",
+          "text": "Hand back keys",
+          "done": false,
+          "pri": "",
+          "mins": 0
+        }
+      ]
+    }
+  ],
+  "meetings": [
+    {
+      "id": "m1",
+      "time": "14:00",
+      "mins": 60,
+      "title": "Walkthrough",
+      "work": false
+    }
+  ],
+  "day": {
+    "start": "08:30",
+    "end": "17:30"
+  },
+  "blocks": [],
+  "overflow": [],
+  "plans": [],
+  "order": [],
+  "locked": false,
+  "settled": {},
+  "settledAt": {},
+  "started": true
+}

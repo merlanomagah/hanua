@@ -4,7 +4,7 @@
 // `deskDay`: what Up next, To-do.txt, the timer and the post-its use) and **the page's day** (`page`, `pageDay`: what
 // Plan my day and the draft day show and edit). They're the same day, and the same object, unless Mel is planning
 // ahead. Each day has its own revision and its own save.
-import { versionClash, CLASH_TEXT, DESK_VERSION, deskShape, startDay } from "../shared/desk.js";
+import { tidyDay, versionClash, CLASH_TEXT, DESK_VERSION, deskShape, startDay } from "../shared/desk.js";
 import { todayStr } from "../shared/dates.js";
 import { toast } from "../lib.js";
 import { saidUpdated, typingIn } from "../sync.js";
@@ -140,6 +140,7 @@ async function write(s) {
   if (stale) { toast(CLASH_TEXT[stale], true); return; }
   if (!s.canSave) { toast(`Not saved yet: ${name.toLowerCase()} hasn't arrived from iCloud. What you typed is still on the page.`, true); return; }
   s.saving = true;
+  tidyDay(s.data); // subtasks: the page keeps the same rules as the file (a task whose words were cleared lets go of its subtasks)
   try {
     const res = await fetch(`/api/desk/${s.key}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...s.data, v: DESK_VERSION, base: s.rev }) });
     const j = await res.json().catch(() => ({}));

@@ -1,0 +1,53 @@
+{
+  "v": 5,
+  "base": "abc123",
+  "focus": [
+    "Plan ahead",
+    "",
+    ""
+  ],
+  "sections": [
+    {
+      "id": "general",
+      "lines": [
+        {
+          "id": "a1",
+          "text": "Send invoice",
+          "pri": "m",
+          "mins": 30,
+          "from": "2026-10-07"
+        }
+      ]
+    },
+    {
+      "id": "s2",
+      "name": "Apartment",
+      "lines": [
+        {
+          "id": "c1",
+          "text": "Book cleaners",
+          "from": "2026-10-08",
+          "added": "2026-10-08T05:00:00.000Z"
+        },
+        {
+          "id": "c2",
+          "text": ""
+        },
+        {
+          "id": "c3",
+          "text": "Hand back keys"
+        }
+      ]
+    }
+  ],
+  "meetings": [
+    {
+      "id": "m1",
+      "time": "14:00",
+      "mins": 60,
+      "title": "Walkthrough"
+    }
+  ],
+  "locked": false,
+  "started": true
+}
