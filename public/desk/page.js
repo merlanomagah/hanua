@@ -11,6 +11,7 @@ import { $, focus, h, toast } from "../lib.js";
 import { calendarItems, ensureApple } from "../app.js";
 import { backup, changeDay, deskDay, desk as todayDesk, fixed, loaded, newId, page as desk, pageDay, pageEarlier as earlier, planningAhead, prompts, savePage as save, showDay, stale } from "./state.js";
 import { openDayPicker } from "./daypick.js";
+import { timeField } from "./timefield.js";
 import { renderAgenda } from "./agenda.js";
 import { openTxt, renderTxt } from "./todotxt.js";
 import { dots, noteClosed, noteOpen, registerWindow } from "./window.js";
@@ -338,9 +339,8 @@ function meetingsEl() {
     const ensure = () => { while (desk.meetings.length <= i) desk.meetings.push({ id: newId(), time: "", mins: 0, title: "", work: focus.on }); return desk.meetings[i]; };
     const m = desk.meetings[i];
     if (focus.on && m && !m.work) continue; // at work, only work meetings
-    // an empty time says "Time", not a grey made-up time (Safari draws "12:30 PM" in an empty box)
-    const time = h("input", { type: "time", className: `pl-time${m?.time ? "" : " blank"}`, value: m?.time || "", ariaLabel: `Meeting ${i + 1} time`, step: 300 });
-    time.addEventListener("change", () => { ensure().time = time.value; time.classList.toggle("blank", !time.value); save(); renderAgenda(); });
+    // typed, not the browser's time box (8 Oct 2026: Safari drew its own placeholder over what Mel typed)
+    const time = timeField(m?.time, { label: `Meeting ${i + 1} time`, onSet: (t) => { ensure().time = t; save(); renderAgenda(); } });
     const timeBox = h("span", { className: "pl-timebox" }, time);
     const len = h("select", { className: `pl-mins${m?.mins ? "" : " unset"}`, ariaLabel: "How long", title: "How long (blank counts as 30 min)" },
       h("option", { value: "0", textContent: "30m?" }), MEETING_PICKS.map((v) => h("option", { value: String(v), textContent: minsText(v), selected: m?.mins === v })));
@@ -360,10 +360,20 @@ function meetingsEl() {
 // the working day and Save & plan
 export const nowHHMM = () => { const d = new Date(); return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`; };
 function dayBar() {
-  const field = (k, label) => { const t = h("input", { type: "time", className: "pl-time", value: desk.day[k], ariaLabel: label, step: 900 }); t.addEventListener("change", () => { if (t.value) { desk.day[k] = t.value; save(); } }); return t; };
+  const field = (k, label) => timeField(desk.day[k], { label, blank: false, onSet: (t) => { desk.day[k] = t; save(); } });
   const go = h("button", { type: "button", className: "pl-go", textContent: desk.locked ? (pageDay > todayStr() ? "Re-plan" : "Re-plan from now") : "Save & plan", title: "See the day as it would run, arrange the order, then lock it in" });
   go.addEventListener("click", () => openDraft());
-  return h("div", { className: "pl-daybar" }, h("span", { className: "pl-daylabel", textContent: "My day" }), field("start", "Day starts"), h("span", { textContent: "–" }), field("end", "Day ends"), go);
+  // a day ahead: Save just saves and goes back to the two weeks (Mel, 8 Oct 2026); the page also saves as you type
+  const ahead = pageDay > todayStr();
+  const keep = ahead ? h("button", { type: "button", className: "pl-go pl-save", textContent: "Save", title: "Save this day and go back to the two weeks" }) : null;
+  keep?.addEventListener("click", () => {
+    document.activeElement?.blur?.(); // a time or line being typed is taken first
+    const day = pageDay;
+    save();
+    openWeek();
+    toast(`Saved ${planDate(day)}`);
+  });
+  return h("div", { className: "pl-daybar" }, h("span", { className: "pl-daylabel", textContent: "My day" }), field("start", "Day starts"), h("span", { textContent: "–" }), field("end", "Day ends"), keep, go);
 }
 // fixed things on a day: its jotted meetings, and timed events already in the calendars (the page's day by default)
 export function fixedOn(day = pageDay, d = desk) {

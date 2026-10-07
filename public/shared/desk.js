@@ -308,6 +308,20 @@ export function weekDays(day, shift = 0) {
   const monday = stepDay(day, shift * 7 - back);
   return Array.from({ length: 7 }, (_, i) => stepDay(monday, i));
 }
+// A time typed in a plain box (Mel, 8 Oct 2026: the browser's own time box was hard to read in Safari): "930",
+// "9.30", "9:30am", "2pm", "14", "1430" → "HH:MM", or null when it can't be read. Without am / pm, 1 to 6 means the
+// afternoon (a meeting at "3" is 3 pm); 7 to 12 the morning (12 is midday); 0 and 13–23 as they are.
+export function parseTime(s) {
+  const m = /^(\d{1,2})(?:[:.h]?(\d{2}))?\s*(a|am|p|pm)?$/.exec(String(s || "").trim().toLowerCase().replace(/\s+/g, " ").replace(/\.$/, "").replace(/(\d) (?=[ap])/, "$1"));
+  if (!m) return null;
+  let hr = Number(m[1]); const min = m[2] ? Number(m[2]) : 0, ap = m[3]?.[0];
+  if (min > 59) return null;
+  if (ap) { if (hr < 1 || hr > 12) return null; hr = (hr % 12) + (ap === "p" ? 12 : 0); }
+  else { if (hr > 23) return null; if (hr >= 1 && hr <= 6) hr += 12; }
+  return `${String(hr).padStart(2, "0")}:${String(min).padStart(2, "0")}`;
+}
+// "14:30" → "2:30 pm"; "" stays ""
+export const timeText = (t) => { if (!t) return ""; const [hh, mm] = t.split(":").map(Number); return `${hh % 12 || 12}:${String(mm).padStart(2, "0")} ${hh < 12 ? "am" : "pm"}`; };
 // The day picker (Mel, 8 Oct 2026: add a task to next week without opening that day): this week and next, Monday
 // first, each { day, past, today }
 export const pickerDays = (today) => [...weekDays(today), ...weekDays(today, 1)].map((day) => ({ day, past: day < today, today: day === today }));

@@ -9,6 +9,7 @@ import { bookEl, calendarItems, ensureApple, openAppleEvent, openBook, ROLE, sor
 import { desk, deskDay, newId, page, pageDay, refIn, save } from "./state.js";
 import { goDay, openPlan, renderTodo, undoable } from "./page.js";
 import { dragRows, openDraft, planFor } from "./draft.js";
+import { timeField } from "./timefield.js";
 import { openTxt } from "./todotxt.js";
 
 // the plan as agenda entries for Up next: blocks still to do, breaks, and the jotted meetings (today's; a day ahead's
@@ -47,7 +48,7 @@ document.addEventListener("hanua:day-changed", forget);
 // They're the same meetings as Plan my day's Meetings & events. A locked-in day offers to re-plan round the change.
 let editing = null; // a meeting's id, "new", or null
 function meetingForm(m) {
-  const time = h("input", { type: "time", className: "pl-time", value: m?.time || "", ariaLabel: "Meeting time", step: 300, required: true });
+  const time = timeField(m?.time, { label: "Meeting time" }); // typed (8 Oct 2026), like Plan my day's
   const title = h("input", { type: "text", className: "mt-title", value: m?.title || "", placeholder: "What", ariaLabel: "Meeting", maxLength: 200 });
   const len = h("select", { className: "pl-mins", ariaLabel: "How long" }, MEETING_PICKS.map((v) => h("option", { value: String(v), textContent: minsText(v), selected: (m?.mins || DEFAULT_MINS) === v })));
   const done = (changed) => {
@@ -56,9 +57,10 @@ function meetingForm(m) {
   };
   const ok = h("button", { type: "button", className: "pl-go", textContent: m ? "Save" : "Add" });
   ok.addEventListener("click", () => {
-    if (!time.value || !title.value.trim()) { (time.value ? title : time).focus(); return; }
+    const at = time.get();
+    if (!at || !title.value.trim()) { (at ? title : time).focus(); return; }
     const x = m || { id: newId(), work: focus.on };
-    Object.assign(x, { time: time.value, title: title.value.trim(), mins: Number(len.value) });
+    Object.assign(x, { time: at, title: title.value.trim(), mins: Number(len.value) });
     if (!m) { if (desk.meetings.length >= MAX_MEETINGS) { toast("That's the most meetings a day can hold"); return; } desk.meetings.push(x); }
     done(true);
   });

@@ -337,3 +337,12 @@ test("desk: a task added for another day lands under its section there, made if 
   assert.equal(d.sections[1].lines[0].from, "2026-10-08");
   assert.deepEqual(daySummary(d).titles, ["Call bank", "Book cleaners"]);
 });
+
+test("desk: times typed in a plain box (8 Oct 2026)", async () => {
+  const { parseTime, timeText } = await import("../public/shared/desk.js");
+  const cases = { "930": "09:30", "9.30": "09:30", "9:30": "09:30", "9:30am": "09:30", "9:30 PM": "21:30", "2pm": "14:00", "2 pm": "14:00",
+    "14": "14:00", "1430": "14:30", "14:05": "14:05", "3": "15:00", "3:15": "15:15", "7": "07:00", "12": "12:00", "12am": "00:00", "12pm": "12:00", "0": "00:00", "830": "08:30" };
+  for (const [typed, want] of Object.entries(cases)) assert.equal(parseTime(typed), want, typed);
+  for (const bad of ["", "abc", "25", "9:75", "13pm", "0am", "12345", null]) assert.equal(parseTime(bad), null, String(bad));
+  assert.deepEqual(["09:30", "14:05", "00:00", "12:00", ""].map(timeText), ["9:30 am", "2:05 pm", "12:00 am", "12:00 pm", ""]);
+});
