@@ -2958,3 +2958,13 @@ html.dark .topshelf .sw-knob { background: #F3ECE0; }
 @keyframes tt-bad { 0%, 40% { border-color: var(--terra); box-shadow: 0 0 0 2px color-mix(in srgb, var(--terra) 35%, transparent); } 100% { border-color: var(--border-2); box-shadow: none; } }
 .pl-save { margin-left: 8px; background: transparent; color: var(--terra); box-shadow: inset 0 0 0 1px var(--terra); }
 .pl-save + .pl-go { margin-left: 6px; }
+
+/* × to remove a task, just left of its tick (8 Oct 2026): in the margin, so nothing shifts; on hover or keyboard focus */
+.pl-line, .txt-line { position: relative; }
+.pl-del { position: absolute; left: -24px; top: calc((var(--line) - 20px) / 2); width: 20px; height: 20px; margin: 0 !important; padding: 0; border: 0; border-radius: 50%;
+  background: transparent; color: var(--ink-4); font: 15px/20px var(--ui); text-align: center; cursor: pointer; opacity: 0; transition: opacity 120ms; }
+.pl-line:hover .pl-del, .txt-line:hover .pl-del, .pl-line:focus-within .pl-del, .txt-line:focus-within .pl-del, .pl-del:focus-visible { opacity: 1; }
+.pl-del:hover { color: var(--terra); background: var(--border); }
+.txt-line .pl-del { left: -22px; top: calc(50% - 10px); }
+@media (hover: none) { .pl-del { opacity: 0.5; } }
+.pl-line.empty .pl-del, .pl-line.empty .pl-send { display: none; }

@@ -12,7 +12,7 @@ import { addLineTo, isFixed, openItems, planDate, sameName, shorterCol, stampLin
 import { todayStr } from "../shared/dates.js";
 import { $, focus, h, toast } from "../lib.js";
 import { changeDay, desk, deskDay, fixed, newId, refInfo, save } from "./state.js";
-import { check, dayName, openDay, PRI_LABEL, renderPlanWidget, renderTodo } from "./page.js";
+import { check, dayName, delButton, openDay, PRI_LABEL, renderPlanWidget, renderTodo } from "./page.js";
 import { closeDayPicker, openDayPicker } from "./daypick.js";
 import { renderAgenda } from "./agenda.js";
 import { noteClosed, noteOpen, registerWindow, resizable, restorePlace, windowBar } from "./window.js";
@@ -69,7 +69,7 @@ export function renderTxt() {
     const done = info.obj.done;
     const tick = check(done, `Mark ${info.obj.text} ${done ? "not done" : "done"}`);
     tick.addEventListener("click", () => toggleRef(ref));
-    return h("li", { className: `txt-line${done ? " done" : ""}` }, tick,
+    return h("li", { className: `txt-line${done ? " done" : ""}` }, delButton(desk, info.obj), tick,
       h("i", { className: `txt-pri p-${info.obj.pri || "none"}`, title: PRI_LABEL[info.obj.pri || ""] }), h("span", { className: "txt-text", textContent: info.obj.text }));
   };
   // a header that folds what's under it: the name on the left, the count and ▸ on the right

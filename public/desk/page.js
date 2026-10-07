@@ -141,6 +141,30 @@ function bulkBar() {
     btn("Clear", `Take ${many} off the page`, () => undoable(`${many} cleared`, () => { const want = new Set(refs); for (const x of desk.sections) x.lines = x.lines.filter((l) => !want.has(l.id)); selected = new Set(); })),
     btn("✕", "Let go of the picked lines (Esc)", clearPicks, "bk-x"));
 }
+// Remove one task (Mel, 8 Oct 2026: the × left of its tick, in Plan my day and To-do.txt), with Undo. d: the day it's
+// on (the page's, or today's from To-do.txt). Its block leaves Up next with it (a block whose task is gone is skipped);
+// Undo puts back the line, its place in the order and the plan as they were.
+export function removeLine(d, id) {
+  const line = d.sections.flatMap((x) => x.lines).find((l) => l.id === id);
+  if (!line?.text) return;
+  selected.delete(id);
+  undoable(`Removed: ${line.text}`, () => {
+    for (const x of d.sections) {
+      x.lines = x.lines.filter((l) => l.id !== id);
+      while (x.lines.length && !x.lines.at(-1).text) x.lines.pop();
+    }
+    d.order = (d.order || []).filter((r) => r !== id);
+  }, d);
+}
+// line: the line, or a function giving it (a row typed on just now has its line only once something's written)
+const delButton = (d, line) => {
+  const get = typeof line === "function" ? line : () => line;
+  const b = h("button", { type: "button", className: "pl-del", textContent: "×", ariaLabel: "Remove this task", title: "Remove this task" });
+  b.addEventListener("click", (e) => { e.stopPropagation(); const l = get(); if (l?.text) removeLine(d, l.id); });
+  b.addEventListener("focus", () => { b.ariaLabel = `Remove ${get()?.text || "this task"}`; });
+  return b;
+};
+export { delButton };
 // Send picked lines to another day: they leave this page and wait on that one, under the same section (Undo brings
 // them back and takes them off that day again)
 export async function sendLines(refs, toDay) {
@@ -226,13 +250,13 @@ function sectionEl(sec) {
         if (v && i === rows - 1 && rows < MAX_LINES) renderTodo(); // writing on the last line: one more appears
       },
       onTick: () => { const l = sec.lines[i]; if (!l?.text) return null; l.done = !l.done; stampLine(l); save(); renderPlanWidget(); return l.done; } }));
-    // → on a written line: send it to another day (Mel, 8 Oct 2026), the same picker as To-do.txt's When
-    const line = sec.lines[i];
-    if (line?.text) {
-      const send = h("button", { type: "button", className: "pl-send", textContent: "→", ariaLabel: `Send ${line.text} to another day`, title: "Send to another day" });
-      send.addEventListener("click", () => openDayPicker(send, { not: pageDay, title: "Send it to", onPick: (day) => sendLines([line.id], day) }));
-      list.lastChild.append(send);
-    }
+    // × to the left of the tick and → at the end (Mel, 8 Oct 2026): on every row, shown once the row has words in
+    // it (the row's "empty" class), so a task typed just now has them too
+    const lineNow = () => sec.lines[i];
+    list.lastChild.prepend(delButton(desk, lineNow));
+    const send = h("button", { type: "button", className: "pl-send", textContent: "→", ariaLabel: "Send to another day", title: "Send to another day" });
+    send.addEventListener("click", () => { const l = lineNow(); if (l?.text) openDayPicker(send, { not: pageDay, title: "Send it to", onPick: (day) => sendLines([l.id], day) }); });
+    list.lastChild.append(send);
     // a line emptied by deleting its text gets an Undo when you leave it (not while you're retyping it)
     const field = list.lastChild.querySelector(".pl-input");
     let had = null;
