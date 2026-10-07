@@ -9,16 +9,23 @@ export const parseDay = (iso) => { const [y, m, d] = dayOf(iso).split("-").map(N
 export const daysBetween = (a, b) => Math.round((parseDay(b) - parseDay(a)) / 86_400_000);
 export const addDays = (iso, n) => { const d = parseDay(iso); d.setDate(d.getDate() + n); return ymd(d); };
 
-// The room's lights switch themselves: off at 9 pm, on at 4 am (the "Good night" hours).
+// The room's lights switch themselves: off at 9 pm, on at 4 am (the "Good night" hours), or the hours Mel set in
+// Hanua Settings → Room (8 Oct 2026).
 // The most recent switch at or before `now`: { key, on }. The page applies each key once, so a pull of the cord
 // afterwards wins until the next switch.
 export const LIGHTS_OFF_HOUR = 21, LIGHTS_ON_HOUR = 4;
-export function lastLightSwitch(now = new Date()) {
+export function lastLightSwitch(now = new Date(), off = LIGHTS_OFF_HOUR, on = LIGHTS_ON_HOUR) {
   const hr = now.getHours();
   const day = ymd(now), yesterday = addDays(day, -1);
-  if (hr >= LIGHTS_OFF_HOUR) return { key: `${day} off`, on: false };
-  if (hr >= LIGHTS_ON_HOUR) return { key: `${day} on`, on: true };
-  return { key: `${yesterday} off`, on: false };
+  if (off > on) { // the usual night: off in the evening, on the next morning
+    if (hr >= off) return { key: `${day} off`, on: false };
+    if (hr >= on) return { key: `${day} on`, on: true };
+    return { key: `${yesterday} off`, on: false };
+  }
+  // off after midnight (e.g. off at 1, on at 6): the evening belongs to the day before
+  if (hr >= on) return { key: `${day} on`, on: true };
+  if (hr >= off) return { key: `${day} off`, on: false };
+  return { key: `${yesterday} on`, on: true };
 }
 
 // The Monday that starts the week holding `d` (a Date), as YYYY-MM-DD

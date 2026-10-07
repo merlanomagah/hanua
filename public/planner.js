@@ -19,7 +19,7 @@ import "./sync.js"; // the other Mac's changes, live (hanua:room)
 import "./desk/timer.js";
 import "./desk/records.js"; // the record player widget
 import "./desk/wallnotes.js"; // focus and reminder post-its
-import { settings } from "./desk/settings.js"; // the gear in the dock
+import { openSettings, settings } from "./desk/settings.js"; // the gear in the dock
 import "./desk/arrange.js"; // everything on the desk moves, on one grid
 import { initLists } from "./desk/lists.js"; // the Shopping list and Add reminder (Apple Reminders)
 
@@ -27,6 +27,9 @@ export { backup } from "./desk/state.js";
 export { openArchive, openPlan, renderTodo } from "./desk/page.js";
 export { renderAgenda } from "./desk/agenda.js";
 export { loadStickies, renderStickies } from "./desk/stickies.js";
+
+// Hanua Settings' link to Desk Settings: to the desk, then its Settings window
+document.addEventListener("hanua:desk-settings", () => { showDesk(true); openSettings(); $("settings-win").querySelector(".pw-close")?.focus({ preventScroll: true }); });
 
 // ---- the desk as a pane ----
 export let onDesk = false;

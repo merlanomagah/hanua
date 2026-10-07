@@ -29,3 +29,30 @@ test("settings: renaming a fixed section renames today's, lines and all", () => 
   assert.deepEqual(renames(before, [before[0]]), []);
   assert.deepEqual(renames(before, [before[1], before[0]]), []);
 });
+
+test("settings: Hanua Settings' groups (8 Oct 2026) tidy to Hanua's own", () => {
+  const s = settingsShape({
+    room: { lightsOff: 22, lightsOn: 6, clocks: [{ city: " London ", zone: "Europe/London" }, { zone: "Not/AZone" }, { city: "", zone: "Asia/Tokyo" }], greetOff: ["fr", "fr", ""] },
+    calendars: { shown: ["Home", " Home", "Work"], work: ["Work"] }, weather: { place: "  Wellington " }, sleep: { after: 30 },
+  }, base);
+  assert.deepEqual(s.room.clocks, [{ city: "London", zone: "Europe/London" }, base.room.clocks[1], { city: "Tokyo", zone: "Asia/Tokyo" }]);
+  assert.deepEqual([s.room.lightsOff, s.room.lightsOn, s.room.greetOff], [22, 6, ["fr"]]);
+  assert.deepEqual(s.calendars, { shown: ["Home", "Work"], work: ["Work"] });
+  assert.equal(s.weather.place, "Wellington");
+  assert.equal(s.sleep.after, 30);
+  // odd values fall back: the same hour twice, an hour out of range, a sleep time not offered
+  const t = settingsShape({ room: { lightsOff: 5, lightsOn: 5 }, sleep: { after: 7 } }, base);
+  assert.deepEqual([t.room.lightsOff, t.room.lightsOn, t.sleep.after], [21, 4, 15]);
+  assert.equal(settingsShape({ room: { lightsOff: 24 } }, base).room.lightsOff, 21);
+});
+
+test("settings: a group from a newer Hanua is kept, never dropped; saves name the groups that changed", async () => {
+  const { changedGroups, SETTINGS_VERSION } = await import("../public/shared/settings.js");
+  const s = settingsShape({ closeDay: { offer: "16:00" }, v: 9, base: "x", changed: ["timer"] }, base);
+  assert.deepEqual(s.closeDay, { offer: "16:00" });
+  assert.equal("v" in s || "base" in s || "changed" in s, false);
+  assert.ok(Number.isInteger(SETTINGS_VERSION) && SETTINGS_VERSION >= 2);
+  const next = structuredClone(base); next.timer.focus = 50; next.weather.place = "Suva";
+  assert.deepEqual(changedGroups(base, next), ["timer", "weather"]);
+  assert.deepEqual(changedGroups(base, structuredClone(base)), []);
+});

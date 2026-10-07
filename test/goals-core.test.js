@@ -127,6 +127,14 @@ test("the lights switch off at 9 pm and on at 4 am, each once", async () => {
   assert.deepEqual(lastLightSwitch(at(23, 30)), { key: "2026-10-05 off", on: false });
   assert.deepEqual(lastLightSwitch(at(2)), { key: "2026-10-04 off", on: false }); // still last night's switch
   assert.deepEqual(lastLightSwitch(at(4)), { key: "2026-10-05 on", on: true });
+  // Mel's own hours (Hanua Settings → Room): off at 10 pm, on at 6 am
+  assert.deepEqual(lastLightSwitch(at(21, 30), 22, 6), { key: "2026-10-05 on", on: true });
+  assert.deepEqual(lastLightSwitch(at(22), 22, 6), { key: "2026-10-05 off", on: false });
+  assert.deepEqual(lastLightSwitch(at(5), 22, 6), { key: "2026-10-04 off", on: false });
+  // off after midnight (1 am), on at 6 am: the evening is still the day's "on"
+  assert.deepEqual(lastLightSwitch(at(23), 1, 6), { key: "2026-10-05 on", on: true });
+  assert.deepEqual(lastLightSwitch(at(2), 1, 6), { key: "2026-10-05 off", on: false });
+  assert.deepEqual(lastLightSwitch(at(0, 30), 1, 6), { key: "2026-10-04 on", on: true });
 });
 
 test("the plant grows with each day watered and browns with days missed, kindly", async () => {

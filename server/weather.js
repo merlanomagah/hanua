@@ -4,6 +4,13 @@ import { dayParts, kindOf, summarisePart } from "../public/shared/weather.js";
 
 const CACHE_MS = 30 * 60_000;
 let cached = null, cachedAt = 0, place = null;
+// the town from Hanua Settings → Weather (8 Oct 2026), else WEATHER_PLACE in .env
+let chosenPlace = "";
+export function setWeatherPlace(p = "") {
+  if (p === chosenPlace) return;
+  chosenPlace = p; cached = null; cachedAt = 0; place = null; // a new town: look it up again
+}
+const placeName = () => (chosenPlace || process.env.WEATHER_PLACE || "").trim();
 
 async function json(url) {
   const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
@@ -47,12 +54,12 @@ function sampleWeather(reason) {
   }));
   const today = new Date().toISOString().slice(0, 10), tomorrow = new Date(Date.now() + 86_400_000).toISOString().slice(0, 10);
   const day = (date) => shapeDay(date, hours, null, 0);
-  return { live: false, reason, place: process.env.WEATHER_PLACE || "Auckland", timeZone: null, now: { temp: 16, kind: "partly" }, days: [day(today), { ...day(tomorrow), kind: "showers" }] };
+  return { live: false, reason, place: placeName() || "Auckland", timeZone: null, now: { temp: 16, kind: "partly" }, days: [day(today), { ...day(tomorrow), kind: "showers" }] };
 }
 
 export async function getWeather() {
-  const name = (process.env.WEATHER_PLACE || "").trim();
-  if (!name) return sampleWeather("Add WEATHER_PLACE to .env for your own weather");
+  const name = placeName();
+  if (!name) return sampleWeather("Add your town in Hanua Settings → Weather for your own weather");
   if (cached && Date.now() - cachedAt < CACHE_MS) return cached;
   try {
     const p = await findPlace(name);

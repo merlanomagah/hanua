@@ -2,8 +2,11 @@ import "./lock.js"; // the sleep screen goes up before anything else
 import "./updates.js"; // reloads itself (while asleep) when Hanua is updated
 import "./appearance.js"; // dark mode: Settings → Appearance, the Mac, the lights
 import "./rail.js"; // the rail's bookcase button and light / dark switch
+import "./settings/window.js"; // Hanua Settings: the gear on the rail (⌃,)
 import { aheadText, dayOf, daysBetween, lastLightSwitch, pad, parseDay, timeIn, timeOf, todayStr, ymd } from "./shared/dates.js";
 import { GREET_EVERY_MS, GREET_NAME, greetingsAt, timeOfDay } from "./shared/greetings.js";
+import { defaults as settingDefaults } from "./shared/settings.js";
+import { settings as currentSettings } from "./settings/store.js";
 import { goalsInBook, isGoalDone, onCalendar, visibleGoals } from "./shared/goals.js";
 import { appleAtWork, withoutDuplicates } from "./shared/events.js";
 import { onEventsChanged, openEvent } from "./calendar-event.js";
@@ -107,8 +110,11 @@ document.querySelectorAll(".lamp").forEach((b) => b.addEventListener("click", to
 
 // Off at 9 pm, on at 4 am, by themselves. Each switch happens once (remembered as room-lamp-auto),
 // so pulling the cord afterwards wins until the next one. Checked on load and every minute.
+// Hanua Settings → Room (8 Oct 2026): the lights' hours, the away clocks and the greeting's languages, on both Macs
+// (applied by applyRoom, further down, once the clocks and greeting exist)
+let roomSet = settingDefaults().room;
 export function autoLights() {
-  const { key, on } = lastLightSwitch();
+  const { key, on } = lastLightSwitch(new Date(), roomSet.lightsOff, roomSet.lightsOn);
   if (store("room-lamp-auto") === key) return;
   store("room-lamp-auto", key);
   if (lampOn === on) return;
@@ -1573,12 +1579,12 @@ const season = (d) => ["SUMMER", "AUTUMN", "WINTER", "SPRING"][Math.floor(((d.ge
 // comma, so only the words change: long ones reach back towards the lamp, short ones sit by the name.
 let greetWhen = "", greetIndex = 0;
 function renderGreeting(hour) {
-  const when = timeOfDay(hour);
-  const english = greetingsAt(hour)[0].text;
+  const when = `${timeOfDay(hour, roomSet.lightsOff, roomSet.lightsOn)} ${roomSet.greetOff.join()}`;
+  const english = greetingsAt(hour, { ...roomSet, greetOff: [] })[0].text;
   $("greet").ariaLabel = `${english}, ${GREET_NAME}.`;
   if (when === greetWhen) return;
   greetWhen = when;
-  const list = greetingsAt(hour);
+  const list = greetingsAt(hour, roomSet);
   greetIndex %= list.length;
   $("greet-word").ariaHidden = "true";
   $("greet-word").replaceChildren(...list.map((g, i) => h("span", { lang: g.lang, title: g.name, textContent: g.text, className: i === greetIndex ? "on" : "" })));
@@ -1603,6 +1609,23 @@ function fitGreeting() {
 }
 setInterval(nextGreeting, GREET_EVERY_MS);
 addEventListener("resize", fitGreeting);
+
+// Hanua Settings → Room: applied when Settings arrive or change (and once now, if they arrived while the room loaded)
+function applyRoom(r) {
+  if (!r || JSON.stringify(r) === JSON.stringify(roomSet)) return;
+  roomSet = r;
+  document.querySelectorAll(".wall-clock.away").forEach((c, i) => {
+    const want = r.clocks[i];
+    if (!want || (c.dataset.zone === want.zone && c.dataset.city === want.city)) return;
+    c.dataset.zone = want.zone; c.dataset.city = want.city;
+    awayShown.delete(c); // drawn afresh, without a flip
+  });
+  renderClock();
+  greetWhen = ""; renderGreeting(new Date().getHours());
+  autoLights();
+}
+document.addEventListener("hanua:settings", (e) => applyRoom(e.detail?.room));
+if (currentSettings) applyRoom(currentSettings.room);
 
 // The words round the lamp go slowly round its dome like a ticker: they rise from behind the lamp on the right, cross
 // over the top (readable, never upside down) and sink behind it on the left; near the horizon they soften (two copies of

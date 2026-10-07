@@ -2691,7 +2691,7 @@ dialog.lock::backdrop { background: #14110e; }
 .set-mv:disabled { visibility: hidden; }
 .set-row { display: flex; align-items: center; gap: 8px; margin-top: 10px; font: 13px var(--ui); color: var(--ink-3); }
 .set-label { width: 160px; flex: none; color: var(--ink); }
-.set-row select.set-in { flex: 1; min-width: 0; }
+.set-row select.set-in, .set-row input.set-in[type=text] { flex: 1; min-width: 0; }
 .set-num { width: 70px; }
 .set-words { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 14px; }
 .set-wordrow { display: flex; align-items: center; gap: 8px; font: 11px var(--mono); color: var(--ink-4); }
@@ -2700,6 +2700,34 @@ dialog.lock::backdrop { background: #14110e; }
 .set-check { display: flex; align-items: flex-start; gap: 8px; font: 13px/1.4 var(--ui); color: var(--ink); cursor: pointer; }
 .set-check input { margin-top: 2px; }
 @media (max-width: 520px) { .set-label { width: auto; } .set-words { grid-template-columns: 1fr; } }
+/* Hanua Settings (public/settings/window.js, 8 Oct 2026): a window over the whole room, under the rail, from anywhere.
+   Its layer takes no clicks itself, so the room stays usable round it; under the toast (30), so Undo is clickable. */
+.app-wins { position: fixed; inset: var(--rail-h) 0 0 0; z-index: 28; pointer-events: none; }
+.app-wins > .txt-win { pointer-events: auto; }
+.hs-win { right: 24px; left: auto; top: 14px; max-height: calc(100% - 28px); }
+.set-where { margin-left: auto; padding: 1px 6px; border-radius: 3px; font: 9px var(--mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--green); border: 1px solid currentColor; white-space: nowrap; flex: none; }
+.set-where.mac { color: var(--ink-4); }
+.set-head .set-where { margin: 0 auto 0 0; align-self: center; position: relative; top: -3px; }
+.set-inline { display: inline-flex; align-items: center; gap: 10px; }
+.set-on { font: 500 12px var(--ui); color: var(--green); }
+.set-pin { margin: 4px 0 6px; padding: 4px 12px 10px; border-radius: 6px; border: 1px solid var(--border-2); }
+.set-pin-in { width: 88px; letter-spacing: 0.3em; }
+.set-go { color: var(--ink); }
+.set-hour { width: 96px; flex: none !important; }
+.set-clocks { display: grid; gap: 6px; }
+.set-clock { display: grid; grid-template-columns: 140px minmax(0, 1fr); gap: 6px; }
+.set-langs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px 14px; }
+.set-lang { align-items: center; }
+.set-cals { width: 100%; border-collapse: collapse; font: 13px var(--ui); color: var(--ink); }
+.set-cals th { font: 9px var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-4); text-align: left; padding: 4px 0; font-weight: normal; }
+.set-cals th:not(:first-child), .set-cals td:not(:first-child) { width: 56px; text-align: center; }
+.set-cals td { padding: 4px 0; border-top: 1px solid var(--border-2); }
+.set-dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 8px; vertical-align: 0; }
+.set-status { list-style: none; margin: 6px 0 10px; padding: 0; font: 13px/1.5 var(--ui); color: var(--ink); }
+.set-status li::before { content: "✓"; color: var(--green); margin-right: 8px; }
+.set-status li.bad::before { content: "!"; color: var(--terra); font-weight: 600; }
+.set-other { margin-top: 14px; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+@media (max-width: 520px) { .set-clock { grid-template-columns: 1fr; } .set-langs { grid-template-columns: 1fr; } }
 
 /* ---- Plan ahead (6 Oct 2026, evening): the week, a day ahead's page, Up next's Reorder and days ahead, To-do.txt's
    + per section, Up next resized by hand ---- */

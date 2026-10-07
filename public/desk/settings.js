@@ -1,9 +1,12 @@
-// Settings (Mel, 6 Oct 2026, roadmap step 6; brief docs/plans/2026-10-desk-settings.md): a gear in the dock opens a
+// Desk Settings (Mel, 6 Oct 2026, roadmap step 6; brief docs/plans/2026-10-desk-settings.md): a gear in the dock opens a
 // window like the others, in groups: Planner (fixed sections, usual day, time words), Focus timer, Lists (which
-// Reminders lists the desk uses, picked from hers), Calendar (where new events go), Appearance and Desk (the morning window, Hanua's own layout). Every change saves
-// at once and applies at once (the hanua:settings event); each group goes back to Hanua's defaults, with Undo.
-// Kept on this Mac (data/room/settings.json via /api/settings), so the nightly backup has them.
-import { setTimeWords, TIME_PICKS, minsText, withFixed } from "../shared/desk.js";
+// Reminders lists the desk uses, picked from hers) and Desk (the morning window, Hanua's own layout). Everything that
+// isn't the desk's (sleep screen, lights, clocks, calendars, weather, appearance) is in Hanua Settings on the rail
+// (public/settings/window.js, 8 Oct 2026). Both read and save the same Settings (public/settings/store.js): every
+// change saves and applies at once; each group goes back to Hanua's defaults, with Undo.
+import { TIME_PICKS, minsText, withFixed } from "../shared/desk.js";
+import { change, defaults, put, settings } from "../settings/store.js";
+import { group, row } from "../settings/common.js";
 import { renameSections, renames } from "../shared/settings.js";
 import { $, focus, h, toast } from "../lib.js";
 import { desk, save, setFixed } from "./state.js";
@@ -11,76 +14,32 @@ import { renderTodo } from "./page.js";
 import { noteClosed, noteOpen, registerWindow, resizable, restorePlace, windowBar } from "./window.js";
 import { ownLayout } from "./arrange.js";
 import { saidUpdated, syncState, typingIn } from "../sync.js";
-import { APPEARANCES, DEFAULT_APPEARANCE } from "../shared/appearance.js";
-import { writableCalendars } from "../shared/events.js";
-import { appearance, setAppearance } from "../appearance.js";
+import { openHanuaSettings } from "../settings/window.js";
 
-export let settings = null;
-let base = null, lists = null, cals = null;
+export { settings } from "../settings/store.js";
+let lists = null;
 const win = $("settings-win");
 const ready = resizable(win);
 
-let rev; // the revision of Settings this window has: a change made on the other Mac since is never undone from here
-export async function loadSettings(quiet = false) {
-  let j;
-  try { const res = await fetch("/api/settings"); if (!res.ok) return; j = await res.json(); } catch { return; }
-  if (quiet && j.rev === rev) return;
-  ({ settings, defaults: base } = j); rev = j.rev ?? null;
-  applySettings();
-  if (quiet) { if (!win.hidden) render(); renderTodo(); saidUpdated(toast); }
-}
-// the other Mac changed Settings: use them here too (the window redraws unless Mel is in one of its fields)
-document.addEventListener("hanua:room", (e) => {
-  const { kind } = e.detail || {};
-  if (kind !== "all" && kind !== "settings") return;
-  if (typingIn(win)) { win.addEventListener("focusout", () => setTimeout(() => loadSettings(true), 50), { once: true }); return; }
-  loadSettings(true);
-});
-function applySettings() {
-  setTimeWords(settings.timeWords);
-  document.dispatchEvent(new CustomEvent("hanua:settings", { detail: settings }));
-}
-
-// save the whole set (the server tidies it), apply it, and say so quietly in the title bar
-let saving = 0;
-async function put(next, { undoText = null } = {}) {
-  const before = settings;
-  try {
-    const res = await fetch("/api/settings", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...next, base: rev }) });
-    const j = await res.json().catch(() => ({}));
-    if (res.status === 409 && j.settings) {
-      // changed on the other Mac since this window read them: show theirs, so nothing of theirs is undone; Mel's
-      // change can then be made again on top
-      ({ settings, defaults: base } = j); rev = j.rev ?? null;
-      applySettings(); render(); renderTodo();
-      toast("Settings were just changed on your other Mac: they're shown now. Make your change again if it's still needed.", true);
-      return;
-    }
-    if (!res.ok) throw new Error(j.error || `Request failed (${res.status})`);
-    ({ settings, defaults: base } = j); rev = j.rev ?? rev;
-  } catch (err) { toast(`Settings couldn't be saved: ${err.message}`, true); return; }
-  // fixed sections renamed: today's section of the old name takes the new one; then today has every fixed one
-  const pairs = renames(before.fixedSections, settings.fixedSections);
-  setFixed(settings.fixedSections);
-  renameSections(desk, pairs);
-  withFixed(desk, settings.fixedSections);
-  save();
-  applySettings();
+// After any save or a change from the other Mac: fixed sections renamed → today's section of the old name takes the
+// new one; then today has every fixed one. This window redraws unless Mel is in one of its fields.
+document.addEventListener("hanua:settings-saved", (e) => {
+  const before = e.detail?.before;
+  if (before && JSON.stringify(before.fixedSections) !== JSON.stringify(settings.fixedSections)) {
+    renameSections(desk, renames(before.fixedSections, settings.fixedSections));
+    setFixed(settings.fixedSections);
+    withFixed(desk, settings.fixedSections);
+    save();
+  } else setFixed(settings.fixedSections);
   renderTodo();
+  if (typingIn(win)) { win.addEventListener("focusout", () => setTimeout(render, 50), { once: true }); return; }
   render();
   clearTimeout(saving);
   const note = win.querySelector(".set-saved");
-  if (note) { note.textContent = "Saved"; saving = setTimeout(() => { note.textContent = ""; }, 1600); }
-  if (undoText) toast(undoText, false, { label: "Undo", run: () => put(before) });
-}
-const change = (fn) => { const next = structuredClone(settings); fn(next); put(next); };
-
-const group = (title, reset, ...rows) => {
-  const r = reset ? h("button", { type: "button", className: "set-reset", textContent: "Back to Hanua's defaults" }) : null;
-  r?.addEventListener("click", reset);
-  return h("section", { className: "set-group" }, h("div", { className: "set-head" }, h("h3", { textContent: title }), r), ...rows);
-};
-const row = (label, ...field) => h("label", { className: "set-row" }, h("span", { className: "set-label", textContent: label }), ...field);
+  if (note && !win.hidden) { note.textContent = "Saved"; saving = setTimeout(() => { note.textContent = ""; }, 1600); }
+});
+let saving = 0;
+const base = () => defaults;
 
 function plannerGroup() {
   const fixedRows = settings.fixedSections.map((f, i) => {
@@ -101,7 +60,7 @@ function plannerGroup() {
     w.addEventListener("change", () => change((n) => { n.timeWords[m] = w.value.trim(); }));
     return h("label", { className: "set-wordrow" }, h("span", { textContent: minsText(m) }), w);
   });
-  return group("Planner", () => put({ ...settings, fixedSections: base.fixedSections, day: base.day, timeWords: base.timeWords }, { undoText: "Planner settings back to Hanua's" }),
+  return group("Planner", () => put({ ...settings, fixedSections: base().fixedSections, day: base().day, timeWords: base().timeWords }, { undoText: "Planner settings back to Hanua's" }),
     h("p", { className: "set-sub", textContent: "Sections every day has, after General" }), h("ul", { className: "set-list" }, fixedRows), add,
     row("Your usual day", time("start", "Usual start"), h("span", { textContent: "–" }), time("end", "Usual end")),
     h("p", { className: "set-note", textContent: "A new day starts with these hours; today's are on the page." }),
@@ -109,7 +68,7 @@ function plannerGroup() {
 }
 function timerGroup() {
   const num = (k, label, lo, hi) => { const n = h("input", { type: "number", className: "set-in set-num", min: lo, max: hi, value: settings.timer[k], ariaLabel: label }); n.addEventListener("change", () => change((x) => { x.timer[k] = Number(n.value); })); return n; };
-  return group("Focus timer", () => put({ ...settings, timer: base.timer }, { undoText: "Timer back to 25 / 5" }),
+  return group("Focus timer", () => put({ ...settings, timer: base().timer }, { undoText: "Timer back to 25 / 5" }),
     row("Focus", num("focus", "Focus minutes", 5, 120), h("span", { textContent: "minutes" })),
     row("Break", num("rest", "Break minutes", 1, 60), h("span", { textContent: "minutes" })));
 }
@@ -120,7 +79,7 @@ function listsGroup() {
     s.addEventListener("change", () => change((x) => { x.lists[k] = s.value; }));
     return s;
   };
-  return group("Lists", () => put({ ...settings, lists: base.lists }, { undoText: "Lists back to Hanua's" }),
+  return group("Lists", () => put({ ...settings, lists: base().lists }, { undoText: "Lists back to Hanua's" }),
     row("Shopping list", pick("shopping", "Shopping list", "Shopping (made if missing)")),
     row("Add reminder puts them in", pick("reminders", "Reminders list", lists.defaultList ? `${lists.defaultList} (your default)` : "Your default list")),
     !lists.live ? h("p", { className: "set-note", textContent: lists.reason === "denied" || lists.reason === "ask" ? "Hanua can't see Reminders yet: allow it when macOS asks (or System Settings → Privacy & Security → Reminders → Hanua Calendar)." : "Reminders is off on this server: sample lists." }) : null);
@@ -128,37 +87,6 @@ function listsGroup() {
 async function loadLists() {
   try { lists = await (await fetch("/api/reminders/lists")).json(); } catch { lists = { live: false, lists: [] }; }
   render();
-}
-// Calendar (7 Oct 2026, brief docs/plans/2026-10-apple-calendar-events.md): which of Mel's own Apple calendars a new
-// event goes in, picked from the ones Hanua can write to. At work the window offers only the Work calendars anyway.
-function calendarGroup() {
-  if (!cals) { loadCals(); return group("Calendar", null, h("p", { className: "set-note", textContent: "Asking Calendar for your calendars…" })); }
-  const own = writableCalendars(cals.calendars);
-  const pick = h("select", { className: "set-in", ariaLabel: "New events go in" },
-    h("option", { value: "", textContent: cals.default ? `${cals.default} (your Mac's default)` : "Your Mac's default" }),
-    own.map((c) => h("option", { value: c.title, textContent: c.title, selected: settings.calendar?.default === c.title })));
-  pick.addEventListener("change", () => change((x) => { x.calendar = { default: pick.value }; }));
-  return group("Calendar", settings.calendar?.default ? () => put({ ...settings, calendar: base.calendar }, { undoText: "New events go to your Mac's default again" }) : null,
-    row("New events go in", pick),
-    h("p", { className: "set-note", textContent: !cals.live && cals.reason !== "off" ? "Hanua can't see Calendar yet: System Settings → Privacy & Security → Calendars → Hanua Calendar → Full Access." : "You can still pick another for each event. At work, new events go in a Work calendar." }));
-}
-async function loadCals() {
-  try { cals = await (await fetch("/api/calendar/calendars")).json(); } catch { cals = { live: false, calendars: [] }; }
-  render();
-}
-// Appearance (brief docs/plans/2026-10-dark-mode.md): this Mac's choice, kept in browser storage like the lights
-function appearanceGroup() {
-  const pick = h("select", { className: "set-in", ariaLabel: "Appearance" }, Object.entries(APPEARANCES).map(([v, label]) => h("option", { value: v, textContent: label, selected: appearance === v })));
-  const set = (v, undoText) => {
-    const before = appearance;
-    setAppearance(v);
-    render();
-    if (undoText) toast(undoText, false, { label: "Undo", run: () => { setAppearance(before); render(); } });
-  };
-  pick.addEventListener("change", () => set(pick.value));
-  return group("Appearance", appearance === DEFAULT_APPEARANCE ? null : () => set(DEFAULT_APPEARANCE, "Appearance back to following your Mac"),
-    row("Dark windows", pick),
-    h("p", { className: "set-note", textContent: "The desk's windows, widgets and dock go dark; the room's real things keep their colours and dim with the lights. This Mac only." }));
 }
 function deskGroup() {
   const auto = h("input", { type: "checkbox", checked: settings.desk.autoOpen });
@@ -171,6 +99,12 @@ function deskGroup() {
     h("p", { className: "set-note", textContent: "To save your own: right-click the desk → Save current layout as default." }),
     h("p", { className: "set-note set-sync", textContent: sharedLine() }));
 }
+// the other window: Hanua Settings (on the rail) holds everything that isn't the desk's (8 Oct 2026)
+function otherWindow() {
+  const b = h("button", { type: "button", className: "set-reset", textContent: "Hanua Settings →" });
+  b.addEventListener("click", () => { hide(); openHanuaSettings($("dock-settings")); });
+  return h("p", { className: "set-note set-other" }, "Sleep screen, lights, clocks, calendars, weather and appearance are in ", b);
+}
 // where the days, menus, stickies and Settings live: this Mac only, or the iCloud folder both Macs share
 function sharedLine() {
   const s = syncState;
@@ -181,12 +115,11 @@ function sharedLine() {
 }
 document.addEventListener("hanua:sync", () => { if (!win.hidden && !typingIn(win)) render(); }); // never mid-typing
 
-addEventListener("hanua:appearance", () => { if (!win.hidden) render(); }); // the rail's switch changed it
 function render() {
   if (win.hidden || !settings) return;
   const scroll = win.querySelector(".txt-body")?.scrollTop || 0;
-  const bar = windowBar(win, "Settings", [h("span", { className: "set-saved", ariaLive: "polite" })], () => { hide(); $("dock-settings").focus({ preventScroll: true }); });
-  const body = h("div", { className: "txt-body set-body" }, plannerGroup(), timerGroup(), focus.on ? null : listsGroup(), focus.on ? null : calendarGroup(), appearanceGroup(), deskGroup());
+  const bar = windowBar(win, "Desk Settings", [h("span", { className: "set-saved", ariaLive: "polite" })], () => { hide(); $("dock-settings").focus({ preventScroll: true }); });
+  const body = h("div", { className: "txt-body set-body" }, plannerGroup(), timerGroup(), focus.on ? null : listsGroup(), deskGroup(), otherWindow());
   win.replaceChildren(bar, body);
   body.scrollTop = scroll;
 }
@@ -194,13 +127,12 @@ let placed = false;
 function show() {
   win.hidden = false;
   if (!placed) { restorePlace(win); placed = true; ready(); }
-  lists = null; cals = null;
+  lists = null;
   render();
 }
 const hide = () => { win.hidden = true; noteClosed("settings-win"); };
 const ICON = '<svg viewBox="0 0 24 24" width="30" aria-hidden="true" fill="none" stroke="#5c564c" stroke-width="1.6"><path d="M9.59 5.00 L9.84 2.65 L14.16 2.65 L14.41 5.00 L15.24 5.35 L17.09 3.86 L20.14 6.91 L18.65 8.76 L19.00 9.59 L21.35 9.84 L21.35 14.16 L19.00 14.41 L18.65 15.24 L20.14 17.09 L17.09 20.14 L15.24 18.65 L14.41 19.00 L14.16 21.35 L9.84 21.35 L9.59 19.00 L8.76 18.65 L6.91 20.14 L3.86 17.09 L5.35 15.24 L5.00 14.41 L2.65 14.16 L2.65 9.84 L5.00 9.59 L5.35 8.76 L3.86 6.91 L6.91 3.86 L8.76 5.35Z" stroke-linejoin="round"/><circle cx="12" cy="12" r="3"/></svg>';
-registerWindow("settings-win", { title: "Settings", icon: ICON, show, hide, shown: () => !win.hidden });
+registerWindow("settings-win", { title: "Desk Settings", icon: ICON, show, hide, shown: () => !win.hidden });
 export function openSettings() { if (!settings) return; show(); noteOpen("settings-win"); }
 
 $("dock-settings").addEventListener("click", openSettings);
-loadSettings();

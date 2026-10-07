@@ -7,16 +7,16 @@ import path from "node:path";
 import { notionEnabled, queryArea, getSchema, toNotionProperties, createPage, updatePage, archivePage, pageSection, pageSections, NotionError } from "./notion.js";
 import { claudeEnabled, ask, draftEntry, coachGoal, suggestChildren, suggestMeals } from "./claude.js";
 import { getMoney, getMoneyMonth, isMonthKey } from "./money.js";
-import { addEvent, addReminder, editEvent, getAppleEvents, getEventCalendars, removeEvent, getReminderLists, getShopping, removeReminder, setListNames, setReminderDone, showDay, showReminders } from "./calendar.js";
-import { defaults as settingDefaults, settingsShape } from "../public/shared/settings.js";
+import { addEvent, addReminder, editEvent, getAppleEvents, getEventCalendars, removeEvent, getReminderLists, getShopping, removeReminder, setCalendarChoice, setListNames, setReminderDone, showDay, showReminders } from "./calendar.js";
+import { SETTINGS_VERSION, defaults as settingDefaults, settingsShape } from "../public/shared/settings.js";
 import { musicStatus, musicAction, playPlaylist } from "./music.js";
 import { toGoal, goalProperties, goalOptions } from "./goals.js";
 import { rollUp } from "../public/shared/goals.js";
 import { weekKey } from "../public/shared/dates.js";
 import { MEALS, menuShape } from "../public/shared/menu.js";
 import { dayKey, daySummary, deskShape, stepDay, stickyShape, versionClash, CARRY_DAYS, CLASH_TEXT, DESK_VERSION } from "../public/shared/desk.js";
-import { lockStatus, setPin, checkPin } from "./lock.js";
-import { getWeather } from "./weather.js";
+import { changePin, checkPin, forgetPin, lockStatus, setPin } from "./lock.js";
+import { getWeather, setWeatherPlace } from "./weather.js";
 import { backupDue, backupRoom, backupWarning, readStatus } from "./backup.js";
 import os from "node:os";
 import { watchForUpdates } from "./updates.js";
@@ -97,6 +97,12 @@ app.post("/api/lock/setup", async (req, res) => {
   catch (err) { res.status(err.status || 500).json({ error: err.message }); }
 });
 app.post("/api/lock/check", async (req, res) => res.json(await checkPin(lockFile, req.body?.pin)));
+// Hanua Settings → Sleep screen: change the PIN, or forget it (both ask for the current one)
+app.post("/api/lock/change", async (req, res) => {
+  try { res.json(await changePin(lockFile, req.body?.current, req.body?.pin)); }
+  catch (err) { res.status(err.status || 500).json({ error: err.message }); }
+});
+app.post("/api/lock/forget", async (req, res) => res.json(await forgetPin(lockFile, req.body?.current)));
 
 // Things the room itself keeps, with no other home: planner days, menus, stickies, the plant's log, Settings.
 // In data/room/ (gitignored), or, with ROOM_DATA in .env, one iCloud Drive folder both Macs share (6 Oct 2026):
@@ -245,23 +251,36 @@ app.put("/api/stickies", roomRoute(async (req, res) => {
 const settingsFile = path.join(roomDir, "settings.json");
 const settingBase = () => settingDefaults(config.planner?.fixedSections || []);
 let settings = settingsShape(await readJson(settingsFile, {}), settingBase()), settingsRev = (await room.read(settingsFile)).rev ?? null;
-setListNames(settings.lists);
+// what the server itself uses: the Reminders lists, which calendars show and count as Work, the weather's town
+function useSettings() {
+  setListNames(settings.lists);
+  setCalendarChoice(settings.calendars);
+  setWeatherPlace(settings.weather.place);
+}
+useSettings();
 // the other Mac changed Settings (or they arrived from iCloud): use them here too
 async function reloadSettings() {
   const r = await room.read(settingsFile);
   if (r.state !== "ok" && r.state !== "missing") return;
   settings = settingsShape(r.data || {}, settingBase()); settingsRev = r.rev;
-  setListNames(settings.lists);
+  useSettings();
 }
 app.get("/api/settings", roomRoute(async (_req, res) => { await reloadSettings(); res.set("Cache-Control", "no-store").json({ settings, defaults: settingBase(), rev: settingsRev }); }));
 app.put("/api/settings", async (req, res, next) => {
   try {
-    const { data, rev } = await room.write(settingsFile, settingsShape(req.body, settingBase()), { base: baseOf(req.body) });
-    settings = data; settingsRev = rev;
-    setListNames(settings.lists);
+    // only the groups this page changed are written over what's there (8 Oct 2026), so a change on one Mac never
+    // undoes another group changed on the other meanwhile; a page that doesn't say (an older one) still saves whole,
+    // refused if the file changed since. A file from a newer Hanua is never saved over (it would drop its groups).
+    const mine = settingsShape(req.body, settingBase());
+    const changed = Array.isArray(req.body?.changed) ? req.body.changed.filter((k) => Object.hasOwn(mine, k)) : null;
+    const guard = (cur) => { if (fileTooNew(cur?.v, SETTINGS_VERSION)) throw Object.assign(new Error("Settings were saved by a newer Hanua on your other Mac"), { status: 409, newer: true }); };
+    const merge = changed ? (cur) => ({ ...settingsShape(cur || {}, settingBase()), ...Object.fromEntries(changed.map((k) => [k, mine[k]])), v: SETTINGS_VERSION }) : undefined;
+    const { data, rev } = await room.write(settingsFile, { ...mine, v: SETTINGS_VERSION }, { base: baseOf(req.body), merge, guard });
+    settings = settingsShape(data, settingBase()); settingsRev = rev;
+    useSettings();
     res.json({ settings, defaults: settingBase(), rev });
   } catch (err) {
-    if (err.status === 409) { await reloadSettings(); return res.status(409).json({ error: err.message, conflict: err.conflict, settings, defaults: settingBase(), rev: settingsRev }); }
+    if (err.status === 409) { await reloadSettings(); return res.status(409).json({ error: err.message, conflict: err.conflict, newer: Boolean(err.newer), settings, defaults: settingBase(), rev: settingsRev }); }
     if (err.status === 503) return res.status(503).json({ error: err.message, pending: true });
     next(err);
   }
@@ -321,10 +340,19 @@ room.start((what) => { if (what.kind === "settings") reloadSettings().catch(() =
 // server backs up its own folder beside it; BACKUP_DIR in .env can point elsewhere, or say "off".
 // With a shared room folder (in iCloud), the backup goes to this Mac's own disk, outside iCloud, so a wiped file can't
 // carry into the copies; only one Mac backs up (the other sets BACKUP_DIR=off).
-const backupDir = choice.backup === "off" ? null : path.resolve(root, choice.backup
+// This Mac's own choices, kept beside its PIN (data/, never in the shared folder: they're about this Mac): whether it
+// backs up (Hanua Settings → This Mac, 8 Oct 2026; one Mac backs up the shared folder, the other needn't). Unset:
+// BACKUP_DIR in .env decides, as before.
+const thisMacFile = path.resolve(root, choice.sample ? "data/this-mac-sample.json" : "data/this-mac.json");
+let thisMac = {};
+try { thisMac = JSON.parse(readFileSync(thisMacFile, "utf8")) || {}; } catch { /* nothing chosen yet */ }
+const backupHome = path.resolve(root, (choice.backup && choice.backup !== "off" && choice.backup)
   || (roomDir.endsWith("room-sample") ? "data/room-sample-backup"
     : sharedRoom ? path.join(os.homedir(), "Hanua backup")
       : path.join(os.homedir(), "Library/Mobile Documents/com~apple~CloudDocs/Hanua backup")));
+let backupDir = null;
+const setBackup = () => { backupDir = thisMac.backup === false ? null : thisMac.backup === true || choice.backup !== "off" ? backupHome : null; };
+setBackup();
 let backupStatus = null, backingUp = false;
 async function backupTick() {
   if (!backupDir || backingUp) return;
@@ -338,7 +366,7 @@ async function backupTick() {
     }
   } finally { backingUp = false; }
 }
-if (backupDir) { setTimeout(backupTick, 5_000); setInterval(backupTick, 15 * 60_000); }
+setTimeout(backupTick, 5_000); setInterval(backupTick, 15 * 60_000); // does nothing while this Mac doesn't back up
 app.get("/api/backup", async (_req, res) => {
   res.set("Cache-Control", "no-store");
   if (!backupDir) return res.json({ off: true });
@@ -347,6 +375,26 @@ app.get("/api/backup", async (_req, res) => {
     where: backupDir.includes("CloudDocs") ? `iCloud Drive › ${path.basename(backupDir)}`
       : backupDir.startsWith(os.homedir()) && !backupDir.startsWith(root) ? `${path.basename(backupDir)}, in your home folder on this Mac`
         : path.relative(root, backupDir) || backupDir });
+});
+
+// Hanua Settings → This Mac: what this Mac is connected to (never the keys themselves), where its room folder is and
+// why, and whether it backs up. Only `backup` can be changed from the page; keys and folders stay in .env.
+app.get("/api/this-mac", async (_req, res) => {
+  backupStatus ??= backupDir ? await readStatus(backupDir) : null;
+  res.set("Cache-Control", "no-store").json({
+    notion: notionEnabled(), claude: claudeEnabled(), sample: choice.sample,
+    room: { shared: sharedRoom, folder: sharedRoom ? path.basename(roomDir) : null, why: choice.why },
+    backup: { on: Boolean(backupDir), at: backupStatus?.at || null, ok: backupStatus?.ok ?? null },
+  });
+});
+app.post("/api/this-mac", async (req, res) => {
+  if (typeof req.body?.backup !== "boolean") return res.status(400).json({ error: "backup: true or false" });
+  thisMac = { ...thisMac, backup: req.body.backup };
+  try { await writeFile(thisMacFile, JSON.stringify(thisMac, null, 2) + "\n"); }
+  catch (err) { return res.status(500).json({ error: err.message }); }
+  setBackup(); backupStatus = null;
+  if (backupDir) setTimeout(backupTick, 1_000);
+  res.json({ backup: { on: Boolean(backupDir) } });
 });
 
 // Restart Hanua (scripts/restart.sh, so the shortcut only sends this and finishes; nothing for it to cut off).

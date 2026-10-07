@@ -83,3 +83,16 @@ test("the plant counts days watered in a row, still alive until today's watering
   assert.equal(plantState(w, "2026-10-06").streak, 0); // a day missed
   assert.equal(plantState([], "2026-10-06").streak, 0);
 });
+
+test("greeting: follows Mel's lights hours and leaves out languages she turned off (8 Oct 2026)", () => {
+  assert.equal(timeOfDay(21, 22, 6), "evening");
+  assert.equal(timeOfDay(22, 22, 6), "night");
+  assert.equal(timeOfDay(5, 22, 6), "night");
+  assert.equal(timeOfDay(23, 1, 6), "evening"); // off after midnight
+  assert.equal(timeOfDay(2, 1, 6), "night");
+  const some = greetingsAt(9, { greetOff: ["fr", "de"] });
+  assert.equal(some.length, GREETINGS.length - 2);
+  assert.ok(!some.some((g) => g.lang === "fr" || g.lang === "de"));
+  // all left out: English stays, so there's always a greeting
+  assert.deepEqual(greetingsAt(9, { greetOff: GREETINGS.map((g) => g.lang) }).map((g) => g.lang), ["en"]);
+});

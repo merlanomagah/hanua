@@ -35,8 +35,15 @@ const PLIST = `<?xml version="1.0" encoding="UTF-8"?>
 `;
 
 export const appleOff = () => process.env.APPLE_CAL === "0" || process.platform !== "darwin";
-const calendars = () => calendarList(process.env.APPLE_CALENDARS);
-export const workCalendars = () => calendarList(process.env.APPLE_WORK_CALENDARS);
+// Which calendars show, and which count as Work: Hanua Settings → Calendars (8 Oct 2026), else .env
+let chosenCals = { shown: [], work: [] };
+export function setCalendarChoice(c = {}) {
+  const next = { shown: c.shown || [], work: c.work || [] };
+  if (JSON.stringify(next) !== JSON.stringify(chosenCals)) cache.clear(); // the wall shows the change at once
+  chosenCals = next;
+}
+const calendars = () => (chosenCals.shown.length ? chosenCals.shown : calendarList(process.env.APPLE_CALENDARS));
+export const workCalendars = () => (chosenCals.work.length ? chosenCals.work : calendarList(process.env.APPLE_WORK_CALENDARS));
 
 // Build (or rebuild, after scripts/calendar.swift changes) the helper app. One build at a time.
 let building = null;
@@ -85,7 +92,7 @@ const TTL = 60_000;
 export async function getAppleEvents(from, to, { fresh = false } = {}) {
   if (!DAY.test(from) || !DAY.test(to) || to < from) throw Object.assign(new Error("Days look like 2026-10-05"), { status: 400 });
   const work = workCalendars();
-  if (appleOff()) return { live: false, reason: "off", work: sampleWork, items: appleItems(sampleEvents(from, to)) };
+  if (appleOff()) return { live: false, reason: "off", work: chosenCals.work.length ? chosenCals.work : sampleWork, items: appleItems(sampleEvents(from, to)) };
   const key = `${from}|${to}`;
   const hit = cache.get(key);
   if (!fresh && hit && Date.now() - hit.at < TTL) return hit.value;
@@ -203,10 +210,10 @@ const failed = (res) => Object.assign(new Error(
 
 // The calendars a new event can go in (Settings and the window pick from these)
 export async function getEventCalendars() {
-  if (appleOff()) return { live: false, reason: "off", work: sampleWork, default: "Personal", calendars: SAMPLE_CALS };
+  if (appleOff()) return { live: false, reason: "off", work: chosenCals.work.length ? chosenCals.work : sampleWork, shown: calendars(), default: "Personal", calendars: SAMPLE_CALS };
   const res = await helper(["event-calendars"]);
   if (res.error) return { live: false, reason: why(res.error), work: workCalendars(), calendars: [] };
-  return { live: true, work: workCalendars(), default: res.default || "", calendars: res.calendars || [] };
+  return { live: true, work: workCalendars(), shown: calendars(), default: res.default || "", calendars: res.calendars || [] };
 }
 function checkTarget(id, at, span) {
   if (!EID.test(String(id || ""))) throw bad("Which event?");

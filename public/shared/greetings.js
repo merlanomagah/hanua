@@ -2,9 +2,9 @@
 // Pacific languages first, then the rest. Where a language has a greeting for the time of day it's used;
 // otherwise its everyday hello. No page imports here.
 
-// The time of day, on the same hours as the lights (off at 9 pm, on at 4 am).
-export function timeOfDay(hour) {
-  if (hour >= 21 || hour < 4) return "night";
+// The time of day, on the same hours as the lights (off at 9 pm, on at 4 am, unless Mel changed them).
+export function timeOfDay(hour, off = 21, on = 4) {
+  if (off > on ? hour >= off || hour < on : hour >= off && hour < on) return "night";
   if (hour < 12) return "morning";
   if (hour < 18) return "afternoon";
   return "evening";
@@ -32,8 +32,11 @@ export const GREETINGS = [
 export const GREET_NAME = "Mel";
 export const GREET_EVERY_MS = 10_000;
 
-// Every greeting for this hour, in order: [{ lang, name, text }]
-export const greetingsAt = (hour) => {
-  const when = timeOfDay(hour);
-  return GREETINGS.map((g) => ({ lang: g.lang, name: g.name, text: g[when] }));
+// Every greeting for this hour, in order: [{ lang, name, text }]. room: Hanua Settings → Room (the lights' hours and
+// any languages left out; English stays if all are left out)
+export const greetingsAt = (hour, room = {}) => {
+  const when = timeOfDay(hour, room.lightsOff, room.lightsOn);
+  const off = new Set(room.greetOff || []);
+  const kept = GREETINGS.filter((g) => !off.has(g.lang));
+  return (kept.length ? kept : GREETINGS.slice(0, 1)).map((g) => ({ lang: g.lang, name: g.name, text: g[when] }));
 };

@@ -42,3 +42,22 @@ export async function checkPin(file, pin) {
 export async function clearPin(file) {
   await unlink(file).catch(() => {});
 }
+
+// Hanua Settings → Sleep screen (8 Oct 2026): a new PIN, or none (chosen again when Hanua next sleeps). Both need the
+// current PIN, checked here, so wrong tries count towards the pause; Touch ID can't stand in (only the page checks it).
+// { ok } or { ok: false, wait? }
+export async function changePin(file, current, pin) {
+  if (!validPin(pin)) throw Object.assign(new Error("The new PIN needs to be 4 digits."), { status: 400 });
+  const check = await checkPin(file, current);
+  if (!check.ok) return check;
+  await clearPin(file);
+  await setPin(file, pin);
+  return { ok: true };
+}
+export async function forgetPin(file, current) {
+  const check = await checkPin(file, current);
+  if (check.ok) await clearPin(file);
+  return check;
+}
+// tests only: a fresh count of wrong tries
+export const resetTries = () => { wrong = 0; waitUntil = 0; };

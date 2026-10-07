@@ -1,5 +1,7 @@
 # Panel brief: Hanua Settings on the rail, and the two Macs in step
 
+**Mel's answers (8 Oct 2026):** yes / yes / yes: Part A first (done, 05be1e3); all five groups plus Appearance and Calendar moved into Hanua Settings; the Mac mini backs up. Also: the dock's gear redrawn as a cog (it read as a sun). The desk keeps its own Settings (Mel: desk settings belong on the desk).
+
 **Request (as the problem):** Mel can't change the things she'd expect to change herself (Touch ID, her PIN, the sleep timer, the lights, the clocks, the calendars shown) without asking Claude or editing a file. The desk has its own Settings (right for desk things), but there is no Settings for Hanua as a whole. Also: her Mac mini didn't show the days she planned on the Air, so she couldn't close off yesterday or see the week.
 **Lane:** Large · **Seats:** Chair, Sceptic, Daily-use coach, Experience designer, Room designer, Data steward (agent), Frontend engineer (agent), Test lead (agent), Privacy and safety, Release keeper
 **Gate:** worth it, as two parts. Part A (the two Macs) is a Fix of a silent failure and goes first. Part B (Settings) serves the "Mel changes her own settings" preference (6 Oct) and repeated open items ("which Apple calendars to show" has been asked since 5 Oct; "BACKUP_DIR=off on the Air" since 6 Oct), so it's worth it, kept to settings for things that exist.

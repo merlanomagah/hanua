@@ -1,10 +1,14 @@
-// The sleep screen. Hanua opens asleep, and falls asleep after 15 minutes without use, or on ⌃L / the moon button.
+// The sleep screen. Hanua opens asleep, and falls asleep after 15 minutes without use (Hanua Settings → Sleep screen),
+// or on ⌃L / the lock button. Touch ID and the PIN can be set up or changed there too (public/settings/window.js).
 // It wakes with the 4-digit PIN (checked by the server, which keeps only a hash) or Touch ID. A curtain against
 // glances, not a vault: Mel locks the Mac itself when she steps away (her choice, 4 Oct 2026).
 import { $, api, h, store, toast } from "./lib.js";
 
-// ?idle=20 (seconds) makes testing quicker; normally 15 minutes
-const IDLE_MS = (Number(new URLSearchParams(location.search).get("idle")) || 15 * 60) * 1000;
+// ?idle=20 (seconds) makes testing quicker; normally 15 minutes, or what Mel set in Hanua Settings → Sleep screen
+const TEST_IDLE = Number(new URLSearchParams(location.search).get("idle")) || 0;
+let idleMs = (TEST_IDLE || 15 * 60) * 1000;
+export const sleepAfter = () => Math.round(idleMs / 60_000);
+document.addEventListener("hanua:settings", (e) => { const m = e.detail?.sleep?.after; if (m && !TEST_IDLE) idleMs = m * 60_000; });
 const TOUCH_KEY = "room-touchid"; // the Touch ID credential's id (not a secret)
 const OFFERS_KEY = "room-touchid-offers"; // how often Touch ID has been offered (at most three times)
 
@@ -33,11 +37,23 @@ function tick() {
 const b64 = (buf) => btoa(String.fromCharCode(...new Uint8Array(buf)));
 const unb64 = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
 const random = (n) => crypto.getRandomValues(new Uint8Array(n));
-async function touchAvailable() {
+export async function touchAvailable() {
   try { return Boolean(window.PublicKeyCredential) && await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable(); }
   catch { return false; }
 }
-async function setUpTouch() {
+export const hasTouch = () => Boolean(store(TOUCH_KEY));
+// Turned off in Hanua Settings: the passkey stays in the Mac's keychain, so Undo (restoreTouch) needs no new setup;
+// the offer toast stays quiet from then on
+export function forgetTouch() {
+  const id = store(TOUCH_KEY);
+  try { localStorage.removeItem(TOUCH_KEY); } catch { /* fine */ }
+  store(OFFERS_KEY, "3");
+  touchKey.hidden = true;
+  return id;
+}
+export function restoreTouch(id) { if (id) store(TOUCH_KEY, id); }
+// true when Touch ID was set up (from the offer toast, or Hanua Settings → Sleep screen)
+export async function setUpTouch() {
   try {
     const cred = await navigator.credentials.create({ publicKey: {
       rp: { name: "Hanua", id: location.hostname },
@@ -49,9 +65,11 @@ async function setUpTouch() {
     } });
     store(TOUCH_KEY, b64(cred.rawId));
     toast("Touch ID is set. Next time, touch the sensor to wake Hanua.");
+    return true;
   } catch (err) {
     if (err?.name !== "NotAllowedError") store(OFFERS_KEY, "3");
     toast(err?.name === "NotAllowedError" ? "Touch ID wasn't set up. Your PIN still works." : "Touch ID isn't available here. Your PIN still works.", err?.name !== "NotAllowedError");
+    return false;
   }
 }
 // auto: asked by itself as Hanua falls asleep (Mel, 5 Oct 2026: ask for Touch ID straight away). Safari may refuse
@@ -174,7 +192,7 @@ export async function sleep() {
     const { set } = await api("/api/lock");
     mode = set ? "check" : "setup";
   } catch { mode = "check"; }
-  if (mode === "setup") say("Choose a 4-digit PIN", "Hanua asks for it when it opens and after 15 minutes without use.");
+  if (mode === "setup") say("Choose a 4-digit PIN", `Hanua asks for it when it opens and after ${sleepAfter()} minutes without use.`);
   else {
     say("Hanua is asleep", touchKey.hidden ? "Type your PIN." : "Touch ID or your PIN.");
     if (!touchKey.hidden) touchWake(true);
@@ -206,8 +224,8 @@ document.addEventListener("keydown", (e) => {
 for (const ev of ["pointermove", "pointerdown", "keydown", "wheel", "touchstart", "scroll"]) {
   addEventListener(ev, () => { if (!asleep) lastActive = Date.now(); }, { passive: true, capture: true });
 }
-const checkIdle = () => { if (!asleep && Date.now() - lastActive > IDLE_MS) sleep(); };
-setInterval(checkIdle, Math.min(15_000, IDLE_MS / 2));
+const checkIdle = () => { if (!asleep && Date.now() - lastActive > idleMs) sleep(); };
+setInterval(checkIdle, Math.min(15_000, idleMs / 2));
 document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") checkIdle(); });
 $("ts-sleep").addEventListener("click", sleep);
 
