@@ -309,15 +309,16 @@ export function weekDays(day, shift = 0) {
   return Array.from({ length: 7 }, (_, i) => stepDay(monday, i));
 }
 // A time typed in a plain box (Mel, 8 Oct 2026: the browser's own time box was hard to read in Safari): "930",
-// "9.30", "9:30am", "2pm", "14", "1430" → "HH:MM", or null when it can't be read. Without am / pm, 1 to 6 means the
-// afternoon (a meeting at "3" is 3 pm); 7 to 12 the morning (12 is midday); 0 and 13–23 as they are.
-export function parseTime(s) {
+// "9.30", "9:30am", "2pm", "14", "1430" → "HH:MM", or null when it can't be read. Without am / pm, lean says which
+// half of the day a bare 1–11 is: "auto" (meetings): 1 to 6 the afternoon (a meeting at "3" is 3 pm), 7 to 11 the
+// morning; "am" (a day's start): the morning; "pm" (a day's end): the afternoon. 0, 12 and 13–23 are as they are.
+export function parseTime(s, lean = "auto") {
   const m = /^(\d{1,2})(?:[:.h]?(\d{2}))?\s*(a|am|p|pm)?$/.exec(String(s || "").trim().toLowerCase().replace(/\s+/g, " ").replace(/\.$/, "").replace(/(\d) (?=[ap])/, "$1"));
   if (!m) return null;
   let hr = Number(m[1]); const min = m[2] ? Number(m[2]) : 0, ap = m[3]?.[0];
   if (min > 59) return null;
   if (ap) { if (hr < 1 || hr > 12) return null; hr = (hr % 12) + (ap === "p" ? 12 : 0); }
-  else { if (hr > 23) return null; if (hr >= 1 && hr <= 6) hr += 12; }
+  else { if (hr > 23) return null; if (hr >= 1 && hr <= 11 && (lean === "pm" || (lean === "auto" && hr <= 6))) hr += 12; }
   return `${String(hr).padStart(2, "0")}:${String(min).padStart(2, "0")}`;
 }
 // "14:30" → "2:30 pm"; "" stays ""

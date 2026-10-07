@@ -1,7 +1,7 @@
 // The sleep screen's PIN. Kept only as a salted scrypt hash in a file on this Mac (never committed, never sent to
 // the page). It's a curtain against glances, not a vault: Mel locks the Mac itself when she steps away.
 import { randomBytes, scrypt as scryptCb, timingSafeEqual } from "node:crypto";
-import { readFile, writeFile, unlink } from "node:fs/promises";
+import { readFile, rename, writeFile, unlink } from "node:fs/promises";
 import { promisify } from "node:util";
 
 const scrypt = promisify(scryptCb);
@@ -19,12 +19,15 @@ export async function lockStatus(file) {
   return { set: Boolean((await readLock(file))?.hash) };
 }
 
-export async function setPin(file, pin) {
+export async function setPin(file, pin, { replace = false } = {}) {
   if (!validPin(pin)) throw Object.assign(new Error("The PIN needs to be 4 digits."), { status: 400 });
-  if ((await readLock(file))?.hash) throw Object.assign(new Error("A PIN is already set."), { status: 409 });
+  if (!replace && (await readLock(file))?.hash) throw Object.assign(new Error("A PIN is already set."), { status: 409 });
   const salt = randomBytes(16).toString("hex");
   const hash = (await scrypt(pin, salt, 32)).toString("hex");
-  await writeFile(file, JSON.stringify({ salt, hash }) + "\n", { mode: 0o600 });
+  // written beside it, then swapped in: the old PIN stays until the new one is complete
+  const tmp = `${file}.${process.pid}.tmp`;
+  await writeFile(tmp, JSON.stringify({ salt, hash }) + "\n", { mode: 0o600 });
+  await rename(tmp, file);
 }
 
 // { ok } or { ok: false, wait } (seconds to wait after too many wrong tries)
@@ -50,8 +53,7 @@ export async function changePin(file, current, pin) {
   if (!validPin(pin)) throw Object.assign(new Error("The new PIN needs to be 4 digits."), { status: 400 });
   const check = await checkPin(file, current);
   if (!check.ok) return check;
-  await clearPin(file);
-  await setPin(file, pin);
+  await setPin(file, pin, { replace: true });
   return { ok: true };
 }
 export async function forgetPin(file, current) {

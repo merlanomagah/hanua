@@ -15,8 +15,9 @@ const apply = () => {
   setTimeWords(settings.timeWords);
   document.dispatchEvent(new CustomEvent("hanua:settings", { detail: settings }));
 };
-// after a save: { before } so the desk can rename today's sections; windows redraw
-const saved = (before) => document.dispatchEvent(new CustomEvent("hanua:settings-saved", { detail: { before } }));
+// after a save: { before, here } so the desk can rename today's sections (only for a change made here: the Mac that
+// made it already renamed and saved the shared day, and doing it again on this Mac would clash with it); windows redraw
+const saved = (before, here = true) => document.dispatchEvent(new CustomEvent("hanua:settings-saved", { detail: { before, here } }));
 
 export async function loadSettings(quiet = false) {
   let j;
@@ -25,7 +26,7 @@ export async function loadSettings(quiet = false) {
   const before = settings;
   ({ settings, defaults } = j); rev = j.rev ?? null;
   apply();
-  if (quiet) { saved(before); saidUpdated(toast); }
+  if (quiet) { saved(before, false); saidUpdated(toast); }
 }
 // the other Mac changed Settings: use them here too (a window being typed in waits: see the windows)
 document.addEventListener("hanua:room", (e) => {

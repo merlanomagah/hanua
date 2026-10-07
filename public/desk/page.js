@@ -360,7 +360,7 @@ function meetingsEl() {
 // the working day and Save & plan
 export const nowHHMM = () => { const d = new Date(); return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`; };
 function dayBar() {
-  const field = (k, label) => timeField(desk.day[k], { label, blank: false, onSet: (t) => { desk.day[k] = t; save(); } });
+  const field = (k, label) => timeField(desk.day[k], { label, blank: false, lean: k === "start" ? "am" : "pm", onSet: (t) => { desk.day[k] = t; save(); } });
   const go = h("button", { type: "button", className: "pl-go", textContent: desk.locked ? (pageDay > todayStr() ? "Re-plan" : "Re-plan from now") : "Save & plan", title: "See the day as it would run, arrange the order, then lock it in" });
   go.addEventListener("click", () => openDraft());
   // a day ahead: Save just saves and goes back to the two weeks (Mel, 8 Oct 2026); the page also saves as you type

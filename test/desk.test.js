@@ -346,3 +346,11 @@ test("desk: times typed in a plain box (8 Oct 2026)", async () => {
   for (const bad of ["", "abc", "25", "9:75", "13pm", "0am", "12345", null]) assert.equal(parseTime(bad), null, String(bad));
   assert.deepEqual(["09:30", "14:05", "00:00", "12:00", ""].map(timeText), ["9:30 am", "2:05 pm", "12:00 am", "12:00 pm", ""]);
 });
+
+test("desk: a bare hour leans with the field: a day's start is morning, its end afternoon", async () => {
+  const { parseTime } = await import("../public/shared/desk.js");
+  assert.deepEqual(["6", "8", "11"].map((x) => parseTime(x, "am")), ["06:00", "08:00", "11:00"]);
+  assert.deepEqual(["5", "6", "530", "9"].map((x) => parseTime(x, "pm")), ["17:00", "18:00", "17:30", "21:00"]);
+  assert.equal(parseTime("6am", "pm"), "06:00"); // am / pm typed always wins
+  assert.equal(parseTime("12", "pm"), "12:00");
+});

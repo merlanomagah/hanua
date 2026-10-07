@@ -50,3 +50,13 @@ test("lock: forgetting the PIN needs the current one; then a new one is chosen",
   assert.equal((await checkPin(f, "8642")).ok, true);
   resetTries();
 });
+
+test("lock: a changed PIN is swapped in whole (no moment without one)", async () => {
+  resetTries();
+  const { readdir } = await import("node:fs/promises");
+  const f = await file();
+  await setPin(f, "1357");
+  assert.equal((await changePin(f, "1357", "2468")).ok, true);
+  assert.deepEqual(await readdir(path.dirname(f)), ["lock.json"]); // no temp file left behind
+  resetTries();
+});

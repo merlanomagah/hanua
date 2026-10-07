@@ -25,8 +25,8 @@ const ready = resizable(win);
 // After any save or a change from the other Mac: fixed sections renamed → today's section of the old name takes the
 // new one; then today has every fixed one. This window redraws unless Mel is in one of its fields.
 document.addEventListener("hanua:settings-saved", (e) => {
-  const before = e.detail?.before;
-  if (before && JSON.stringify(before.fixedSections) !== JSON.stringify(settings.fixedSections)) {
+  const { before, here } = e.detail || {};
+  if (here && before && JSON.stringify(before.fixedSections) !== JSON.stringify(settings.fixedSections)) {
     renameSections(desk, renames(before.fixedSections, settings.fixedSections));
     setFixed(settings.fixedSections);
     withFixed(desk, settings.fixedSections);
@@ -55,7 +55,7 @@ function plannerGroup() {
   });
   const add = h("input", { type: "text", className: "set-in", placeholder: "+ Add a fixed section, then Enter", ariaLabel: "New fixed section", maxLength: 40 });
   add.addEventListener("keydown", (e) => { if (e.key === "Enter" && add.value.trim()) { e.preventDefault(); const v = add.value.trim(); change((n) => { n.fixedSections.push({ name: v, work: false }); }); } });
-  const time = (k, label) => timeField(settings.day[k], { label, blank: false, onSet: (t) => change((n) => { n.day[k] = t; }) }); // typed (8 Oct 2026)
+  const time = (k, label) => timeField(settings.day[k], { label, blank: false, lean: k === "start" ? "am" : "pm", onSet: (t) => change((n) => { n.day[k] = t; }) }); // typed (8 Oct 2026)
   const words = TIME_PICKS.map((m) => {
     const w = h("input", { type: "text", className: "set-in set-word", value: settings.timeWords[m], ariaLabel: `Word for ${minsText(m)}`, maxLength: 16 });
     w.addEventListener("change", () => change((n) => { n.timeWords[m] = w.value.trim(); }));
