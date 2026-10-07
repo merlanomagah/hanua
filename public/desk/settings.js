@@ -13,6 +13,7 @@ import { desk, save, setFixed } from "./state.js";
 import { renderTodo } from "./page.js";
 import { noteClosed, noteOpen, registerWindow, resizable, restorePlace, windowBar } from "./window.js";
 import { ownLayout } from "./arrange.js";
+import { timeField } from "./timefield.js";
 import { saidUpdated, syncState, typingIn } from "../sync.js";
 import { openHanuaSettings } from "../settings/window.js";
 
@@ -54,7 +55,7 @@ function plannerGroup() {
   });
   const add = h("input", { type: "text", className: "set-in", placeholder: "+ Add a fixed section, then Enter", ariaLabel: "New fixed section", maxLength: 40 });
   add.addEventListener("keydown", (e) => { if (e.key === "Enter" && add.value.trim()) { e.preventDefault(); const v = add.value.trim(); change((n) => { n.fixedSections.push({ name: v, work: false }); }); } });
-  const time = (k, label) => { const t = h("input", { type: "time", className: "pl-time", value: settings.day[k], ariaLabel: label, step: 900 }); t.addEventListener("change", () => { if (t.value) change((n) => { n.day[k] = t.value; }); }); return t; };
+  const time = (k, label) => timeField(settings.day[k], { label, blank: false, onSet: (t) => change((n) => { n.day[k] = t; }) }); // typed (8 Oct 2026)
   const words = TIME_PICKS.map((m) => {
     const w = h("input", { type: "text", className: "set-in set-word", value: settings.timeWords[m], ariaLabel: `Word for ${minsText(m)}`, maxLength: 16 });
     w.addEventListener("change", () => change((n) => { n.timeWords[m] = w.value.trim(); }));

@@ -5,6 +5,7 @@
 // change offers Undo. Nothing is kept here: it's written straight into Calendar (server/calendar.js, the EventKit
 // helper), and the wall and Up next re-read it at once. At work only the Work calendars are offered; personal events
 // show as "Busy" and can't be opened. Invitees and travel time stay in Calendar.app (EventKit can't send invitations).
+import { timeField } from "./desk/timefield.js";
 import { $, api, focus, h, toast } from "./lib.js";
 import { dayOf, timeOf, todayStr } from "./shared/dates.js";
 import { ALERTS, ALL_DAY_ALERTS, REPEATS, defaultCalendar, eventShape, moveStart, newEventTimes, setAllDay, writableCalendars } from "./shared/events.js";
@@ -60,9 +61,10 @@ export async function openEvent({ day, item = null, fallback = null, onClose = n
   const paint = () => { dot.style.setProperty("--dot", options.find((c) => c.title === cal.value)?.color || "var(--green)"); };
   const allDay = h("input", { type: "checkbox", name: "allDay", checked: f.allDay });
   const sDate = h("input", { type: "date", className: "ev-in", ariaLabel: "Starts on", required: true });
-  const sTime = h("input", { type: "time", className: "ev-in", ariaLabel: "Starts at", step: 300 });
+  // typed times (8 Oct 2026), like Plan my day's: Safari's own time box drew its placeholder over what was typed
+  const sTime = timeField("", { label: "Starts at", className: "ev-in ev-time", blank: false, enterSubmits: true, onSet: () => { if (sDate.value) { f = moveStart(f, startOf()); put(); } } });
   const eDate = h("input", { type: "date", className: "ev-in", ariaLabel: "Ends on", required: true });
-  const eTime = h("input", { type: "time", className: "ev-in", ariaLabel: "Ends at", step: 300 });
+  const eTime = timeField("", { label: "Ends at", className: "ev-in ev-time", blank: false, enterSubmits: true, onSet: () => { if (eDate.value) f.end = endOf(); } });
   const repeat = h("select", { className: "ev-in", name: "repeat" }, Object.entries(REPEATS).map(([v, t]) => h("option", { value: v, textContent: t })), f.repeat === "custom" ? h("option", { value: "custom", textContent: "Custom (as set in Calendar)" }) : null);
   const endKind = h("select", { className: "ev-in", ariaLabel: "End repeat" }, h("option", { value: "never", textContent: "Never" }), h("option", { value: "until", textContent: "On date" }), h("option", { value: "count", textContent: "After" }));
   const until = h("input", { type: "date", className: "ev-in", ariaLabel: "Last day it repeats" });
@@ -77,7 +79,7 @@ export async function openEvent({ day, item = null, fallback = null, onClose = n
   // the window's state ⇄ the fields (only what changes shape is redrawn, so the cursor never jumps)
   const put = () => {
     sDate.value = dayOf(f.start); eDate.value = dayOf(f.end);
-    sTime.value = timeOf(f.start); eTime.value = timeOf(f.end);
+    sTime.set(timeOf(f.start)); eTime.set(timeOf(f.end));
     sTime.hidden = eTime.hidden = f.allDay;
     allDay.checked = f.allDay;
     repeat.value = f.repeat;
@@ -92,11 +94,11 @@ export async function openEvent({ day, item = null, fallback = null, onClose = n
     alert.value = a in list ? a : ""; if (alert.value !== a && f.alert != null) alert.prepend(h("option", { value: a, textContent: `${f.alert} minutes before`, selected: true }));
     paint();
   };
-  const startOf = () => (f.allDay ? sDate.value : `${sDate.value}T${sTime.value || "09:00"}`);
-  const endOf = () => (f.allDay ? eDate.value : `${eDate.value}T${eTime.value || "10:00"}`);
+  const startOf = () => (f.allDay ? sDate.value : `${sDate.value}T${sTime.get() || "09:00"}`);
+  const endOf = () => (f.allDay ? eDate.value : `${eDate.value}T${eTime.get() || "10:00"}`);
   // the start moved: the end goes with it, keeping the length (as in Calendar)
-  for (const el of [sDate, sTime]) el.addEventListener("change", () => { if (sDate.value) { f = moveStart(f, startOf()); put(); } });
-  for (const el of [eDate, eTime]) el.addEventListener("change", () => { if (eDate.value) f.end = endOf(); });
+  sDate.addEventListener("change", () => { if (sDate.value) { f = moveStart(f, startOf()); put(); } });
+  eDate.addEventListener("change", () => { if (eDate.value) f.end = endOf(); });
   allDay.addEventListener("change", () => { f = setAllDay(f, allDay.checked); put(); });
   repeat.addEventListener("change", () => { f.repeat = repeat.value; if (f.repeat === "none") { f.until = ""; f.count = null; } put(); });
   endKind.addEventListener("change", () => {
