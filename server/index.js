@@ -102,13 +102,14 @@ app.post("/api/lock/check", async (req, res) => res.json(await checkPin(lockFile
 // In data/room/ (gitignored), or, with ROOM_DATA in .env, one iCloud Drive folder both Macs share (6 Oct 2026):
 // every read and write goes through server/room.js (still-coming files never read as empty, whole writes, a save
 // refused if the other Mac changed the file since, the folder watched for the other Mac's changes).
-// The sample preview keeps its own folder so tests never touch Mel's: a sample server (NOTION_TOKEN blanked) ignores
-// the ROOM_DATA / BACKUP_DIR it would inherit from .env (server/guard.js roomChoice).
+// The sample preview keeps its own folder so tests never touch Mel's, and the real Hanua always keeps Mel's: which is
+// which comes from how it was started (server/guard.js roomChoice), never from a missing key.
 const fileEnv = (() => { try { return parseEnv(readFileSync(path.join(process.cwd(), ".env"))); } catch { return {}; } })();
 const choice = roomChoice(process.env, fileEnv);
 if (choice.ignored.length) console.log(`Hanua: a sample server, so .env's ${choice.ignored.join(" and ")} (Mel's real folder) is ignored`);
 const home = (p) => (p && p.startsWith("~/") ? path.join(os.homedir(), p.slice(2)) : p); // the same .env line on both Macs
-const roomDir = path.resolve(root, home(choice.room) || (notionEnabled() ? "data/room" : "data/room-sample"));
+const roomDir = path.resolve(root, home(choice.dir));
+if (choice.why) console.error(`Hanua: ${choice.why}`);
 const sharedRoom = ![path.resolve(root, "data/room"), path.resolve(root, "data/room-sample")].includes(roomDir); // a folder of its own (iCloud): shared
 const room = createRoom(roomDir, { shared: sharedRoom });
 if (room.missing()) console.error(`Hanua: the shared room folder isn't there (${roomDir}). Nothing will save until it is (iCloud Drive on?)`);
@@ -309,7 +310,11 @@ app.put("/api/desk/:day", roomRoute(async (req, res) => {
 
 // The other Mac's changes, as they arrive (server-sent events, server/room.js), and how the sharing is going
 app.get("/api/events", (req, res) => room.events(req, res));
-app.get("/api/sync", (_req, res) => res.set("Cache-Control", "no-store").json(room.status()));
+// setup: what this Mac is missing (a Notion key), said on the desk rather than only in the log (8 Oct 2026)
+app.get("/api/sync", (_req, res) => {
+  const s = room.status();
+  res.set("Cache-Control", "no-store").json({ ...s, sample: choice.sample, setup: choice.why, warning: s.warning || choice.why });
+});
 room.start((what) => { if (what.kind === "settings") reloadSettings().catch(() => {}); });
 
 // The nightly backup of the room's data (server/backup.js): checked every 15 minutes while Hanua runs. The sample

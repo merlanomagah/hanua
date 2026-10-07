@@ -16,6 +16,7 @@
       "runtimeExecutable": "env",
       "runtimeArgs": [
         "PORT=3001",
+        "HANUA_SAMPLE=1",
         "NOTION_TOKEN=",
         "ANTHROPIC_API_KEY=",
         "ANTHROPIC_AUTH_TOKEN=",
@@ -33,6 +34,7 @@
       "name": "sample-desk",
       "runtimeExecutable": "env",
       "runtimeArgs": [
+        "HANUA_SAMPLE=1",
         "NOTION_TOKEN=",
         "ANTHROPIC_API_KEY=",
         "ANTHROPIC_AUTH_TOKEN=",
@@ -51,6 +53,7 @@
       "name": "sample-fresh",
       "runtimeExecutable": "env",
       "runtimeArgs": [
+        "HANUA_SAMPLE=1",
         "NOTION_TOKEN=",
         "ANTHROPIC_API_KEY=",
         "ANTHROPIC_AUTH_TOKEN=",
@@ -69,6 +72,7 @@
       "name": "sample-putea",
       "runtimeExecutable": "env",
       "runtimeArgs": [
+        "HANUA_SAMPLE=1",
         "NOTION_TOKEN=",
         "ANTHROPIC_API_KEY=",
         "ANTHROPIC_AUTH_TOKEN=",
@@ -87,6 +91,7 @@
       "name": "sample-frames",
       "runtimeExecutable": "env",
       "runtimeArgs": [
+        "HANUA_SAMPLE=1",
         "NOTION_TOKEN=",
         "ANTHROPIC_API_KEY=",
         "ANTHROPIC_AUTH_TOKEN=",
@@ -106,6 +111,7 @@
       "runtimeExecutable": "env",
       "runtimeArgs": [
         "PORT=3041",
+        "HANUA_SAMPLE=1",
         "NOTION_TOKEN=",
         "ANTHROPIC_API_KEY=",
         "ANTHROPIC_AUTH_TOKEN=",
@@ -124,6 +130,7 @@
       "runtimeExecutable": "env",
       "runtimeArgs": [
         "PORT=3043",
+        "HANUA_SAMPLE=1",
         "NOTION_TOKEN=",
         "ANTHROPIC_API_KEY=",
         "ANTHROPIC_AUTH_TOKEN=",
@@ -133,7 +140,7 @@
         "ROOM_DATA=data/room-sample",
         "BACKUP_DIR=off",
         "node",
-        "/Users/melmanueli/Documents/GitHub/hanua-work/server/index.js"
+        "../hanua-work/server/index.js"
       ],
       "port": 3043
     },
@@ -142,6 +149,7 @@
       "runtimeExecutable": "env",
       "runtimeArgs": [
         "PORT=3051",
+        "HANUA_SAMPLE=1",
         "NOTION_TOKEN=",
         "ANTHROPIC_API_KEY=",
         "ANTHROPIC_AUTH_TOKEN=",
@@ -151,7 +159,7 @@
         "BACKUP_DIR=off",
         "ROOM_DATA=/tmp/hanua-shared-room-test",
         "node",
-        "/Users/melmanueli/Documents/GitHub/hanua-work/server/index.js"
+        "../hanua-work/server/index.js"
       ],
       "port": 3051
     },
@@ -160,6 +168,7 @@
       "runtimeExecutable": "env",
       "runtimeArgs": [
         "PORT=3052",
+        "HANUA_SAMPLE=1",
         "NOTION_TOKEN=",
         "ANTHROPIC_API_KEY=",
         "ANTHROPIC_AUTH_TOKEN=",
@@ -169,7 +178,7 @@
         "BACKUP_DIR=off",
         "ROOM_DATA=/tmp/hanua-shared-room-test",
         "node",
-        "/Users/melmanueli/Documents/GitHub/hanua-work/server/index.js"
+        "../hanua-work/server/index.js"
       ],
       "port": 3052
     }

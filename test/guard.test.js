@@ -45,6 +45,32 @@ test("guard: a sample server never inherits Mel's real room folder from .env", (
   assert.equal(roomChoice({ ...fileEnv }, fileEnv).room, fileEnv.ROOM_DATA);
 });
 
+test("guard: how Hanua was started decides real or sample, never a missing key (8 Oct 2026)", () => {
+  const icloud = "~/Library/Mobile Documents/com~apple~CloudDocs/Hanua";
+  // the Mac mini on 8 Oct: started by start.sh, .env with a blank NOTION_TOKEN and the shared folder
+  const mini = { NOTION_TOKEN: "", ROOM_DATA: icloud };
+  const a = roomChoice({ ...mini, HANUA_MAIN: "1" }, mini);
+  assert.deepEqual([a.sample, a.dir, a.ignored.length], [false, icloud, 0]);
+  assert.match(a.why, /no Notion key/);
+  // started by start.sh with a key: .env as it is, nothing to say
+  const b = roomChoice({ NOTION_TOKEN: "secret", ROOM_DATA: icloud, BACKUP_DIR: "off", HANUA_MAIN: "1" }, {});
+  assert.deepEqual([b.sample, b.dir, b.backup, b.why], [false, icloud, "off", null]);
+  // the real Hanua with no key and no folder: data/room, never the sample's folder
+  const c = roomChoice({ HANUA_MAIN: "1" }, {});
+  assert.deepEqual([c.sample, c.dir], [false, "data/room"]);
+  // a sample config (blank token in the config, a key in .env): sample, the inherited folder and backup ignored
+  const d = roomChoice({ HANUA_SAMPLE: "1", NOTION_TOKEN: "", ROOM_DATA: icloud, BACKUP_DIR: "~/Hanua backup" }, { NOTION_TOKEN: "secret", ROOM_DATA: icloud, BACKUP_DIR: "~/Hanua backup" });
+  assert.deepEqual([d.sample, d.dir, d.backup], [true, "data/room-sample", null]);
+  // a sample config run on the mini (blank token in both): still sample, the iCloud folder still ignored
+  const e = roomChoice({ NOTION_TOKEN: "", ROOM_DATA: icloud }, mini);
+  assert.deepEqual([e.sample, e.dir], [true, "data/room-sample"]);
+  // a sample server never uses an iCloud folder, even one given to it directly
+  const f = roomChoice({ HANUA_SAMPLE: "1", ROOM_DATA: "/Users/x/Library/Mobile Documents/com~apple~CloudDocs/Hanua" }, {});
+  assert.deepEqual([f.dir, f.ignored], ["data/room-sample", ["ROOM_DATA"]]);
+  // a sample given a /tmp folder of its own uses it
+  assert.equal(roomChoice({ HANUA_SAMPLE: "1", ROOM_DATA: "/tmp/hanua-shared-room-test" }, {}).dir, "/tmp/hanua-shared-room-test");
+});
+
 test("updates: the old copy waits for a new one to answer, and gives up if it never does", async () => {
   const wait = () => Promise.resolve();
   const answers = (seq) => { let i = 0; return async () => { const v = seq[Math.min(i++, seq.length - 1)]; if (v instanceof Error) throw v; return { json: async () => v }; }; };

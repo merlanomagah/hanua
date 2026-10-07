@@ -174,7 +174,7 @@ function deskGroup() {
 // where the days, menus, stickies and Settings live: this Mac only, or the iCloud folder both Macs share
 function sharedLine() {
   const s = syncState;
-  if (!s?.shared) return "Your days, menus and stickies are kept on this Mac only.";
+  if (!s?.shared) return `Your days, menus and stickies are kept on this Mac only.${s?.setup ? ` ${s.setup}.` : ""}`;
   if (s.warning) return s.warning;
   const ago = s.lastRemote ? Math.round((Date.now() - new Date(s.lastRemote)) / 60_000) : null;
   return `Shared with your other Mac (iCloud Drive › ${s.folder}).${ago === null ? "" : ` Last change from it: ${ago < 1 ? "just now" : `${ago} min ago`}.`}`;
@@ -198,7 +198,7 @@ function show() {
   render();
 }
 const hide = () => { win.hidden = true; noteClosed("settings-win"); };
-const ICON = '<svg viewBox="0 0 24 24" width="30" aria-hidden="true"><circle cx="12" cy="12" r="3.2" fill="none" stroke="#5c564c" stroke-width="1.6"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1" stroke="#5c564c" stroke-width="1.6" stroke-linecap="round"/></svg>';
+const ICON = '<svg viewBox="0 0 24 24" width="30" aria-hidden="true" fill="none" stroke="#5c564c" stroke-width="1.6"><path d="M9.59 5.00 L9.84 2.65 L14.16 2.65 L14.41 5.00 L15.24 5.35 L17.09 3.86 L20.14 6.91 L18.65 8.76 L19.00 9.59 L21.35 9.84 L21.35 14.16 L19.00 14.41 L18.65 15.24 L20.14 17.09 L17.09 20.14 L15.24 18.65 L14.41 19.00 L14.16 21.35 L9.84 21.35 L9.59 19.00 L8.76 18.65 L6.91 20.14 L3.86 17.09 L5.35 15.24 L5.00 14.41 L2.65 14.16 L2.65 9.84 L5.00 9.59 L5.35 8.76 L3.86 6.91 L6.91 3.86 L8.76 5.35Z" stroke-linejoin="round"/><circle cx="12" cy="12" r="3"/></svg>';
 registerWindow("settings-win", { title: "Settings", icon: ICON, show, hide, shown: () => !win.hidden });
 export function openSettings() { if (!settings) return; show(); noteOpen("settings-win"); }
 
