@@ -3,9 +3,11 @@
 //  1. every server, page and script file is valid JavaScript
 //  2. public/shared/ (loaded by the page and the server) imports nothing from the page
 //  3. every .env name the code reads is explained in .env.example (a Mac set up from it must not miss one)
-//  4. only the files allowed to write to disk do (room.js, backup.js, lock.js, calendar.js, index.js, updates.js)
-//  5. the tests pass
-//  6. when the add-on list changed since GitHub's main, say so (each Mac installs them itself before restarting)
+//  4. only the files allowed to write to disk do (room.js, backup.js, lock.js, calendar.js, index.js, updates.js,
+//     routes/system.js)
+//  5. every page signal ("hanua:…") is in public/events.js, and each one there is both sent and listened for
+//  6. the tests pass
+//  7. when the add-on list changed since GitHub's main, say so (each Mac installs them itself before restarting)
 import { execFileSync, spawnSync } from "node:child_process";
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import path from "node:path";
@@ -44,11 +46,26 @@ for (const f of code.filter((f) => !f.includes(`${path.sep}public${path.sep}`) |
 for (const k of read) if (!named.has(k)) problems.push(`.env.example doesn't explain ${k}, which the code reads`);
 
 // 4. only these write to disk
-// (updates.js only makes the logs folder for a restarted copy)
-const WRITERS = new Set(["server/room.js", "server/backup.js", "server/lock.js", "server/calendar.js", "server/index.js", "server/updates.js"]);
+// (updates.js only makes the logs folder for a restarted copy; routes/system.js keeps This Mac's choices and makes the
+// room folder for the backup; index.js writes the running copy's pid)
+const WRITERS = new Set(["server/room.js", "server/backup.js", "server/lock.js", "server/calendar.js", "server/index.js", "server/updates.js", "server/routes/system.js"]);
 for (const f of walk(path.join(root, "server"))) {
   if (/\b(writeFile|appendFile|createWriteStream|copyFile|rename|unlink|rm|mkdir)(Sync)?\(/.test(readFileSync(f, "utf8")) && !WRITERS.has(rel(f))) {
     problems.push(`${rel(f)} writes to disk but isn't one of the files allowed to (scripts/check.js WRITERS): room data goes through server/room.js`);
+  }
+}
+
+// 5. page signals: listed, sent and heard
+{
+  const listed = new Set(Object.keys((await import(path.join(root, "public/events.js"))).EVENTS));
+  const pageFiles = walk(path.join(root, "public")).filter((f) => !f.endsWith("events.js")).map((f) => readFileSync(f, "utf8"));
+  const used = new Set(pageFiles.flatMap((t) => [...t.matchAll(/"(hanua:[a-z-]+)"/g)].map((m) => m[1])));
+  for (const n of used) if (!listed.has(n)) problems.push(`the page uses the signal ${n}, which isn't in public/events.js (a typo, or a new one to list)`);
+  for (const n of listed) {
+    const esc = n.replace(/[-:]/g, (c) => `\\${c}`);
+    const sent = pageFiles.some((t) => new RegExp(`Event\\(\\s*"${esc}"`).test(t));
+    const heard = pageFiles.some((t) => new RegExp(`addEventListener\\(\\s*"${esc}"`).test(t));
+    if (!sent || !heard) problems.push(`the signal ${n} is ${!sent ? "never sent" : "never listened for"} (public/events.js)`);
   }
 }
 

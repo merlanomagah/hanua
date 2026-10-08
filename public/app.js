@@ -1652,6 +1652,7 @@ function turnRing(now) {
   requestAnimationFrame(turnRing);
   const dt = Math.min(0.1, (now - (ringLast || now)) / 1000);
   ringLast = now;
+  if (!Number.isFinite(dt)) return; // no frame time (a test stand-in for animation frames): nothing to move by
   if (!ringC || reducedMotion || $("wall-in").inert) return;
   ringOff -= RING_SPEED * dt;
   if (ringOff < ringC) ringOff += ringC;

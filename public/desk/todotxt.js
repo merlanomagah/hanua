@@ -257,3 +257,4 @@ document.addEventListener("pointerdown", (e) => {
   if (row.querySelector(".shop-add")?.value.trim()) return;
   adding = null; under = null; addWhen = null; renderTxt();
 }, true);
+document.addEventListener("hanua:folds", () => renderTxt()); // a task folded in Plan my day folds here too

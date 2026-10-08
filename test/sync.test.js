@@ -72,3 +72,13 @@ test("sync: the desk says what's wrong with the shared folder, most serious firs
   assert.match(syncWarning({ conflicts: ["a", "b"] }), /2 files/);
   assert.match(syncWarning({ pending: ["stickies.json"] }), /Keep Downloaded/);
 });
+
+test("sync: one list of what the room folder holds; old drawings are kept and checked but aren't news", async () => {
+  const { kindOf, changeOf, ROOM_DIRS } = await import("../public/shared/sync.js");
+  assert.deepEqual(ROOM_DIRS, ["", "desk", "menu", "whiteboard"]);
+  assert.deepEqual(kindOf("desk/2026-10-09.json"), { kind: "desk", key: "2026-10-09", quiet: false });
+  assert.deepEqual(kindOf("whiteboard/2026-09-28.png"), { kind: "drawing", key: "2026-09-28", quiet: true });
+  assert.equal(changeOf("whiteboard/2026-09-28.png"), null);
+  assert.deepEqual(changeOf("settings.json"), { kind: "settings", key: "" });
+  for (const x of ["desk/2026-10-09 2.json", "desk/.2026-10-09.json.icloud", "desk/notes.txt", "other/2026-10-09.json", "desk/sub/2026-10-09.json"]) assert.equal(kindOf(x), null, x);
+});

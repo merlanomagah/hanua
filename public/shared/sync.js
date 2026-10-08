@@ -30,19 +30,35 @@ export function conflictOf(name) {
   return m && Number(m[2]) >= 2 ? `${m[1]}${m[3]}` : null;
 }
 
-// What a changed file in the room folder means to an open page: { kind, key } or null (temp files, placeholders,
-// clash copies and anything else are not news). Paths are relative to the folder, with "/".
-export function changeOf(rel) {
+// Every kind of file in the room folder, in one list (Foundations F6, 9 Oct 2026): the folder watch, the sweep, the
+// news sent to open pages and the clash-copy check all read it, so a new kind of file is added here once.
+// dir + name: a file per day or week in a folder; file: one file at the top. quiet: kept (and checked for clash
+// copies) but never news for an open page (the old drawn menus, read-only now).
+export const ROOM_KINDS = [
+  { kind: "desk", dir: "desk", name: /^(\d{4}-\d{2}-\d{2})\.json$/ },
+  { kind: "menu", dir: "menu", name: /^(\d{4}-\d{2}-\d{2})\.json$/ },
+  { kind: "drawing", dir: "whiteboard", name: /^(\d{4}-\d{2}-\d{2})\.png$/, quiet: true },
+  { kind: "stickies", file: "stickies.json" },
+  { kind: "settings", file: "settings.json" },
+  { kind: "plant", file: "plant.json" },
+];
+// the folders to look in: the top, and each kind's own folder
+export const ROOM_DIRS = ["", ...new Set(ROOM_KINDS.filter((k) => k.dir).map((k) => k.dir))];
+// Which kind a path in the folder is (with "/"): { kind, key, quiet } or null (temp files, placeholders, clash copies)
+export function kindOf(rel) {
   const p = String(rel || "").replace(/\\/g, "/");
-  const base = p.split("/").pop();
+  const parts = p.split("/"), base = parts.at(-1);
   if (!base || base.startsWith(".") || conflictOf(base)) return null;
-  let m;
-  if ((m = /^desk\/(\d{4}-\d{2}-\d{2})\.json$/.exec(p))) return { kind: "desk", key: m[1] };
-  if ((m = /^menu\/(\d{4}-\d{2}-\d{2})\.json$/.exec(p))) return { kind: "menu", key: m[1] };
-  if (p === "stickies.json") return { kind: "stickies", key: "" };
-  if (p === "settings.json") return { kind: "settings", key: "" };
-  if (p === "plant.json") return { kind: "plant", key: "" };
+  for (const k of ROOM_KINDS) {
+    if (k.file && p === k.file) return { kind: k.kind, key: "", quiet: Boolean(k.quiet) };
+    if (k.dir && parts.length === 2 && parts[0] === k.dir) { const m = k.name.exec(base); if (m) return { kind: k.kind, key: m[1], quiet: Boolean(k.quiet) }; }
+  }
   return null;
+}
+// What a changed file in the room folder means to an open page: { kind, key } or null (anything that isn't news)
+export function changeOf(rel) {
+  const k = kindOf(rel);
+  return k && !k.quiet ? { kind: k.kind, key: k.key } : null;
 }
 
 // Stickies from two Macs, as one list: every note either side has (none lost), and where both have one, the later
