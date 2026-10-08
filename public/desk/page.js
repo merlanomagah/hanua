@@ -16,14 +16,18 @@ import { renderAgenda } from "./agenda.js";
 import { openTxt, renderTxt } from "./todotxt.js";
 import { dots, noteClosed, noteOpen, registerWindow } from "./window.js";
 import { openDraft } from "./draft.js";
-import { loadBackup, loadDesk } from "../planner.js";
+import { loadDesk } from "../planner.js";
+import { view } from "./view.js";
+import { sweepEl } from "./sweep.js";
+import { archiveEl, openArchive } from "./archive.js";
+import { goDay, openWeek, weekEl } from "./week.js";
+export { goDay, openArchive, openWeek }; // other parts of the desk still ask page.js for these
 
-let sweepLater = false;
-let archive = null; // null = today's page; { days: [...], day, page } while looking back
-let week = null; // null, or { shift, days, sums, further } while the week shows (double-clicking the file)
-export const resetSweep = () => { sweepLater = false; };
+// what Plan my day shows besides a day's page (the archive, the two weeks) and whether the sweep was put off: one
+// small shared object (desk/view.js), as the week, archive and sweep now have files of their own (F6, 9 Oct 2026)
+export const resetSweep = () => { view.sweepLater = false; };
 document.addEventListener("hanua:desk-stale", () => renderTodo());
-document.addEventListener("hanua:backup", () => { if (archive) renderTodo(); });
+document.addEventListener("hanua:backup", () => { if (view.archive) renderTodo(); });
 
 export const check = (done, label) => h("button", { type: "button", className: `check${done ? " on" : ""}`, ariaLabel: label, ariaPressed: String(done), innerHTML: '<svg viewBox="0 0 16 16"><path d="M3 8.5l3 3 7-7"/></svg>' });
 const tagged = (el, section) => { el.dataset.section = section; return el; };
@@ -70,7 +74,6 @@ function focusLine(section, index, dir = 1) {
   el.focus({ preventScroll: true });
   el.setSelectionRange(el.value.length, el.value.length);
 }
-const dayWord = (day) => parseDay(day).toLocaleDateString("en-NZ", { weekday: "short", day: "numeric", month: "short" });
 
 // quick picks on a written line: priority and a rough time (blank = Medium, 30 min); not precise, just structure
 export const PRI_LABEL = { "": "Priority", h: "High", m: "Med", l: "Low" };
@@ -360,72 +363,6 @@ function sectionEl(sec) {
   return tagged(h("section", { className: "pl-sec pl-todo-sec" }, head, list), key);
 }
 
-// the morning sweep: unfinished things from the last week, each done, brought into today, or let go
-function sweepEl(items) {
-  const settleAs = (item, how) => settle(desk, item, how, newId());
-  const today = todayStr();
-  // where it's from, and how long it's been waiting (from the day it was first written; Mel: here only, not on the line)
-  const fromText = (it) => { const n = carriedDays(it, today); return `${it.section} · ${dayWord(it.from || it.day)}${n > 1 ? ` · day ${n}` : ""}`; };
-  const act = (label, title, run, said = null) => {
-    const b = h("button", { type: "button", className: "sw-act", textContent: label, title });
-    b.addEventListener("click", () => (said ? undoable(said, run) : (run(), renderTodo()))); // every decision has an Undo
-    return b;
-  };
-  return h("div", { className: "pl-sweep" },
-    h("h3", { textContent: "Before you start" }),
-    h("p", { className: "sw-lede", textContent: `${items.length} ${items.length === 1 ? "thing" : "things"} from earlier ${items.length === 1 ? "wasn't" : "weren't"} ticked off. Done already, bring into today, or let go?` }),
-    h("ul", { className: "sw-list" }, items.map((it) => h("li", { className: "sw-item" },
-      h("span", { className: "sw-from", textContent: fromText(it), title: fromText(it) }),
-      h("span", { className: "sw-text", textContent: it.text }, it.kids?.length ? h("span", { className: "sw-kids" }, it.kids.map((k) => h("span", { textContent: `› ${k.text}` }))) : null),
-      h("span", { className: "sw-acts" },
-        act("✓ Done", "It got done: tick it off", () => settleAs(it, "done"), `Done: ${it.text}`),
-        act("→ Today", "Bring it into today", () => settleAs(it, "today"), `Brought into today: ${it.text}`),
-        act("✕ Remove", "Let it go", () => settleAs(it, "gone"), `Let go: ${it.text}`))))),
-    h("div", { className: "sw-foot" },
-      act("All to today", "Bring every one into today", () => items.forEach((it) => settleAs(it, "today")), `${items.length} brought into today`),
-      act("Let all go", "Let every one go", () => items.forEach((it) => settleAs(it, "gone")), `${items.length} let go`),
-      act("Later", "Plan first; these wait until next time", () => { sweepLater = true; })));
-}
-
-// the archive: earlier days, read-only
-export async function openArchive(at = null) {
-  week = null;
-  archive = { days: [], day: null, page: null };
-  loadBackup();
-  renderTodo();
-  try { archive.days = (await (await fetch("/api/desk/days")).json()).filter((d) => d < deskDay); } catch { archive.days = []; }
-  const day = at && archive.days.includes(at) ? at : archive.days[0];
-  if (day) await showArchiveDay(day); else renderTodo();
-}
-async function showArchiveDay(day) {
-  try { archive.page = deskShape((await (await fetch(`/api/desk/${day}`)).json()).day); archive.day = day; } catch { archive.page = null; }
-  renderTodo();
-}
-function archiveEl() {
-  const pick = h("ul", { className: "ar-days" }, archive.days.map((d) => {
-    const b = h("button", { type: "button", className: `ar-day${d === archive.day ? " on" : ""}`, textContent: planDate(d) });
-    b.addEventListener("click", () => showArchiveDay(d));
-    return h("li", {}, b);
-  }));
-  const p = archive.page;
-  const read = (text, done, sub = false) => h("li", { className: `ar-line${done ? " done" : ""}${sub ? " sub" : ""}` }, h("span", { className: "ar-tick", textContent: done ? "✓" : "○" }), h("span", { textContent: text }));
-  const page = !p ? h("p", { className: "pl-covered", textContent: archive.days.length ? "Choose a day." : "No earlier days yet: yesterday's page lands here tomorrow." })
-    : h("div", { className: "ar-page" }, h("p", { className: "pl-date", textContent: planDate(archive.day) }),
-      h("h4", { textContent: "Focuses" }), h("ol", { className: "ar-list" }, p.focus.filter(Boolean).map((f) => h("li", { textContent: f }))),
-      ...p.sections.filter((s) => s.lines.some((l) => l.text)).flatMap((s) => [h("h4", { textContent: s.name || "Untitled" }), h("ul", { className: "ar-list" }, s.lines.filter((l) => l.text).map((l) => read(l.text, l.done, Boolean(l.parent))))]));
-  return h("div", { className: "pl-archive" }, h("div", {}, pick, backupLine()), page);
-}
-
-// under the archive's days: when the room's data was last copied to iCloud Drive
-function backupLine() {
-  if (!backup || backup.off) return null;
-  const when = (iso) => { const d = new Date(iso);
-    return `${ymd(d) === todayStr() ? "today" : d.toLocaleDateString("en-NZ", { weekday: "short", day: "numeric", month: "short" })}, ${d.toLocaleTimeString("en-NZ", { hour: "numeric", minute: "2-digit" })}`; };
-  const text = backup.good ? `Backed up ${when(backup.good)}` : "Not backed up yet";
-  return h("p", { className: `ar-backup${backup.warning ? " bad" : ""}`, title: backup.where ? `Copied to ${backup.where}` : "", textContent: backup.warning ? `${text}. ${backup.warning}.` : text });
-}
-
-// meetings and events for the day: a time, roughly how long, what, and whether it's work. Planned round, never over.
 function meetingsEl() {
   const rows = Math.min(MAX_MEETINGS, Math.max(3, desk.meetings.length + 1));
   const list = h("ul", { className: "pl-list pl-meets" });
@@ -479,7 +416,7 @@ export function fixedOn(day = pageDay, d = desk) {
 export const fixedToday = () => fixedOn(todayStr(), todayDesk);
 export function renderTodo() {
   const today = todayStr();
-  if (deskDay !== today && loaded) { archive = null; loadDesk(); return; } // a new day: a fresh page
+  if (deskDay !== today && loaded) { view.archive = null; loadDesk(); return; } // a new day: a fresh page
   renderPlanWidget();
   // Priority and Time sit in two even columns down the page (Mel, 7 Oct 2026): the Time column is as wide as the
   // longest time word, which Mel can rename in Settings
@@ -493,10 +430,10 @@ export function renderTodo() {
 
   let body;
   // the morning sweep is today's only: a day ahead hasn't had a yesterday yet
-  const items = shows.length && !archive && !week && !ahead ? leftovers({ ...earlier, [today]: desk }, today) : [];
+  const items = shows.length && !view.archive && !view.week && !ahead ? leftovers({ ...earlier, [today]: desk }, today) : [];
   const dateBar = () => h("div", { className: "pl-datebar" }, h("p", { className: "pl-date", textContent: planDate(day) }),
     ahead ? h("span", { className: "pl-ahead-tag", textContent: dayName(day) === "tomorrow" ? "Planning tomorrow" : "Planning ahead" }) : null, dayBar());
-  if (week) body = [weekEl()];
+  if (view.week) body = [weekEl()];
   else if (!shows.length) {
     // at work: only what's marked Work (meetings, Tasks if marked, Work sections); the rest is put away
     const work = desk.sections.filter((x) => x.work);
@@ -507,8 +444,8 @@ export function renderTodo() {
       h("p", { className: "pl-covered", textContent: work.length ? "Personal parts of the page are put away at work." : "Mark a section Work (at home) and it shows here. The rest is put away at work." }),
     ];
   }
-  else if (archive) body = [archiveEl()];
-  else if (items.length && !sweepLater) body = [h("p", { className: "pl-date", textContent: planDate(today) }), sweepEl(items)];
+  else if (view.archive) body = [archiveEl()];
+  else if (items.length && !view.sweepLater) body = [h("p", { className: "pl-date", textContent: planDate(today) }), sweepEl(items)];
   else {
     const add = h("button", { type: "button", className: "pl-add", textContent: "+ Add a section", disabled: desk.sections.length >= MAX_SECTIONS });
     add.addEventListener("click", () => {
@@ -523,21 +460,21 @@ export function renderTodo() {
       h("div", { className: "pl-cols pl-top" }, focusesEl(), meetingsEl()),
       h("div", { className: "pl-todo-head" }, h("h2", { textContent: "To-Do List" }), add),
       h("div", { className: "pl-cols" }, col(0), col(1)),
-      items.length ? (() => { const b = h("button", { type: "button", className: "pl-later", textContent: `${items.length} from earlier still waiting` }); b.addEventListener("click", () => { sweepLater = false; renderTodo(); }); return b; })() : null,
+      items.length ? (() => { const b = h("button", { type: "button", className: "pl-later", textContent: `${items.length} from earlier still waiting` }); b.addEventListener("click", () => { view.sweepLater = false; renderTodo(); }); return b; })() : null,
     ];
   }
   if (stale) body.unshift(h("p", { className: "pl-stale", role: "alert", textContent: CLASH_TEXT[stale] }));
-  const page = h("div", { className: `pl-page${archive ? " is-archive" : ""}${week ? " is-week" : ""}${ahead && !week && !archive ? " ahead" : ""}`, ariaLabel: week ? "The week" : `Plan for ${planDate(day)}` }, ...body);
+  const page = h("div", { className: `pl-page${view.archive ? " is-archive" : ""}${view.week ? " is-week" : ""}${ahead && !view.week && !view.archive ? " ahead" : ""}`, ariaLabel: view.week ? "The week" : `Plan for ${planDate(day)}` }, ...body);
   // a window with a title bar: the red button closes it, like a Mac window; Week, Archive, and back to today
   const btn = (label, title, run, hidden = false) => { const b = h("button", { type: "button", className: "pw-btn", textContent: label, title, hidden }); b.addEventListener("click", run); return b; };
-  const onPage = !archive && !week;
+  const onPage = !view.archive && !view.week;
   const tools = [
     onPage && ahead && daySummary(desk).written ? btn("Clear this day", `Take everything off ${planDate(day)} (with Undo)`, () => undoable(`Cleared ${planDate(day)}`, () => clearDay(desk))) : null,
     btn("To-do.txt", "Today's list, to tick off in any order", () => openTxt(), !onPage || ahead),
-    btn("Week", "The week: pick a day to plan", () => openWeek(), week !== null || focus.on),
-    archive || week || ahead ? btn("← Today", "Back to today's page", () => goDay(today)) : btn("Archive", "Earlier days' pages", () => openArchive(), focus.on),
+    btn("Week", "The week: pick a day to plan", () => openWeek(), view.week !== null || focus.on),
+    view.archive || view.week || ahead ? btn("← Today", "Back to today's page", () => goDay(today)) : btn("Archive", "Earlier days' pages", () => openArchive(), focus.on),
   ].filter(Boolean);
-  const title = archive ? "Archive" : week ? "Plan my day: the week" : ahead ? `Planning ${planDate(day)}` : "Plan my day.txt";
+  const title = view.archive ? "Archive" : view.week ? "Plan my day: the week" : ahead ? `Planning ${planDate(day)}` : "Plan my day.txt";
   const bar = h("div", { className: "pw-bar" }, dots("plan-day", () => $("plan-day").close()), h("span", { className: "pw-title", textContent: title }), h("span", { className: "pw-tools" }, ...tools));
   $("todo").replaceChildren(bar, page, ...(onPage ? [bulkBar()].filter(Boolean) : []));
   if (old && onPage && old.ariaLabel === page.ariaLabel) page.scrollTop = old.scrollTop;
@@ -549,78 +486,10 @@ export function renderTodo() {
 $("plan-day").addEventListener("close", () => {
   noteClosed("plan-day");
   // the next opening starts from today again (a day ahead's last change is saved as it goes)
-  const wasElsewhere = archive || week || planningAhead();
-  archive = null; week = null; clearPicks();
+  const wasElsewhere = view.archive || view.week || planningAhead();
+  view.archive = null; view.week = null; clearPicks();
   if (wasElsewhere) showDay(todayStr()).then(renderTodo);
 });
-
-// ---- the week (Mel, 6 Oct 2026: double-click Plan my day, see the week, click the day to plan) ----
-// Mon–Sun with what each day holds; ‹ › for other weeks; past days open in the Archive (read-only), today and days
-// ahead open their page. Days further ahead that already have something written are listed underneath.
-export async function openWeek(shift = 0) {
-  archive = null;
-  const days = [...weekDays(todayStr(), shift), ...weekDays(todayStr(), shift + 1)]; // two weeks: this and next (8 Oct 2026)
-  week = { shift, days, sums: week?.shift === shift ? week.sums : {}, further: week?.further || [] };
-  renderTodo();
-  const mine = week;
-  try {
-    const sums = await (await fetch(`/api/desk/summary?days=${days.join(",")}`)).json();
-    // further ahead: any day after this week (and after today) with something on it, the next eight
-    const all = await (await fetch("/api/desk/days")).json();
-    const later = all.filter((d) => d > days[13] && d > todayStr()).sort().slice(0, 20);
-    const more = later.length ? await (await fetch(`/api/desk/summary?days=${later.join(",")}`)).json() : {};
-    if (week !== mine) return;
-    week.sums = sums;
-    week.further = later.filter((d) => more[d]?.written).slice(0, 8).map((d) => ({ day: d, sum: more[d] }));
-  } catch { if (week === mine) week.failed = true; }
-  if (week === mine) renderTodo();
-}
-function weekEl() {
-  const today = todayStr();
-  // the days open here are drawn from what's on the page now, not the last save
-  const sumOf = (d) => (d === today ? daySummary(todayDesk) : d === pageDay ? daySummary(desk) : week.sums[d]);
-  const sumText = (x, past) => {
-    if (!x) return [week.failed ? "Couldn't read" : past ? "" : "…"];
-    if (!x.written) return [past ? "Nothing written" : "Nothing yet"];
-    const plural = (n, w, ws = `${w}s`) => `${n} ${n === 1 ? w : ws}`;
-    return [x.focus ? plural(x.focus, "focus", "focuses") : null,
-      x.tasks || x.done ? `${plural(x.tasks + x.done, "task")}${x.done ? ` · ${x.done} done` : ""}` : null,
-      x.meetings ? plural(x.meetings, "meeting") : null].filter(Boolean);
-  };
-  const card = (d) => {
-    const past = d < today, x = sumOf(d);
-    const b = h("button", { type: "button", className: `wk-day${d === today ? " today" : ""}${past ? " past" : ""}${x?.written ? " written" : ""}${x?.locked ? " locked" : ""}`,
-      ariaLabel: `${planDate(d)}${d === today ? ", today" : ""}: ${sumText(x, past).join(", ")}${past ? " (opens in the Archive)" : ""}` },
-      h("span", { className: "wk-name", textContent: parseDay(d).toLocaleDateString("en-NZ", { weekday: "short" }) }),
-      h("span", { className: "wk-date", textContent: parseDay(d).toLocaleDateString("en-NZ", { day: "numeric", month: "short" }) }),
-      d === today ? h("span", { className: "wk-tag", textContent: "Today" }) : null,
-      h("span", { className: "wk-sum" }, sumText(x, past).map((t) => h("span", { textContent: t }))),
-      !past && x?.titles?.length ? h("ul", { className: "wk-titles" }, x.titles.map((t) => h("li", { textContent: t }))) : null,
-      x?.locked ? h("span", { className: "wk-lock", textContent: "Locked in" }) : !past && !x?.written ? h("span", { className: "wk-go", textContent: "Plan this day →" }) : null);
-    b.addEventListener("click", () => (past ? openArchive(d) : goDay(d)));
-    return b;
-  };
-  const nav = (label, step, aria) => { const b = h("button", { type: "button", className: "ip-nav wk-nav", textContent: label, ariaLabel: aria }); b.addEventListener("click", () => openWeek(week.shift + step)); return b; };
-  const first = parseDay(week.days[0]), last = parseDay(week.days[13]);
-  const span = `${first.toLocaleDateString("en-NZ", { day: "numeric", month: "short" })} – ${last.toLocaleDateString("en-NZ", { day: "numeric", month: "short", year: "numeric" })}`;
-  const thisWeek = week.shift ? (() => { const b = h("button", { type: "button", className: "pw-btn", textContent: "This week" }); b.addEventListener("click", () => openWeek(0)); return b; })() : null;
-  const further = week.further.length ? h("div", { className: "wk-further" }, h("h4", { textContent: "Also planned ahead" }),
-    h("ul", {}, week.further.map(({ day: d, sum }) => { const b = h("button", { type: "button", className: "wk-chip", textContent: `${planDate(d)} · ${sumText(sum).join(", ")}` }); b.addEventListener("click", () => goDay(d)); return h("li", {}, b); }))) : null;
-  return h("div", { className: "pl-week" },
-    h("header", { className: "wk-head" }, nav("‹", -1, "Week before"), h("div", { className: "wk-title" }, h("h2", { textContent: week.shift === 0 ? "This week and next" : week.shift === -1 ? "Last week and this" : "Two weeks" }), h("span", { textContent: span })), nav("›", 1, "Week after"), thisWeek),
-    h("div", { className: "wk-grid" }, week.days.map(card)),
-    h("p", { className: "wk-hint", textContent: "Click a day to plan it. Earlier days open in the Archive. To put a task on a day without opening it: → on a line, or When in To-do.txt." }),
-    further);
-}
-// Open a day's page (today, or a day ahead) in the window
-export async function goDay(day) {
-  archive = null; week = null; clearPicks(); resetSweep();
-  const ok = await showDay(day);
-  if (!ok && day > todayStr()) toast(`Couldn't open ${planDate(day)} just now: try again in a moment.`, true);
-  if (day > todayStr()) ensureApple(day); // that day's calendar, for Save & plan
-  renderTodo();
-  $("todo").querySelector(".pl-focus .pl-input")?.focus({ preventScroll: true });
-}
 
 // Today's plan widget was cut (Mel, 6 Oct 2026: redundant); the focuses go on the wall as post-its instead (part E).
 // Kept as the one hook everything calls when the day's focuses or ticks change.
@@ -638,5 +507,5 @@ export function openDay(day) { showPlan(); noteOpen("plan-day"); goDay(day); }
 export function openPlan({ week: asWeek = false } = {}) {
   showPlan(); noteOpen("plan-day");
   if (asWeek && !focus.on) openWeek();
-  else if (week || archive || planningAhead()) goDay(todayStr());
+  else if (view.week || view.archive || planningAhead()) goDay(todayStr());
 }
