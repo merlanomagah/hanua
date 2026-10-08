@@ -8,12 +8,18 @@ import { deskShape } from "../public/shared/desk.js";
 
 const dir = new URL("./fixtures/", import.meta.url);
 const read = (f) => JSON.parse(readFileSync(new URL(f, dir), "utf8"));
-const NEW = { gone: [] }; // day-level fields added later, with their empty value
+// day-level fields added later: the version that brought each, and its empty value (a fixture from before that
+// version must open with it empty; one from that version on already has it in its .opened.json)
+const NEW = { gone: { since: 6, empty: [] }, closed: { since: 7, empty: undefined } };
+const versionOf = (f) => Number(/^v(\d+)/.exec(f)?.[1] || 0);
 
 for (const f of readdirSync(dir).filter((f) => f.endsWith(".json") && !f.endsWith(".opened.json"))) {
   test(`fixtures: ${f} opens as it always has`, () => {
     const now = deskShape(read(f));
-    for (const [k, empty] of Object.entries(NEW)) { assert.deepEqual(now[k], empty, `${k} starts empty`); delete now[k]; }
+    for (const [k, { since, empty }] of Object.entries(NEW)) {
+      if (versionOf(f) >= since) continue;
+      assert.deepEqual(now[k], empty, `${k} starts empty`); delete now[k];
+    }
     assert.deepEqual(now, read(f.replace(/\.json$/, ".opened.json")));
     assert.deepEqual(deskShape(now), deskShape(read(f))); // opening it again changes nothing
   });

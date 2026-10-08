@@ -3,6 +3,7 @@ import "./updates.js"; // reloads itself (while asleep) when Hanua is updated
 import "./appearance.js"; // dark mode: Settings → Appearance, the Mac, the lights
 import "./rail.js"; // the rail's bookcase button and light / dark switch
 import "./settings/window.js"; // Hanua Settings: the gear on the rail (⌃,)
+import { closeNote } from "./desk/close.js"; // Close the day's desk note
 import { aheadText, dayOf, daysBetween, lastLightSwitch, pad, parseDay, timeIn, timeOf, todayStr, ymd } from "./shared/dates.js";
 import { GREET_EVERY_MS, GREET_NAME, greetingsAt, timeOfDay } from "./shared/greetings.js";
 import { defaults as settingDefaults } from "./shared/settings.js";
@@ -760,6 +761,8 @@ export function renderNotes() {
   for (const r of records(ROLE.tasks)) {
     if (/blocked/i.test(r.status || "")) notes.push({ text: `${r.title} is blocked`, meta: "Work · needs a nudge", book: ROLE.tasks, rid: r.id });
   }
+  const closing = closeNote(); // Close the day, from the reminder time (desk/close.js)
+  if (closing) notes.unshift(closing);
   if (reviewDue() && !focus.on) notes.unshift({ text: "Weekly review due", meta: "Goals · ten minutes", run: () => { showBoard(true); openReview(); } });
   // the nightly backup failed or hasn't run for two days: said out loud, first (opens the archive, which says more)
   if (backup?.warning) notes.unshift({ text: backup.warning, meta: "Backup · tell Claude", run: () => { showDesk(true); openPlan(); openArchive(); } });
@@ -1660,6 +1663,7 @@ function turnRing(now) {
 }
 requestAnimationFrame(turnRing);
 document.addEventListener("hanua:weather", () => renderHeader());
+document.addEventListener("hanua:close", () => renderNotes()); // Close the day: the note comes at the reminder time and goes once closed
 
 export function renderHeader() {
   const now = new Date();

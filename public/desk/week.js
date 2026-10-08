@@ -33,7 +33,7 @@ export async function openWeek(shift = 0) {
 export function weekEl() {
   const today = todayStr();
   // the days open here are drawn from what's on the page now, not the last save
-  const sumOf = (d) => (d === today ? daySummary(todayDesk) : d === pageDay ? daySummary(desk) : view.week.sums[d]);
+  const sumOf = (d) => (d === today ? daySummary(todayDesk, d) : d === pageDay ? daySummary(desk, d) : view.week.sums[d]);
   const sumText = (x, past) => {
     if (!x) return [view.week.failed ? "Couldn't read" : past ? "" : "…"];
     if (!x.written) return [past ? "Nothing written" : "Nothing yet"];
@@ -51,7 +51,7 @@ export function weekEl() {
       d === today ? h("span", { className: "wk-tag", textContent: "Today" }) : null,
       h("span", { className: "wk-sum" }, sumText(x, past).map((t) => h("span", { textContent: t }))),
       !past && x?.titles?.length ? h("ul", { className: "wk-titles" }, x.titles.map((t) => h("li", { textContent: t }))) : null,
-      x?.locked ? h("span", { className: "wk-lock", textContent: "Locked in" }) : !past && !x?.written ? h("span", { className: "wk-go", textContent: "Plan this day →" }) : null);
+      x?.closed ? h("span", { className: "wk-lock wk-closed", textContent: "Closed ✓" }) : x?.locked ? h("span", { className: "wk-lock", textContent: "Locked in" }) : !past && !x?.written ? h("span", { className: "wk-go", textContent: "Plan this day →" }) : null);
     b.addEventListener("click", () => (past ? openArchive(d) : goDay(d)));
     return b;
   };

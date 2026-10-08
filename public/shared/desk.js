@@ -26,7 +26,7 @@ export const DEFAULT_MINS = 30, GAP = 5, MEETING_PAD = 5, BREAK_AFTER = 90, BREA
 export const WORKDAY = { start: "08:30", end: "17:30" };
 // How a day is saved. Raise it whenever deskShape learns a new field: the page and server must agree, or a save is
 // refused (never quietly trimmed). On 6 Oct 2026 a page newer than the running server lost its meetings that way.
-export const DESK_VERSION = 6; // 3: no Tasks, fixed sections, time words, when things happened; 4: the draft day (order, locked); 5: saves carry the revision they started from (two Macs); 6: origin and parent on lines, the gone list (F4 + subtasks, 8 Oct 2026)
+export const DESK_VERSION = 7; // 7: closed (Close the day, 9 Oct 2026); 3: no Tasks, fixed sections, time words, when things happened; 4: the draft day (order, locked); 5: saves carry the revision they started from (two Macs); 6: origin and parent on lines, the gone list (F4 + subtasks, 8 Oct 2026)
 // Who's out of date when a save arrives: null when they match, "page" (reload it), "server" (Restart Hanua)
 export function versionClash(sent, mine = DESK_VERSION) {
   const v = Number.isInteger(sent) ? sent : 0; // pages from before the check sent none
@@ -194,7 +194,10 @@ export function deskShape(x) {
   // Days planned before the draft existed count as locked when they have blocks.
   const order = refsOf(o.order);
   const locked = typeof o.locked === "boolean" ? o.locked : blocks.length > 0;
-  return { focus, sections, meetings, day, blocks, overflow, plans, order, locked, settled, settledAt, started: Boolean(o.started), gone: goneOf(o.gone) };
+  // Close the day (9 Oct 2026): when it was closed and its two lines; kept (without `at`) when opened again
+  const well = clip(o.closed?.well), hard = clip(o.closed?.hard), closedAt = when(o.closed?.at);
+  const closed = closedAt || well || hard ? { ...(closedAt ? { at: closedAt } : {}), well, hard } : undefined;
+  return { focus, sections, meetings, day, blocks, overflow, plans, order, locked, settled, settledAt, started: Boolean(o.started), gone: goneOf(o.gone), ...(closed ? { closed } : {}) };
 }
 
 // Which column a new section goes in: the shorter one (General always heads the left)
@@ -370,7 +373,8 @@ export function removeLines(d, refs, how = "removed", now = new Date()) {
 // How many times a task has been carried to another day: the days it's been on (by its first id), less the first.
 // days: { "YYYY-MM-DD": shape }
 export function timesCarried(days, origin) {
-  const on = Object.values(days).filter((raw) => deskShape(raw).sections.some((s) => s.lines.some((l) => l.text && originOf(l) === origin)));
+  // a day counts if the task is on it, or left it by being sent on (→, Close the day): sent lines leave their day
+  const on = Object.values(days).filter((raw) => { const d = deskShape(raw); return d.sections.some((s) => s.lines.some((l) => l.text && originOf(l) === origin)) || d.gone.some((g) => g.how === "sent" && (g.origin || g.id) === origin); });
   return Math.max(0, on.length - 1);
 }
 // ---- planning another day (Mel, 6 Oct 2026, evening: "it's Tuesday evening and I want to plan tomorrow") ----
@@ -405,6 +409,10 @@ export function putLines(to, taken, newId) {
   for (const t of taken) { if (t.line.parent && fams.length && fams.at(-1)[0].line.id === t.line.parent) fams.at(-1).push(t); else { delete t.line.parent; fams.push([t]); } }
   for (const fam of fams) {
     const { section, work } = fam[0];
+    // already there (sent twice: an Undo then again, or both Macs closing): left as it is, not doubled (9 Oct 2026)
+    // (the same first id *and* the same words: older days reuse simple ids like "l0" for different tasks)
+    const first = originOf(fam[0].line), there = to.sections.flatMap((s) => s.lines).find((l) => l.text && originOf(l) === first && l.text === fam[0].line.text);
+    if (there) { for (const t of fam) t.already = there.id; continue; }
     let sec = to.sections.find((s) => sameName(s.name || "General", section));
     if (!sec) { sec = { id: `s${newId()}`, name: section, col: shorterCol(to.sections), work: Boolean(work), lines: [] }; to.sections.push(sec); }
     while (sec.lines.length && !sec.lines.at(-1).text) sec.lines.pop();
@@ -427,7 +435,7 @@ export function putLines(to, taken, newId) {
 // What putLines couldn't place (a full section) goes back to the day it came from, and its "sent" note comes off
 // (9 Oct 2026: they were lost from both days). Returns how many came back.
 export function returnUnplaced(from, taken, newId) {
-  const back = taken.filter((t) => !t.placed).map((t) => ({ ...t, line: { ...t.line } }));
+  const back = taken.filter((t) => !t.placed && !t.already).map((t) => ({ ...t, line: { ...t.line } }));
   if (!back.length) return 0;
   const ids = new Set(back.map((t) => t.line.id));
   from.gone = (from.gone || []).filter((g) => !(g.how === "sent" && ids.has(g.id)));
@@ -444,15 +452,16 @@ export function clearDay(d, now = new Date()) {
   return d;
 }
 // What a day holds, in a line (the week view, Up next's days ahead)
-export function daySummary(x) {
+export function daySummary(x, day = null) {
   const d = deskShape(x);
-  // a task with subtasks is a heading: its subtasks are what's counted (8 Oct 2026)
-  const lines = d.sections.flatMap((s) => s.lines.filter((l) => l.text && !kidsOf(s.lines, l.id).length));
+  // a task with subtasks is a heading: its subtasks are what's counted (8 Oct 2026); a task let go isn't left to do
+  const gone = day ? letGoIds(d, day) : new Set();
+  const lines = d.sections.flatMap((s) => s.lines.filter((l) => l.text && !kidsOf(s.lines, l.id).length && !gone.has(l.id)));
   const tasks = lines.filter((l) => !l.done).length, done = lines.length - tasks;
   const focus = d.focus.filter(Boolean).length, meetings = d.meetings.filter((m) => m.title || m.time).length;
   // titles: the first few open tasks, for the week view's cards (8 Oct 2026)
   const titles = lines.filter((l) => !l.done).slice(0, 3).map((l) => l.text.slice(0, 60));
-  return { focus, tasks, done, meetings, titles, locked: d.locked && d.blocks.length > 0, written: Boolean(focus || lines.length || meetings) };
+  return { focus, tasks, done, meetings, titles, locked: d.locked && d.blocks.length > 0, written: Boolean(focus || lines.length || meetings), ...(d.closed?.at ? { closed: d.closed.at } : {}) };
 }
 // Monday to Sunday of the week `day` is in (shift: weeks either side)
 export function weekDays(day, shift = 0) {
@@ -481,6 +490,53 @@ export const timeText = (t) => { if (!t) return ""; const [hh, mm] = t.split(":"
 export const pickerDays = (today) => [...weekDays(today), ...weekDays(today, 1)].map((day) => ({ day, past: day < today, today: day === today }));
 // A new task straight onto another day's page, under the section of the same name (made there if missing)
 export const addLineTo = (d, section, work, line, newId) => putLines(d, [{ section: section || "General", work: Boolean(work), line }], newId);
+// ---- Close the day (roadmap step 7, 9 Oct 2026; brief docs/plans/2026-10-close-the-day.md) ----
+// Only today, or yesterday just after midnight; never a day ahead
+export const canClose = (day, today) => day === today || day === stepDay(today, -1);
+// What the clock says about closing today: from `from` the button is offered; from `remind` (blank: never) a desk
+// note and one message. Nothing once the day is closed. times: { from: "HH:MM", remind: "HH:MM" | "" }
+export function closeMoment(now, times, closedAt = null) {
+  const hm = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+  if (closedAt) return { offer: false, remind: false };
+  const from = HHMM.test(times?.from) ? times.from : "16:00", remind = HHMM.test(times?.remind) ? times.remind : "";
+  return { offer: hm >= from || Boolean(remind && hm >= remind), remind: Boolean(remind && hm >= remind) };
+}
+// The tasks let go on a day: marked with the sweep's own word ("gone") in that day's file; they stay on the page,
+// struck through, as a record, and the morning sweep doesn't offer them again
+export function letGoIds(d, day) {
+  const out = new Set();
+  for (const [k, v] of Object.entries(d.settled || {})) if (v === "gone" && k.startsWith(`${day}:`)) out.add(k.slice(day.length + 1));
+  return out;
+}
+// What the close window lists: each open task (a family: the task and its open subtasks), at work only Work ones
+export function closeItems(d, day, atWork = false) {
+  const gone = letGoIds(d, day), out = [];
+  for (const s of d.sections) if (!atWork || s.work) for (const l of s.lines) {
+    if (!l.text || l.parent || gone.has(l.id)) continue;
+    const kids = kidsOf(s.lines, l.id).filter((k) => !gone.has(k.id));
+    if (l.done && kids.every((k) => k.done)) continue;
+    out.push({ ref: l.id, text: l.text, section: s.name || "General", work: s.work, done: l.done, kids: kids.map((k) => ({ ref: k.id, text: k.text, done: k.done })) });
+  }
+  return out;
+}
+// Let go: the task and its open subtasks marked "gone" on its own day (ticked ones keep their ticks), all at `now`
+export function letGo(d, day, refs, now = new Date()) {
+  const want = new Set(withFamilies(d, refs, { openKids: true }));
+  d.settledAt ??= {};
+  for (const s of d.sections) for (const l of s.lines) if (want.has(l.id) && l.text && !l.done) { d.settled[`${day}:${l.id}`] = "gone"; d.settledAt[`${day}:${l.id}`] = now.toISOString(); }
+  return d;
+}
+// The day closed, at `now`, with its two lines (both optional). Every decision of the close uses the same `now`.
+export function closeDayRecord(d, { well = "", hard = "" } = {}, now = new Date()) {
+  d.closed = { at: now.toISOString(), well: clip(well), hard: clip(hard) };
+  return d;
+}
+// Open again: no longer closed; the two lines stay for the next close
+export function reopenDay(d) {
+  if (d.closed) { delete d.closed.at; if (!d.closed.well && !d.closed.hard) delete d.closed; }
+  return d;
+}
+
 // A plan made ahead, on the morning: the blocks that now run into a fixed thing (a meeting moved in the calendar
 // since). The plan stays as Mel made it; the page offers Re-plan.
 export function clashes(blocks, fixed) {

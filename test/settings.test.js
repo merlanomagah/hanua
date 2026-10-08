@@ -56,3 +56,12 @@ test("settings: a group from a newer Hanua is kept, never dropped; saves name th
   assert.deepEqual(changedGroups(base, next), ["timer", "weather"]);
   assert.deepEqual(changedGroups(base, structuredClone(base)), []);
 });
+
+test("settings: Close the day's times, in a group of their own (9 Oct 2026)", () => {
+  assert.deepEqual(base.close, { from: "16:00", remind: "19:00" });
+  assert.deepEqual(settingsShape({ close: { from: "17:30", remind: "" } }, base).close, { from: "17:30", remind: "" }); // no reminder
+  assert.deepEqual(settingsShape({ close: { from: "5pm", remind: "late" } }, base).close, base.close); // junk: Hanua's own
+  // an older Hanua (before this group) saving keeps the group it doesn't know
+  const older = { ...base }; delete older.close;
+  assert.deepEqual(settingsShape({ ...older, close: { from: "15:00", remind: "18:00" } }, base).close, { from: "15:00", remind: "18:00" });
+});

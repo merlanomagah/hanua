@@ -73,6 +73,19 @@ test("routes: a day's page round trip, with the revision and the version", async
   assert.equal(file.v, DESK_VERSION);
 });
 
+test("routes: a closed day round trips; the week's summary says it's closed and leaves out what was let go", async () => {
+  const day = "2026-10-15";
+  const first = await call(`/api/desk/${day}`);
+  const page = { ...first.json.day, sections: [{ id: "general", lines: [{ id: "a", text: "Kept" }, { id: "b", text: "Dropped" }] }],
+    settled: { [`${day}:b`]: "gone" }, closed: { at: "2026-10-15T06:12:00.000Z", well: "Quiet morning", hard: "" } };
+  assert.equal((await call(`/api/desk/${day}`, { method: "PUT", body: { ...page, v: DESK_VERSION, base: first.json.rev } })).status, 200);
+  const again = await call(`/api/desk/${day}`);
+  assert.deepEqual([again.json.day.closed.at, again.json.day.closed.well], ["2026-10-15T06:12:00.000Z", "Quiet morning"]);
+  const sum = (await call(`/api/desk/summary?days=${day}`)).json[day];
+  assert.equal(Boolean(sum.closed), true);
+  assert.deepEqual(sum.titles, ["Kept"]);
+});
+
 test("routes: Settings save only the groups that changed, so the two Macs don't undo each other", async () => {
   const a = await call("/api/settings");
   const mine = structuredClone(a.json.settings); mine.timer.focus = 40;

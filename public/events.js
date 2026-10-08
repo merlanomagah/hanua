@@ -15,6 +15,7 @@ export const EVENTS = {
   "hanua:appearance": "light / dark changed (window)",
   "hanua:focus": "At home / At work switched",
   "hanua:plan": "the day's focuses or ticks changed (the focus post-its)",
+  "hanua:close": "Close the day's offer, reminder or close changed (the desk note follows)",
   "hanua:folds": "a task's subtasks were folded or unfolded (To-do.txt follows Plan my day)",
   "hanua:backup": "the nightly backup's status was read",
   "hanua:board": "the goals board opened or closed",

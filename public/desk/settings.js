@@ -89,6 +89,16 @@ async function loadLists() {
   try { lists = await (await fetch("/api/reminders/lists")).json(); } catch { lists = { live: false, lists: [] }; }
   render();
 }
+// Close the day (9 Oct 2026): when the button appears, and when the reminder comes (blank: no reminder)
+function closeGroup() {
+  const c = settings.close;
+  const from = timeField(c.from, { label: "Close the day from", blank: false, lean: "pm", onSet: (t) => change((n) => { n.close.from = t; }) });
+  const remind = timeField(c.remind, { label: "Reminder at", placeholder: "No reminder", lean: "pm", onSet: (t) => change((n) => { n.close.remind = t; }) });
+  const isDefault = JSON.stringify(c) === JSON.stringify(defaults.close);
+  return group("Close the day", isDefault ? null : () => put({ ...settings, close: defaults.close }, { undoText: "Close the day back to 4 pm, reminder 7 pm" }),
+    row("Offer it from", from), row("Remind me at", remind),
+    h("p", { className: "set-note", textContent: "The button shows in To-do.txt and Plan my day from then; the reminder is a note on the desk and one message. Clear the reminder to turn it off." }));
+}
 function deskGroup() {
   const auto = h("input", { type: "checkbox", checked: settings.desk.autoOpen });
   auto.addEventListener("change", () => change((x) => { x.desk.autoOpen = auto.checked; }));
@@ -120,7 +130,7 @@ function render() {
   if (win.hidden || !settings) return;
   const scroll = win.querySelector(".txt-body")?.scrollTop || 0;
   const bar = windowBar(win, "Desk Settings", [h("span", { className: "set-saved", ariaLive: "polite" })], () => { hide(); $("dock-settings").focus({ preventScroll: true }); });
-  const body = h("div", { className: "txt-body set-body" }, plannerGroup(), timerGroup(), focus.on ? null : listsGroup(), deskGroup(), otherWindow());
+  const body = h("div", { className: "txt-body set-body" }, plannerGroup(), timerGroup(), focus.on ? null : listsGroup(), closeGroup(), deskGroup(), otherWindow());
   win.replaceChildren(bar, body);
   body.scrollTop = scroll;
 }

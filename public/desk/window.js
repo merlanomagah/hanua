@@ -18,7 +18,16 @@ export function registerWindow(id, opts) {
   wins.set(id, { remember: true, ...opts });
 }
 export const windowState = (id) => state.open[id] || null;
+// The window last opened or touched sits in front of the others (they all share one layer; before 9 Oct 2026 the
+// later one in the page always won, so an open Desk Settings covered Close the day)
+export function toFront(win) {
+  if (!win || win.classList.contains("front")) return;
+  for (const w of document.querySelectorAll(".txt-win.front")) w.classList.remove("front");
+  win.classList.add("front");
+}
+document.addEventListener("pointerdown", (e) => toFront(e.target.closest?.(".txt-win")), true);
 export function noteOpen(id) {
+  toFront(document.getElementById(id));
   if (!wins.get(id)?.remember) return;
   state.open[id] = "open"; keep(); renderDockWindows();
 }

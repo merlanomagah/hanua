@@ -1,5 +1,7 @@
 # Panel brief: Close the day (roadmap step 7)
 
+**Mel's answers (9 Oct 2026):** yes / yes / yes: a let-go task stays on its day struck through; closing with undecided tasks is fine (the morning sweep takes them); the 7 pm reminder is a desk note plus one message, no Mac notification.
+
 **Request (as the problem):** the day has no ending. Unticked tasks just roll into the next morning's sweep, nothing records how the day went, and later steps (the weekly summary, Patterns) have nothing to read about it. Mel wants a closing habit: from 4 pm, tick what's done, decide on the rest, one line on what went well and one on what got in the way, and the day is closed (her answers, 6 Oct: offered from 4 pm, a reminder at 7 pm if not done; the times in Settings).
 **Lane:** Large (each day file learns a field; touches Plan my day, To-do.txt, the morning sweep, Desk Settings and the desk's notes) · **Seats:** Chair, Sceptic, Daily-use coach, Experience designer, Room designer, Data steward (agent), Frontend engineer (agent), Test lead (agent), Privacy and safety, Release keeper
 **Gate:** worth it: Mel asked for it, it's the next roadmap step, and the weekly summary (step 9) needs closed days. Whether it becomes a habit can only be learned by using it, so the evidence is named below (§8).

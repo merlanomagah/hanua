@@ -5,7 +5,7 @@
 // the file opens the week, and a click on a day opens its page. A day ahead is the same page, saying so plainly
 // ("Planning Wed 07-Oct", a faint tint, no ticks, no morning sweep), with Clear this day; Move to… sends picked lines
 // to another day. Here `desk` is the page's day (state.js `page`), which is today's unless planning ahead.
-import { returnUnplaced, carriedDays, clearDay, daySummary, indentLine, kidsOf, moveLines, outdentLine, putLines, removeLines, removeMeeting, setLines, takeLines, weekDays, CLASH_TEXT, deskSections, deskShape, fromMin, isFixed, keepPlan, lastFocus, leftovers, minsText, openItems, planDay, planDate, settle, shorterCol, stampLine, stepDay, timeLabel, toMin, DEFAULT_MINS, GENERAL, MAX_LINES, MAX_MEETINGS, MAX_NAME, MAX_SECTIONS, MEETING_PICKS, SECTION_ROWS, TIME_PICKS, TIME_WORDS } from "../shared/desk.js";
+import { letGoIds, returnUnplaced, carriedDays, clearDay, daySummary, indentLine, kidsOf, moveLines, outdentLine, putLines, removeLines, removeMeeting, setLines, takeLines, weekDays, CLASH_TEXT, deskSections, deskShape, fromMin, isFixed, keepPlan, lastFocus, leftovers, minsText, openItems, planDay, planDate, settle, shorterCol, stampLine, stepDay, timeLabel, toMin, DEFAULT_MINS, GENERAL, MAX_LINES, MAX_MEETINGS, MAX_NAME, MAX_SECTIONS, MEETING_PICKS, SECTION_ROWS, TIME_PICKS, TIME_WORDS } from "../shared/desk.js";
 import { dayOf, parseDay, timeOf, todayStr, ymd } from "../shared/dates.js";
 import { $, focus, h, toast } from "../lib.js";
 import { calendarItems, ensureApple } from "../app.js";
@@ -21,6 +21,7 @@ import { view } from "./view.js";
 import { sweepEl } from "./sweep.js";
 import { archiveEl, openArchive } from "./archive.js";
 import { goDay, openWeek, weekEl } from "./week.js";
+import { closeButton } from "./close.js";
 export { goDay, openArchive, openWeek }; // other parts of the desk still ask page.js for these
 
 // what Plan my day shows besides a day's page (the archive, the two weeks) and whether the sweep was put off: one
@@ -312,6 +313,7 @@ function sectionEl(sec) {
     // subtasks (8 Oct 2026): indented under their task; a task's chip folds them ("1 of 3 ▾"); folded rows stay in
     // the page, hidden, so a row's place is still its index
     const row = list.lastChild, here = sec.lines[i];
+    if (here?.text && letGoIds(desk, pageDay).has(here.id)) { row.classList.add("let-go"); row.title = "Let go when the day was closed"; }
     const sub = Boolean(here?.text && here.parent) || pending === `${key}:${i}`;
     row.classList.toggle("sub", sub);
     if (here?.parent && isFolded(here.parent)) row.classList.add("folded");
@@ -406,7 +408,9 @@ function dayBar() {
     openWeek();
     toast(`Saved ${planDate(day)}`);
   });
-  return h("div", { className: "pl-daybar" }, h("span", { className: "pl-daylabel", textContent: "My day" }), field("start", "Day starts"), h("span", { textContent: "–" }), field("end", "Day ends"), keep, go);
+  // Close the day, from 4 pm, on today's page only (close.js)
+  const closing = pageDay === todayStr() ? closeButton("pl-close") : null;
+  return h("div", { className: "pl-daybar" }, h("span", { className: "pl-daylabel", textContent: "My day" }), field("start", "Day starts"), h("span", { textContent: "–" }), field("end", "Day ends"), keep, closing, go);
 }
 // fixed things on a day: its jotted meetings, and timed events already in the calendars (the page's day by default)
 export function fixedOn(day = pageDay, d = desk) {

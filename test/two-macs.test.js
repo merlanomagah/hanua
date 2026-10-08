@@ -50,6 +50,17 @@ test("two Macs: a day planned on one shows on the other; a save from an older ve
   assert.equal((await A(`/api/desk/${day}`)).json.day.focus[0], "From the mini");
 });
 
+test("two Macs: a day closed on one is closed on the other; the other's older save can't undo the close", async () => {
+  const day = "2026-10-16";
+  const a0 = await A(`/api/desk/${day}`);
+  const closed = { ...a0.json.day, sections: [{ id: "general", lines: [{ id: "t1", text: "Ring the bank" }] }], closed: { at: "2026-10-16T05:30:00.000Z", well: "", hard: "Too many calls" } };
+  assert.equal((await A(`/api/desk/${day}`, { method: "PUT", body: { ...closed, v: DESK_VERSION, base: a0.json.rev } })).status, 200);
+  assert.equal((await B(`/api/desk/${day}`)).json.day.closed.hard, "Too many calls");
+  const late = await B(`/api/desk/${day}`, { method: "PUT", body: { ...a0.json.day, v: DESK_VERSION, base: a0.json.rev } });
+  assert.equal(late.status, 409);
+  assert.equal(late.json.current.closed.at, "2026-10-16T05:30:00.000Z"); // "theirs" says closed, so the page can warn
+});
+
 test("two Macs: stickies from both stay; a setting changed on one is used by the other", async () => {
   await A("/api/stickies", { method: "PUT", body: [{ id: "mini", text: "From the mini", edited: "2026-10-09T09:00:00Z" }] });
   await B("/api/stickies", { method: "PUT", body: [{ id: "air", text: "From the Air", edited: "2026-10-09T09:01:00Z" }] });

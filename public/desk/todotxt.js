@@ -8,12 +8,13 @@
 // starts with everything open. Later that evening (Mel): a + appears when you hover a section's header (the title
 // bar's + went): type the task, pick its priority and time, Enter, and it's added at the bottom of that section; the
 // row stays for the next one (Esc puts it away). Always today's list, whatever day Plan my day is showing.
-import { addLineTo, isFixed, kidsOf, planDate, sameName, setLines, shorterCol, stampLine, timeLabel, tidyGroups, MAX_NAME, MAX_SECTIONS, TIME_PICKS, MAX_LINES } from "../shared/desk.js";
+import { addLineTo, isFixed, kidsOf, letGoIds, planDate, sameName, setLines, shorterCol, stampLine, timeLabel, tidyGroups, MAX_NAME, MAX_SECTIONS, TIME_PICKS, MAX_LINES } from "../shared/desk.js";
 import { todayStr } from "../shared/dates.js";
 import { $, focus, h, toast } from "../lib.js";
 import { changeDay, desk, deskDay, fixed, newId, refInfo, save } from "./state.js";
 import { check, dayName, delButton, foldSubtasks, openDay, PRI_LABEL, renderPlanWidget, renderTodo, subtasksFolded } from "./page.js";
 import { closeDayPicker, openDayPicker } from "./daypick.js";
+import { closeButton } from "./close.js";
 import { renderAgenda } from "./agenda.js";
 import { noteClosed, noteOpen, registerWindow, resizable, restorePlace, windowBar } from "./window.js";
 import { openDraft } from "./draft.js";
@@ -64,8 +65,10 @@ export function renderTxt() {
   // sections). An open task shows its subtasks under it (ticked ones struck through); a ticked task goes to Completed
   // with its subtasks. "n to go" counts what's really left: a task's open subtasks, or the task itself.
   const secs = desk.sections.filter((x) => !focus.on || x.work);
-  const fams = secs.flatMap((sec) => sec.lines.filter((l) => l.text && !l.parent).map((l) => ({ top: l, kids: kidsOf(sec.lines, l.id), sec })));
-  const openF = fams.filter((f) => !f.top.done), doneF = fams.filter((f) => f.top.done);
+  // a task let go (Close the day) stays as a record, struck through, with the finished ones
+  const gone = letGoIds(desk, deskDay);
+  const fams = secs.flatMap((sec) => sec.lines.filter((l) => l.text && !l.parent).map((l) => ({ top: l, kids: kidsOf(sec.lines, l.id), sec, gone: gone.has(l.id) })));
+  const openF = fams.filter((f) => !f.top.done && !f.gone), doneF = fams.filter((f) => f.top.done || f.gone);
   const left = (f) => (f.kids.length ? f.kids.filter((k) => !k.done).length : 1);
   const toGo = openF.reduce((n, f) => n + left(f), 0);
   const row = (l, sec, { sub = false, kids = [], folded = false, canAdd = false } = {}) => {
@@ -77,7 +80,7 @@ export function renderTxt() {
     chip?.addEventListener("click", () => { foldSubtasks(l.id, deskDay); renderTxt(); });
     const plus = canAdd ? h("button", { type: "button", className: "txt-plus txt-subplus", textContent: "+", ariaLabel: `Add a subtask to ${l.text}`, title: "Add a subtask" }) : null;
     plus?.addEventListener("click", () => { adding = sec.id; under = l.id; addWhen = null; renderTxt(); txt.querySelector(".txt-add .shop-add")?.focus(); });
-    return h("li", { className: `txt-line${done ? " done" : ""}${sub ? " sub" : ""}` }, delButton(desk, l), tick,
+    return h("li", { className: `txt-line${done ? " done" : ""}${sub ? " sub" : ""}${gone.has(l.id) ? " let-go" : ""}`, title: gone.has(l.id) ? "Let go when the day was closed" : "" }, delButton(desk, l), tick,
       h("i", { className: `txt-pri p-${l.pri || "none"}`, title: PRI_LABEL[l.pri || ""] }), h("span", { className: "txt-text", textContent: l.text }), chip, plus);
   };
   const famEl = (f, { canAdd = true } = {}) => {
@@ -126,7 +129,8 @@ export function renderTxt() {
   const head = h("header", { className: "txt-head" },
     h("span", { className: "th-day", textContent: planDate(deskDay) }),
     h("time", { className: "th-time", textContent: clockNow() }),
-    h("span", { className: "th-left", textContent: fams.length ? (toGo ? `${toGo} to go` : "All done today ✓") : "" }));
+    h("span", { className: "th-left", textContent: fams.length ? (toGo ? `${toGo} to go` : "All done today ✓") : "" }),
+    closeButton("th-close")); // Close the day, from 4 pm (close.js)
   // + New section, at the foot of the list (before Completed): name it, Enter, then its first task (8 Oct 2026)
   const newSec = naming === "new" ? h("div", { className: "txt-group" }, h("div", { className: "txt-ghead" }, nameEl(null)))
     : desk.sections.length < MAX_SECTIONS ? (() => { const b = h("button", { type: "button", className: "txt-newsec", textContent: "+ New section" }); b.addEventListener("click", () => { naming = "new"; adding = null; renderTxt(); }); return b; })() : null;

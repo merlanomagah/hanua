@@ -44,7 +44,7 @@ export function register({ app, config, room, roomDir, roomRoute, baseOf, readJs
     const out = {};
     for (const d of days) {
       const r = await room.read(path.join(deskDir, `${d}.json`));
-      out[d] = r.state === "ok" ? daySummary(r.data) : r.state === "missing" ? daySummary({}) : null;
+      out[d] = r.state === "ok" ? daySummary(r.data, d) : r.state === "missing" ? daySummary({}, d) : null;
     }
     res.set("Cache-Control", "no-store").json(out);
   });

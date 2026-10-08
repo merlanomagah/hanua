@@ -7,7 +7,7 @@ export const DEFAULT_WORDS = { 10: "Quick", 15: "Short", 30: "Half hour", 45: "S
 export const MAX_FIXED = 8;
 // Settings files carry the version that wrote them: an older Hanua (the other Mac, not yet updated) refuses to save
 // over a newer file rather than dropping what it doesn't know. Raise it whenever settingsShape learns a group.
-export const SETTINGS_VERSION = 2;
+export const SETTINGS_VERSION = 3; // 3: close (Close the day's times, 9 Oct 2026)
 export const SLEEP_PICKS = [5, 10, 15, 30, 60];
 export const CLOCKS = [{ city: "Sydney", zone: "Australia/Sydney" }, { city: "Suva", zone: "Pacific/Fiji" }, { city: "Los Angeles", zone: "America/Los_Angeles" }];
 const realZone = (z) => { try { return typeof z === "string" && z.length < 60 && Boolean(new Intl.DateTimeFormat("en", { timeZone: z })); } catch { return false; } };
@@ -31,6 +31,7 @@ export const defaults = (fixed = []) => ({
   calendars: { shown: [], work: [] }, // [] = .env's APPLE_CALENDARS / APPLE_WORK_CALENDARS (else every calendar)
   weather: { place: "" }, // "" = .env's WEATHER_PLACE
   sleep: { after: 15 }, // minutes without use before Hanua sleeps
+  close: { from: "16:00", remind: "19:00" }, // Close the day: the button from, the reminder at ("" = no reminder)
 });
 
 // Whatever was saved or sent, tidied, with the defaults filling the gaps
@@ -57,10 +58,11 @@ export function settingsShape(o, base = defaults()) {
   const calendars = { shown: names(x.calendars?.shown), work: names(x.calendars?.work) };
   const weather = { place: clip(x.weather?.place, 80) };
   const sleep = { after: SLEEP_PICKS.includes(x.sleep?.after) ? x.sleep.after : base.sleep.after };
+  const close = { from: HHMM.test(x.close?.from) ? x.close.from : base.close.from, remind: x.close?.remind === "" ? "" : HHMM.test(x.close?.remind) ? x.close.remind : base.close.remind };
   // groups this Hanua doesn't know (written by a newer one) are kept as they are, never dropped
   const known = new Set([...Object.keys(base), "base", "changed", "v"]);
   const extra = Object.fromEntries(Object.entries(x).filter(([k, v]) => !known.has(k) && v && typeof v === "object"));
-  return { ...extra, fixedSections, day, timeWords, timer, lists, desk, calendar, room, calendars, weather, sleep };
+  return { ...extra, fixedSections, day, timeWords, timer, lists, desk, calendar, room, calendars, weather, sleep, close };
 }
 
 // Which groups differ between two sets of Settings: a save sends only these, so a change on one Mac never undoes

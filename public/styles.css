@@ -2522,7 +2522,7 @@ dialog.lock::backdrop { background: #14110e; }
 .desk.arranged .meal-slip { right: auto; } /* arranged, its place is its left and top: a right as well squeezed it narrow */
 /* phones: every desk window along the bottom, full width (Settings and the lists set their own left/right further down,
    hence the doubled class; window.js keeps no place under 901 px) */
-@media (max-width: 900px) { .txt-win, .txt-win:is(.set-win, .list-win) { position: fixed; left: 8px; right: 8px; top: auto; bottom: 8px; width: auto; height: auto; max-height: 70vh; resize: none; } .txt-bar { cursor: default; } }
+@media (max-width: 900px) { .txt-win, .txt-win:is(.set-win, .list-win, .close-win) { position: fixed; left: 8px; right: 8px; top: auto; bottom: 8px; width: auto; height: auto; max-height: 70vh; resize: none; } .txt-bar { cursor: default; } }
 /* the page and server save a day differently (an old tab, or Hanua not restarted): saving stops and says so */
 .pl-stale { margin: 0 0 var(--line); padding: 8px 12px; border-left: 3px solid var(--terra); background: rgb(196 96 42 / 0.08); font: 13px/20px var(--ui); color: var(--ink); }
 .ar-backup { margin: var(--line) 0 0; padding: 0 8px; font: 11px/16px var(--ui); color: var(--ink-4); }
@@ -2989,3 +2989,47 @@ html.dark .topshelf .sw-knob { background: #F3ECE0; }
 .txt-subadd { list-style: none; padding-left: 26px; }
 @media (max-width: 760px) { .pl-line.sub, .txt-line.sub, .txt-subadd { padding-left: 16px; } }
 .set-note.bad { color: var(--terra); }
+
+/* the desk window last opened or touched (window.js toFront) */
+.txt-win.front { z-index: 8; }
+
+/* Close the day (public/desk/close.js, 9 Oct 2026): a desk window like To-do.txt; choose for each task, then close */
+.close-win { width: min(560px, calc(100% - 32px)); right: calc(var(--pc-right, 24px) + 60px); left: auto; top: 110px; }
+.close-btn { height: 26px; padding: 0 10px; border: 1px solid var(--terra); border-radius: 4px; background: transparent; color: var(--terra); cursor: pointer; font: 500 12px var(--ui); white-space: nowrap; }
+.close-btn:hover { background: var(--terra); color: var(--cream); }
+.close-btn.closed { border-color: var(--border-2); color: var(--green); }
+.close-btn.closed:hover { background: transparent; border-color: var(--green); }
+.txt-head .th-close { margin-left: 10px; }
+.pl-daybar .pl-close { margin-left: 8px; }
+.cd-body { padding: 12px 22px 18px; }
+.cd-list { list-style: none; margin: 0; padding: 0; }
+.cd-item { padding: 8px 0 10px; border-bottom: 1px solid var(--border); }
+.cd-item.letting .cd-text { text-decoration: line-through; color: var(--ink-4); }
+.cd-line { display: flex; align-items: center; gap: 10px; min-height: 30px; font: 14px var(--ui); color: var(--ink); }
+.cd-line.done .cd-text { text-decoration: line-through; color: var(--ink-4); }
+.cd-text { flex: 1; min-width: 0; }
+.cd-sec { font: 9px var(--mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-4); white-space: nowrap; }
+.cd-kids { list-style: none; margin: 0; padding: 0 0 0 26px; }
+.cd-choices { display: flex; gap: 0; margin: 6px 0 0 32px; }
+.cd-seg { height: 28px; padding: 0 12px; border: 1px solid var(--border-2); background: transparent; color: var(--ink-3); cursor: pointer; font: 12px var(--ui); }
+.cd-seg + .cd-seg { border-left: 0; }
+.cd-seg:first-child { border-radius: 4px 0 0 4px; }
+.cd-seg:last-child { border-radius: 0 4px 4px 0; }
+.cd-seg.on { background: var(--terra); border-color: var(--terra); color: var(--cream); }
+.cd-all { display: flex; gap: 8px; margin: 10px 0 4px; }
+.cd-lines { display: grid; gap: 8px; margin: 14px 0 6px; }
+.cd-say { display: grid; gap: 4px; font: 9px var(--mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-4); }
+.cd-in { width: 100%; }
+.cd-foot { display: flex; align-items: center; gap: 10px; margin-top: 14px; }
+.cd-tally { flex: 1; font: 12px var(--ui); color: var(--ink-3); }
+.cd-said { margin: 0 0 6px; font: 14px/1.45 var(--ui); color: var(--ink); }
+.cd-said dt { font: 9px var(--mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-4); margin-top: 8px; }
+.cd-said dd { margin: 2px 0 0; }
+.ar-said { margin-bottom: 10px; }
+.wk-closed { color: var(--green); }
+.txt-line.let-go .txt-text, .pl-line.let-go .pl-input { text-decoration: line-through; color: var(--ink-4); }
+@media (max-width: 760px) {
+  .cd-choices { margin-left: 0; width: 100%; }
+  .cd-seg { flex: 1; height: 44px; }
+  .cd-foot { flex-wrap: wrap; }
+}

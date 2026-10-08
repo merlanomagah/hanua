@@ -1,0 +1,101 @@
+{
+  "focus": [
+    "Pack the study",
+    "",
+    ""
+  ],
+  "sections": [
+    {
+      "id": "general",
+      "name": "General",
+      "col": 0,
+      "work": false,
+      "lines": [
+        {
+          "id": "a",
+          "text": "Move house",
+          "done": false,
+          "pri": "h",
+          "mins": 0
+        },
+        {
+          "id": "b",
+          "text": "Book van",
+          "done": true,
+          "pri": "",
+          "mins": 0,
+          "added": "2026-10-07T20:00:00.000Z",
+          "doneAt": "2026-10-08T01:00:00.000Z",
+          "parent": "a"
+        },
+        {
+          "id": "c",
+          "text": "Pack books",
+          "done": false,
+          "pri": "",
+          "mins": 0,
+          "from": "2026-10-06",
+          "origin": "z9",
+          "parent": "a"
+        },
+        {
+          "id": "d",
+          "text": "Post letter",
+          "done": false,
+          "pri": "",
+          "mins": 0
+        }
+      ]
+    },
+    {
+      "id": "s4",
+      "name": "Garden",
+      "col": 0,
+      "work": false,
+      "lines": [
+        {
+          "id": "e",
+          "text": "Mow lawn",
+          "done": false,
+          "pri": "",
+          "mins": 45
+        }
+      ]
+    }
+  ],
+  "meetings": [],
+  "day": {
+    "start": "08:30",
+    "end": "17:30"
+  },
+  "blocks": [],
+  "overflow": [],
+  "plans": [],
+  "order": [],
+  "locked": false,
+  "settled": {
+    "2026-10-07:x9": "gone"
+  },
+  "settledAt": {
+    "2026-10-07:x9": "2026-10-07T19:00:00.000Z"
+  },
+  "started": true,
+  "gone": [
+    {
+      "id": "q1",
+      "text": "Call the bank",
+      "section": "General",
+      "how": "sent",
+      "to": "2026-10-09",
+      "at": "2026-10-08T02:00:00.000Z"
+    },
+    {
+      "id": "q2",
+      "origin": "q0",
+      "text": "Old note",
+      "section": "General",
+      "how": "removed",
+      "at": "2026-10-08T03:00:00.000Z"
+    }
+  ]
+}
