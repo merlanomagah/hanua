@@ -4,7 +4,7 @@
 // and iCloud's cloud-only placeholders and Hanua's half-written temp files are skipped.
 // Never the GitHub repo (it's public). Not Pūtea's money data: Time Machine covers that once the drive is in
 // (Mel, 6 Oct 2026). A failed or missing backup is said out loud on the desk (backupWarning), never silent.
-import { cp, mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
+import { cp, mkdir, readdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { ymd } from "../public/shared/dates.js";
 
@@ -53,4 +53,18 @@ export async function backupRoom({ from, to, now = new Date(), keep = KEEP_DAYS 
   }
   await writeFile(path.join(to, STATUS), JSON.stringify(status, null, 2) + "\n").catch(() => {});
   return status;
+}
+
+// Put a backup back (Foundations F7, 9 Oct 2026; steps in docs/restore.md). from: one day's copy (to/<day>/);
+// to: the room folder. Nothing is deleted: what's there now is moved aside first, to "<folder> before restore
+// <time>", and only then is the backup copied in. Returns { ok, aside } or { ok: false, error }.
+export async function restoreRoom({ from, to, now = new Date() }) {
+  try {
+    if (!(await readdir(from).catch(() => null))) return { ok: false, error: `there's no backup at ${from}` };
+    const pad = (n) => String(n).padStart(2, "0"); // this Mac's time, as Finder shows it
+    const aside = `${to} before restore ${ymd(now)} ${pad(now.getHours())}.${pad(now.getMinutes())}`;
+    if (await readdir(to).catch(() => null)) await rename(to, aside);
+    await cp(from, to, { recursive: true, filter: (src) => path.basename(src) !== STATUS });
+    return { ok: true, aside };
+  } catch (err) { return { ok: false, error: err.message }; }
 }

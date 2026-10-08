@@ -136,17 +136,21 @@ export function createRoom(dir, { shared = false, log = console.log } = {}) {
     known.clear();
     for (const [r, stamp] of stamps) known.set(r, stamp);
   }
+  let watcher = null; const intervals = [];
   function start(handler) {
     onChange = handler;
     sweep().catch(() => {});
-    setInterval(() => sweep().catch(() => {}), 20_000).unref();
+    intervals.push(setInterval(() => sweep().catch(() => {}), 20_000));
     try {
-      const w = watch(dir, { recursive: true }, (_ev, name) => { if (name) soon(String(name).split(path.sep).join("/")); });
-      w.on("error", (err) => log(`Hanua: can't watch the room folder (${err.message}); the 20 s sweep carries on`));
+      watcher = watch(dir, { recursive: true }, (_ev, name) => { if (name) soon(String(name).split(path.sep).join("/")); });
+      watcher.on("error", (err) => log(`Hanua: can't watch the room folder (${err.message}); the 20 s sweep carries on`));
     } catch (err) { log(`Hanua: can't watch the room folder (${err.message}); the 20 s sweep carries on`); }
     // a quiet line every 25 s keeps each page's connection open
-    setInterval(() => { for (const res of clients) res.write(": still here\n\n"); }, 25_000).unref();
+    intervals.push(setInterval(() => { for (const res of clients) res.write(": still here\n\n"); }, 25_000));
+    for (const t of intervals) t.unref();
   }
+  // stop watching (tests; a server shutting down)
+  function stop() { watcher?.close(); watcher = null; for (const t of intervals.splice(0)) clearInterval(t); for (const t of timers.values()) clearTimeout(t); timers.clear(); }
   function events(req, res) {
     res.set({ "Content-Type": "text/event-stream", "Cache-Control": "no-store", Connection: "keep-alive" });
     res.flushHeaders();
@@ -158,5 +162,5 @@ export function createRoom(dir, { shared = false, log = console.log } = {}) {
     const s = { shared, folder: shared ? dir.split(path.sep).slice(-1)[0] : null, missing: missing(), conflicts, pending, lastRemote };
     return { ...s, warning: syncWarning(s) };
   }
-  return { dir, read, load, write, writeBytes, start, events, status, missing };
+  return { dir, read, load, write, writeBytes, start, stop, sweep, events, status, missing };
 }
