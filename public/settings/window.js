@@ -179,8 +179,17 @@ function macGroup() {
       yes(mac.notion, "Notion: connected", "Notion: no key in .env on this Mac (copy the line from your other Mac's .env)"),
       yes(mac.claude, "Claude: connected", "Claude: no key in .env on this Mac"),
       yes(mac.room.shared, `Days, menus, stickies, Settings: shared through iCloud Drive › ${mac.room.folder}`, "Days, menus, stickies, Settings: on this Mac only")),
+    versionLine(mac.version),
     h("label", { className: "set-check" }, back, h("span", { textContent: `Back up the room each night${when ? ` (last: ${when}${mac.backup.ok === false ? ", failed" : ""})` : ""}` })),
     h("p", { className: "set-note", textContent: "One Mac is enough: the one that's always on. Copies go to “Hanua backup” in your home folder, outside iCloud." }));
+}
+// which version this Mac runs, and how its last look at GitHub went (it updates itself every 5 minutes)
+function versionLine(v) {
+  if (!v?.self) return h("p", { className: "set-note", textContent: "This Hanua doesn't update itself (a test copy, or started by hand)." });
+  const ago = v.pull?.at ? Math.max(0, Math.round((Date.now() - Date.parse(v.pull.at)) / 60_000)) : null;
+  const when = ago === null ? "" : ago < 1 ? " (checked just now)" : ` (checked ${ago} min ago)`;
+  const how = v.blocked ? `an update didn't take: ${v.blocked.why}` : { "up to date": "up to date with GitHub", updated: "just updated", offline: "can't reach GitHub right now", "not main": "on a working copy, not taking updates", "changed here": "has changes of its own, not taking updates", "its own commits": "has its own changes, not taking updates" }[v.pull?.how] || "checking for updates";
+  return h("p", { className: `set-note${v.blocked || ["changed here", "its own commits"].includes(v.pull?.how) ? " bad" : ""}`, textContent: `Version ${v.commit || "?"}: ${how}${when}.` });
 }
 async function loadMac() {
   try { mac = await (await fetch("/api/this-mac")).json(); } catch { mac = null; }

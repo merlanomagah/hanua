@@ -19,7 +19,7 @@ import { changePin, checkPin, forgetPin, lockStatus, setPin } from "./lock.js";
 import { getWeather, setWeatherPlace } from "./weather.js";
 import { backupDue, backupRoom, backupWarning, readStatus } from "./backup.js";
 import os from "node:os";
-import { watchForUpdates } from "./updates.js";
+import { pullWarning, watchForUpdates } from "./updates.js";
 import { createRoom } from "./room.js";
 import { localOnly, roomChoice } from "./guard.js";
 import { parse as parseEnv } from "dotenv";
@@ -332,7 +332,8 @@ app.get("/api/events", (req, res) => room.events(req, res));
 // setup: what this Mac is missing (a Notion key), said on the desk rather than only in the log (8 Oct 2026)
 app.get("/api/sync", (_req, res) => {
   const s = room.status();
-  res.set("Cache-Control", "no-store").json({ ...s, sample: choice.sample, setup: choice.why, warning: s.warning || choice.why });
+  const stuck = pullWarning(updates?.state.pull); // not taking updates, said on the desk (Phase 1 step 2)
+  res.set("Cache-Control", "no-store").json({ ...s, sample: choice.sample, setup: choice.why, warning: s.warning || choice.why || stuck });
 });
 room.start((what) => { if (what.kind === "settings") reloadSettings().catch(() => {}); });
 
@@ -385,6 +386,7 @@ app.get("/api/this-mac", async (_req, res) => {
     notion: notionEnabled(), claude: claudeEnabled(), sample: choice.sample,
     room: { shared: sharedRoom, folder: sharedRoom ? path.basename(roomDir) : null, why: choice.why },
     backup: { on: Boolean(backupDir), at: backupStatus?.at || null, ok: backupStatus?.ok ?? null },
+    version: { commit: updates?.state.commit || null, pull: updates?.state.pull || null, blocked: updates?.state.blocked || null, self: Boolean(updates) },
   });
 });
 app.post("/api/this-mac", async (req, res) => {

@@ -73,20 +73,36 @@ export async function restartSelf({ root, server, port, relisten, lockAtBoot = n
 }
 
 export const PULL_EVERY = 10; // checks: every 10th (5 minutes)
-async function pullMain(root, log) {
-  if ((await git(root, "rev-parse", "--abbrev-ref", "HEAD")) !== "main") return;
-  if ((await git(root, "status", "--porcelain", "--untracked-files=no")) !== "") return; // something changed here: leave it
-  if ((await git(root, "fetch", "-q", "origin", "main")) === null) return; // offline: next time
-  const ahead = await git(root, "rev-list", "--count", "main..origin/main");
-  if (!ahead || ahead === "0") return;
-  if ((await git(root, "merge", "--ff-only", "-q", "origin/main")) === null) log("Hanua: couldn't fast-forward main to GitHub's (has this folder got its own commits?)");
+// One look at GitHub. Returns what happened, so Hanua can say it (Hanua Settings → This Mac; a desk note when stuck):
+// { at, how: "up to date" | "updated" | "not main" | "changed here" | "offline" | "its own commits", behind }
+export async function pullMain(root, log, now = () => new Date().toISOString()) {
+  const said = (how, behind = 0) => ({ at: now(), how, behind });
+  if ((await git(root, "rev-parse", "--abbrev-ref", "HEAD")) !== "main") return said("not main");
+  if ((await git(root, "status", "--porcelain", "--untracked-files=no")) !== "") return said("changed here"); // leave it
+  if ((await git(root, "fetch", "-q", "origin", "main")) === null) return said("offline"); // next time
+  const behind = Number(await git(root, "rev-list", "--count", "main..origin/main")) || 0;
+  if (!behind) return said("up to date");
+  if ((await git(root, "merge", "--ff-only", "-q", "origin/main")) === null) {
+    log("Hanua: couldn't fast-forward main to GitHub's (has this folder got its own commits?)");
+    return said("its own commits", behind);
+  }
+  return said("updated", behind);
+}
+// What to tell Mel about updating, if anything: stuck in a way that won't fix itself, or not checked for a day
+export function pullWarning(pull, nowMs = Date.now()) {
+  if (!pull) return null;
+  if (pull.how === "changed here") return "This Mac's Hanua folder has changes of its own, so it isn't taking updates: tell Claude";
+  if (pull.how === "its own commits") return "This Mac's Hanua has its own changes and can't take GitHub's: tell Claude";
+  if (pull.how === "offline" && nowMs - Date.parse(pull.since || pull.at) > 86_400_000) return "Hanua hasn't been able to reach GitHub for a day, so it isn't updating";
+  return null;
 }
 
 // state: what /api/status reports, so the page can say when an update didn't take
 export function watchForUpdates({ root, getServer, port, relisten, log = console.log }) {
   let running, lastWrite = 0, ticks = 0, busy = false; // running: main's commit at start, or null if another branch was checked out
   const lockAtBoot = lockOf(root);
-  const state = { blocked: null }; // { commit, why, at }: an update that didn't take
+  const state = { blocked: null, pull: null, commit: null }; // blocked { commit, why, at }: an update that didn't take; pull: the last look at GitHub; commit: running
+  git(root, "rev-parse", "--short", "HEAD").then((c) => { state.commit = c; });
   const started = mainCommit(root).then((c) => { running = c; });
   const restart = async () => {
     busy = true;
@@ -98,7 +114,11 @@ export function watchForUpdates({ root, getServer, port, relisten, log = console
   const timer = setInterval(async () => {
     await started;
     if (busy) return;
-    if (++ticks % PULL_EVERY === 0) await pullMain(root, log);
+    if (++ticks % PULL_EVERY === 0 || ticks === 1) {
+      const p = await pullMain(root, log);
+      p.since = p.how === "offline" ? (state.pull?.how === "offline" ? state.pull.since || state.pull.at : p.at) : undefined; // offline since when
+      state.pull = p;
+    }
     const now = await mainCommit(root);
     if (!shouldRestart({ running, now, lastWrite })) return;
     log(`Hanua: main is now ${now.slice(0, 7)} (was ${running?.slice(0, 7) || "another branch"})`);

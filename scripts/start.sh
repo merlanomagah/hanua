@@ -11,6 +11,13 @@ if ! command -v node >/dev/null 2>&1; then
   echo "Can't find Node.js. Install it from https://nodejs.org and try again."
   exit 1
 fi
+# Hanua needs Node 22 or later (.nvmrc, package.json engines): say so plainly rather than fail oddly later
+NODE_MAJOR=$(node -p 'process.versions.node.split(".")[0]' 2>/dev/null || echo 0)
+if [ "$NODE_MAJOR" -lt 22 ]; then
+  echo "Hanua needs Node.js 22 or later (this Mac has $(node -v)). Install the current one from https://nodejs.org."
+  osascript -e 'display notification "Hanua needs a newer Node.js: see Terminal." with title "Hanua"' >/dev/null 2>&1 || true
+  exit 1
+fi
 
 PORT=$(grep -E '^PORT=' .env 2>/dev/null | cut -d= -f2 | tr -d '[:space:]' || true)
 PORT=${PORT:-3000}

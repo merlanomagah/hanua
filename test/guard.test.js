@@ -82,3 +82,14 @@ test("updates: the old copy waits for a new one to answer, and gives up if it ne
   // never answers in time
   assert.equal(await newCopyAnswers({ port: 1, pid: 7, exited: () => false, until: Date.now() - 1, wait, fetchFn: answers([{ pid: 8 }]) }), false);
 });
+
+test("updates: a Mac that's stuck says so; one that's just offline for a while doesn't", async () => {
+  const { pullWarning } = await import("../server/updates.js");
+  const now = Date.parse("2026-10-09T09:00:00Z");
+  assert.equal(pullWarning(null, now), null);
+  assert.equal(pullWarning({ how: "up to date", at: "2026-10-09T08:58:00Z" }, now), null);
+  assert.match(pullWarning({ how: "changed here", at: "2026-10-09T08:58:00Z" }, now), /changes of its own/);
+  assert.match(pullWarning({ how: "its own commits" }, now), /can't take GitHub's/);
+  assert.equal(pullWarning({ how: "offline", at: "2026-10-09T08:58:00Z", since: "2026-10-09T02:00:00Z" }, now), null);
+  assert.match(pullWarning({ how: "offline", at: "2026-10-09T08:58:00Z", since: "2026-10-08T07:00:00Z" }, now), /a day/);
+});

@@ -2988,3 +2988,4 @@ html.dark .topshelf .sw-knob { background: #F3ECE0; }
 @media (hover: none) { .txt-line .txt-subplus { opacity: 0.6; } }
 .txt-subadd { list-style: none; padding-left: 26px; }
 @media (max-width: 760px) { .pl-line.sub, .txt-line.sub, .txt-subadd { padding-left: 16px; } }
+.set-note.bad { color: var(--terra); }
