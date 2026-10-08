@@ -26,6 +26,13 @@ const open = (key) => ({ key, data: deskShape({}), earlier: {}, rev: null, canSa
 let T = open(deskDay); // today
 let P = null; // another day being planned, or null when Plan my day shows today
 const stores = () => [T, P].filter(Boolean);
+// An open day keeps one object for as long as it's open (Foundations F5, 9 Oct 2026): a new version of it (read again,
+// the other Mac's, "Use theirs") is copied into that same object. Anything that kept hold of the day (an Undo, a
+// window) still points at the day that gets saved; replacing the object left an Undo after "Use theirs" saving nowhere.
+function adopt(s, next) {
+  for (const k of Object.keys(s.data)) delete s.data[k];
+  Object.assign(s.data, next);
+}
 const storeOf = (d) => stores().find((s) => s.data === d) || null;
 function bind() {
   deskDay = T.key; desk = T.data; earlier = T.earlier;
@@ -48,7 +55,7 @@ async function read(s, { keepNew = true } = {}) {
       fixed = j.fixed || [];
       s.rev = j.rev ?? null;
       s.canSave = true;
-      s.data = startDay(j.day, s.earlier, s.key, fixed, j.usual);
+      adopt(s, startDay(j.day, s.earlier, s.key, fixed, j.usual));
       // a new day, a fixed section added, an older day converted: saved now. A day ahead isn't saved just for being
       // looked at (keepNew false): only once something's written, so the week doesn't fill with empty files.
       if (keepNew && JSON.stringify(s.data) !== JSON.stringify(deskShape(j.day))) queue(s);
@@ -104,7 +111,7 @@ async function refresh(s) {
     if (j.rev === s.rev || s.timer || s.saving) return; // nothing new (or Mel started typing meanwhile)
     s.rev = j.rev ?? null;
     s.earlier = j.earlier || s.earlier;
-    s.data = deskShape(j.day);
+    adopt(s, deskShape(j.day));
     bind();
     document.dispatchEvent(new Event("hanua:day-refreshed"));
     saidUpdated(toast);
@@ -165,7 +172,7 @@ async function write(s) {
 function otherMac(s, j) {
   const theirs = j.current, theirRev = j.rev ?? null;
   toast(`${s === T ? "Today's page" : "That day's page"} was changed on your other Mac.`, true, [
-    { label: "Use theirs", run: () => { s.data = deskShape(theirs || {}); s.rev = theirRev; bind(); document.dispatchEvent(new Event("hanua:day-refreshed")); } },
+    { label: "Use theirs", run: () => { adopt(s, deskShape(theirs || {})); s.rev = theirRev; bind(); document.dispatchEvent(new Event("hanua:day-refreshed")); } },
     { label: "Keep mine", run: () => { s.rev = theirRev; queue(s); } },
   ]);
 }
@@ -173,6 +180,8 @@ function otherMac(s, j) {
 // A change to a day that may not be open here (sending lines to another day): an open day changes in place and saves
 // as usual; any other is read, changed and saved straight away (with its revision, so the other Mac is respected).
 // change(d) changes the day's shape. Resolves true once it's saved (or queued).
+// editDay: the same, by name (F5): every change to a day can say which day it means rather than holding an object
+export const editDay = (key, change) => changeDay(key, change);
 export async function changeDay(key, change) {
   const s = stores().find((x) => x.key === key);
   if (s) { if (!s.canSave) return false; change(s.data); queue(s); return true; }

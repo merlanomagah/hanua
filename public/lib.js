@@ -89,18 +89,40 @@ export async function api(path, body) {
 
 // A short message at the bottom. Pass an action ({ label, run }) to offer e.g. Undo, or a list of them for a choice
 // (which then waits longer).
+// Messages queue (Foundations F5, 9 Oct 2026): a problem, or a choice with two or more answers (Use theirs / Keep mine),
+// is never wiped by a later message; that one waits and shows next. Anything else replaces what's showing, as before
+// (a newer Undo replaces an older one). Problems are announced at once to screen readers (role alert).
+const waiting = [];
+let showing = null; // { bad, choices }
+const important = (m) => m && (m.bad || m.choices > 1);
 export function toast(msg, bad = false, action = null) {
-  const t = $("toast");
-  t.replaceChildren(msg);
   const acts = Array.isArray(action) ? action : action ? [action] : [];
-  for (const a of acts) {
+  const m = { msg, bad, acts, choices: acts.length };
+  if (important(showing) && $("toast").classList.contains("show")) {
+    waiting.push(m); // in the order they came
+    if (waiting.length > 6) waiting.splice(0, waiting.length - 6);
+    return;
+  }
+  show(m);
+}
+function show(m) {
+  const t = $("toast");
+  showing = m;
+  t.replaceChildren(m.msg);
+  for (const a of m.acts) {
     const b = h("button", { type: "button", className: "toast-act", textContent: a.label });
-    b.addEventListener("click", () => { t.classList.remove("show"); a.run(); });
+    b.addEventListener("click", () => { t.classList.remove("show"); clearTimeout(toast.timer); a.run(); next(); });
     t.append(b);
   }
-  t.classList.toggle("bad", bad);
-  t.classList.toggle("has-action", acts.length > 0);
+  t.setAttribute("role", m.bad ? "alert" : "status");
+  t.classList.toggle("bad", m.bad);
+  t.classList.toggle("has-action", m.acts.length > 0);
   t.classList.add("show");
   clearTimeout(toast.timer);
-  toast.timer = setTimeout(() => t.classList.remove("show"), acts.length > 1 ? 15000 : acts.length ? 6000 : 3500);
+  toast.timer = setTimeout(() => { t.classList.remove("show"); next(); }, m.acts.length > 1 ? 15000 : m.acts.length ? 6000 : m.bad ? 6000 : 3500);
+}
+function next() {
+  showing = null;
+  const m = waiting.shift();
+  if (m) setTimeout(() => show(m), 250);
 }
