@@ -5,7 +5,7 @@
 // the file opens the week, and a click on a day opens its page. A day ahead is the same page, saying so plainly
 // ("Planning Wed 07-Oct", a faint tint, no ticks, no morning sweep), with Clear this day; Move to… sends picked lines
 // to another day. Here `desk` is the page's day (state.js `page`), which is today's unless planning ahead.
-import { carriedDays, clearDay, daySummary, indentLine, kidsOf, moveLines, outdentLine, putLines, removeLines, removeMeeting, setLines, takeLines, weekDays, CLASH_TEXT, deskSections, deskShape, fromMin, isFixed, keepPlan, lastFocus, leftovers, minsText, openItems, planDay, planDate, settle, shorterCol, stampLine, stepDay, timeLabel, toMin, DEFAULT_MINS, GENERAL, MAX_LINES, MAX_MEETINGS, MAX_NAME, MAX_SECTIONS, MEETING_PICKS, SECTION_ROWS, TIME_PICKS, TIME_WORDS } from "../shared/desk.js";
+import { returnUnplaced, carriedDays, clearDay, daySummary, indentLine, kidsOf, moveLines, outdentLine, putLines, removeLines, removeMeeting, setLines, takeLines, weekDays, CLASH_TEXT, deskSections, deskShape, fromMin, isFixed, keepPlan, lastFocus, leftovers, minsText, openItems, planDay, planDate, settle, shorterCol, stampLine, stepDay, timeLabel, toMin, DEFAULT_MINS, GENERAL, MAX_LINES, MAX_MEETINGS, MAX_NAME, MAX_SECTIONS, MEETING_PICKS, SECTION_ROWS, TIME_PICKS, TIME_WORDS } from "../shared/desk.js";
 import { dayOf, parseDay, timeOf, todayStr, ymd } from "../shared/dates.js";
 import { $, focus, h, toast } from "../lib.js";
 import { calendarItems, ensureApple } from "../app.js";
@@ -177,11 +177,13 @@ export async function sendLines(refs, toDay) {
   if (!taken.length) return;
   const ok = await changeDay(toDay, (d) => putLines(d, taken, newId));
   if (!ok) { Object.assign(from, structuredClone(before)); renderTodo(); toast(`Couldn't send them to ${dayName(toDay)}: nothing was moved.`, true); return; }
-  const left = taken.filter((t) => !t.placed).length; // a full section takes a task and its subtasks together or not at all
-  if (left) toast(`${left} didn't fit on ${dayName(toDay)} (that section is full)`, true);
+  // a full section takes a task and its subtasks together or not at all: what didn't fit stays here
+  const left = returnUnplaced(from, taken, newId);
+  if (left) toast(`${left} didn't fit on ${dayName(toDay)} (that section is full), so ${left === 1 ? "it stays" : "they stay"} here`, true);
   selected = new Set(); anchor = null;
   redrawAll(from);
-  const n = taken.length, sent = new Set(taken.map((t) => t.placed));
+  const n = taken.length - left, sent = new Set(taken.filter((t) => t.placed).map((t) => t.placed));
+  if (!n) { redrawAll(from); return; }
   toast(`${n} line${n === 1 ? "" : "s"} sent to ${dayName(toDay)}`, false, { label: "Undo", run: async () => {
     await changeDay(toDay, (d) => { for (const s of d.sections) s.lines = s.lines.filter((l) => !sent.has(l.id)); });
     Object.assign(from, structuredClone(before)); redrawAll(from);

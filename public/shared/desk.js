@@ -424,6 +424,18 @@ export function putLines(to, taken, newId) {
   }
   return to;
 }
+// What putLines couldn't place (a full section) goes back to the day it came from, and its "sent" note comes off
+// (9 Oct 2026: they were lost from both days). Returns how many came back.
+export function returnUnplaced(from, taken, newId) {
+  const back = taken.filter((t) => !t.placed).map((t) => ({ ...t, line: { ...t.line } }));
+  if (!back.length) return 0;
+  const ids = new Set(back.map((t) => t.line.id));
+  from.gone = (from.gone || []).filter((g) => !(g.how === "sent" && ids.has(g.id)));
+  for (const t of back) delete t.placed;
+  putLines(from, back, newId);
+  for (const t of back) delete t.placed;
+  return back.length;
+}
 // Take a day's page back to empty (Clear this day): its hours and sections' names stay, nothing written does
 export function clearDay(d, now = new Date()) {
   d.focus = d.focus.map(() => "");

@@ -197,3 +197,17 @@ test("subtasks: random moves, sends, ticks, removes and indents never orphan or 
     }
   }
 });
+
+test("sending: what doesn't fit on the other day stays here, nothing lost (9 Oct 2026 fix)", async () => {
+  const { returnUnplaced } = await import("../public/shared/desk.js");
+  const today = day([L("a", "Trip"), L("b", "Passport", { parent: "a" }), L("c", "Milk")]);
+  const full = day(Array.from({ length: 39 }, (_, i) => L(`f${i}`, `Line ${i}`)));
+  const before = texts(today, full);
+  const taken = takeLines(today, ["a", "c"], "2026-10-09", "2026-10-10");
+  putLines(full, taken, newId); // room for Milk (1), not Trip + Passport (2)
+  assert.equal(returnUnplaced(today, taken, newId), 2);
+  assert.deepEqual(texts(today, full), before);
+  assert.deepEqual(ids(today), ["a", "a>b"]);
+  assert.deepEqual(today.gone.map((g) => g.text), ["Milk"]); // only what really went is noted as sent
+  noOrphans(today); noOrphans(full);
+});
