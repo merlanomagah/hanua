@@ -12,6 +12,24 @@ A personal daily dashboard drawn as a room: a bookcase menu (Notion databases), 
 - Never commit `.env` (it holds the Notion and Claude keys).
 - **Work from another session or worktree:** before merging it, diff it against the current `main` and look for removals its commit message doesn't mention. On 4 Oct 2026 a background fix that started from older files silently undid the click-through work (see the Learning Log).
 
+## Two Macs (the MacBook Air and the Mac mini; principles from `docs/plans/2026-10-two-device-build-principles.md`, each with what holds it)
+
+| # | Rule | Held by |
+|---|---|---|
+| 1 | One home, one writer per kind of data (the Map says which); anything scheduled that writes data or calls a bank runs on the mini only | the Map; Pūtea's `HOST_ROLE` (Phase 2, not yet) |
+| 2 | iCloud Drive › Hanua holds plain files only (JSON, pictures): never a database, `.env`, PIN, token or temp file | `server/room.js`; setup doc |
+| 3 | The room's data goes through `server/room.js`: whole writes, a revision on every save, an older Hanua never saves over a newer file, "can't read it yet" is never "empty" | `npm run check` (only allowed files write); `test/shared-folder.test.js`, `test/two-macs.test.js` |
+| 4 | Hanua points at Pūtea and never keeps money data; money hides at work and asleep | tests; the Money seat |
+| 5 | Code moves one way: a branch (in `../hanua-work`) → **`npm run check`** → `main` → GitHub → both Macs update themselves. Never build in the running folder, never force, never leave finished work on one Mac only | `npm run check` before every release |
+| 6 | Nothing fails silently: every background job reports its state and a problem becomes a desk note | `/api/status`, `/api/sync`, `/api/this-mac` (version, last look at GitHub) |
+| 7 | Same tools on both Macs: Node 22+ (`.nvmrc`, `engines`); a new add-on installs (`npm ci`) before a restart | `start.sh`; the updater |
+| 8 | Nothing scans the whole history on a timer: the 20 s sweep looks at the top files and the last 14 days onwards | `worthWatching`; the 1,100-day scale test |
+| 9 | Every setting is written down: everything the code reads is in `.env.example`; a change that needs a new value ends with the exact line for **both** Macs | `npm run check` |
+| 10 | Shared knowledge lives where both Macs read it: this file, `docs/`, Hanua OS in Notion; never only one Mac's Claude memory or browser storage (that's for view settings) | close-out |
+| 11 | A fresh Mac works from the written steps (`docs/setup-mac-mini.md`): no hard-coded user folders | setup doc; `npm run check` on the new Mac |
+
+The page's signals (`hanua:…`) are listed in `public/events.js`; the room folder's kinds of file in `ROOM_KINDS` (`public/shared/sync.js`); a backup is put back with `scripts/restore.js` (`docs/restore.md`).
+
 ## Hanua OS (the project brain, in Notion)
 
 The reasoning behind Hanua lives in [Hanua OS](https://app.notion.com/p/3ee16603f0bd81be9dbec1188be4de79), built from the Brain Playbook. This file holds the routine; if the two disagree on routine, this file wins.
@@ -25,6 +43,13 @@ The reasoning behind Hanua lives in [Hanua OS](https://app.notion.com/p/3ee16603
 4. A belief changed → a [Learning Log](https://app.notion.com/p/3ee16603f0bd8106b753c3be394efe0d) row. Then ask: would this change how a *different* system gets built, in a *different* domain? If yes, also add it to the Brain Playbook's Playbook Learning Log and mark the row Promoted.
 5. A preference stated or something deliberately cut → Preferences (and its cut list). A new image → full-size original in `prototypes/room-dashboard/assets/`, resized copy in `public/assets/`, and a row in the image library.
 6. At the end of every new room, run the promotion check (unpromoted Learning Log rows up; Playbook patterns not adopted, offered as proposals) and update Hanua OS's row in the OS Registry with the sweep date.
+
+## Start here (9 Oct 2026): Foundations complete
+
+**Done today** (brief `docs/plans/2026-10-desk-health-check.md`, progress table at the top): **`npm run check`** before every release (valid JS, shared rules self-contained, `.env.example` complete, disk writes only from allowed files, page signals listed in `public/events.js` and both sent and heard, tests; a note when add-ons changed); Node 22+ pinned (`.nvmrc`, `engines`, `start.sh` says so); a complete `.env.example`; the self-update reports each look at GitHub (`pullMain` → `state.pull`; Hanua Settings → This Mac shows the version; `pullWarning` → desk note when stuck). **F5**: an open day keeps one object (`adopt` in `state.js`), so Undo after "Use theirs" saves; `editDay(key, change)`; messages queue (a problem or a choice is never wiped; `role=alert`). **F7**: `test/shared-folder.test.js` (room.js: revisions, still-coming, missing folder, clash copies), `test/routes.test.js` (a real test copy on a temp folder, over HTTP), `test/two-macs.test.js` (two copies, one folder: seen, refused, merged, live news); `restoreRoom` + `scripts/restore.js` + `docs/restore.md` (moves the room aside, never deletes; tried on test data). **F6**: `server/index.js` (117 lines) + `server/routes/` (system, room, kitchen, desk, settings, apple, money, music, books; `register(ctx)`; settings returns `current` / `reload`); `ROOM_KINDS` / `ROOM_DIRS` / `kindOf` in `public/shared/sync.js`; `public/desk/` week.js, archive.js, sweep.js with shared `view.js`. **Phase 1 steps 5–7**: the 20 s sweep stats only the top files and the last 14 days onwards (`worthWatching`; scale test with 1,100 days); the drawn-menu save route retired; the "Two Macs" rules above; setup doc updated. 181 tests.
+
+**Next session:** roadmap step 7, **Close the day** (offered from 4 pm, a reminder at 7 pm; its times join Desk Settings), through the panel. Then Routines, the weekly summary, the TV build (#10, due since 8 Oct). Phase 2 of the two-Macs brief (Pūtea's nightly backup on the mini, `HOST_ROLE`, the Air reading the mini's Pūtea over Tailscale) still needs Mel's yes.
+**Still for Mel:** the Air's keys into the mini's `.env` (at the office); the Air's backup off (Hanua Settings → This Mac); Touch ID on each Mac; try Tab / ⌥Tab and folding in Safari.
 
 ## Latest (8 Oct 2026, night): subtasks, and Foundations F4 (brief `docs/plans/2026-10-subtasks.md`, Mel: yes / yes / yes)
 

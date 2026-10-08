@@ -12,18 +12,21 @@ Both Macs run their own Hanua and share one iCloud Drive folder, **Hanua**, for 
 |---|---|---|
 | 1 | Same Apple ID, iCloud Drive on | System Settings → your name → iCloud → iCloud Drive |
 | 2 | Keep the Hanua folder downloaded (on **both** Macs) | Finder → iCloud Drive → right-click **Hanua** → **Keep Downloaded** |
-| 3 | Install Node.js | nodejs.org → the LTS installer (.pkg) |
-| 4 | Get Hanua | Terminal: `mkdir -p ~/Documents/GitHub && cd ~/Documents/GitHub && git clone https://github.com/merlanomagah/hanua.git` (accept the offer to install the developer tools if macOS asks). **Already there from before?** `cd ~/Documents/GitHub/hanua && git checkout main && git pull` instead, so it has the latest `main` |
-| 5 | Install its parts | Terminal: `cd ~/Documents/GitHub/hanua && npm install` |
+| 3 | Install Node.js **22 or later** | nodejs.org → the LTS installer (.pkg) (Homebrew's `node` is fine too). `Start Hanua` says plainly if it's too old |
+| 3b | Keep the code out of iCloud | System Settings → your name → iCloud → iCloud Drive → **Desktop & Documents Folders off** (on 6 Oct 2026 it moved the code into iCloud and broke signing). Only the **Hanua** folder of data lives in iCloud |
+| 4 | Get Hanua | Terminal, in the folder you keep code in (the Air: `~/Documents/GitHub`; the mini: your home folder): `git clone https://github.com/merlanomagah/hanua.git` (accept the offer to install the developer tools if macOS asks). **Already there from before?** `cd` into it, then `git checkout main && git pull` |
+| 5 | Install its parts | Terminal, in the hanua folder: `npm ci`, then `npm run check` (should end "Ready to release") |
 | 6 | Copy the keys | AirDrop the Air's `.env` (in the hanua folder; Finder shows hidden files with ⌘⇧.) into the mini's hanua folder. **The Air's own `.env`, not `.env.example`** (the example has blank keys: on 8 Oct 2026 the mini ran with a blank Notion key; Hanua now says so on the desk). If Pūtea runs on the mini, keep the mini's `PUTEA_URL` line; leave out `BACKUP_DIR=off` on the Mac that backs up. Delete the AirDropped copy from Downloads afterwards. Never put it in iCloud Drive or GitHub |
 | 7 | Start it | Double-click **Start Hanua.command** in the folder; pick a PIN; allow Calendar, Reminders and Music when macOS asks. Open it as **http://localhost:3000** on the mini itself: since 6 Oct 2026 Hanua only answers its own pages on the same Mac, so the mini's name or address from another Mac is refused (on purpose) |
 | 8 | Desktop apps | Terminal: `bash scripts/desktop-apps.sh` (Hanua and Restart Hanua on the Desktop) |
 | 9 | Start at login, never sleep | System Settings → General → Login Items → + → the Hanua app; System Settings → Energy → prevent automatic sleeping |
-| 10 | Then the Air stops backing up | add `BACKUP_DIR=off` to the Air's `.env` |
+| 10 | Only one Mac backs up | On the Air: Hanua Settings (the cog on the rail) → **This Mac** → untick **Back up the room each night**. The mini keeps it on |
+| 11 | Check | Hanua Settings → This Mac: Notion and Claude connected, "shared through iCloud Drive › Hanua", and the version "up to date with GitHub" |
 
 The mini then updates itself from GitHub every 5 minutes (only while `main` is checked out and nothing in the folder was changed by hand). Since 6 Oct 2026 an update installs new add-ons first and only replaces the running Hanua once the new one has started; if it can't, the old one keeps running and the page says "Hanua couldn't update". **Pūtea's home is the mini** (6 Oct 2026), so on the mini the money frames work; on the Air they say Pūtea is closed until it can reach the mini (Phase 2 of `docs/plans/2026-10-two-device-build-principles.md`).
 
-**Check it's up to date:** in Terminal, `cd ~/Documents/GitHub/hanua && git log --oneline -1` should show the same first line as `main` on GitHub (github.com/merlanomagah/hanua/commits/main).
+**Check it's up to date:** Hanua Settings → This Mac says the version and when it last checked GitHub; a Mac that's stuck says so on the desk. Or, in Terminal in the hanua folder, `git log --oneline -1` should match `main` on GitHub (github.com/merlanomagah/hanua/commits/main).
+**If the room ever needs putting back from a backup:** `docs/restore.md`.
 
 ## If something looks wrong
 - A desk note "iCloud kept two versions of …": one Mac saved while the other's change hadn't arrived. The copy ends in " 2"; tell Claude, who'll compare and merge.

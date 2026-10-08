@@ -14,7 +14,7 @@ import { execFile } from "node:child_process";
 import { existsSync, watch } from "node:fs";
 import { mkdir, readdir, readFile, rename, stat, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { changeOf, conflictOf, kindOf, placeholderFor, revisionOk, syncWarning, ROOM_DIRS } from "../public/shared/sync.js";
+import { changeOf, conflictOf, kindOf, placeholderFor, revisionOk, syncWarning, worthWatching, ROOM_DIRS } from "../public/shared/sync.js";
 
 export const revOf = (bytes) => createHash("sha1").update(bytes).digest("hex").slice(0, 16);
 const fail = (status, message, extra = {}) => Object.assign(new Error(message), { status, ...extra });
@@ -115,6 +115,7 @@ export function createRoom(dir, { shared = false, log = console.log } = {}) {
   // every file we care about, its stamp, plus what's odd (clash copies, cloud-only files)
   async function scan() {
     const out = new Map(), odd = { conflicts: [], pending: [] };
+    const now = new Date(), today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
     for (const sub of ROOM_DIRS) { // every folder the room keeps files in (public/shared/sync.js ROOM_KINDS)
       const names = await readdir(path.join(dir, sub)).catch(() => []);
       for (const n of names) {
@@ -122,7 +123,7 @@ export function createRoom(dir, { shared = false, log = console.log } = {}) {
         if (conflictOf(n)) { odd.conflicts.push(r); continue; }
         const real = placeholderFor(n);
         if (real && kindOf(sub ? `${sub}/${real}` : real)) { odd.pending.push(sub ? `${sub}/${real}` : real); continue; }
-        if (!changeOf(r)) continue;
+        if (!worthWatching(r, today)) continue; // the archive's old days aren't changed by the other Mac
         const s = await stat(path.join(dir, r)).catch(() => null);
         if (s) out.set(r, `${s.mtimeMs}:${s.size}`);
       }

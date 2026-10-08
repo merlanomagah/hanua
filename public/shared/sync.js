@@ -55,6 +55,19 @@ export function kindOf(rel) {
   }
   return null;
 }
+// Which files the 20-second sweep looks at closely (Phase 1 step 5, 9 Oct 2026): the top files, and days and weeks
+// from `back` days ago onwards (the other Mac only ever changes recent or coming days); older ones are the archive.
+// Clash copies and cloud-only files are still noticed everywhere: that costs no more than listing the folder.
+export const WATCH_BACK = 14;
+export function worthWatching(rel, today, back = WATCH_BACK) {
+  const k = kindOf(rel);
+  if (!k || k.quiet) return false;
+  if (!k.key) return true;
+  const [y, m, d] = today.split("-").map(Number);
+  const from = new Date(Date.UTC(y, m - 1, d - back)).toISOString().slice(0, 10);
+  return k.key >= from;
+}
+
 // What a changed file in the room folder means to an open page: { kind, key } or null (anything that isn't news)
 export function changeOf(rel) {
   const k = kindOf(rel);

@@ -9,7 +9,13 @@
 | F3 Host / Origin guard (`server/guard.js` `localOnly`, tested) | Done |
 | F2 Restart only once the new copy answers; else keep running and say so (`server/updates.js` `restartSelf`, `newCopyAnswers`; `/api/status` `update`, a note on the page); `npm ci` first when the add-on list changed (Phase 1 step 2, part) | Done; tried live both ways (a new copy that starts, one that crashes) |
 | F1 A sample server (NOTION_TOKEN blanked) ignores .env's ROOM_DATA / BACKUP_DIR (`roomChoice`, tested) | Done |
-| Next: Phase 1 steps 1 (`npm run check`), 3 (pin Node), 4 (`.env.example`), the rest of 2 (pull state reported); then F4, F5–F7, Phase 1 steps 5–7 | To do |
+| Phase 1 steps 1–4: `npm run check`, Node 22+ pinned, a complete `.env.example`, each look at GitHub reported (This Mac, a desk note when stuck) | Done 9 Oct (f211aac) |
+| F4 origin ids, the day's `gone` record, `DESK_VERSION` 6 with a fixture per old version (with subtasks) | Done 8 Oct (f80fe52) |
+| F5 an open day keeps one object (Undo after "Use theirs" saves); messages queue, problems announced | Done 9 Oct (2a7be0b) |
+| F7 shared-folder tests, route round trips, backup → wipe → restore (`scripts/restore.js`, `docs/restore.md`) | Done 9 Oct (cf5b9bc) |
+| F6 `server/index.js` → `server/routes/`; `ROOM_KINDS`; `public/events.js` checked; `page.js` → week / archive / sweep | Done 9 Oct (4326c28, 916fb43) |
+| Phase 1 steps 5–7: bounded sweep + 1,100-day scale test, drawing save retired; two-Mac test; CLAUDE.md "Two Macs" rules, setup doc | Done 9 Oct |
+| **Foundations complete.** Next: roadmap step 7, Close the day | |
 
 **Request (as the problem):** About 37 commits built the desk in one day. Is it set up well enough (best practice, room to grow, capability) to carry Close the day, Routines, the weekly summary and Patterns without breaking or being rebuilt?
 **Lane:** Large (an assessment, with no build) · **Seats:** Chair, Sceptic, Backend engineer, Frontend engineer, Data steward, Test lead (the last four each read the code on their own), Privacy and safety, Release keeper

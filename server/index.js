@@ -35,9 +35,8 @@ const app = express();
 const port = Number(process.env.PORT) || 3000;
 // only this Mac's own Hanua pages (and scripts on this Mac) may talk to it: server/guard.js
 app.use(localOnly(port));
-// small JSON everywhere; the whiteboard's drawings (a few hundred KB) have their own, larger limit
-const smallJson = express.json({ limit: "100kb" });
-app.use((req, res, next) => (req.path.startsWith("/api/board/") ? next() : smallJson(req, res, next)));
+// small JSON everywhere (the drawn menus' larger limit went with their save route, 9 Oct 2026)
+app.use(express.json({ limit: "100kb" }));
 // a save in flight holds off a restart until things are quiet (server/updates.js)
 app.use((req, _res, next) => { if (req.method !== "GET") updates?.wrote(); next(); });
 // "no-cache" = Safari must ask each time whether a file changed (a quick 304 when it hasn't), so after an update

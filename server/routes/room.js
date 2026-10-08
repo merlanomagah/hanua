@@ -1,6 +1,5 @@
 // The room's own files that aren't a day or a menu: the plant's log, the old drawn menus, the stickies; and the
 // shared folder's live news and state (/api/events, /api/sync). Split out of server/index.js (F6, 9 Oct 2026).
-import express from "express";
 import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 import { stickyShape } from "../../public/shared/desk.js";
@@ -31,13 +30,8 @@ export function register({ app, room, roomDir, roomRoute, isDay, choice, updates
     try { res.type("png").set("Cache-Control", "no-store").send(await readFile(path.join(boardDir, `${req.params.week}.png`))); }
     catch { res.status(404).end(); }
   });
-  app.put("/api/board/:week", express.json({ limit: "6mb" }), roomRoute(async (req, res) => {
-    const m = /^data:image\/png;base64,([A-Za-z0-9+/=]+)$/.exec(req.body?.image || "");
-    if (!isDay(req.params.week) || !m) return res.status(400).json({ error: "That drawing couldn't be saved" });
-    if (room.missing()) return res.status(503).json({ error: "Hanua can't find its shared iCloud folder: nothing was saved" });
-    await room.writeBytes(path.join(boardDir, `${req.params.week}.png`), Buffer.from(m[1], "base64"));
-    res.json({ ok: true });
-  }));
+  // (the drawn menus' save route was retired on 9 Oct 2026: drawing was cut on 5 Oct; old drawings stay readable)
+
 
 
   // Sticky notes on the desk's wall: one small file, kept until each is taken down (taken-down notes are marked, not erased)

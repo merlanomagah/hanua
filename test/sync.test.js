@@ -82,3 +82,33 @@ test("sync: one list of what the room folder holds; old drawings are kept and ch
   assert.deepEqual(changeOf("settings.json"), { kind: "settings", key: "" });
   for (const x of ["desk/2026-10-09 2.json", "desk/.2026-10-09.json.icloud", "desk/notes.txt", "other/2026-10-09.json", "desk/sub/2026-10-09.json"]) assert.equal(kindOf(x), null, x);
 });
+
+test("sync: the sweep looks closely only at the top files and the last two weeks onwards (Phase 1 step 5)", async () => {
+  const { worthWatching } = await import("../public/shared/sync.js");
+  const today = "2026-10-09";
+  assert.equal(worthWatching("settings.json", today), true);
+  assert.equal(worthWatching("desk/2026-10-09.json", today), true);
+  assert.equal(worthWatching("desk/2026-12-01.json", today), true); // planned ahead
+  assert.equal(worthWatching("desk/2026-09-25.json", today), true); // 14 days back
+  assert.equal(worthWatching("desk/2026-09-24.json", today), false);
+  assert.equal(worthWatching("menu/2025-01-06.json", today), false);
+  assert.equal(worthWatching("whiteboard/2026-10-05.png", today), false);
+});
+
+test("scale: a room with years of days still sweeps quickly", async () => {
+  const { mkdtemp, mkdir, writeFile, rm } = await import("node:fs/promises");
+  const { tmpdir } = await import("node:os");
+  const path = (await import("node:path")).default;
+  const { createRoom } = await import("../server/room.js");
+  const dir = await mkdtemp(path.join(tmpdir(), "hanua-scale-"));
+  await mkdir(path.join(dir, "desk"));
+  const start = new Date("2023-10-09T12:00:00");
+  for (let i = 0; i < 1100; i++) { const d = new Date(start); d.setDate(d.getDate() + i); await writeFile(path.join(dir, "desk", `${d.toISOString().slice(0, 10)}.json`), "{}"); }
+  const room = createRoom(dir, { shared: true, log: () => {} });
+  const t = Date.now();
+  await room.sweep();
+  assert.ok(Date.now() - t < 1500, `a sweep of 1,100 days took ${Date.now() - t} ms`);
+  assert.deepEqual(room.status().conflicts, []);
+  room.stop();
+  await rm(dir, { recursive: true });
+});
