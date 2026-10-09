@@ -187,3 +187,34 @@ test("goals show in the book of their Area and any book they're also in, with ch
   assert.deepEqual(goalsInBook(goals, "People"), []);
   assert.deepEqual([...goalBooks({ area: "Work", alsoIn: ["Finances", "Work"] })], ["Work", "Finances"]);
 });
+
+// Up and down the chain from a card (10 Oct 2026)
+test("drillTo goes down to children and up to the parent, through all four levels", async () => {
+  const { drillTo, childrenOf, trailTo } = await import("../public/shared/goals.js");
+  const goals = [
+    goal("E", "Epic"), goal("F1", "Feature", { parent: "E" }), goal("F2", "Feature", { parent: "E" }),
+    goal("P", "PBI", { parent: "F1" }), goal("T", "Task", { parent: "P" }), goal("Solo", "Task"),
+  ];
+  assert.deepEqual(drillTo(goals, "E", "down"), { scope: "E", level: "Feature", pick: null });
+  assert.deepEqual(drillTo(goals, "F1", "down"), { scope: "F1", level: "PBI", pick: null });
+  assert.deepEqual(drillTo(goals, "P", "down"), { scope: "P", level: "Task", pick: null });
+  assert.equal(drillTo(goals, "T", "down"), null); // no children
+  assert.deepEqual(drillTo(goals, "T", "up"), { scope: "F1", level: "PBI", pick: "P" }); // the PBI among its siblings
+  assert.deepEqual(drillTo(goals, "F2", "up"), { scope: null, level: "Epic", pick: "E" }); // an Epic has no parent
+  assert.equal(drillTo(goals, "E", "up"), null);
+  assert.equal(drillTo(goals, "Solo", "up"), null);
+  assert.equal(drillTo(goals, "missing", "down"), null);
+  assert.deepEqual(childrenOf(goals, "E").map((g) => g.id), ["F1", "F2"]);
+  assert.deepEqual(trailTo(goals, "T").map((g) => g.id), ["E", "F1", "P", "T"]);
+});
+
+test("drillTo copes with mixed levels, loops and a filtered list (At work)", async () => {
+  const { drillTo, trailTo } = await import("../public/shared/goals.js");
+  const mixed = [goal("E", "Epic"), goal("T", "Task", { parent: "E" }), goal("F", "Feature", { parent: "E" })];
+  assert.equal(drillTo(mixed, "E", "down").level, "Feature"); // the highest level among the children
+  const loop = [goal("A", "Feature", { parent: "B" }), goal("B", "Feature", { parent: "A" })];
+  assert.equal(trailTo(loop, "A").length, 2);
+  // At work the page passes only Work goals: a personal child isn't there to go to
+  const work = [goal("E", "Epic", { area: "Work" })];
+  assert.equal(drillTo(work, "E", "down"), null);
+});

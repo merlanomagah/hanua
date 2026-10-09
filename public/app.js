@@ -12,7 +12,7 @@ import { goalsInBook, isGoalDone, onCalendar, visibleGoals } from "./shared/goal
 import { appleAtWork, withoutDuplicates } from "./shared/events.js";
 import { onEventsChanged, openEvent } from "./calendar-event.js";
 import { $, ago, api, area, fmtDay, focus, focusGoals, h, hiddenInFocus, isDone, isNarrow, longDate, money, num, records, reducedMotion, state, store, toast, updatedLine } from "./lib.js";
-import { flashGoals, onBoard, renderBoard, showBoard } from "./goals/board.js";
+import { clearGoalScope, flashGoals, onBoard, renderBoard, scopedTo, showBoard } from "./goals/board.js";
 import { levelIcon } from "./goals/icons.js";
 import { openGoal } from "./goals/form.js";
 import { openReview, reviewDue } from "./goals/review.js";
@@ -1185,6 +1185,7 @@ document.addEventListener("keydown", (e) => {
   else if ($("turntable").classList.contains("open")) closeTurntable();
   else if (calWide) zoomCalendar(false);
   else if (!$("ts-panel").hidden) toggleEarnings(false);
+  else if (onBoard && scopedTo()) { if (!e.defaultPrevented) clearGoalScope(); } // a narrowed board widens first
   else if (onBoard) showBoard(false);
   else if (onKitchen) showKitchen(false);
 });

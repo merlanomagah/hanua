@@ -133,6 +133,21 @@ function row(g, depth, kidCount, lit) {
       g.url ? h("a", { className: "g-act", href: g.url, target: "_blank", rel: "noopener", textContent: "↗", title: "Open in Notion", ariaLabel: `Open “${g.title}” in Notion` }) : null,
       tool("×", `Delete “${g.title}”`, () => confirmDelete(g), "g-act bl-del")));
   el.dataset.id = g.id;
+  // ⌘↓ opens the goal and goes to its first child; ⌘↑ goes to its parent (like Finder; 10 Oct 2026).
+  // Rows can't take focus themselves, so this hears the keys from the buttons inside them.
+  el.addEventListener("keydown", (e) => {
+    if (!e.metaKey || e.altKey || e.shiftKey || (e.key !== "ArrowDown" && e.key !== "ArrowUp") || e.target.closest("input, textarea, select")) return;
+    e.preventDefault();
+    const nameOf = (id) => document.querySelector(`.bl-row[data-id="${CSS.escape(id)}"] .bl-name`);
+    if (e.key === "ArrowUp") {
+      const p = goalById(g.parent);
+      return p && nameOf(p.id) ? nameOf(p.id).focus() : toast("It's at the top of its chain");
+    }
+    if (!kidCount) return toast("Nothing planned under it yet");
+    if (closed.has(g.id)) { closed.delete(g.id); saveClosed(); renderBoard(); }
+    const first = [...document.querySelectorAll(".bl-row")].find((r) => goalById(r.dataset.id)?.parent === g.id);
+    first?.querySelector(".bl-name")?.focus();
+  });
   return el;
 }
 

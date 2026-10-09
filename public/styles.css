@@ -1009,6 +1009,12 @@ button.frame:hover { transform: translateY(-2px); box-shadow: inset 1px 1px 0 rg
 @media (hover: none) { .pl-line .pl-pri.p-none, .pl-line .pl-mins.unset { opacity: 1; } }
 /* Work: a small briefcase chip on a section's header (and each meeting); at work only Work shows */
 .pl-head .pl-work { margin-left: auto; }
+/* a To-Do List section folds away (10 Oct 2026): ▾ at the far right; folded, "3 left ▸" and the lines are hidden */
+.pl-fold { flex: none; height: 22px; min-width: 22px; padding: 0 4px; border: 0; border-radius: 3px; background: transparent; cursor: pointer; font: 10px/1 var(--mono); letter-spacing: 0.06em; color: var(--ink-4); }
+.pl-fold:hover, .pl-fold:focus-visible { color: var(--ink); background: var(--hair); }
+.pl-fold.folded { color: var(--ink-3); }
+.pl-sec.folded .pl-head { border-bottom: 1px solid var(--hair); }
+.pl-sec.folded .pl-list[hidden] { display: none; }
 .pl-work { --h: 20px; flex: none; display: inline-flex; align-items: center; gap: 3px; height: 20px; padding: 0 6px; border: 1px solid var(--border-2); border-radius: 3px; background: transparent; cursor: pointer;
   font: 9px var(--mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--faint); }
 .pl-work svg { width: 11px; height: 11px; fill: none; stroke: currentColor; stroke-width: 1.4; }
@@ -1561,6 +1567,17 @@ ul.ar-list { list-style: none; }
 .g-area { margin-left: auto; color: var(--faint); }
 .g-title { font: 19px/1.15 var(--display); color: var(--ink); overflow-wrap: anywhere; }
 .g-parent { font: italic 14px/1.2 var(--display); color: var(--muted); }
+/* ↑ parent and ↓ children on a Board card (10 Oct 2026): quiet until hovered, like the card's other actions */
+button.g-nav { margin: 0; padding: 0; border: 0; background: none; color: var(--muted); cursor: pointer; text-align: left; }
+button.g-nav:hover, button.g-nav:focus-visible { color: var(--ink); text-decoration: underline; text-underline-offset: 3px; }
+button.g-down { font: inherit; letter-spacing: inherit; text-transform: uppercase; }
+/* the breadcrumb when the Board is narrowed to one goal's children */
+.goal-trail { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 2px 6px; min-width: 0; padding: 3px 4px 3px 8px; border: 1px solid var(--border); border-radius: 4px; background: var(--cream); font: 13px var(--ui); color: var(--muted); }
+.goal-trail[hidden] { display: none; }
+.goal-trail button { display: inline-flex; align-items: center; gap: 4px; max-width: 22ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 2px 4px; border: 0; border-radius: 2px; background: none; color: inherit; font: inherit; cursor: pointer; }
+.goal-trail button:hover, .goal-trail button:focus-visible { background: var(--hair); color: var(--ink); }
+.goal-trail .here { color: var(--ink); font-weight: 500; }
+.goal-trail .gt-clear { margin-left: 2px; color: var(--muted); }
 .g-bar { height: 3px; background: var(--hair); }
 .g-bar i { display: block; height: 100%; background: var(--green-mid); transition: width 400ms; }
 .goal-card.risk .g-bar i { background: var(--terra); }

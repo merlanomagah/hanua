@@ -114,6 +114,17 @@ export function withFamilies(d, refs, { openKids = false } = {}) {
   }
   return out;
 }
+// What a key does on a To-Do List line (Mel, 10 Oct 2026), decided here so it can be tested: Backspace with the
+// caret at the very start of a subtask (nothing selected) brings it back out, like Shift+Tab, and never deletes
+// anything; → with the caret at the very end of a written line goes on to its Priority (then Time). Anything else,
+// or any modifier key held, is left to the text box. k: { key, start, end, length, written, sub, shift, alt, meta, ctrl }
+export function lineKeyAction(k) {
+  if (!k || k.alt || k.meta || k.ctrl || k.shift) return null;
+  const collapsed = k.start === k.end;
+  if (k.key === "Backspace" && collapsed && k.start === 0 && k.sub) return "outdent";
+  if (k.key === "ArrowRight" && collapsed && k.end === k.length && k.written) return "toPriority";
+  return null;
+}
 // Tab on a line: under the nearest written task above (the task itself when that's a subtask). Not on a section's
 // first task, nor on a task that has subtasks of its own (one level). true when it moved.
 export function indentLine(d, id) {

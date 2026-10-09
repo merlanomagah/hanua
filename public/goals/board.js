@@ -1,6 +1,6 @@
 // ---------- goals pin board: swipe right to slide the wall aside (left is the kitchen) ----------
 import { dayOf, daysBetween, todayStr, ymd } from "../shared/dates.js";
-import { LEVELS, dateConflicts, isGoalDone, levelIndex, lineageIn, treeOrder, visibleGoals } from "../shared/goals.js";
+import { LEVELS, dateConflicts, drillTo, isGoalDone, levelIndex, lineageIn, trailTo, treeOrder, visibleGoals } from "../shared/goals.js";
 import { GUIDE, WIP_LIMIT } from "../coach.js";
 import { $, ago, fmtDay, focus, focusGoals, h, reducedMotion, state, store, toast } from "../lib.js";
 import { refreshGoals, removeGoal, statusOptions, updateGoal } from "./store.js";
@@ -51,6 +51,30 @@ export let boardView = BOARD_VIEWS.includes(store("goals-view")) ? store("goals-
 export let boardLevel = LEVELS.some((l) => l.name === store("goals-level")) ? store("goals-level") : "Task";
 export let focusGoal = null;
 export const setFocusGoal = (id) => { focusGoal = id; };
+// Up and down the chain (Mel, 10 Oct 2026): the Board narrowed to one goal's children, with a breadcrumb.
+// Kept in memory only, so the Board opens whole next time; a level tab, ✕ or Esc clears it.
+let goalScope = null;
+export const scopedTo = () => goalScope;
+export function clearGoalScope() {
+  if (!goalScope) return false;
+  goalScope = null;
+  renderBoard();
+  return true;
+}
+// dir "down" / "up" from a goal; on the Board it narrows, and the Backlog follows its own rows (see backlog.js)
+export function drillGoal(id, dir) {
+  const to = drillTo(focusGoals(state.goals.goals), id, dir);
+  if (!to) return toast(dir === "down" ? "Nothing planned under it yet" : "It's at the top of its chain");
+  goalScope = to.scope;
+  boardLevel = to.level;
+  focusGoal = to.pick;
+  if (boardView !== "kanban") { boardView = "kanban"; store("goals-view", boardView); noteView(boardView); }
+  renderBoard();
+  // keep the keyboard where it was going: the picked parent, or the first card under the goal
+  const card = document.querySelector(to.pick ? `.goal-card[data-id="${to.pick}"]` : "#cork-cols .goal-card");
+  card?.focus({ preventScroll: true });
+  card?.scrollIntoView({ block: "nearest", behavior: reducedMotion ? "auto" : "smooth" });
+}
 // Goals just added glow for a moment and scroll into view in their column (rather than dimming everything else)
 let fresh = new Set();
 export function flashGoals(ids) {
@@ -122,6 +146,9 @@ export function renderBoard() {
   document.querySelectorAll("[data-view]").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.view === boardView)));
   document.querySelectorAll("[data-level]").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.level === boardLevel)));
   $("level-seg").hidden = boardView !== "kanban";
+  if (goalScope && !goalById(goalScope)) goalScope = null;
+  renderTrail();
+  countUnder(goals);
   fillRootPicker();
   // the review sits in the toolbar only when it's due; it's always in the ⋯ menu
   // the review covers every goal, so it stays out of sight at work
@@ -143,7 +170,8 @@ export function renderBoard() {
   const cols = boardView === "backlog" ? [renderBacklog()]
     : boardView === "timeline" ? [renderTimeline()]
     : statusOptions(GOAL_STATUS).map((st) => {
-        const list = goals.filter((g) => g.level === boardLevel && (g.status || "New") === st).sort(treeOrder(all));
+        // narrowed: every child of the goal, whatever its level (a stand-alone Task under an Epic still shows)
+        const list = goals.filter((g) => (goalScope ? g.parent === goalScope : g.level === boardLevel) && (g.status || "New") === st).sort(treeOrder(all));
         // Personal Kanban: cap what's in progress, so things get finished
         const over = st === "Active" && list.length > WIP_LIMIT;
         const col = h("section", { className: `pin-col state-${STATE_CLASS[st.toLowerCase()]}${over ? " over-limit" : ""}` },
@@ -162,6 +190,47 @@ export function renderBoard() {
   // the wall stretches to fit a long board (phones stack the columns)
   $("wall").style.minHeight = onBoard ? `${$("board-pane").offsetHeight}px` : "";
   revealFresh();
+}
+
+// a goal's children that the Board would show (hidden done ones don't count)
+// worked out once per render (cards would otherwise each scan every goal)
+let under = new Map();
+function countUnder(goals) {
+  under = new Map();
+  for (const c of goals) {
+    if (!c.parent) continue;
+    const u = under.get(c.parent) || { n: 0, levels: new Set() };
+    u.n++; u.levels.add(c.level || "Task");
+    under.set(c.parent, u);
+  }
+}
+function downLabel(id) {
+  const u = under.get(id);
+  if (!u) return null;
+  const lv = u.levels.size === 1 ? LEVELS[levelIndex([...u.levels][0])] : null;
+  return `${u.n} ${lv ? (u.n === 1 ? lv.name : lv.plural) : u.n === 1 ? "goal" : "goals"}`;
+}
+function navButton(act, text, title, className) {
+  const b = h("button", { type: "button", className: `g-nav ${className}`, textContent: text, title, ariaLabel: title });
+  b.dataset.act = act;
+  return b;
+}
+// the breadcrumb: the chain above the narrowed goal, each step clickable, ✕ to see the whole level again
+function renderTrail() {
+  const nav = $("goal-trail");
+  nav.hidden = !(goalScope && boardView === "kanban");
+  if (nav.hidden) return nav.replaceChildren();
+  const chain = trailTo(focusGoals(state.goals.goals), goalScope);
+  const step = (g, last) => {
+    const b = h("button", { type: "button", className: `gt-step${last ? " here" : ""}`, title: last ? `Showing what's under “${g.title}”` : `Show what's under “${g.title}”` },
+      levelIcon(g.level), " ", g.title);
+    if (last) b.setAttribute("aria-current", "location");
+    b.addEventListener("click", () => drillGoal(g.id, "down"));
+    return b;
+  };
+  const clear = h("button", { type: "button", className: "gt-clear", textContent: "✕", title: `Show every ${boardLevel} again (Esc)`, ariaLabel: `Show every ${boardLevel} again` });
+  clear.addEventListener("click", () => clearGoalScope());
+  nav.replaceChildren(...chain.flatMap((g, i) => [i ? h("span", { className: "gt-sep", ariaHidden: "true", textContent: "›" }) : null, step(g, i === chain.length - 1)]).filter(Boolean), clear);
 }
 
 export function actButton(act, label) {
@@ -186,7 +255,7 @@ export function goalCard(g, i, thread) {
       g.priority ? h("span", { className: `g-pri p${g.priority}`, textContent: `P${g.priority}`, title: `Priority ${g.priority}` }) : null,
       g.area ? h("span", { className: "g-area", textContent: g.area }) : null),
     h("span", { className: "g-title", textContent: g.title }),
-    boardView === "kanban" && parent ? h("span", { className: "g-parent", textContent: `↑ ${parent.title}` }) : null,
+    boardView === "kanban" && parent ? navButton("up", `↑ ${parent.title}`, `Go up to ${parent.level || "its parent"} “${parent.title}” (⌘↑)`, "g-parent") : null,
     focusGoal === g.id && g.why ? h("span", { className: "g-why", textContent: g.why }) : null,
     h("span", { className: "g-bar", title: kids ? `${g.childDone} of ${kids} done` : "" }, Object.assign(h("i"), { style: `width:${g.progress ?? 0}%` })),
     h("span", { className: "g-meta" },
@@ -196,7 +265,9 @@ export function goalCard(g, i, thread) {
         g.effortTotal ? `${g.effortTotal} pts` : null,
         g.due ? `${late ? "was due" : "due"} ${fmtDay(g.due, { day: "numeric", month: "short" })}` : null,
       ].filter(Boolean).join(" · ") }),
-      conflictNote(g) ? h("span", { className: "g-warn", title: conflictNote(g), ariaLabel: conflictNote(g), textContent: "⚠" }) : null),
+      conflictNote(g) ? h("span", { className: "g-warn", title: conflictNote(g), ariaLabel: conflictNote(g), textContent: "⚠" }) : null,
+      // ↓ to its children (Mel, 10 Oct 2026); counts what's under it in this view
+      boardView === "kanban" && downLabel(g.id) ? navButton("down", `↓ ${downLabel(g.id)}`, `Show the ${downLabel(g.id)} under “${g.title}” (⌘↓)`, "g-down") : null),
     g.level === "Epic" && !focus.on ? (() => { const v = epicValue(g); return h("span", { className: "g-value", textContent: `${dollars(v.earned)} of ${dollars(v.target)}` }); })() : null,
     // actions: always on the picked card; on the others they float in on hover (always shown on touch screens)
     h("span", { className: `g-actions${focusGoal === g.id ? "" : " float"}` },
@@ -217,12 +288,17 @@ export function goalCard(g, i, thread) {
     if (act === "delete") return confirmDelete(g);
     if (act === "plan") return openPlan(g);
     if (act === "quick") return openQuick(g, e.target.closest("[data-act]"));
+    if (act === "down" || act === "up") return drillGoal(g.id, act);
     if (e.target.closest("a")) return;
     focusGoal = focusGoal === g.id ? null : g.id;
     renderBoard();
   });
   el.addEventListener("dblclick", () => openGoal(g));
-  el.addEventListener("keydown", (e) => { if (e.key === "Enter" && e.target === el) openGoal(g); });
+  el.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && e.target === el) openGoal(g);
+    // ⌘↓ / ⌘↑ like Finder (open, enclosing folder); Safari would otherwise jump the page to the bottom or top
+    if (e.metaKey && !e.altKey && !e.shiftKey && (e.key === "ArrowDown" || e.key === "ArrowUp")) { e.preventDefault(); drillGoal(g.id, e.key === "ArrowDown" ? "down" : "up"); }
+  });
   if (boardView === "kanban") {
     el.draggable = true;
     el.addEventListener("dragstart", (e) => { e.dataTransfer.setData("text/plain", g.id); e.dataTransfer.effectAllowed = "move"; el.classList.add("dragging"); });
@@ -302,6 +378,7 @@ document.querySelectorAll('[role="tablist"]').forEach((list) => list.addEventLis
 }));
 document.querySelectorAll("[data-level]").forEach((b) => b.prepend(levelIcon(b.dataset.level), " "));
 document.querySelectorAll("[data-level]").forEach((b) => b.addEventListener("click", () => {
+  goalScope = null; // a level tab shows the whole level again
   boardLevel = b.dataset.level;
   store("goals-level", boardLevel);
   renderBoard();

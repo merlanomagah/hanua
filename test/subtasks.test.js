@@ -211,3 +211,22 @@ test("sending: what doesn't fit on the other day stays here, nothing lost (9 Oct
   assert.deepEqual(today.gone.map((g) => g.text), ["Milk"]); // only what really went is noted as sent
   noOrphans(today); noOrphans(full);
 });
+
+test("lineKeyAction: Backspace at the start of a subtask outdents; → at the end goes to Priority", async () => {
+  const { lineKeyAction } = await import("../public/shared/desk.js");
+  const k = (o) => ({ key: "Backspace", start: 0, end: 0, length: 5, written: true, sub: true, ...o });
+  assert.equal(lineKeyAction(k()), "outdent");
+  assert.equal(lineKeyAction(k({ start: 0, end: 0, length: 0, written: false })), "outdent"); // an empty indented row
+  assert.equal(lineKeyAction(k({ start: 2, end: 2 })), null); // mid-word: an ordinary Backspace
+  assert.equal(lineKeyAction(k({ start: 0, end: 5 })), null); // all selected: deletes the text, as usual
+  assert.equal(lineKeyAction(k({ sub: false })), null); // a task stays a task
+  assert.equal(lineKeyAction(k({ meta: true })), null);
+  const r = (o) => ({ key: "ArrowRight", start: 5, end: 5, length: 5, written: true, sub: false, ...o });
+  assert.equal(lineKeyAction(r()), "toPriority");
+  assert.equal(lineKeyAction(r({ sub: true })), "toPriority");
+  assert.equal(lineKeyAction(r({ start: 3, end: 3 })), null); // moving along the words
+  assert.equal(lineKeyAction(r({ start: 0, end: 5 })), null); // a selection collapses first, as usual
+  assert.equal(lineKeyAction(r({ shift: true })), null); // Shift+→ selects
+  assert.equal(lineKeyAction(r({ length: 0, start: 0, end: 0, written: false })), null); // no picks on an empty row
+  assert.equal(lineKeyAction(null), null);
+});

@@ -134,6 +134,8 @@
                 <button type="button" role="tab" data-level="PBI">PBIs</button>
                 <button type="button" role="tab" data-level="Task">Tasks</button>
               </div>
+              <!-- narrowed to one goal's children (↓ on a card, ⌘↓): the chain above it, ✕ to see the whole level -->
+              <nav class="goal-trail" id="goal-trail" aria-label="Showing the goals under" hidden></nav>
               <!-- shown here only when it's due; otherwise it's in the ⋯ menu -->
               <button type="button" class="b-btn ghost review-btn" id="review-open">Weekly review</button>
               <span class="add-wrap">

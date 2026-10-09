@@ -82,6 +82,34 @@ export function lineageIn(goals, id) {
   return ids;
 }
 
+// Up and down the chain from a goal (Mel, 10 Oct 2026: from an Epic's card, straight to its Features, and back).
+// Down: the Board narrows to the goal's own children (scope), on the highest level among them. Up: the parent's
+// level, narrowed to the parent's siblings (the grandparent's children, or none), with the parent picked out, the
+// way Finder's "enclosing folder" shows the folder you came from selected. null when there's nowhere to go.
+export const childrenOf = (goals, id) => goals.filter((g) => g.parent === id && g.id !== id);
+export function drillTo(goals, id, dir) {
+  const byId = new Map(goals.map((g) => [g.id, g]));
+  const g = byId.get(id);
+  if (!g) return null;
+  if (dir === "down") {
+    const kids = childrenOf(goals, id);
+    if (!kids.length) return null;
+    const rank = (k) => { const i = levelIndex(k.level || "Task"); return i < 0 ? LEVELS.length : i; };
+    const top = kids.reduce((a, k) => (rank(k) < rank(a) ? k : a));
+    return { scope: id, level: top.level || "Task", pick: null };
+  }
+  const p = byId.get(g.parent);
+  if (!p || p.id === id) return null;
+  return { scope: byId.has(p.parent) && p.parent !== p.id ? p.parent : null, level: p.level || "Task", pick: p.id };
+}
+// The chain from the top down to a goal, for the breadcrumb (stops at a loop rather than going round it).
+export function trailTo(goals, id) {
+  const byId = new Map(goals.map((g) => [g.id, g]));
+  const out = [];
+  for (let g = byId.get(id), seen = new Set(); g && !seen.has(g.id); g = byId.get(g.parent)) { seen.add(g.id); out.unshift(g); }
+  return out;
+}
+
 // The lines of a goal's "done when", without their bullets.
 export const donePoints = (g) => (g?.doneWhen || "").split("\n").map((l) => l.replace(/^[ \t]*[-•*][ \t]*/, "").trim()).filter(Boolean);
 

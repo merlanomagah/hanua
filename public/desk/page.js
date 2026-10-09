@@ -5,7 +5,7 @@
 // the file opens the week, and a click on a day opens its page. A day ahead is the same page, saying so plainly
 // ("Planning Wed 07-Oct", a faint tint, no ticks, no morning sweep), with Clear this day; Move to… sends picked lines
 // to another day. Here `desk` is the page's day (state.js `page`), which is today's unless planning ahead.
-import { letGoIds, returnUnplaced, carriedDays, clearDay, daySummary, indentLine, kidsOf, moveLines, outdentLine, putLines, removeLines, removeMeeting, setLines, takeLines, weekDays, CLASH_TEXT, deskSections, deskShape, fromMin, isFixed, keepPlan, lastFocus, leftovers, minsText, openItems, planDay, planDate, settle, shorterCol, stampLine, stepDay, timeLabel, toMin, DEFAULT_MINS, GENERAL, MAX_LINES, MAX_MEETINGS, MAX_NAME, MAX_SECTIONS, MEETING_PICKS, SECTION_ROWS, TIME_PICKS, TIME_WORDS } from "../shared/desk.js";
+import { letGoIds, lineKeyAction, returnUnplaced, carriedDays, clearDay, daySummary, indentLine, kidsOf, moveLines, outdentLine, putLines, removeLines, removeMeeting, setLines, takeLines, weekDays, CLASH_TEXT, deskSections, deskShape, fromMin, isFixed, keepPlan, lastFocus, leftovers, minsText, openItems, planDay, planDate, settle, shorterCol, stampLine, stepDay, timeLabel, toMin, DEFAULT_MINS, GENERAL, MAX_LINES, MAX_MEETINGS, MAX_NAME, MAX_SECTIONS, MEETING_PICKS, SECTION_ROWS, TIME_PICKS, TIME_WORDS } from "../shared/desk.js";
 import { dayOf, parseDay, timeOf, todayStr, ymd } from "../shared/dates.js";
 import { $, focus, h, toast } from "../lib.js";
 import { calendarItems, ensureApple } from "../app.js";
@@ -68,6 +68,7 @@ const refit = new ResizeObserver(() => document.querySelectorAll("#todo .pl-inpu
 refit.observe($("todo"));
 // dir: which way to keep going past a folded subtask (rows stay in the page, hidden, so a row's place is its index)
 function focusLine(section, index, dir = 1) {
+  if (document.querySelector(`#todo .pl-sec.folded[data-section="${section}"]`)) return; // folded away: nothing to type in
   const all = document.querySelectorAll(`#todo [data-section="${section}"] .pl-input`);
   while (all[index]?.closest(".pl-line.folded")) index += dir;
   const el = all[index];
@@ -86,8 +87,20 @@ function picks(get, set) {
   const now = get().mins, picksFor = TIME_PICKS.includes(now) || !now ? TIME_PICKS : [...TIME_PICKS, now].sort((a, b) => a - b); // an older 1h30 stays
   const time = h("select", { className: "pl-mins-pick", ariaLabel: "Roughly how long", title: "Roughly how long (blank counts as Half hour)" },
     h("option", { value: "0", textContent: "Time" }), picksFor.map((m) => h("option", { value: String(m), textContent: timeLabel(m), selected: now === m })));
-  const shown = h("span", { className: `pl-mins${now ? "" : " unset"}`, textContent: timeWord(now), ariaHidden: "true" }, time);
+  // the word shown is for the eye; the select inside is the control a screen reader reaches (→ from the line lands on it)
+  const shown = h("span", { className: `pl-mins${now ? "" : " unset"}` }, h("span", { textContent: timeWord(now), ariaHidden: "true" }), time);
   pri.addEventListener("change", () => { set({ pri: pri.value }); pri.className = `pl-pri p-${pri.value || "none"}`; });
+  // → from the end of a line comes to Priority; → again to Time, ← back (Mel, 10 Oct 2026). ↑ / ↓ still open the menu
+  const arrows = (e, left, right) => {
+    if (e.altKey || e.metaKey || e.ctrlKey || e.shiftKey) return;
+    const to = e.key === "ArrowLeft" ? left() : e.key === "ArrowRight" ? right() : null;
+    if (!to) return;
+    e.preventDefault();
+    to.focus();
+    if (to.setSelectionRange) to.setSelectionRange(to.value.length, to.value.length);
+  };
+  pri.addEventListener("keydown", (e) => arrows(e, () => pri.closest(".pl-line")?.querySelector(".pl-input"), () => time));
+  time.addEventListener("keydown", (e) => arrows(e, () => pri, () => null));
   time.addEventListener("change", () => { const m = Number(time.value); set({ mins: m }); shown.firstChild.textContent = timeWord(m); shown.classList.toggle("unset", !m); });
   return h("span", { className: "pl-picks" }, pri, shown);
 }
@@ -269,6 +282,23 @@ function subKeys(e, input, sec, key, i) {
     return false;
   }
   if (e.key === "Backspace" && !input.value && pending === `${key}:${i}`) { e.preventDefault(); pending = null; renderTodo(); focusLine(key, i); return true; }
+  // Backspace at the very start of a subtask brings it back out; → at the very end goes on to Priority (10 Oct 2026)
+  const act = lineKeyAction({ key: e.key, start: input.selectionStart, end: input.selectionEnd, length: input.value.length, written: Boolean(input.value),
+    sub: Boolean(written && line.parent), shift: e.shiftKey, alt: e.altKey, meta: e.metaKey, ctrl: e.ctrlKey });
+  if (act === "outdent") {
+    e.preventDefault();
+    if (outdentLine(desk, line.id)) { save(); renderTodo(); renderAgenda(); }
+    focusLine(key, i);
+    document.activeElement?.setSelectionRange?.(0, 0); // the caret stays where it was, at the start
+    return true;
+  }
+  if (act === "toPriority") {
+    const pri = input.closest(".pl-line")?.querySelector(".pl-pri");
+    if (!pri || !pri.offsetParent) return false;
+    e.preventDefault();
+    pri.focus();
+    return true;
+  }
   return false;
 }
 // folded tasks: this Mac only, for the day on the page (a view choice, never in the day file)
@@ -284,6 +314,18 @@ function fold(id, day = pageDay) {
   document.dispatchEvent(new Event("hanua:folds"));
 }
 export { isFolded as subtasksFolded, fold as foldSubtasks };
+// folded sections (Mel, 10 Oct 2026): this Mac only, by day, a store of their own so To-do.txt's folds (and the
+// subtask folds it reads) never follow; planning, the sweep and Close the day all ignore them
+const SEC_FOLDS = "desk-section-folds";
+const readSecFolds = () => { try { const f = JSON.parse(localStorage.getItem(SEC_FOLDS) || "null"); return f && typeof f === "object" ? f : {}; } catch { return {}; } };
+const secFolded = (id, day = pageDay) => (readSecFolds()[day] || []).includes(id);
+function foldSection(id, day = pageDay) {
+  const all = Object.fromEntries(Object.entries(readSecFolds()).filter(([d]) => d >= todayStr())); // earlier days are forgotten
+  const mine = new Set(all[day] || []);
+  if (mine.has(id)) mine.delete(id); else mine.add(id);
+  all[day] = [...mine];
+  try { localStorage.setItem(SEC_FOLDS, JSON.stringify(all)); } catch { /* this visit only */ }
+}
 function sectionEl(sec) {
   const key = `s:${sec.id}`;
   const rows = Math.min(MAX_LINES, Math.max(SECTION_ROWS, sec.lines.length + 1));
@@ -356,7 +398,12 @@ function sectionEl(sec) {
   else {
     const name = h("input", { type: "text", className: "pl-sec-name", value: sec.name, placeholder: "Name this section", ariaLabel: "Section name", maxLength: MAX_NAME, autocomplete: "off" });
     name.addEventListener("input", () => { sec.name = name.value; save(); });
-    name.addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.isComposing) { e.preventDefault(); focusLine(key, 0); } });
+    name.addEventListener("keydown", (e) => {
+      if (e.key !== "Enter" || e.isComposing) return;
+      e.preventDefault();
+      if (secFolded(sec.id)) { foldSection(sec.id); renderTodo(); } // Enter goes into the section, so it opens first
+      focusLine(key, 0);
+    });
     const used = sec.lines.some((l) => l.text);
     const x = h("button", { type: "button", className: "pl-sec-x", textContent: "×", ariaLabel: `Remove the ${sec.name || "unnamed"} section`,
       title: used ? "Clear its lines first to remove it" : "Remove this section", disabled: used });
@@ -364,7 +411,20 @@ function sectionEl(sec) {
     head = h("div", { className: "pl-head" }, name, x);
   }
   head.append(workChip(sec.work, sec.name || "section", () => { sec.work = !sec.work; save(); return sec.work; }));
-  return tagged(h("section", { className: "pl-sec pl-todo-sec" }, head, list), key);
+  // ▾ folds the section away, ▸ "3 left" brings it back (like To-do.txt's sections)
+  const folded = secFolded(sec.id);
+  const left = sec.lines.filter((l) => l.text && !l.parent && !l.done).length;
+  const label = sec.id === GENERAL ? "General" : sec.name || "this section";
+  const foldBtn = h("button", { type: "button", className: `pl-fold${folded ? " folded" : ""}`, ariaExpanded: String(!folded),
+    textContent: folded ? `${left ? `${left} left ` : ""}▸` : "▾", title: folded ? `Show ${label}` : `Fold ${label} away`, ariaLabel: `${folded ? "Show" : "Fold away"} ${label}${folded && left ? `, ${left} left` : ""}` });
+  foldBtn.addEventListener("click", () => {
+    foldSection(sec.id);
+    renderTodo();
+    $("todo").querySelector(`[data-section="${key}"] .pl-fold`)?.focus({ preventScroll: true });
+  });
+  head.append(foldBtn);
+  list.hidden = folded;
+  return tagged(h("section", { className: `pl-sec pl-todo-sec${folded ? " folded" : ""}` }, head, list), key);
 }
 
 function meetingsEl() {
