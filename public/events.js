@@ -20,6 +20,7 @@ export const EVENTS = {
   "hanua:backup": "the nightly backup's status was read",
   "hanua:board": "the goals board opened or closed",
   "hanua:kitchen": "the kitchen opened or closed",
+  "hanua:jump": "the Jump Dashboard slid in or out (beside the desk)",
   "hanua:done": "a goal was finished (the canary hops)",
   "hanua:watered": "the plant was watered (the canary visits)",
   "hanua:plant": "the plant's log changed",

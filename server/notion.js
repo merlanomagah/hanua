@@ -94,12 +94,13 @@ function normalisePage(page, fields = {}) {
   };
 }
 
-// Reads up to `limit` rows, a page of 100 at a time (Notion's maximum per request).
-export async function queryArea(area, limit = 50) {
+// Reads up to `limit` rows, a page of 100 at a time (Notion's maximum per request). `filter` (optional, Notion's own
+// filter shape) asks Notion for only the rows wanted, so open ones can't fall past the limit (the Jump Dashboard).
+export async function queryArea(area, limit = 50, filter = null) {
   const sorts = area.fields?.date ? [{ property: area.fields.date, direction: "descending" }] : undefined;
   const fetchPage = async (cursor, sortBy) => call(`/databases/${area.notionDatabaseId}/query`, {
     method: "POST",
-    body: { page_size: Math.min(100, limit), ...(sortBy ? { sorts: sortBy } : {}), ...(cursor ? { start_cursor: cursor } : {}) },
+    body: { page_size: Math.min(100, limit), ...(filter ? { filter } : {}), ...(sortBy ? { sorts: sortBy } : {}), ...(cursor ? { start_cursor: cursor } : {}) },
   });
   let sortBy = sorts;
   const rows = [];

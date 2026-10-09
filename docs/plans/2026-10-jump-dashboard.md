@@ -7,6 +7,20 @@
 
 **Panel record:** first written 10 Oct from Claude's own pass; re-run the same day with every seat's checklist and three independent code readers. What that changed is marked **(full panel)**. The first version's layout sketch used real colleagues' names; the readers caught it and they were replaced with invented ones (the repo is public).
 
+## Built (10 Oct 2026; Mel: yes to every recommendation, and the old history cleaned off GitHub)
+| # | What | Where |
+|---|---|---|
+| 1 | The pane inside the desk's pane, left of the desk: swipe right, the JUMP tab, the dock's **J**; Esc and DESK › go back; from the wall it's already in place as the desk slides down (one movement, not two) | `public/jump.js`, `index.html`, `styles.css` (tokens only) |
+| 2 | Five widgets in a fixed layout (three columns from 1181 px, two below, one on phones after the desk); light, dark and lights-off | same |
+| 3 | `GET /api/jump`: three filtered Notion reads, 60 s in memory, invented sample rows without a key; only title, status, tier, dates and who it's waiting on | `server/routes/jump.js`, `public/shared/jump.js`, `config/areas.json` `jump`, `server/notion.js` (filter) |
+| 4 | → Today with Undo; "already there" if it is; a line keeps its Notion page as `ref` (`DESK_VERSION` 8, v7 fixture) and shows ↗ in the Today widget | `public/shared/desk.js`, `test/fixtures/v7-closed*.json` |
+| 5 | Visits per week in the weekly review's last step | `public/goals/review.js` |
+| 6 | Tests: `test/jump.test.js` (8), a route test (sample, no links, no customer columns), the `ref` field | `npm test` 208 |
+
+**Different from the plan, and why:** (a) the dashboard's own dock was cut: it held one button (back to the desk) that the DESK tab and Esc already do; (b) the desktop files are the Notion links only (Jump OS, the three databases): the Escalation form and Tautoko links weren't added, since their addresses would sit in the public repo (add them as `.env` values if wanted); (c) files and links show only when Notion is connected (sample servers have none).
+
+**Mel to do before it shows real rows:** connect the Hanua integration to 🎧 Care Team Escalation Log, 🗂️ Project Tracker and ❓ Open Questions & Conflicts (••• → Connections → Hanua). Until then each widget says Hanua can't see it yet.
+
 ## 1. Verdict
 Go, reshaped as a probe. A new pane **beside the desk, to its left**, reached by swiping right on the desk (the same direction that reveals the goals board from the wall), a **JUMP** edge tab and a dock icon. Same bricks and oak, the desk's frosted widgets and dock, and five widgets that only **read** Jump OS and point back to it.
 

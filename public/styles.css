@@ -2873,7 +2873,7 @@ dialog.lock::backdrop { background: #14110e; }
    room's own colour names are swapped for Bula's walnut-dark ones, so every rule that already uses them follows; the
    few hard-coded colours there get their dark twin below. The probe covers the desk; the rest of the room follows
    once Mel has lived with it. test/appearance.test.js checks these pairs can be read. ---------- */
-html.dark :is(#plan-day, #draft-day, #event-dialog, .txt-win, .widgets .widget, .desk-dock, .wg-menu, .dp) {
+html.dark :is(#plan-day, #draft-day, #event-dialog, .txt-win, .widgets .widget, .jump-grid .widget, .desk-dock, .wg-menu, .dp) {
   --cream: #26201B; --page: #2F2822; --hair: #3A3129; --border: #4A3F34; --border-2: #5A4D3F;
   --ink: #F3ECE0; --ink-2: #E8DECD; --ink-3: #D6C9B4; --ink-4: #C2B39B; --muted: #AE9D84; --faint: #94826B;
   --terra: #E3804A; --terra-hover: #EC9361; --terra-soft: #8A4E2E; --glow: #4A2E1F;
@@ -2911,7 +2911,7 @@ html.dark :is(.ip-nav, .dr-mv, .set-mv, .tm-icon, .wr-btn, .ip-add):hover:not(:d
 html.dark .ip-add { background: var(--dk-tint); }
 html.dark .tm-track { background: var(--dk-tint-2); }
 /* widgets and dock: smoked glass instead of frosted (the music card on the wall already is) */
-html.dark .widgets .widget { background: rgb(34 28 23 / 0.8); box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.08), 0 10px 24px -14px rgb(0 0 0 / 0.7); }
+html.dark :is(.widgets, .jump-grid) .widget { background: rgb(34 28 23 / 0.8); box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.08), 0 10px 24px -14px rgb(0 0 0 / 0.7); }
 html.dark .wg-window.weather-window { background: #2A231D; }
 html.dark .desk-dock { background: rgb(30 25 21 / 0.55); box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.08), 0 10px 22px -10px rgb(0 0 0 / 0.6); }
 html.dark .dock-win { background: var(--dk-raised); }
@@ -3049,4 +3049,105 @@ html.dark .topshelf .sw-knob { background: #F3ECE0; }
   .cd-choices { margin-left: 0; width: 100%; }
   .cd-seg { flex: 1; height: 44px; }
   .cd-foot { flex-wrap: wrap; }
+}
+
+/* ---------- the Jump Dashboard (public/jump.js, 10 Oct 2026; brief docs/plans/2026-10-jump-dashboard.md): beside the
+   desk on its left, reached by swiping right. The same bricks and oak; a fixed layout for now (the desk's arranging
+   comes once it earns it). Colours from the tokens only ---------- */
+.jump {
+  --top-h: 30%; --pad-r: clamp(24px, 4vw, 52px); --edge: clamp(28px, 4.5vw, 64px); --files-w: 104px;
+  position: relative; box-sizing: border-box; min-height: calc(100vh - var(--rail-h)); overflow: clip;
+  background-color: var(--wall-base);
+  background-image: linear-gradient(180deg, color-mix(in srgb, var(--ink) 6%, transparent), transparent 30%), url("assets/wall.jpg");
+  background-size: 100% 100%, var(--wall-w, 1600px) auto; background-repeat: no-repeat, repeat-y; background-position: 0 0, center bottom;
+}
+.jump-head { position: absolute; z-index: 3; top: 16px; left: var(--edge); right: calc(var(--pad-r) + 28px); display: flex; align-items: center; gap: 12px; min-width: 0; }
+/* a small plate, like the edge tabs: the pane's name */
+.jump-plate { flex: none; padding: 5px 10px 4px; border-radius: 3px; background: var(--ink); color: var(--page); font: 500 11px var(--mono); letter-spacing: 0.3em; box-shadow: 0 6px 14px -6px color-mix(in srgb, var(--ink) 60%, transparent); }
+.jump-date { flex: none; font: italic 500 22px/1 var(--display); color: var(--ink-2); }
+.jump-src { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 10px var(--mono); letter-spacing: 0.08em; color: var(--ink-3); }
+.jump-refresh { flex: none; margin-left: auto; width: 28px; height: 28px; border: 0; border-radius: 50%; background: color-mix(in srgb, var(--cream) 70%, transparent); color: var(--ink-3); cursor: pointer; font: 15px/1 var(--ui); }
+.jump-refresh:hover, .jump-refresh:focus-visible { color: var(--ink); background: var(--cream); }
+.jump-files { top: 64px; left: var(--edge); right: auto; }
+.jump-files[hidden] { display: none; }
+.jump-file { text-decoration: none; cursor: pointer; }
+.jf-ico { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 9px; background: var(--cream); color: var(--ink); font: 600 22px/1 var(--display); box-shadow: 0 2px 6px -2px color-mix(in srgb, var(--ink) 45%, transparent), inset 0 0 0 1px var(--border); }
+.jump-file span:last-child { text-align: center; }
+.jump-grid {
+  position: absolute; z-index: 3; top: 64px; bottom: 96px; left: var(--edge); right: calc(var(--pad-r) + 28px);
+  display: grid; gap: 14px; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: minmax(0, 1.1fr) minmax(0, 1fr);
+  grid-template-areas: "esc wait today" "esc proj q";
+}
+.jump-files:not([hidden]) ~ .jump-grid { left: calc(var(--edge) + var(--files-w) + 12px); }
+.jw-esc { grid-area: esc; } .jw-wait { grid-area: wait; } .jw-today { grid-area: today; } .jw-proj { grid-area: proj; } .jw-q { grid-area: q; }
+.jw { display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
+.jw-scroll { flex: 1; min-height: 0; overflow-y: auto; }
+.jw-list { list-style: none; margin: 0; padding: 0; }
+.jw-row { display: flex; align-items: center; gap: 8px; padding: 7px 0; border-bottom: 1px solid var(--hair); min-width: 0; }
+.jw-row:last-child { border-bottom: 0; }
+.jw-main { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+.jw-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 14px/1.3 var(--ui); color: var(--ink); }
+.jw-sub { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 11px/1.4 var(--ui); color: var(--ink-4); }
+/* age is the signal, in calm type: never red counts */
+.jw-age { flex: none; font: 10px var(--mono); letter-spacing: 0.06em; color: var(--ink-4); }
+.jw-tier { flex: none; min-width: 30px; padding: 2px 5px; border-radius: 3px; text-align: center; font: 9px var(--mono); letter-spacing: 0.08em; background: var(--hair); color: var(--ink-3); }
+.jw-tier.t-t2 { background: var(--terra-soft); color: var(--ink); }
+.jw-tier.t-partner { background: var(--green-soft); color: var(--green-dark); }
+.jw-counts { display: flex; flex-wrap: wrap; gap: 4px 14px; margin: 2px 0 8px; font: 12px var(--ui); color: var(--ink-3); }
+.jw-count b { font: 400 22px/1 var(--display); color: var(--ink); }
+.jw-count.none { color: var(--faint); }
+.jw-count.none b { color: var(--faint); }
+.jw-foot { display: flex; justify-content: space-between; gap: 10px; margin: 8px 0 0; padding-top: 6px; border-top: 1px solid var(--hair); font: 10px var(--mono); letter-spacing: 0.06em; color: var(--ink-4); }
+.jw-big { margin: 2px 0 6px; font: 12px var(--ui); color: var(--ink-3); }
+.jw-big b { font: 400 30px/1 var(--display); color: var(--ink); }
+.jw-note { margin: 6px 0; font: italic 15px/1.35 var(--display); color: var(--ink-4); }
+.jw-note.bad { font: 12px/1.45 var(--ui); color: var(--terra); }
+.jw-open { flex: none; display: grid; place-items: center; width: 22px; height: 22px; border-radius: 3px; text-decoration: none; color: var(--ink-4); font: 12px/1 var(--ui); }
+.jw-open:hover, .jw-open:focus-visible { background: var(--hair); color: var(--ink); }
+.jw-today-btn { flex: none; height: 22px; padding: 0 6px; border: 1px solid var(--border-2); border-radius: 3px; background: transparent; cursor: pointer; font: 9px var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); opacity: 0; transition: opacity 120ms; }
+.jw-row:hover .jw-today-btn, .jw-today-btn:focus-visible { opacity: 1; }
+.jw-today-btn:hover { background: var(--ink); color: var(--page); border-color: var(--ink); }
+@media (hover: none) { .jw-today-btn { opacity: 0.8; } }
+.jw-row.blocked .jw-sub { color: var(--terra); }
+.jw-person { padding: 6px 0; border-bottom: 1px solid var(--hair); }
+.jw-person:last-child { border-bottom: 0; }
+.jw-who { display: flex; justify-content: space-between; gap: 8px; font: 13px var(--ui); color: var(--ink); }
+.jw-sublist { list-style: none; margin: 2px 0 0; padding: 0 0 0 10px; }
+.jw-sublist li { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.jw-sublist .jw-title { font-size: 12px; color: var(--ink-3); }
+.jw-h { margin: 8px 0 2px; font: 9px var(--mono); letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-4); }
+.jw-events li { display: flex; gap: 8px; align-items: baseline; padding: 2px 0; }
+.jw-events time { flex: none; width: 54px; font: 11px var(--mono); color: var(--ink-4); }
+.jw-lines { overflow-y: auto; min-height: 0; }
+.jw-line { display: flex; align-items: center; gap: 8px; padding: 3px 0; }
+.jw-line.sub { padding-left: 22px; }
+.jw-line.done .jw-title { color: var(--faint); text-decoration: line-through; }
+.dock-jump span { font: 600 24px/1 var(--display); color: var(--ink); }
+.dock-jump[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--terra); }
+.lamp-off .jump::after { content: ""; position: absolute; inset: 0; z-index: 4; pointer-events: none; background: var(--ink); opacity: 0.34; }
+
+@media (min-width: 901px) {
+  /* side by side inside the desk's pane, like the goals board inside the wall: the desk's own slide is untouched */
+  #desk-pane { overflow-x: clip; }
+  #desk-pane > .desk { transition: transform 520ms cubic-bezier(.65,0,.35,1), opacity 520ms; }
+  #desk-pane.on-jump > .desk { transform: translateX(105%); opacity: 0; pointer-events: none; }
+  .jump { position: absolute; z-index: 2; left: 0; right: 0; top: 26px; bottom: 0; transform: translateX(-105%); opacity: 0; pointer-events: none;
+    transition: transform 520ms cubic-bezier(.65,0,.35,1), opacity 520ms; }
+  #desk-pane.on-jump > .jump { transform: none; opacity: 1; pointer-events: auto; }
+  .jump-tab { left: 0; top: 50%; }
+}
+@media (min-width: 901px) and (max-width: 1180px) {
+  .jump-grid { grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 0.8fr);
+    grid-template-areas: "esc wait" "esc today" "proj q"; bottom: 90px; }
+}
+@media (prefers-reduced-motion: reduce) { #desk-pane > .desk, .jump { transition: none; } }
+#desk-pane.jump-now > .desk, #desk-pane.jump-now > .jump { transition: none; }
+/* phones: one scrolling page, the dashboard after the desk */
+@media (max-width: 900px) {
+  .jump { padding: 16px 16px 40px; display: flex; flex-direction: column; gap: 14px; }
+  .jump .desk-top, #jump-to-desk, .jump-tab, .dock-jump { display: none; }
+  .jump-head { position: static; flex-wrap: wrap; }
+  .jump-files { position: static; flex-direction: row; flex-wrap: wrap; justify-content: center; }
+  .jump-grid { position: static; display: flex; flex-direction: column; }
+  .jw-scroll { max-height: 360px; }
 }

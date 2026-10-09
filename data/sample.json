@@ -557,5 +557,96 @@
       "amount": 80,
       "date": "2026-09-27"
     }
-  ]
+  ],
+  "jump": {
+    "_about": "Invented rows for the Jump Dashboard on sample servers (never real people or cases). ago = days before today.",
+    "escalations": [
+      {
+        "title": "Customer can't finish sign-up on the app",
+        "Status": "Open",
+        "Tier": "T2",
+        "raised": 9,
+        "Waiting on": "Person A, app team: is a fix planned"
+      },
+      {
+        "title": "Partner asks how to swap a faulty modem",
+        "Status": "Interim guidance given",
+        "Tier": "Partner",
+        "raised": 6,
+        "Waiting on": "Person B - confirm the swap steps"
+      },
+      {
+        "title": "Top-up not showing after payment",
+        "Status": "Open",
+        "Tier": "T1",
+        "raised": 2
+      },
+      {
+        "title": "Wording on the help page is out of date",
+        "Status": "With Content Design",
+        "Tier": "Ops",
+        "raised": 12,
+        "Waiting on": "Person C"
+      },
+      {
+        "title": "Sponsored plan not applied",
+        "Status": "Awaiting confirmation",
+        "Tier": "T2",
+        "raised": 4,
+        "Waiting on": "Person A, provisioning"
+      },
+      {
+        "title": "Data cap question from a whānau",
+        "Status": "Closed",
+        "Tier": "T1",
+        "raised": 8,
+        "closed": 1
+      }
+    ],
+    "projects": [
+      {
+        "title": "Stock sheets carry the broadband number",
+        "Status": "Active",
+        "Next Action": "Agree the columns with the partner",
+        "target": 20,
+        "Owner": "Mel"
+      },
+      {
+        "title": "Escalation form tidy-up",
+        "Status": "Blocked",
+        "Next Action": "Wait for the new form tool",
+        "target": 40,
+        "Owner": "Shared"
+      },
+      {
+        "title": "Partner guide refresh",
+        "Status": "Active",
+        "Next Action": "Send the draft for a read",
+        "target": -10,
+        "Owner": "Mel"
+      }
+    ],
+    "questions": [
+      {
+        "title": "Who owns modem returns after a move?",
+        "Status": "Open",
+        "Priority": "Blocking",
+        "raised": 15,
+        "Who can settle it": "Person D"
+      },
+      {
+        "title": "Which figure do we quote for households?",
+        "Status": "Open",
+        "Priority": "Blocking",
+        "raised": 5,
+        "Who can settle it": "Person B"
+      },
+      {
+        "title": "Is the old help page still linked anywhere?",
+        "Status": "Open",
+        "Priority": "Worth resolving",
+        "raised": 3
+      }
+    ]
+  }
 }

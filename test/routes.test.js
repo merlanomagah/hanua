@@ -132,3 +132,15 @@ test("routes: a week's menu, This Mac, the shared folder's state and sample book
   assert.equal(areas.status, 200);
   assert.equal((await call("/api/weather")).json.live, false); // sample weather, no town given
 });
+
+test("routes: the Jump Dashboard is sample (invented rows, no links) without a Notion key, and keeps customer columns out", async () => {
+  const j = await call("/api/jump");
+  assert.equal(j.status, 200);
+  assert.deepEqual([j.json.sample, j.json.live], [true, false]);
+  assert.ok(j.json.escalations.open > 0);
+  assert.ok(j.json.escalations.items.every((r) => r.url === null && /^sample-/.test(r.id))); // a real-looking id would mean it got past the token
+  assert.deepEqual(j.json.links, []);
+  assert.ok(j.json.escalations.items.every((r) => !("issue" in r) && !("outcome" in r)));
+  assert.ok(j.json.waiting.length > 0 && j.json.projects.items.length > 0 && j.json.questions.top.length > 0);
+  assert.equal(j.json.section, "Jump issues");
+});

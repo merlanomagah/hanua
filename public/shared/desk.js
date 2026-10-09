@@ -26,7 +26,7 @@ export const DEFAULT_MINS = 30, GAP = 5, MEETING_PAD = 5, BREAK_AFTER = 90, BREA
 export const WORKDAY = { start: "08:30", end: "17:30" };
 // How a day is saved. Raise it whenever deskShape learns a new field: the page and server must agree, or a save is
 // refused (never quietly trimmed). On 6 Oct 2026 a page newer than the running server lost its meetings that way.
-export const DESK_VERSION = 7; // 7: closed (Close the day, 9 Oct 2026); 3: no Tasks, fixed sections, time words, when things happened; 4: the draft day (order, locked); 5: saves carry the revision they started from (two Macs); 6: origin and parent on lines, the gone list (F4 + subtasks, 8 Oct 2026)
+export const DESK_VERSION = 8; // 8: ref on lines (a Jump OS page it points to, 10 Oct 2026); 7: closed (Close the day, 9 Oct 2026); 3: no Tasks, fixed sections, time words, when things happened; 4: the draft day (order, locked); 5: saves carry the revision they started from (two Macs); 6: origin and parent on lines, the gone list (F4 + subtasks, 8 Oct 2026)
 // Who's out of date when a save arrives: null when they match, "page" (reload it), "server" (Restart Hanua)
 export function versionClash(sent, mine = DESK_VERSION) {
   const v = Number.isInteger(sent) ? sent : 0; // pages from before the check sent none
@@ -60,7 +60,8 @@ const when = (v) => (typeof v === "string" && ISO.test(v) ? v : undefined);
 // a line, and when things happened to it (6 Oct 2026, for Close the day, the weekly summary and Patterns):
 // added = first written, doneAt = ticked, from = the day it was first written when it's been carried forward;
 // origin = the id it had on the day it was first written, kept wherever it's carried or sent (F4, 8 Oct 2026; absent
-// = its own id), so "carried 4 times" can be counted; parent = the task it's a subtask of (8 Oct 2026, one level)
+// = its own id), so "carried 4 times" can be counted; parent = the task it's a subtask of (8 Oct 2026, one level);
+// ref = the Notion page it came from (the Jump Dashboard's → Today, 10 Oct 2026): a pointer only, never its status
 const ID = /^[\w-]{1,40}$/;
 const lineOf = (l, i) => {
   const text = clip(l?.text), done = Boolean(text && l?.done);
@@ -70,6 +71,7 @@ const lineOf = (l, i) => {
   if (text && dayKey(l?.from)) out.from = l.from;
   if (text && typeof l?.origin === "string" && ID.test(l.origin) && l.origin !== out.id) out.origin = l.origin;
   if (text && typeof l?.parent === "string" && ID.test(l.parent)) out.parent = l.parent;
+  if (text && typeof l?.ref === "string" && ID.test(l.ref)) out.ref = l.ref;
   return out;
 };
 const linesOf = (a) => {

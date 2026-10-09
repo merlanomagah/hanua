@@ -21,6 +21,7 @@ import { loadPlant, plantNow } from "./plant.js";
 import { loadWhiteboard, renderWhiteboard } from "./whiteboard.js";
 import "./menu-plan.js"; // Plan the week ✦ on the menu board
 import { onKitchen, renderMealSlip, showKitchen } from "./kitchen.js"; // swipe left: the weather window and the menu
+import "./jump.js"; // swipe right on the desk: the Jump Dashboard
 import { weatherLine } from "./weather-window.js";
 import "./bird.js"; // the canary: just for life
 import { syncState } from "./sync.js";
@@ -493,6 +494,7 @@ export async function ensureApple(key = todayStr(), { fresh = false } = {}) {
   renderHeader();
   if ($("day-dialog").open && dialogDay) openDay(dialogDay);
 }
+export const workCalendars = () => apple.work || []; // the Apple calendars that count as Work (.env, Hanua Settings)
 function appleEvents(notion) {
   const byId = new Map();
   for (const { items } of apple.months.values()) for (const it of items) byId.set(it.id, it);

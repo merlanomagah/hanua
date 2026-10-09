@@ -64,7 +64,7 @@ test("close: the day's record; Open again keeps the two lines; a task added afte
   // closed, then something added: it's still offered by the morning sweep
   const e = closeDayRecord(day([L("x", "Added at 9 pm")]), {}, new Date("2026-10-09T08:00:00Z"));
   assert.deepEqual(leftovers({ "2026-10-09": e, "2026-10-10": {} }, "2026-10-10").map((x) => x.text), ["Added at 9 pm"]);
-  assert.equal(DESK_VERSION, 7);
+  assert.ok(DESK_VERSION >= 7); // 7 brought closed
   // junk is tidied away
   assert.equal(deskShape({ closed: { at: "yesterday", well: 5 } }).closed?.at, undefined);
 });

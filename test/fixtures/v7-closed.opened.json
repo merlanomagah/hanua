@@ -1,0 +1,87 @@
+{
+  "focus": [
+    "Finish the report",
+    "",
+    ""
+  ],
+  "sections": [
+    {
+      "id": "general",
+      "name": "General",
+      "col": 0,
+      "work": false,
+      "lines": [
+        {
+          "id": "a",
+          "text": "Write the summary",
+          "done": true,
+          "pri": "h",
+          "mins": 60,
+          "added": "2026-10-08T20:00:00.000Z",
+          "doneAt": "2026-10-09T03:00:00.000Z"
+        },
+        {
+          "id": "b",
+          "text": "Tidy the inbox",
+          "done": false,
+          "pri": "",
+          "mins": 15
+        },
+        {
+          "id": "c",
+          "text": "Book a dentist visit",
+          "done": false,
+          "pri": "",
+          "mins": 0,
+          "from": "2026-10-07",
+          "origin": "x2"
+        }
+      ]
+    },
+    {
+      "id": "f-jump-issues",
+      "name": "Jump issues",
+      "col": 1,
+      "work": true,
+      "lines": [
+        {
+          "id": "j1",
+          "text": "Chase the form question",
+          "done": false,
+          "pri": "m",
+          "mins": 0
+        }
+      ]
+    }
+  ],
+  "meetings": [
+    {
+      "id": "m1",
+      "time": "10:00",
+      "mins": 30,
+      "title": "Team catch-up",
+      "work": true
+    }
+  ],
+  "day": {
+    "start": "08:30",
+    "end": "17:30"
+  },
+  "blocks": [],
+  "overflow": [],
+  "plans": [],
+  "order": [],
+  "locked": false,
+  "settled": {
+    "2026-10-08:c": "today",
+    "2026-10-09:b": "gone"
+  },
+  "settledAt": {},
+  "started": false,
+  "gone": [],
+  "closed": {
+    "at": "2026-10-09T06:12:00.000Z",
+    "well": "The summary got done",
+    "hard": "Interruptions"
+  }
+}

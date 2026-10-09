@@ -1,0 +1,19 @@
+{
+  "v": 7,
+  "base": "ghi789",
+  "focus": ["Finish the report", "", ""],
+  "sections": [
+    { "id": "general", "lines": [
+      { "id": "a", "text": "Write the summary", "pri": "h", "mins": 60, "done": true, "doneAt": "2026-10-09T03:00:00.000Z", "added": "2026-10-08T20:00:00.000Z" },
+      { "id": "b", "text": "Tidy the inbox", "mins": 15 },
+      { "id": "c", "text": "Book a dentist visit", "origin": "x2", "from": "2026-10-07" }
+    ] },
+    { "id": "f-jump-issues", "name": "Jump issues", "work": true, "col": 1, "lines": [
+      { "id": "j1", "text": "Chase the form question", "pri": "m" }
+    ] }
+  ],
+  "meetings": [{ "id": "m1", "time": "10:00", "mins": 30, "title": "Team catch-up", "work": true }],
+  "settled": { "2026-10-08:c": "today", "2026-10-09:b": "gone" },
+  "closed": { "at": "2026-10-09T06:12:00.000Z", "well": "The summary got done", "hard": "Interruptions" },
+  "gone": [{ "id": "b", "text": "Tidy the inbox", "how": "let go", "at": "2026-10-09T06:12:00.000Z" }]
+}

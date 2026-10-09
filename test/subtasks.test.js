@@ -230,3 +230,16 @@ test("lineKeyAction: Backspace at the start of a subtask outdents; → at the en
   assert.equal(lineKeyAction(r({ length: 0, start: 0, end: 0, written: false })), null); // no picks on an empty row
   assert.equal(lineKeyAction(null), null);
 });
+
+test("a line keeps its ref (the Jump OS page it came from), and nothing else of that page", async () => {
+  const { deskShape, addLineTo, DESK_VERSION } = await import("../public/shared/desk.js");
+  assert.ok(DESK_VERSION >= 8);
+  const d = deskShape({ sections: [{ id: "general", lines: [] }, { id: "f-jump-issues", name: "Jump issues", work: true, lines: [] }] });
+  let n = 0;
+  addLineTo(d, "Jump issues", true, { id: "x1", text: "Chase a question", done: false, pri: "", mins: 0, ref: "12345678-1234-1234-1234-123456789abc", status: "Open", tier: "T2" }, () => `n${n++}`);
+  const line = deskShape(d).sections.find((s) => s.name === "Jump issues").lines[0];
+  assert.equal(line.ref, "12345678-1234-1234-1234-123456789abc");
+  assert.equal("status" in line || "tier" in line, false);
+  assert.equal(deskShape({ sections: [{ id: "general", lines: [{ id: "a", text: "x", ref: "not a ref!" }] }] }).sections[0].lines[0].ref, undefined);
+  assert.equal(deskShape({ sections: [{ id: "general", lines: [{ id: "a", text: "", ref: "abc" }] }] }).sections[0].lines[0]?.ref, undefined); // no words, no ref
+});

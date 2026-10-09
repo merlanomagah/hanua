@@ -5,6 +5,7 @@ import { WIP_LIMIT } from "../coach.js";
 import { $, api, fmtDay, h, longDate, state, toast } from "../lib.js";
 import { createGoal } from "./store.js";
 import { onBoard, renderBoard, viewUse } from "./board.js";
+import { jumpVisits } from "../jump.js";
 import { leafGoals, sized } from "./form.js";
 import { renderNotes } from "../app.js";
 
@@ -141,6 +142,8 @@ export function renderReview() {
       const use = viewUse(ymd(mondayOf(new Date())));
       const names = { backlog: "Backlog", kanban: "Board", timeline: "Timeline" };
       top.push(h("p", { className: "rv-views", textContent: `Views you opened this week: ${Object.entries(names).map(([k, n]) => `${n} ${use[k] || 0}`).join(" · ")}. One you never open is a candidate to cut.` }));
+      // the Jump Dashboard is a probe (10 Oct 2026): how often it was opened is what decides it
+      top.push(h("p", { className: "rv-views", textContent: `Jump Dashboard opened this week: ${jumpVisits(ymd(mondayOf(new Date())))}.` }));
     }
   }
   const area = h("textarea", { rows: 3, placeholder: "A line or two is plenty", value: rv[step.key] });

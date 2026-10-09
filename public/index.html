@@ -406,6 +406,8 @@
       <div class="desk-edge" id="desk-edge" aria-hidden="true"></div>
       <section class="desk" aria-label="Today">
         <div class="desk-up"><button type="button" id="desk-up"><span class="arrow" aria-hidden="true">↑</span>THE WALL</button></div>
+        <!-- the Jump Dashboard is beside the desk, to its left (swipe right, 10 Oct 2026) -->
+        <button type="button" class="edge-tab left jump-tab" id="to-jump" title="Swipe right, or click, for the Jump Dashboard"><span>JUMP</span><span aria-hidden="true">›</span></button>
         <!-- seen front-on (Mel, 5 Oct 2026): the bricks come down to an oak desk top -->
         <div class="desk-top" aria-hidden="true"></div>
         <div class="desk-left">
@@ -472,6 +474,7 @@
           <button type="button" class="dock-app dock-cal" id="dock-calendar" aria-label="Calendar: open the Calendar app on today" title="Calendar"><b id="dock-cal-day"></b><span id="dock-cal-date"></span></button>
           <a class="dock-app dock-notion" id="dock-notion" href="https://www.notion.so" target="_blank" rel="noopener" aria-label="Notion: open the Hanua page" title="Notion"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M7 5.5h13.5L26 10v16.5H7z" fill="#fff" stroke="#1c1814" stroke-width="2" stroke-linejoin="round"/><path d="M12 22V11l8.5 11V11" fill="none" stroke="#1c1814" stroke-width="2.4" stroke-linecap="square" stroke-linejoin="miter"/></svg></a>
           <button type="button" class="dock-app dock-gear" id="dock-settings" aria-label="Desk Settings" title="Desk Settings"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.59 5.00 L9.84 2.65 L14.16 2.65 L14.41 5.00 L15.24 5.35 L17.09 3.86 L20.14 6.91 L18.65 8.76 L19.00 9.59 L21.35 9.84 L21.35 14.16 L19.00 14.41 L18.65 15.24 L20.14 17.09 L17.09 20.14 L15.24 18.65 L14.41 19.00 L14.16 21.35 L9.84 21.35 L9.59 19.00 L8.76 18.65 L6.91 20.14 L3.86 17.09 L5.35 15.24 L5.00 14.41 L2.65 14.16 L2.65 9.84 L5.00 9.59 L5.35 8.76 L3.86 6.91 L6.91 3.86 L8.76 5.35Z" stroke-linejoin="round"/><circle cx="12" cy="12" r="3"/></svg></button>
+          <button type="button" class="dock-app dock-jump" id="dock-jump" aria-label="Jump Dashboard" aria-pressed="false" title="Jump Dashboard"><span aria-hidden="true">J</span></button>
           <i class="dock-sep" aria-hidden="true"></i>
           <button type="button" class="dock-app dock-sticky" id="add-sticky" title="New sticky note" aria-label="Add a sticky note"><span aria-hidden="true">+</span></button>
           <!-- minimised windows wait here, like a Mac's (public/desk/window.js) -->
@@ -479,6 +482,26 @@
           <span class="dock-min" id="dock-min"></span>
         </nav>
         <div class="desk-dim" aria-hidden="true"></div>
+      </section>
+      <!-- The Jump Dashboard (public/jump.js; brief docs/plans/2026-10-jump-dashboard.md): Jump OS, read only, beside
+           the desk on its left. Same bricks and oak; a fixed layout for now -->
+      <section class="jump" id="jump-pane" aria-label="Jump Dashboard">
+        <div class="desk-top" aria-hidden="true"></div>
+        <header class="jump-head">
+          <span class="jump-plate">JUMP</span>
+          <span class="jump-date" id="jump-date"></span>
+          <span class="jump-src" id="jump-src">Reading Jump OS…</span>
+          <button type="button" class="jump-refresh" id="jump-refresh" title="Read Jump OS again" aria-label="Read Jump OS again">↻</button>
+        </header>
+        <div class="desktop-icons jump-files" id="jump-files" role="group" aria-label="Jump OS in Notion" hidden></div>
+        <div class="jump-grid">
+          <article class="widget jw jw-esc" id="jw-esc" aria-label="Escalations"></article>
+          <article class="widget jw jw-wait" id="jw-wait" aria-label="Waiting on"></article>
+          <article class="widget jw jw-today" id="jw-today" aria-label="Today"></article>
+          <article class="widget jw jw-proj" id="jw-proj" aria-label="Projects"></article>
+          <article class="widget jw jw-q" id="jw-q" aria-label="Blocking questions"></article>
+        </div>
+        <button type="button" class="edge-tab right" id="jump-to-desk" title="Swipe left, or click, for the desk"><span>DESK</span><span aria-hidden="true">‹</span></button>
       </section>
       </div>
 
