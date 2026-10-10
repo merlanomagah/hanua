@@ -6,6 +6,15 @@
 **Gate:** worth it, **as a probe that also fixes the plumbing.** The Escalation Log has one row: visuals over an empty log would be polish ahead of plumbing. But "Add an escalation" from where Mel works *is* the plumbing: it's how the log fills. So adding comes in the same release as the board, not after.
 **Today, outside Hanua:** escalations arrive through the escalations form, email and Care; Mel opens Jump OS in Notion when something goes wrong, and keeps the day's Jump work as lines under Jump issues. The log stays empty because writing there is a separate trip.
 
+## Built (10 Oct 2026; Mel: yes to every recommendation)
+| # | Release | What | State |
+|---|---|---|---|
+| 1 | A | Right of the desk (swipe left, JUMP tab on the right edge, J in the dock; DESK › and Esc back); board with age bars, people bubbles, projects timeline, Today with the questions; + Escalation to Jump OS with Undo (to Notion's trash) | on `main` (f4bda63) |
+| 2 | B | Move ▸ / drag between columns; Closed asks Finding + Outcome (if none); edit Waiting on; project status and next action; Answer… with Resolution; each with Undo | branch `claude/jump-v2-edits`: `EDITS = true` in `public/jump/store.js` is the whole switch; held a day as agreed |
+| 3 | both | Server checks every write (`checkWrite`), options from Notion's schema, sample rows in memory, the Notion caller refuses page writes on a sample server; 214 tests incl. the add → move → close → undo → take-back round trip | |
+
+**Mel to check before B:** the Hanua connection in Notion can *insert* and *update* content on the three Jump OS databases.
+
 ## 1. Verdict
 Go, reshaped. The dashboard moves to the **right** of the desk (swipe left on the desk, a JUMP tab on the right edge, J in the dock), and becomes **one screen of pictures, not lists**:
 
