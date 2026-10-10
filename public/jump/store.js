@@ -7,7 +7,7 @@ import { toast } from "../lib.js";
 
 // Release B (moving cards on, closing, edits, answering) waits a day behind release A (the look, + Escalation):
 // Mel's choice, 10 Oct 2026. Turning this on is the whole of release B on the page.
-export const EDITS = false;
+export const EDITS = true;
 
 export let data = null;
 let loading = null, pending = 0, redraw = () => {};
