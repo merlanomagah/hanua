@@ -149,7 +149,7 @@
     ]
   },
   "jump": {
-    "_about": "The Jump Dashboard (left of the desk, 10 Oct 2026; brief docs/plans/2026-10-jump-dashboard.md): read-only, three Jump OS databases. Column names must match Notion exactly. Each database must be connected to the Hanua integration (••• → Connections).",
+    "_about": "The Jump Dashboard (right of the desk; briefs docs/plans/2026-10-jump-dashboard.md and -v2.md): reads three Jump OS databases and, since v2, writes back to them through the checks in public/shared/jump.js (checkWrite). Column names must match Notion exactly. Each database must be connected to the Hanua integration (••• → Connections), with insert and update content allowed.",
     "notionUrl": "https://www.notion.so/35d16603f0bd80d884dccf6e5e3503a0",
     "section": "Jump issues",
     "escalations": {
@@ -160,7 +160,11 @@
         "date": "Raised",
         "tier": "Tier",
         "closed": "Closed",
-        "waitingOn": "Waiting on"
+        "waitingOn": "Waiting on",
+        "raisedBy": "Raised by",
+        "finding": "Finding",
+        "issue": "Issue",
+        "outcome": "Outcome"
       },
       "closedStatus": "Closed",
       "limit": 100
@@ -187,14 +191,18 @@
         "status": "Status",
         "date": "Raised",
         "priority": "Priority",
-        "waitingOn": "Who can settle it"
+        "waitingOn": "Who can settle it",
+        "resolution": "Resolution",
+        "resolved": "Resolved"
       },
       "openStatuses": [
         "Open",
         "Being worked"
       ],
       "blocking": "Blocking",
-      "limit": 100
+      "limit": 100,
+      "answered": "Answered",
+      "wontResolve": "Wont resolve"
     }
   }
 }

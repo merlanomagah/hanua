@@ -566,41 +566,55 @@
         "Status": "Open",
         "Tier": "T2",
         "raised": 9,
-        "Waiting on": "Person A, app team: is a fix planned"
+        "Waiting on": "Person A, app team: is a fix planned",
+        "Raised by": "Person E, Care team",
+        "Issue": "(invented) what the customer asked"
       },
       {
         "title": "Partner asks how to swap a faulty modem",
         "Status": "Interim guidance given",
         "Tier": "Partner",
         "raised": 6,
-        "Waiting on": "Person B - confirm the swap steps"
+        "Waiting on": "Person B - confirm the swap steps",
+        "Raised by": "Person E, Care team",
+        "Issue": "(invented) what the customer asked"
       },
       {
         "title": "Top-up not showing after payment",
         "Status": "Open",
         "Tier": "T1",
-        "raised": 2
+        "raised": 2,
+        "Raised by": "Person E, Care team",
+        "Issue": "(invented) what the customer asked"
       },
       {
         "title": "Wording on the help page is out of date",
         "Status": "With Content Design",
         "Tier": "Ops",
         "raised": 12,
-        "Waiting on": "Person C"
+        "Waiting on": "Person C",
+        "Raised by": "Person E, Care team",
+        "Issue": "(invented) what the customer asked"
       },
       {
         "title": "Sponsored plan not applied",
         "Status": "Awaiting confirmation",
         "Tier": "T2",
         "raised": 4,
-        "Waiting on": "Person A, provisioning"
+        "Waiting on": "Person A, provisioning",
+        "Raised by": "Person E, Care team",
+        "Issue": "(invented) what the customer asked"
       },
       {
         "title": "Data cap question from a whānau",
         "Status": "Closed",
         "Tier": "T1",
         "raised": 8,
-        "closed": 1
+        "closed": 1,
+        "Raised by": "Person E, Care team",
+        "Issue": "(invented) what the customer asked",
+        "Finding": "Guidance existed but was not findable",
+        "Outcome": "(invented) what Care was told"
       }
     ],
     "projects": [

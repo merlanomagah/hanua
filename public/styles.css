@@ -2873,7 +2873,7 @@ dialog.lock::backdrop { background: #14110e; }
    room's own colour names are swapped for Bula's walnut-dark ones, so every rule that already uses them follows; the
    few hard-coded colours there get their dark twin below. The probe covers the desk; the rest of the room follows
    once Mel has lived with it. test/appearance.test.js checks these pairs can be read. ---------- */
-html.dark :is(#plan-day, #draft-day, #event-dialog, .txt-win, .widgets .widget, .jump-grid .widget, .desk-dock, .wg-menu, .dp) {
+html.dark :is(#plan-day, #draft-day, #event-dialog, .txt-win, .widgets .widget, .jump-grid .widget, .jump-dialog, .jw-pop, .desk-dock, .wg-menu, .dp) {
   --cream: #26201B; --page: #2F2822; --hair: #3A3129; --border: #4A3F34; --border-2: #5A4D3F;
   --ink: #F3ECE0; --ink-2: #E8DECD; --ink-3: #D6C9B4; --ink-4: #C2B39B; --muted: #AE9D84; --faint: #94826B;
   --terra: #E3804A; --terra-hover: #EC9361; --terra-soft: #8A4E2E; --glow: #4A2E1F;
@@ -2882,7 +2882,7 @@ html.dark :is(#plan-day, #draft-day, #event-dialog, .txt-win, .widgets .widget, 
   color-scheme: dark; color: var(--ink); /* text that doesn't set its own colour inherits it from here, not from the cream room */
 }
 /* the windows themselves */
-html.dark :is(#plan-day, #draft-day, #event-dialog, .txt-win, .dp) { background: var(--dk-win); box-shadow: 0 0 0 1px rgb(0 0 0 / 0.6), 0 40px 80px -20px rgb(0 0 0 / 0.7); }
+html.dark :is(#plan-day, #draft-day, #event-dialog, .txt-win, .jump-dialog, .jw-pop, .dp) { background: var(--dk-win); box-shadow: 0 0 0 1px rgb(0 0 0 / 0.6), 0 40px 80px -20px rgb(0 0 0 / 0.7); }
 html.dark .txt-head, html.dark .txt-add { background: var(--dk-win); border-color: var(--dk-line); }
 html.dark :is(.ev-name, .ev-foot) { border-color: var(--dk-line); }
 html.dark .ev-save { color: var(--dk-win); }
@@ -3051,9 +3051,10 @@ html.dark .topshelf .sw-knob { background: #F3ECE0; }
   .cd-foot { flex-wrap: wrap; }
 }
 
-/* ---------- the Jump Dashboard (public/jump.js, 10 Oct 2026; brief docs/plans/2026-10-jump-dashboard.md): beside the
-   desk on its left, reached by swiping right. The same bricks and oak; a fixed layout for now (the desk's arranging
-   comes once it earns it). Colours from the tokens only ---------- */
+/* ---------- the Jump Dashboard (public/jump.js, public/jump/; briefs docs/plans/2026-10-jump-dashboard.md and -v2.md):
+   beside the desk on its right, reached by swiping left. The same bricks and oak; a fixed layout (the desk's arranging
+   comes once it earns it). v2: the escalations board with age bars, people as bubbles, projects on a timeline.
+   Colours from the tokens only ---------- */
 .jump {
   --top-h: 30%; --pad-r: clamp(24px, 4vw, 52px); --edge: clamp(28px, 4.5vw, 64px); --files-w: 104px;
   position: relative; box-sizing: border-box; min-height: calc(100vh - var(--rail-h)); overflow: clip;
@@ -3061,93 +3062,179 @@ html.dark .topshelf .sw-knob { background: #F3ECE0; }
   background-image: linear-gradient(180deg, color-mix(in srgb, var(--ink) 6%, transparent), transparent 30%), url("assets/wall.jpg");
   background-size: 100% 100%, var(--wall-w, 1600px) auto; background-repeat: no-repeat, repeat-y; background-position: 0 0, center bottom;
 }
-.jump-head { position: absolute; z-index: 3; top: 16px; left: var(--edge); right: calc(var(--pad-r) + 28px); display: flex; align-items: center; gap: 12px; min-width: 0; }
+.jump-head { position: absolute; z-index: 3; top: 16px; left: calc(var(--edge) + 28px); right: var(--pad-r); display: flex; align-items: center; gap: 12px; min-width: 0; }
 /* a small plate, like the edge tabs: the pane's name */
 .jump-plate { flex: none; padding: 5px 10px 4px; border-radius: 3px; background: var(--ink); color: var(--page); font: 500 11px var(--mono); letter-spacing: 0.3em; box-shadow: 0 6px 14px -6px color-mix(in srgb, var(--ink) 60%, transparent); }
 .jump-date { flex: none; font: italic 500 22px/1 var(--display); color: var(--ink-2); }
 .jump-src { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 10px var(--mono); letter-spacing: 0.08em; color: var(--ink-3); }
 .jump-refresh { flex: none; margin-left: auto; width: 28px; height: 28px; border: 0; border-radius: 50%; background: color-mix(in srgb, var(--cream) 70%, transparent); color: var(--ink-3); cursor: pointer; font: 15px/1 var(--ui); }
 .jump-refresh:hover, .jump-refresh:focus-visible { color: var(--ink); background: var(--cream); }
-.jump-files { top: 64px; left: var(--edge); right: auto; }
+.jump-files { top: 64px; left: auto; right: var(--pad-r); }
 .jump-files[hidden] { display: none; }
 .jump-file { text-decoration: none; cursor: pointer; }
 .jf-ico { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 9px; background: var(--cream); color: var(--ink); font: 600 22px/1 var(--display); box-shadow: 0 2px 6px -2px color-mix(in srgb, var(--ink) 45%, transparent), inset 0 0 0 1px var(--border); }
 .jump-file span:last-child { text-align: center; }
+/* the board across the top; waiting on, projects and today underneath */
 .jump-grid {
-  position: absolute; z-index: 3; top: 64px; bottom: 96px; left: var(--edge); right: calc(var(--pad-r) + 28px);
-  display: grid; gap: 14px; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: minmax(0, 1.1fr) minmax(0, 1fr);
-  grid-template-areas: "esc wait today" "esc proj q";
+  position: absolute; z-index: 3; top: 60px; bottom: 28px; left: calc(var(--edge) + 28px); right: var(--pad-r);
+  display: grid; gap: 14px; grid-template-columns: minmax(0, 1fr) minmax(0, 1.35fr) minmax(0, 0.9fr); grid-template-rows: minmax(0, 1.25fr) minmax(0, 1fr);
+  grid-template-areas: "board board board" "people proj today";
 }
-.jump-files:not([hidden]) ~ .jump-grid { left: calc(var(--edge) + var(--files-w) + 12px); }
-.jw-esc { grid-area: esc; } .jw-wait { grid-area: wait; } .jw-today { grid-area: today; } .jw-proj { grid-area: proj; } .jw-q { grid-area: q; }
+.jump-files:not([hidden]) ~ .jump-grid { right: calc(var(--pad-r) + var(--files-w) + 12px); }
+.jw-board { grid-area: board; } .jw-people { grid-area: people; } .jw-proj { grid-area: proj; } .jw-today { grid-area: today; }
 .jw { display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
-.jw-scroll { flex: 1; min-height: 0; overflow-y: auto; }
+.jw-scroll { min-height: 0; overflow-y: auto; }
 .jw-list { list-style: none; margin: 0; padding: 0; }
-.jw-row { display: flex; align-items: center; gap: 8px; padding: 7px 0; border-bottom: 1px solid var(--hair); min-width: 0; }
-.jw-row:last-child { border-bottom: 0; }
-.jw-main { display: flex; flex-direction: column; flex: 1; min-width: 0; }
 .jw-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 14px/1.3 var(--ui); color: var(--ink); }
-.jw-sub { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 11px/1.4 var(--ui); color: var(--ink-4); }
-/* age is the signal, in calm type: never red counts */
-.jw-age { flex: none; font: 10px var(--mono); letter-spacing: 0.06em; color: var(--ink-4); }
-.jw-tier { flex: none; min-width: 30px; padding: 2px 5px; border-radius: 3px; text-align: center; font: 9px var(--mono); letter-spacing: 0.08em; background: var(--hair); color: var(--ink-3); }
-.jw-tier.t-t2 { background: var(--terra-soft); color: var(--ink); }
-.jw-tier.t-partner { background: var(--green-soft); color: var(--green-dark); }
-.jw-counts { display: flex; flex-wrap: wrap; gap: 4px 14px; margin: 2px 0 8px; font: 12px var(--ui); color: var(--ink-3); }
-.jw-count b { font: 400 22px/1 var(--display); color: var(--ink); }
-.jw-count.none { color: var(--faint); }
-.jw-count.none b { color: var(--faint); }
-.jw-foot { display: flex; justify-content: space-between; gap: 10px; margin: 8px 0 0; padding-top: 6px; border-top: 1px solid var(--hair); font: 10px var(--mono); letter-spacing: 0.06em; color: var(--ink-4); }
-.jw-big { margin: 2px 0 6px; font: 12px var(--ui); color: var(--ink-3); }
-.jw-big b { font: 400 30px/1 var(--display); color: var(--ink); }
 .jw-note { margin: 6px 0; font: italic 15px/1.35 var(--display); color: var(--ink-4); }
 .jw-note.bad { font: 12px/1.45 var(--ui); color: var(--terra); }
+.jw-key { margin: 6px 0 0; font: 10px var(--mono); letter-spacing: 0.04em; color: var(--ink-4); }
 .jw-open { flex: none; display: grid; place-items: center; width: 22px; height: 22px; border-radius: 3px; text-decoration: none; color: var(--ink-4); font: 12px/1 var(--ui); }
 .jw-open:hover, .jw-open:focus-visible { background: var(--hair); color: var(--ink); }
 .jw-today-btn { flex: none; height: 22px; padding: 0 6px; border: 1px solid var(--border-2); border-radius: 3px; background: transparent; cursor: pointer; font: 9px var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); opacity: 0; transition: opacity 120ms; }
-.jw-row:hover .jw-today-btn, .jw-today-btn:focus-visible { opacity: 1; }
+:is(.jc, .jt-row):hover .jw-today-btn, .jw-today-btn:focus-visible { opacity: 1; }
 .jw-today-btn:hover { background: var(--ink); color: var(--page); border-color: var(--ink); }
 @media (hover: none) { .jw-today-btn { opacity: 0.8; } }
-.jw-row.blocked .jw-sub { color: var(--terra); }
-.jw-person { padding: 6px 0; border-bottom: 1px solid var(--hair); }
-.jw-person:last-child { border-bottom: 0; }
-.jw-who { display: flex; justify-content: space-between; gap: 8px; font: 13px var(--ui); color: var(--ink); }
-.jw-sublist { list-style: none; margin: 2px 0 0; padding: 0 0 0 10px; }
-.jw-sublist li { display: flex; align-items: center; gap: 6px; min-width: 0; }
-.jw-sublist .jw-title { font-size: 12px; color: var(--ink-3); }
+.jw-tier { flex: none; min-width: 26px; padding: 2px 5px; border-radius: 3px; text-align: center; font: 9px var(--mono); letter-spacing: 0.08em; background: var(--hair); color: var(--ink-3); }
+.jw-tier.t-t2 { background: var(--terra-soft); color: var(--ink); }
+.jw-tier.t-partner { background: var(--green-soft); color: var(--green-dark); }
+
+/* the escalations board: a column per status, little index cards, the age as a bar that fills over two weeks */
+.jb-headrow { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 6px; }
+.jb-headrow .wg-label { margin: 0; }
+.jb-add { height: 28px; padding: 0 12px; font-size: 11px; }
+.jb-cols { flex: 1; min-height: 0; display: grid; grid-auto-flow: column; grid-auto-columns: minmax(168px, 1fr); gap: 10px; overflow-x: auto; overflow-y: hidden; padding-bottom: 4px; }
+.jb-col { display: flex; flex-direction: column; min-height: 0; padding: 6px; border-radius: 8px; background: color-mix(in srgb, var(--ink) 4%, transparent); transition: background 120ms; }
+.jb-col.over { background: color-mix(in srgb, var(--terra) 16%, transparent); }
+.jb-col.closed { background: color-mix(in srgb, var(--green) 7%, transparent); }
+.jb-head { display: flex; justify-content: space-between; align-items: baseline; margin: 0 2px 6px; font: 9px var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-4); }
+.jb-head b { font: 400 18px/1 var(--display); letter-spacing: 0; color: var(--ink); }
+.jb-list { flex: 1; display: flex; flex-direction: column; gap: 8px; }
+.jb-empty { margin: 8px 2px; font: italic 14px var(--display); color: var(--faint); }
+.jc { display: flex; flex-direction: column; gap: 5px; padding: 8px 9px 7px; border-radius: 4px; background: var(--cream); box-shadow: 0 1px 0 var(--border), 0 4px 10px -6px color-mix(in srgb, var(--ink) 40%, transparent); }
+.jc[draggable="true"] { cursor: grab; }
+.jc.dragging { opacity: 0.45; }
+.jc.done { background: color-mix(in srgb, var(--cream) 70%, transparent); }
+.jc.done .jc-title { color: var(--ink-4); }
+.jc-top { display: flex; align-items: center; gap: 6px; }
+.jc-top .jw-open { margin-left: auto; }
+.jc-tick { color: var(--green); font: 13px var(--ui); }
+.jc-move { height: 20px; padding: 0 6px; border: 1px solid var(--border-2); border-radius: 3px; background: transparent; cursor: pointer; font: 9px var(--mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-3); }
+.jc-move:hover, .jc-move:focus-visible { background: var(--ink); color: var(--page); border-color: var(--ink); }
+.jc-title { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font: 13px/1.3 var(--ui); color: var(--ink); }
+.jc-age { display: flex; align-items: center; gap: 6px; }
+.jc-age i { position: relative; flex: 1; height: 5px; border-radius: 3px; background: var(--hair); overflow: hidden; }
+.jc-age i::after { content: ""; position: absolute; inset: 0 auto 0 0; width: calc(var(--fill, 0) * 100%); border-radius: 3px; background: linear-gradient(90deg, var(--green-mid), var(--terra-soft) 60%, var(--terra)); background-size: calc(100% / max(var(--fill, 1), 0.05)) 100%; }
+.jc-age b { flex: none; min-width: 28px; text-align: right; font: 500 10px var(--mono); color: var(--ink-3); }
+.jc-foot { display: flex; align-items: center; gap: 6px; min-height: 22px; }
+.jc-wait { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 0; border: 0; background: none; font: 11px var(--ui); color: var(--ink-4); text-align: left; }
+button.jc-wait { cursor: pointer; }
+button.jc-wait:hover, button.jc-wait:focus-visible { color: var(--ink); text-decoration: underline; }
+.jc-foot .jw-today-btn { margin-left: auto; }
+
+/* who she's waiting on: a bubble per person, bigger for more, a thicker ring for longer */
+.jp-bubbles { flex: 1; display: flex; flex-wrap: wrap; align-content: flex-start; gap: 10px 14px; padding: 4px 2px; }
+.jp-bubble { --size: calc(46px + var(--n, 1) * 8px); display: flex; flex-direction: column; align-items: center; gap: 3px; width: max(var(--size), 64px); padding: 0; border: 0; background: none; cursor: pointer; }
+.jp-face { display: grid; place-items: center; width: var(--size); height: var(--size); border-radius: 50%; background: var(--cream); color: var(--ink-2); font: 500 calc(var(--size) * 0.3)/1 var(--display); box-shadow: 0 0 0 2px var(--green-mid), 0 4px 10px -6px color-mix(in srgb, var(--ink) 50%, transparent); transition: transform 120ms; }
+.jp-bubble.ring-1 .jp-face { box-shadow: 0 0 0 3px var(--terra-soft), 0 4px 10px -6px color-mix(in srgb, var(--ink) 50%, transparent); }
+.jp-bubble.ring-2 .jp-face { box-shadow: 0 0 0 5px var(--terra-soft), 0 4px 10px -6px color-mix(in srgb, var(--ink) 50%, transparent); }
+.jp-bubble:is(.ring-3, .ring-4) .jp-face { box-shadow: 0 0 0 6px var(--terra), 0 4px 10px -6px color-mix(in srgb, var(--ink) 50%, transparent); }
+.jp-bubble:hover .jp-face, .jp-bubble:focus-visible .jp-face { transform: scale(1.06); }
+.jp-bubble:focus-visible { outline: none; }
+.jp-bubble:focus-visible .jp-name { text-decoration: underline; }
+.jp-name { max-width: 9ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 12px var(--ui); color: var(--ink); }
+.jp-meta { font: 10px var(--mono); color: var(--ink-4); }
+
+/* projects on a timeline: name | track with a bar from today to the target date (Blocked shaded) */
+.jt { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.jt-scale, .jt-row { display: grid; grid-template-columns: minmax(90px, 34%) minmax(0, 1fr) auto; align-items: center; gap: 8px; }
+.jt-scale { height: 18px; }
+.jt-scale .jt-track { height: 18px; }
+.jt-track { position: relative; height: 26px; }
+.jt-rows { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.jt-rows .jt-track { background: linear-gradient(90deg, transparent calc(var(--today) - 1px), color-mix(in srgb, var(--terra) 55%, transparent) calc(var(--today) - 1px), color-mix(in srgb, var(--terra) 55%, transparent) calc(var(--today) + 1px), transparent calc(var(--today) + 1px)); }
+.jt-month, .jt-today { position: absolute; top: 2px; transform: translateX(-50%); font: normal 9px var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-4); white-space: nowrap; }
+.jt-today { color: var(--terra); }
+.jt-name { display: flex; flex-direction: column; min-width: 0; padding: 2px 0; border: 0; background: none; cursor: pointer; text-align: left; }
+.jt-name span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 13px/1.25 var(--ui); color: var(--ink); }
+.jt-name small { font: 9px var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-4); }
+.jt-row.blocked .jt-name small { color: var(--terra); }
+.jt-name:hover span, .jt-name:focus-visible span { text-decoration: underline; }
+.jt-bar { position: absolute; top: 4px; height: 18px; min-width: 6px; padding: 0 6px; border: 0; border-radius: 9px; cursor: pointer; overflow: hidden; display: flex; align-items: center; justify-content: flex-end;
+  background: var(--green-mid); color: var(--cream); font: 9px var(--mono); letter-spacing: 0.04em; white-space: nowrap; }
+.jt-bar.blocked { background: repeating-linear-gradient(135deg, var(--terra-soft) 0 6px, color-mix(in srgb, var(--terra-soft) 60%, var(--cream)) 6px 12px); color: var(--ink); }
+.jt-bar.overdue { background: var(--terra); justify-content: flex-start; }
+.jt-bar span { overflow: hidden; text-overflow: ellipsis; }
+.jt-bar:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.jt-none { position: absolute; left: 0; top: 6px; font: italic 13px var(--display); color: var(--faint); }
+
+/* today: work events, Jump issues, the questions */
 .jw-h { margin: 8px 0 2px; font: 9px var(--mono); letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-4); }
 .jw-events li { display: flex; gap: 8px; align-items: baseline; padding: 2px 0; }
 .jw-events time { flex: none; width: 54px; font: 11px var(--mono); color: var(--ink-4); }
-.jw-lines { overflow-y: auto; min-height: 0; }
+.jw-lines { flex: 1; }
 .jw-line { display: flex; align-items: center; gap: 8px; padding: 3px 0; }
 .jw-line.sub { padding-left: 22px; }
 .jw-line.done .jw-title { color: var(--faint); text-decoration: line-through; }
+.jw-qbtn { display: flex; align-items: baseline; gap: 4px; margin-top: 8px; padding: 6px 8px; border: 1px solid var(--border-2); border-radius: 4px; background: transparent; cursor: pointer; font: 12px var(--ui); color: var(--ink-3); text-align: left; }
+.jw-qbtn b { font: 400 20px/1 var(--display); color: var(--ink); }
+.jw-qbtn.blocking b { color: var(--terra); }
+.jw-qbtn:hover, .jw-qbtn:focus-visible { border-color: var(--ink); color: var(--ink); }
+
+/* a small menu or card beside a button (Move to…, a person's items, the questions) */
+.jw-pop { position: absolute; z-index: 8; width: min(320px, calc(100% - 16px)); max-height: 340px; overflow-y: auto; padding: 10px; border-radius: 8px; background: var(--cream); color: var(--ink);
+  box-shadow: 0 0 0 1px var(--border), 0 18px 36px -14px color-mix(in srgb, var(--ink) 55%, transparent); }
+.jp-menu { list-style: none; margin: 4px 0 0; padding: 0; }
+.jp-item { display: flex; flex-direction: column; gap: 1px; width: 100%; padding: 6px 8px; border: 0; border-radius: 4px; background: none; text-align: left; font: 13px/1.3 var(--ui); color: var(--ink); }
+button.jp-item { cursor: pointer; }
+button.jp-item:hover, button.jp-item:focus-visible { background: var(--hair); outline: none; }
+.jp-item small { font: 10px var(--mono); letter-spacing: 0.04em; color: var(--ink-4); }
+.jp-item.static { display: grid; grid-template-columns: 1fr auto; column-gap: 6px; }
+.jp-item.static small { grid-column: 1; }
+.jp-item.static .jw-open { grid-column: 2; grid-row: 1 / span 2; align-self: center; }
+
+/* the small windows: + Escalation, closing, answering, editing */
+.jump-dialog { width: min(480px, calc(100vw - 32px)); padding: 0; border: 0; border-radius: 10px; background: var(--cream); color: var(--ink); box-shadow: 0 24px 48px -16px color-mix(in srgb, var(--ink) 60%, transparent); }
+.jd-form { display: flex; flex-direction: column; gap: 10px; padding: 18px 20px 16px; }
+.jd-title { margin: 0; font: italic 500 22px/1.2 var(--display); color: var(--ink); }
+.jd-note { margin: 0; font: 12px/1.45 var(--ui); color: var(--ink-4); }
+.jd-field { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.jd-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.jd-label { font: 9px var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-4); }
+.jd-hint { font: 11px/1.4 var(--ui); color: var(--ink-4); }
+.jd-form :is(input, select, textarea) { box-sizing: border-box; width: 100%; padding: 7px 9px; border: 1px solid var(--border-2); border-radius: 4px; background: var(--page); color: var(--ink); font: 14px var(--ui); }
+.jd-form textarea { resize: vertical; min-height: 64px; }
+.jd-form :is(input, select, textarea):focus-visible { outline: 2px solid var(--terra); outline-offset: 1px; }
+.jd-err { min-height: 1em; margin: 0; font: 12px var(--ui); color: var(--terra); }
+.jd-acts { display: flex; justify-content: flex-end; gap: 8px; }
+html.dark .jc { background: var(--page); }
+
 .dock-jump span { font: 600 24px/1 var(--display); color: var(--ink); }
 .dock-jump[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--terra); }
 .lamp-off .jump::after { content: ""; position: absolute; inset: 0; z-index: 4; pointer-events: none; background: var(--ink); opacity: 0.34; }
 
 @media (min-width: 901px) {
-  /* side by side inside the desk's pane, like the goals board inside the wall: the desk's own slide is untouched */
+  /* side by side inside the desk's pane, like the kitchen beside the wall: the desk's own slide is untouched */
   #desk-pane { overflow-x: clip; }
   #desk-pane > .desk { transition: transform 520ms cubic-bezier(.65,0,.35,1), opacity 520ms; }
-  #desk-pane.on-jump > .desk { transform: translateX(105%); opacity: 0; pointer-events: none; }
-  .jump { position: absolute; z-index: 2; left: 0; right: 0; top: 26px; bottom: 0; transform: translateX(-105%); opacity: 0; pointer-events: none;
+  #desk-pane.on-jump > .desk { transform: translateX(-105%); opacity: 0; pointer-events: none; }
+  .jump { position: absolute; z-index: 2; left: 0; right: 0; top: 26px; bottom: 0; transform: translateX(105%); opacity: 0; pointer-events: none;
     transition: transform 520ms cubic-bezier(.65,0,.35,1), opacity 520ms; }
   #desk-pane.on-jump > .jump { transform: none; opacity: 1; pointer-events: auto; }
-  .jump-tab { left: 0; top: 50%; }
-}
-@media (min-width: 901px) and (max-width: 1180px) {
-  .jump-grid { grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 0.8fr);
-    grid-template-areas: "esc wait" "esc today" "proj q"; bottom: 90px; }
+  .jump-tab { right: 0; top: 50%; }
+  #jump-to-desk { left: 0; top: 50%; }
 }
 @media (prefers-reduced-motion: reduce) { #desk-pane > .desk, .jump { transition: none; } }
 #desk-pane.jump-now > .desk, #desk-pane.jump-now > .jump { transition: none; }
-/* phones: one scrolling page, the dashboard after the desk */
+/* phones: one scrolling page, the dashboard after the desk; the board's columns become groups down the page */
 @media (max-width: 900px) {
   .jump { padding: 16px 16px 40px; display: flex; flex-direction: column; gap: 14px; }
   .jump .desk-top, #jump-to-desk, .jump-tab, .dock-jump { display: none; }
   .jump-head { position: static; flex-wrap: wrap; }
   .jump-files { position: static; flex-direction: row; flex-wrap: wrap; justify-content: center; }
   .jump-grid { position: static; display: flex; flex-direction: column; }
+  .jb-cols { display: flex; flex-direction: column; overflow: visible; }
   .jw-scroll { max-height: 360px; }
+  .jt-scale, .jt-row { grid-template-columns: minmax(80px, 38%) minmax(0, 1fr); }
+  .jt-row .jw-today-btn { display: none; }
 }

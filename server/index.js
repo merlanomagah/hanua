@@ -7,7 +7,7 @@ import { fileURLToPath } from "node:url";
 import os from "node:os";
 import path from "node:path";
 import { parse as parseEnv } from "dotenv";
-import { notionEnabled, NotionError } from "./notion.js";
+import { blockPageWrites, notionEnabled, NotionError } from "./notion.js";
 import { claudeEnabled } from "./claude.js";
 import { watchForUpdates } from "./updates.js";
 import { createRoom } from "./room.js";
@@ -52,6 +52,7 @@ app.use(express.static(path.join(root, "public"), { setHeaders: (res) => res.set
 // which comes from how it was started (server/guard.js roomChoice), never from a missing key.
 const fileEnv = (() => { try { return parseEnv(readFileSync(path.join(process.cwd(), ".env"))); } catch { return {}; } })();
 const choice = roomChoice(process.env, fileEnv);
+blockPageWrites(choice.sample); // a sample server never changes Notion (server/notion.js)
 if (choice.ignored.length) console.log(`Hanua: a sample server, so .env's ${choice.ignored.join(" and ")} (Mel's real folder) is ignored`);
 const home = (p) => (p && p.startsWith("~/") ? path.join(os.homedir(), p.slice(2)) : p); // the same .env line on both Macs
 const roomDir = path.resolve(root, home(choice.dir));

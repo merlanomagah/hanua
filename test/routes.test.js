@@ -137,10 +137,53 @@ test("routes: the Jump Dashboard is sample (invented rows, no links) without a N
   const j = await call("/api/jump");
   assert.equal(j.status, 200);
   assert.deepEqual([j.json.sample, j.json.live], [true, false]);
+  const cards = j.json.escalations.columns.flatMap((c) => c.items);
   assert.ok(j.json.escalations.open > 0);
-  assert.ok(j.json.escalations.items.every((r) => r.url === null && /^sample-/.test(r.id))); // a real-looking id would mean it got past the token
+  assert.ok(cards.every((r) => r.url === null && /^sample-/.test(r.id))); // a real-looking id would mean it got past the token
   assert.deepEqual(j.json.links, []);
-  assert.ok(j.json.escalations.items.every((r) => !("issue" in r) && !("outcome" in r)));
-  assert.ok(j.json.waiting.length > 0 && j.json.projects.items.length > 0 && j.json.questions.top.length > 0);
+  assert.ok(cards.every((r) => !("issue" in r) && !("outcome" in r) && typeof r.issueSet === "boolean"));
+  assert.ok(j.json.options.escalations.status.includes("Closed"));
+  assert.ok(j.json.waiting.length > 0 && j.json.projects.items.length > 0 && j.json.questions.items.length > 0);
   assert.equal(j.json.section, "Jump issues");
+});
+
+test("routes: the Jump Dashboard writes both ways on sample rows: add, move, close, undo, take back; refusals in plain words", async () => {
+  const cards = async () => (await call("/api/jump")).json.escalations.columns.flatMap((c) => c.items.map((r) => ({ ...r, col: c.status })));
+  // add
+  const add = await call("/api/jump/escalations", { method: "POST", body: { change: { title: "An invented escalation", tier: "T1", issue: "(invented)" } } });
+  assert.equal(add.status, 200);
+  assert.equal(add.json.live, false);
+  const id = add.json.row.id;
+  assert.match(id, /^sample-escalations-new-/);
+  let mine = (await cards()).find((r) => r.id === id);
+  assert.deepEqual([mine.col, mine.age, mine.issueSet], ["Open", 0, true]);
+  // move on, and back with its undo
+  const moved = await call(`/api/jump/escalations/${id}`, { method: "POST", body: { change: { status: "Awaiting confirmation" } } });
+  assert.deepEqual(moved.json.undo, { status: "Open" });
+  assert.equal((await cards()).find((r) => r.id === id).col, "Awaiting confirmation");
+  // closing needs the Finding and the Outcome, then sets the date; its undo reopens and clears them
+  assert.equal((await call(`/api/jump/escalations/${id}`, { method: "POST", body: { change: { status: "Closed" } } })).status, 400);
+  const closed = await call(`/api/jump/escalations/${id}`, { method: "POST", body: { change: { status: "Closed", finding: "No guidance existed", outcome: "(invented)" } } });
+  assert.equal(closed.status, 200);
+  assert.equal(closed.json.row.closed, (await call("/api/jump")).json.today);
+  mine = (await cards()).find((r) => r.id === id);
+  assert.deepEqual([mine.col, mine.outcomeSet], ["Closed", true]);
+  const back = await call(`/api/jump/escalations/${id}`, { method: "POST", body: { change: closed.json.undo, undo: true } });
+  assert.equal(back.status, 200);
+  mine = (await cards()).find((r) => r.id === id);
+  assert.deepEqual([mine.col, mine.closed, mine.finding, mine.outcomeSet], ["Awaiting confirmation", null, null, false]);
+  // refusals
+  assert.equal((await call(`/api/jump/escalations/${id}`, { method: "POST", body: { change: { status: "Awaitng" } } })).status, 400); // not one of Jump OS's
+  assert.equal((await call(`/api/jump/escalations/${id}`, { method: "POST", body: { change: { issue: "new words" } } })).status, 400); // never overwritten
+  assert.equal((await call(`/api/jump/escalations/${id}`, { method: "POST", body: { change: { secret: "x" } } })).status, 400);
+  assert.equal((await call("/api/jump/projects", { method: "POST", body: { change: { title: "x" } } })).status, 400); // only escalations are added
+  const q = (await call("/api/jump")).json.questions.items[0];
+  assert.equal((await call(`/api/jump/questions/${q.id}`, { method: "POST", body: { change: { status: "Answered" } } })).status, 400);
+  assert.equal((await call(`/api/jump/questions/${q.id}`, { method: "POST", body: { change: { status: "Answered", resolution: "(invented)" } } })).status, 200);
+  const p = (await call("/api/jump")).json.projects.items[0];
+  assert.equal((await call(`/api/jump/projects/${p.id}`, { method: "POST", body: { change: { next: "An invented next step" } } })).json.row.next, "An invented next step");
+  // only what was just added can be taken back (to the trash)
+  assert.equal((await call(`/api/jump/escalations/${p.id}/trash`, { method: "POST", body: {} })).status, 400);
+  assert.equal((await call(`/api/jump/escalations/${id}/trash`, { method: "POST", body: {} })).status, 200);
+  assert.equal((await cards()).some((r) => r.id === id), false);
 });

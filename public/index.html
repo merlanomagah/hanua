@@ -406,8 +406,8 @@
       <div class="desk-edge" id="desk-edge" aria-hidden="true"></div>
       <section class="desk" aria-label="Today">
         <div class="desk-up"><button type="button" id="desk-up"><span class="arrow" aria-hidden="true">↑</span>THE WALL</button></div>
-        <!-- the Jump Dashboard is beside the desk, to its left (swipe right, 10 Oct 2026) -->
-        <button type="button" class="edge-tab left jump-tab" id="to-jump" title="Swipe right, or click, for the Jump Dashboard"><span>JUMP</span><span aria-hidden="true">›</span></button>
+        <!-- the Jump Dashboard is beside the desk, to its right (swipe left; Mel, 10 Oct 2026) -->
+        <button type="button" class="edge-tab right jump-tab" id="to-jump" title="Swipe left, or click, for the Jump Dashboard"><span>JUMP</span><span aria-hidden="true">‹</span></button>
         <!-- seen front-on (Mel, 5 Oct 2026): the bricks come down to an oak desk top -->
         <div class="desk-top" aria-hidden="true"></div>
         <div class="desk-left">
@@ -483,8 +483,8 @@
         </nav>
         <div class="desk-dim" aria-hidden="true"></div>
       </section>
-      <!-- The Jump Dashboard (public/jump.js; brief docs/plans/2026-10-jump-dashboard.md): Jump OS, read only, beside
-           the desk on its left. Same bricks and oak; a fixed layout for now -->
+      <!-- The Jump Dashboard (public/jump.js, public/jump/; briefs docs/plans/2026-10-jump-dashboard.md and -v2.md):
+           Jump OS, beside the desk on its right. Same bricks and oak; a fixed layout for now -->
       <section class="jump" id="jump-pane" aria-label="Jump Dashboard">
         <div class="desk-top" aria-hidden="true"></div>
         <header class="jump-head">
@@ -495,15 +495,17 @@
         </header>
         <div class="desktop-icons jump-files" id="jump-files" role="group" aria-label="Jump OS in Notion" hidden></div>
         <div class="jump-grid">
-          <article class="widget jw jw-esc" id="jw-esc" aria-label="Escalations"></article>
-          <article class="widget jw jw-wait" id="jw-wait" aria-label="Waiting on"></article>
-          <article class="widget jw jw-today" id="jw-today" aria-label="Today"></article>
+          <article class="widget jw jw-board" id="jw-board" aria-label="Escalations"></article>
+          <article class="widget jw jw-people" id="jw-people" aria-label="Waiting on"></article>
           <article class="widget jw jw-proj" id="jw-proj" aria-label="Projects"></article>
-          <article class="widget jw jw-q" id="jw-q" aria-label="Blocking questions"></article>
+          <article class="widget jw jw-today" id="jw-today" aria-label="Today"></article>
         </div>
-        <button type="button" class="edge-tab right" id="jump-to-desk" title="Swipe left, or click, for the desk"><span>DESK</span><span aria-hidden="true">‹</span></button>
+        <button type="button" class="edge-tab left" id="jump-to-desk" title="Swipe right, or click, for the desk"><span>DESK</span><span aria-hidden="true">›</span></button>
       </section>
       </div>
+      <!-- the Jump Dashboard's small windows: + Escalation, closing, answering, editing (public/jump/form.js); outside
+           the desk's pane, which goes inert when the desk is away -->
+      <dialog class="jump-dialog" id="jump-dialog" aria-label="Jump OS"></dialog>
 
     </main>
   </div>

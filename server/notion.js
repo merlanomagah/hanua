@@ -10,8 +10,16 @@ export class NotionError extends Error {
   }
 }
 
+// A sample server never changes Notion (10 Oct 2026, the Jump Dashboard's writes): creating, changing or binning a
+// page is refused here, whatever the route forgot, so a test can't write to Mel's real Jump OS or goals. Reads (a
+// database query is a POST too) still go through. Set by server/index.js from how Hanua was started (guard.js).
+let pageWritesBlocked = false;
+export const blockPageWrites = (on) => { pageWritesBlocked = Boolean(on); };
+const changesPage = (path, method) => method !== "GET" && /^\/pages(\/|$)/.test(path);
+
 // Notion allows about 3 requests a second. When it says "slow down" (429), wait as long as it asks and try once more.
 async function call(path, { method = "GET", body } = {}, retried = false) {
+  if (pageWritesBlocked && changesPage(path, method)) throw new NotionError(403, "A sample server never changes Notion");
   const res = await fetch(`${BASE}${path}`, {
     method,
     headers: {
@@ -213,6 +221,11 @@ export async function createPage(area, properties) {
     body: { parent: { database_id: area.notionDatabaseId }, properties },
   });
   return normalisePage(page, area.fields);
+}
+
+// One page as it is now (to check a write against what's really there)
+export async function getPage(pageId, fields = {}) {
+  return normalisePage(await call(`/pages/${pageId}`), fields);
 }
 
 // Moves a page to Notion's trash (restorable there for 30 days). Never a permanent delete.
