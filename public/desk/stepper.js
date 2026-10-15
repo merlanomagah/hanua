@@ -5,6 +5,7 @@
 // The rules for where you are live in public/shared/steps.js.
 import { dotsOf, nextStep, backStep, reviewAt, slideOf, stepLabel } from "../shared/steps.js";
 import { h, reducedMotion } from "../lib.js";
+import { iconButton } from "./icons.js";
 
 const last = new WeakMap(); // win → the stop shown last time (for the slide's direction)
 
@@ -50,10 +51,10 @@ export const forget = (win) => last.delete(win); // a fresh page opens without a
 
 // Back and Next (Review on the last question); extra: buttons that sit between them (Save, Reflect…)
 export function navEl(at, n, go, { status = null, extra = [] } = {}) {
-  const back = h("button", { type: "button", className: "set-reset jf-back", textContent: "‹ Back", title: "The question before (⌘⇧↵)", disabled: at === 0 });
+  const back = iconButton(h, "back", "Back: the question before (⌘⇧↵)", { className: "set-reset jf-back", disabled: at === 0 });
   back.addEventListener("click", () => go(backStep(at, n)));
   const onReview = at === reviewAt(n);
-  const next = onReview ? null : h("button", { type: "button", className: "pl-go jf-next", textContent: at === n - 1 ? "Review ›" : "Next ›", title: "The next question (⌘↵)" });
+  const next = onReview ? null : iconButton(h, at === n - 1 ? "check" : "next", at === n - 1 ? "Review: every answer, and Save (⌘↵)" : "Next question (⌘↵)", { className: "pl-go jf-next" });
   next?.addEventListener("click", () => go(nextStep(at, n)));
   return h("footer", { className: "jn-foot jf-foot" }, back, status, ...extra, next);
 }

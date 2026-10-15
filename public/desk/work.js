@@ -12,6 +12,7 @@ import { asleep } from "../lock.js";
 import { noteClosed, noteOpen, registerWindow, windowBar } from "./window.js";
 import { startStep, reviewAt } from "../shared/steps.js";
 import { stopTalk, talkFor } from "./talk.js";
+import { iconButton } from "./icons.js";
 import { forget, markDot, navEl, progressEl, registerFocus, stageEl, stepKeys, takeFocus } from "./stepper.js";
 import { openFileMenu } from "./filemenu.js";
 
@@ -184,7 +185,7 @@ function reviewEl() {
 function render() {
   if (win.hidden) return;
   stopTalk(); // the tile is drawn again: listening stops (Next, Back, a save)
-  const past = h("button", { type: "button", className: "set-reset wk-past", textContent: "Past ▾", title: "Your earlier reflections" });
+  const past = iconButton(h, "history", "Past reflections", { className: "set-reset wk-past" });
   past.addEventListener("click", () => openFileMenu(past, "Work reflections", [
     { label: "New reflection", sub: "Today", run: () => { keepDraft(); startNew(); } },
     ...items.slice(0, 12).map((it) => ({ label: it.title, sub: it.panelsKept ? "with the panels" : "", run: () => openItem(it.id) })),
@@ -208,7 +209,7 @@ function render() {
     saveBtn.addEventListener("click", () => save());
     const askBtn = h("button", { type: "button", className: "set-reset wk-ask", textContent: asking ? "The panels are reading…" : "Send to the panels ✦", title: "The High Performance and Professional panels read this back to you", disabled: asking || isEmpty(r) });
     askBtn.addEventListener("click", () => askPanels());
-    const bin = page?.id && !page.loading ? h("button", { type: "button", className: "set-reset jn-bin", textContent: "Bin", title: "Move this reflection to Notion's trash (Undo brings it back)" }) : null;
+    const bin = page?.id && !page.loading ? iconButton(h, "trash", "Bin this reflection: to Notion's trash (Undo brings it back)", { className: "set-reset jn-bin" }) : null;
     bin?.addEventListener("click", () => binIt());
     saveEl = saveBtn; askEl = askBtn;
     extra = [bin, askBtn, saveBtn].filter(Boolean);

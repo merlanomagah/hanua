@@ -15,6 +15,7 @@ import { openWork } from "./work.js";
 import { TYPES } from "../shared/reflect.js";
 import { startStep, reviewAt } from "../shared/steps.js";
 import { stopTalk, talkFor } from "./talk.js";
+import { iconButton } from "./icons.js";
 import { forget, markDot, navEl, progressEl, registerFocus, stageEl, stepKeys, takeFocus } from "./stepper.js";
 
 const win = $("journal-win");
@@ -186,7 +187,7 @@ function render() {
     saveBtn.addEventListener("click", () => save());
     const reflectBtn = h("button", { type: "button", className: "set-reset jn-reflect", textContent: reflecting ? "Reading…" : "Reflect ✦", title: "Claude reads this week back to you", disabled: reflecting || isEmpty(sections) });
     reflectBtn.addEventListener("click", () => reflect());
-    const bin = page?.id ? h("button", { type: "button", className: "set-reset jn-bin", textContent: "Bin this week", title: "Move this week's page to Notion's trash (Undo brings it back)" }) : null;
+    const bin = page?.id ? iconButton(h, "trash", "Bin this week: to Notion's trash (Undo brings it back)", { className: "set-reset jn-bin" }) : null;
     bin?.addEventListener("click", () => binWeek());
     extra = [bin, reflectBtn, saveBtn].filter(Boolean);
   }

@@ -6,6 +6,7 @@
 // window, Esc, the page going out of sight, or Hanua going to sleep. No button where the browser can't do it.
 import { spokenText } from "../shared/talk.js";
 import { h, toast } from "../lib.js";
+import { ICONS } from "./icons.js";
 import { asleep } from "../lock.js";
 
 const Speech = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -20,7 +21,7 @@ export function stopTalk() {
   try { a.rec.stop(); } catch { /* already stopped */ }
   a.button.classList.remove("on");
   a.button.setAttribute("aria-pressed", "false");
-  a.button.querySelector(".tk-label").textContent = "Talk";
+  a.button.title = "Talk: your words go into the box until you press it again"; a.button.ariaLabel = "Talk into this answer";
   a.line.textContent = "";
   a.line.hidden = true;
   return true;
@@ -74,7 +75,7 @@ function start(box, button, line) {
   active = a;
   button.classList.add("on");
   button.setAttribute("aria-pressed", "true");
-  button.querySelector(".tk-label").textContent = "Done";
+  button.title = "Done talking"; button.ariaLabel = "Done talking";
   line.hidden = false;
   line.textContent = "Listening…";
   try { rec.start(); } catch { stopTalk(); }
@@ -86,7 +87,9 @@ export function talkFor(box) {
   const line = h("p", { className: "tk-line", ariaLive: "polite" });
   line.hidden = true;
   const button = h("button", { type: "button", className: "set-reset tk-btn", title: "Talk it through: your words go into the box until you press Done", ariaLabel: "Talk into this answer" },
-    h("span", { className: "tk-dot", ariaHidden: "true" }), h("span", { className: "tk-label", textContent: "Talk" }));
+    h("span", { className: "tk-dot", ariaHidden: "true" }));
+  button.insertAdjacentHTML("beforeend", ICONS.mic); // an icon, the word as its tip (Preferences, 16 Oct 2026)
+  button.classList.add("ic-btn");
   button.setAttribute("aria-pressed", "false");
   button.addEventListener("click", () => (active?.button === button ? stopTalk() : start(box, button, line)));
   return { button, line };

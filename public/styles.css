@@ -3387,3 +3387,12 @@ html.dark .jc { background: var(--page); }
 .tk-line { margin: 8px 0 0; font: italic 14px/1.4 var(--ui); color: var(--ink-4); }
 html.dark .tk-btn.on { border-color: #e07a62; color: #e07a62; }
 html.dark .tk-btn.on .tk-dot { background: #e07a62; }
+
+/* Icons over words where an icon is clear (Mel, 16 Oct 2026; public/desk/icons.js) */
+.ic-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-width: 34px; min-height: 30px; padding: 4px 8px; line-height: 0; }
+.ic-btn .ic { display: block; flex: none; }
+.jf-foot .jf-next.ic-btn { min-width: 56px; }
+.tk-btn.ic-btn { padding: 4px 8px; }
+.tk-btn .tk-dot { display: none; }
+.tk-btn.on .tk-dot { display: block; }
+@media (hover: none), (max-width: 760px) { .ic-btn { min-width: 40px; min-height: 40px; } }
