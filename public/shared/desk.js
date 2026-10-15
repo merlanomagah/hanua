@@ -4,7 +4,7 @@
 // "Tasks to complete" was cut on 6 Oct 2026 (never used): an older day's three Tasks open as its first General lines.
 // Earlier days are the archive and are never rewritten: what the morning sweep decides about an unfinished item is
 // written into *today's* file (`settled`). Older files with a plain `general` list open as the General section.
-import { addDays } from "./dates.js";
+import { addDays, weekStart, ymd } from "./dates.js";
 
 export const FOCUS_N = 3, KEY_N = 3; // KEY_N: only for reading older days
 export const MAX_TEXT = 200, MAX_LINES = 40, MAX_SECTIONS = 12, MAX_NAME = 40;
@@ -26,7 +26,7 @@ export const DEFAULT_MINS = 30, GAP = 5, MEETING_PAD = 5, BREAK_AFTER = 90, BREA
 export const WORKDAY = { start: "08:30", end: "17:30" };
 // How a day is saved. Raise it whenever deskShape learns a new field: the page and server must agree, or a save is
 // refused (never quietly trimmed). On 6 Oct 2026 a page newer than the running server lost its meetings that way.
-export const DESK_VERSION = 8; // 8: ref on lines (a Jump OS page it points to, 10 Oct 2026); 7: closed (Close the day, 9 Oct 2026); 3: no Tasks, fixed sections, time words, when things happened; 4: the draft day (order, locked); 5: saves carry the revision they started from (two Macs); 6: origin and parent on lines, the gone list (F4 + subtasks, 8 Oct 2026)
+export const DESK_VERSION = 9; // 9: the quick close's mood, blockers and line (15 Oct 2026); 8: ref on lines (a Jump OS page it points to, 10 Oct 2026); 7: closed (Close the day, 9 Oct 2026); 3: no Tasks, fixed sections, time words, when things happened; 4: the draft day (order, locked); 5: saves carry the revision they started from (two Macs); 6: origin and parent on lines, the gone list (F4 + subtasks, 8 Oct 2026)
 // Who's out of date when a save arrives: null when they match, "page" (reload it), "server" (Restart Hanua)
 export function versionClash(sent, mine = DESK_VERSION) {
   const v = Number.isInteger(sent) ? sent : 0; // pages from before the check sent none
@@ -241,8 +241,14 @@ export function deskShape(x) {
   const order = refsOf(o.order);
   const locked = typeof o.locked === "boolean" ? o.locked : blocks.length > 0;
   // Close the day (9 Oct 2026): when it was closed and its two lines; kept (without `at`) when opened again
+  // Since 15 Oct 2026 (the quick close): a mood, what got in the way (chips) and one optional line; the two lines of
+  // older closes are kept as they were
   const well = clip(o.closed?.well), hard = clip(o.closed?.hard), closedAt = when(o.closed?.at);
-  const closed = closedAt || well || hard ? { ...(closedAt ? { at: closedAt } : {}), well, hard } : undefined;
+  const mood = MOODS.some(([k]) => k === o.closed?.mood) ? o.closed.mood : "";
+  const blockers = [...new Set(list(o.closed?.blockers).filter((b) => BLOCKERS.some(([k]) => k === b)))];
+  const said = clip(o.closed?.line);
+  const closed = closedAt || well || hard || mood || blockers.length || said
+    ? { ...(closedAt ? { at: closedAt } : {}), well, hard, ...(mood ? { mood } : {}), ...(blockers.length ? { blockers } : {}), ...(said ? { line: said } : {}) } : undefined;
   return { focus, sections, meetings, day, blocks, overflow, plans, order, locked, settled, settledAt, started: Boolean(o.started), gone: goneOf(o.gone), ...(closed ? { closed } : {}) };
 }
 
@@ -561,7 +567,7 @@ export function closeItems(d, day, atWork = false) {
     if (!l.text || l.parent || gone.has(l.id)) continue;
     const kids = kidsOf(s.lines, l.id).filter((k) => !gone.has(k.id));
     if (l.done && kids.every((k) => k.done)) continue;
-    out.push({ ref: l.id, text: l.text, section: s.name || "General", work: s.work, done: l.done, kids: kids.map((k) => ({ ref: k.id, text: k.text, done: k.done })) });
+    out.push({ ref: l.id, text: l.text, section: s.name || "General", work: s.work, done: l.done, pri: l.pri || "", origin: originOf(l), kids: kids.map((k) => ({ ref: k.id, text: k.text, done: k.done })) });
   }
   return out;
 }
@@ -572,15 +578,98 @@ export function letGo(d, day, refs, now = new Date()) {
   for (const s of d.sections) for (const l of s.lines) if (want.has(l.id) && l.text && !l.done) { d.settled[`${day}:${l.id}`] = "gone"; d.settledAt[`${day}:${l.id}`] = now.toISOString(); }
   return d;
 }
-// The day closed, at `now`, with its two lines (both optional). Every decision of the close uses the same `now`.
-export function closeDayRecord(d, { well = "", hard = "" } = {}, now = new Date()) {
-  d.closed = { at: now.toISOString(), well: clip(well), hard: clip(hard) };
+// The day closed, at `now`, with what Mel said (all optional): since 15 Oct 2026 a mood, chips for what got in the
+// way and one line; older closes had two lines (well, hard). Every decision of the close uses the same `now`.
+export function closeDayRecord(d, { well = "", hard = "", mood = "", blockers = [], line = "" } = {}, now = new Date()) {
+  d.closed = deskShape({ closed: { at: now.toISOString(), well, hard, mood, blockers, line } }).closed;
   return d;
 }
-// Open again: no longer closed; the two lines stay for the next close
+// Open again: no longer closed; what was said stays for the next close
 export function reopenDay(d) {
-  if (d.closed) { delete d.closed.at; if (!d.closed.well && !d.closed.hard) delete d.closed; }
+  if (d.closed) { delete d.closed.at; const c = d.closed; if (!c.well && !c.hard && !c.mood && !c.blockers?.length && !c.line) delete d.closed; }
   return d;
+}
+
+// ---- the quick close (Mel, 15 Oct 2026; brief docs/plans/2026-10-planner-keys-and-close-insights.md) ----
+// Evidence: the evening close was used once in six evenings, and the days were really settled the next morning by
+// the sweep. So the close asks for taps, not prose, comes with its choices already suggested, and a day the sweep
+// settled counts as closed late. Mood and blockers are counted later (weekFacts), never scored.
+export const MOODS = [["good", "🙂", "Good"], ["ok", "😐", "So-so"], ["hard", "😩", "Hard"]];
+export const BLOCKERS = [["meetings", "Meetings ran over"], ["interruptions", "Interruptions"], ["energy", "Low energy"], ["toobig", "Plan too big"], ["waiting", "Waiting on someone"], ["nothing", "Nothing"]];
+export const LET_GO_AFTER = 3; // carried this many times and not High: the close suggests letting it go
+// What the close suggests for each open task: Tomorrow, unless it has been carried LET_GO_AFTER times or more and
+// isn't High priority (then Let go). days: the earlier days (and this one) by key, to count carries.
+export function closeSuggest(items, days) {
+  const out = new Map();
+  for (const it of items) {
+    const n = it.origin ? timesCarried(days, it.origin) : 0;
+    out.set(it.ref, n >= LET_GO_AFTER && it.pri !== "h" ? { how: "let", carried: n } : { how: "tomorrow", carried: n });
+  }
+  return out;
+}
+// What a day was, worked out from its file (nothing extra stored). later: the days after it by key, to see whether
+// the morning sweep settled it (a late close). Times are read in the Mac's own zone.
+export function dayFacts(raw, day, later = {}) {
+  const d = deskShape(raw);
+  const lines = d.sections.flatMap((s) => s.lines.filter((l) => l.text));
+  const tasks = lines.filter((l) => !l.parent);
+  const tickedOnDay = lines.filter((l) => l.done && l.doneAt && ymd(new Date(l.doneAt)) === day).length;
+  const plannedMins = d.blocks.filter((b) => b.kind === "task").reduce((n, b) => n + Math.max(0, toMin(b.end) - toMin(b.start)), 0);
+  const morning = Object.values(later).some((x) => Object.keys(deskShape(x).settled).some((k) => k.startsWith(`${day}:`)));
+  return {
+    // a day whose lines all went on (sent, let go) or that was closed still counts as a day that was used
+    day, written: lines.length > 0 || d.gone.length > 0 || Boolean(d.closed?.at), tasks: tasks.length, done: tasks.filter((l) => l.done).length, tickedOnDay,
+    planned: d.locked && d.blocks.length > 0, plannedMins, overflow: d.overflow.length,
+    letGo: letGoIds(d, day).size, sent: d.gone.filter((g) => g.how === "sent").length,
+    closed: d.closed?.at ? "evening" : morning ? "morning" : "no",
+    mood: d.closed?.mood || "", blockers: d.closed?.blockers || [],
+  };
+}
+const normText = (t) => t.toLowerCase().replace(/[^\p{L}\p{N} ]/gu, "").replace(/\s+/g, " ").trim();
+// A fortnight (or any run of days) in a few numbers, and at most three suggestions, each with what to do. Rules only,
+// no Claude: the Sunday read by Claude starts from these. days: { "YYYY-MM-DD": raw day } (missing days are fine).
+export function weekFacts(days, from, to) {
+  const keys = Object.keys(days).filter((k) => k >= from && k <= to).sort();
+  const facts = keys.map((k) => dayFacts(days[k], k, Object.fromEntries(Object.entries(days).filter(([x]) => x > k && x <= addDays(k, CARRY_DAYS)))));
+  const used = facts.filter((f) => f.written);
+  const count = (pick) => used.reduce((n, f) => n + pick(f), 0);
+  const blockers = {}, moods = {};
+  for (const f of used) { for (const b of f.blockers) if (b !== "nothing") blockers[b] = (blockers[b] || 0) + 1; if (f.mood) moods[f.mood] = (moods[f.mood] || 0) + 1; }
+  const top = Object.entries(blockers).sort((a, b) => b[1] - a[1])[0] || null;
+  const out = {
+    from, to, days: used.length, planned: used.filter((f) => f.planned).length,
+    closed: { evening: used.filter((f) => f.closed === "evening").length, morning: used.filter((f) => f.closed === "morning").length, no: used.filter((f) => f.closed === "no").length },
+    tasks: count((f) => f.tasks), done: count((f) => f.done), tickedOnDay: count((f) => f.tickedOnDay), letGo: count((f) => f.letGo),
+    moods, blockers, topBlocker: top && top[1] >= 2 ? top[0] : null, suggestions: [],
+  };
+  // a task still open on the last written day, carried LET_GO_AFTER times or more
+  const lastKey = [...keys].reverse().find((k) => deskShape(days[k]).sections.some((s) => s.lines.some((l) => l.text)));
+  if (lastKey) {
+    const last = deskShape(days[lastKey]);
+    const stuck = last.sections.flatMap((s) => s.lines.filter((l) => l.text && !l.done && !l.parent))
+      .map((l) => ({ text: l.text, n: timesCarried(days, originOf(l)) })).filter((x) => x.n >= LET_GO_AFTER).sort((a, b) => b.n - a.n);
+    if (stuck.length) out.suggestions.push({ kind: "carried", text: `${stuck.length === 1 ? `“${stuck[0].text}” has` : `${stuck.length} tasks have`} been carried ${stuck[0].n}+ times: pick a day for it, split it into smaller steps, or let it go`, items: stuck.slice(0, 5).map((x) => x.text) });
+  }
+  // the same task written in three different weeks: a routine in waiting
+  const weeks = new Map();
+  for (const k of keys) for (const s of deskShape(days[k]).sections) for (const l of s.lines) if (l.text && !l.parent) {
+    const t = normText(l.text); if (!t) continue;
+    if (!weeks.has(t)) weeks.set(t, { text: l.text, weeks: new Set() });
+    weeks.get(t).weeks.add(weekStart(new Date(`${k}T12:00:00`)));
+  }
+  const repeats = [...weeks.values()].filter((x) => x.weeks.size >= 3);
+  if (repeats.length) out.suggestions.push({ kind: "routine", text: `${repeats.length === 1 ? `“${repeats[0].text}” comes` : `${repeats.length} tasks come`} back every week: a routine could add ${repeats.length === 1 ? "it" : "them"} for you`, items: repeats.slice(0, 5).map((x) => x.text) });
+  // plans that didn't fit, three days or more
+  const tight = used.filter((f) => f.planned && f.overflow > 0);
+  if (tight.length >= 3) {
+    const fit = Math.round(tight.reduce((n, f) => n + f.plannedMins, 0) / tight.length / 30) / 2;
+    out.suggestions.push({ kind: "toobig", text: `${tight.length} days had more planned than fitted: your days hold about ${fit} h of tasks, so plan to that` });
+  } else if (out.topBlocker) {
+    const name = BLOCKERS.find(([k]) => k === out.topBlocker)?.[1];
+    out.suggestions.push({ kind: "blocker", text: `“${name}” got in the way ${blockers[out.topBlocker]} times` });
+  }
+  out.suggestions = out.suggestions.slice(0, 3);
+  return out;
 }
 
 // A plan made ahead, on the morning: the blocks that now run into a fixed thing (a meeting moved in the calendar

@@ -3033,8 +3033,17 @@ html.dark .topshelf .sw-knob { background: #F3ECE0; }
 .cd-choices { display: flex; gap: 0; margin: 6px 0 0 32px; }
 .cd-seg { height: 28px; padding: 0 12px; border: 1px solid var(--border-2); background: transparent; color: var(--ink-3); cursor: pointer; font: 12px var(--ui); }
 .cd-seg + .cd-seg { border-left: 0; }
-.cd-seg:first-child { border-radius: 4px 0 0 4px; }
-.cd-seg:last-child { border-radius: 0 4px 4px 0; }
+.cd-seg:first-of-type { border-radius: 4px 0 0 4px; }
+.cd-seg:last-of-type { border-radius: 0 4px 4px 0; }
+.cd-choices { align-items: center; }
+.cd-why { margin-right: 8px; font: 9px var(--mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-4); }
+/* the day in taps (15 Oct 2026): a mood, what got in the way, one optional line */
+.cd-row { display: grid; grid-template-columns: 112px 1fr; align-items: center; gap: 6px; }
+.cd-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.cd-label { font: 9px var(--mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-4); }
+.cd-chip { min-height: 28px; padding: 0 10px; border: 1px solid var(--border-2); border-radius: 4px; background: transparent; color: var(--ink-3); cursor: pointer; font: 12px var(--ui); }
+.cd-chip.on { background: var(--terra); border-color: var(--terra); color: var(--cream); }
+.cd-chip:focus-visible { outline: 2px solid var(--terra); outline-offset: 1px; }
 .cd-seg.on { background: var(--terra); border-color: var(--terra); color: var(--cream); }
 .cd-all { display: flex; gap: 8px; margin: 10px 0 4px; }
 .cd-lines { display: grid; gap: 8px; margin: 14px 0 6px; }
@@ -3047,11 +3056,19 @@ html.dark .topshelf .sw-knob { background: #F3ECE0; }
 .cd-said dd { margin: 2px 0 0; }
 .ar-said { margin-bottom: 10px; }
 .wk-closed { color: var(--green); }
+/* how the last two weeks went (15 Oct 2026): a few lines and up to three ideas, under the two weeks */
+.wk-facts { margin: 14px 0 0; padding: 10px 14px; border: 1px solid var(--border-2); border-radius: 4px; }
+.wk-facts h4 { margin: 0 0 6px; font: 9px var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-4); }
+.wk-fact-list, .wk-ideas { list-style: none; margin: 0; padding: 0; font: 13px/1.5 var(--ui); color: var(--ink-3); }
+.wk-ideas { margin-top: 6px; color: var(--ink); }
+.wk-ideas li + li { margin-top: 4px; }
 .txt-line.let-go .txt-text, .pl-line.let-go .pl-input { text-decoration: line-through; color: var(--ink-4); }
 @media (max-width: 760px) {
   .cd-choices { margin-left: 0; width: 100%; }
   .cd-seg { flex: 1; height: 44px; }
   .cd-foot { flex-wrap: wrap; }
+  .cd-row { grid-template-columns: 1fr; }
+  .cd-chip { min-height: 44px; }
 }
 
 /* ---------- the Jump Dashboard (public/jump.js, public/jump/; briefs docs/plans/2026-10-jump-dashboard.md and -v2.md):

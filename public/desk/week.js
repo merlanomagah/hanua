@@ -8,6 +8,8 @@ import { desk as todayDesk, page as desk, pageDay, showDay } from "./state.js";
 import { clearPicks, renderTodo, resetSweep } from "./page.js";
 import { openArchive } from "./archive.js";
 import { view } from "./view.js";
+import { factsEl, loadFacts } from "./facts.js";
+import { focus } from "../lib.js";
 
 // ---- the week (Mel, 6 Oct 2026: double-click Plan my day, see the week, click the day to plan) ----
 // Mon–Sun with what each day holds; ‹ › for other weeks; past days open in the Archive (read-only), today and days
@@ -15,7 +17,7 @@ import { view } from "./view.js";
 export async function openWeek(shift = 0) {
   view.archive = null;
   const days = [...weekDays(todayStr(), shift), ...weekDays(todayStr(), shift + 1)]; // two weeks: this and next (8 Oct 2026)
-  view.week = { shift, days, sums: view.week?.shift === shift ? view.week.sums : {}, further: view.week?.further || [] };
+  view.week = { shift, days, sums: view.week?.shift === shift ? view.week.sums : {}, further: view.week?.further || [], facts: view.week?.facts || null };
   renderTodo();
   const mine = view.week;
   try {
@@ -24,7 +26,9 @@ export async function openWeek(shift = 0) {
     const all = await (await fetch("/api/desk/days")).json();
     const later = all.filter((d) => d > days[13] && d > todayStr()).sort().slice(0, 20);
     const more = later.length ? await (await fetch(`/api/desk/summary?days=${later.join(",")}`)).json() : {};
+    const facts = shift === 0 && !focus.on ? await loadFacts() : null; // how the last two weeks went (15 Oct 2026)
     if (view.week !== mine) return;
+    view.week.facts = facts;
     view.week.sums = sums;
     view.week.further = later.filter((d) => more[d]?.written).slice(0, 8).map((d) => ({ day: d, sum: more[d] }));
   } catch { if (view.week === mine) view.week.failed = true; }
@@ -64,6 +68,7 @@ export function weekEl() {
   return h("div", { className: "pl-week" },
     h("header", { className: "wk-head" }, nav("‹", -1, "Week before"), h("div", { className: "wk-title" }, h("h2", { textContent: view.week.shift === 0 ? "This week and next" : view.week.shift === -1 ? "Last week and this" : "Two weeks" }), h("span", { textContent: span })), nav("›", 1, "Week after"), thisWeek),
     h("div", { className: "wk-grid" }, view.week.days.map(card)),
+    view.week.shift === 0 && !focus.on ? factsEl(view.week.facts) : null,
     h("p", { className: "wk-hint", textContent: "Click a day to plan it. Earlier days open in the Archive. To put a task on a day without opening it: → on a line, or When in To-do.txt." }),
     further);
 }

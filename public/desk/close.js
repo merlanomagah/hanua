@@ -4,10 +4,10 @@
 // message. In the window: each open task with its open subtasks, to tick now, or to choose Tomorrow / A day… / Let go
 // (or leave for the morning sweep); two optional lines; then Close the day: everything happens at once, with one Undo,
 // and Plan tomorrow →. Rules (tested): closeItems, closeMoment, letGo, closeDayRecord, reopenDay in shared/desk.js.
-import { closeDayRecord, closeItems, closeMoment, letGo, planDate, putLines, reopenDay, returnUnplaced, setLines, stepDay, takeLines } from "../shared/desk.js";
+import { closeDayRecord, closeItems, closeMoment, closeSuggest, letGo, BLOCKERS, MOODS, planDate, putLines, reopenDay, returnUnplaced, setLines, stepDay, takeLines } from "../shared/desk.js";
 import { todayStr } from "../shared/dates.js";
 import { $, focus, h, toast } from "../lib.js";
-import { changeDay, desk, deskDay, newId, saveNow, save } from "./state.js";
+import { changeDay, desk, deskDay, earlier, newId, saveNow, save } from "./state.js";
 import { settings } from "../settings/store.js";
 import { check, dayName, openDay, renderPlanWidget, renderTodo } from "./page.js";
 import { renderTxt } from "./todotxt.js";
@@ -21,8 +21,10 @@ const win = $("close-day");
 const ready = resizable(win);
 const ICON = '<svg viewBox="0 0 48 60" aria-hidden="true" width="30"><path d="M4 2h28l12 12v42a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z" fill="#fdfcf9" stroke="#cfc8bb"/><path d="M14 36a10 10 0 0 0 20 0" fill="none" stroke="#c76a3a" stroke-width="2"/><path d="M10 42h28" stroke="#b9b2a5" stroke-width="2"/></svg>';
 let placed = false, day = null; // the day being closed: today when the window opened (midnight can pass while it's open)
-const choices = new Map(); // ref → { how: "send" | "let", to? }
-let well = "", hard = "";
+const choices = new Map(); // ref → { how: "tomorrow" | "day" | "let", to?, suggested?, carried? }
+// what Mel says (15 Oct 2026: taps, not prose): a mood, what got in the way, one optional line
+let mood = "", blocked = new Set(), said = "";
+let suggested = null; // the day the suggestions were filled in for (once per opening: cleared choices stay cleared)
 
 export const closeTimes = () => settings?.close || { from: "16:00", remind: "19:00" };
 // what the clock says now about closing today (shared/desk.js closeMoment)
@@ -52,6 +54,11 @@ export function closeNote() {
 function render() {
   if (win.hidden) return;
   const items = closeItems(desk, day, focus.on);
+  // each open task comes with a choice already made (Tomorrow, or Let go when it's been carried often): one tap closes
+  if (suggested !== day && !(desk.closed?.at && day === deskDay)) {
+    suggested = day;
+    for (const [ref, c] of closeSuggest(items, { ...earlier, [day]: desk })) if (!choices.has(ref)) choices.set(ref, { ...c, to: c.how === "tomorrow" ? stepDay(day, 1) : undefined, suggested: true });
+  }
   for (const r of [...choices.keys()]) if (!items.some((x) => x.ref === r)) choices.delete(r); // ticked or gone since
   const bar = windowBar(win, focus.on ? "Close the work day" : "Close the day", [], hide);
   const closed = desk.closed?.at && day === deskDay;
@@ -80,6 +87,7 @@ function openEl(items) {
     };
     const tomorrow = stepDay(day, 1);
     return h("div", { className: "cd-choices", role: "group", ariaLabel: `What happens to ${it.text}` },
+      c?.suggested && c.how === "let" && c.carried ? h("span", { className: "cd-why", textContent: `carried ${c.carried}×` }) : null,
       seg("tomorrow", "Tomorrow", (_b, on) => { if (on) choices.delete(it.ref); else choices.set(it.ref, { how: "tomorrow", to: tomorrow }); render(); }),
       seg("day", "A day…", (b, on) => { if (on) { choices.delete(it.ref); render(); return; } openDayPicker(b, { not: day, title: "Send it to", onPick: (to) => { choices.set(it.ref, { how: "day", to }); render(); } }); }),
       seg("let", "Let go", (_b, on) => { if (on) choices.delete(it.ref); else choices.set(it.ref, { how: "let" }); render(); }));
@@ -90,21 +98,29 @@ function openEl(items) {
     choice(it)));
   const all = (how) => { for (const it of items) choices.set(it.ref, how === "let" ? { how: "let" } : { how: "tomorrow", to: stepDay(day, 1) }); render(); };
   const btn = (label, run, cls = "") => { const b = h("button", { type: "button", className: `set-reset ${cls}`, textContent: label }); b.addEventListener("click", run); return b; };
-  const line = (label, value, set) => {
-    const i = h("input", { type: "text", className: "set-in cd-in", value, maxLength: 200, placeholder: label, ariaLabel: label, enterKeyHint: "next" });
-    i.addEventListener("input", () => set(i.value));
-    return h("label", { className: "cd-say" }, h("span", { textContent: label }), i);
-  };
+  // the day in taps (15 Oct 2026): a mood, what got in the way (Nothing on its own), one line if there's more to say
+  const tap = (label, on, run, title = label) => { const b = h("button", { type: "button", className: `cd-chip${on ? " on" : ""}`, ariaPressed: String(on), textContent: label, title }); b.addEventListener("click", run); return b; };
+  const moods = h("div", { className: "cd-row", role: "group", ariaLabel: "How was the day" }, h("span", { className: "cd-label", textContent: "Day" }),
+    h("span", { className: "cd-chips" }, MOODS.map(([k, face, name]) => tap(face, mood === k, () => { mood = mood === k ? "" : k; render(); }, name))));
+  const blocks = h("div", { className: "cd-row", role: "group", ariaLabel: "What got in the way" }, h("span", { className: "cd-label", textContent: "Got in the way" }),
+    h("span", { className: "cd-chips" }, BLOCKERS.map(([k, name]) => tap(name, blocked.has(k), () => {
+      if (blocked.has(k)) blocked.delete(k); else if (k === "nothing") blocked = new Set(["nothing"]); else { blocked.delete("nothing"); blocked.add(k); }
+      render();
+    }))));
+  const one = h("input", { type: "text", className: "set-in cd-in", value: said, maxLength: 200, placeholder: "Anything else? (optional)", ariaLabel: "Anything else about today" });
+  one.addEventListener("input", () => { said = one.value; });
+  one.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); commit(go); } });
   const decided = [...choices.values()];
   const tally = ["tomorrow", "day", "let"].map((k) => decided.filter((c) => c.how === k).length);
   const left = items.length - decided.length;
-  const go = h("button", { type: "button", className: "pl-go cd-go", textContent: focus.on ? "Close the work day" : "Close the day" });
+  const allSuggested = items.length > 0 && items.every((it) => choices.get(it.ref)?.suggested);
+  const go = h("button", { type: "button", className: "pl-go cd-go", textContent: `${allSuggested ? "Looks right · " : ""}${focus.on ? "Close the work day" : "Close the day"}` });
   go.addEventListener("click", () => commit(go));
   return [
     items.length ? h("ul", { className: "cd-list" }, rows) : h("p", { className: "txt-empty", textContent: "Nothing open: everything's ticked or decided." }),
     items.length > 1 ? h("div", { className: "cd-all" }, btn("All to tomorrow", () => all("tomorrow")), btn("Let all go", () => all("let")), decided.length ? btn("Clear choices", () => { choices.clear(); render(); }) : null) : null,
-    // the two lines are personal: not at work
-    focus.on ? null : h("div", { className: "cd-lines" }, line("What went well", well, (v) => { well = v; }), line("What got in the way", hard, (v) => { hard = v; })),
+    // how the day went is personal: not at work
+    focus.on ? null : h("div", { className: "cd-lines" }, moods, blocks, one),
     h("div", { className: "cd-foot" },
       h("span", { className: "cd-tally", textContent: [tally[0] && `${tally[0]} to tomorrow`, tally[1] && `${tally[1]} to another day`, tally[2] && `${tally[2]} let go`, left > 0 && `${left} left for the morning`].filter(Boolean).join(" · ") || "Choose for each, or leave them for the morning" }),
       go),
@@ -114,11 +130,15 @@ function openEl(items) {
 function closedEl() {
   const c = desk.closed || {};
   const again = h("button", { type: "button", className: "set-reset", textContent: "Open again" });
-  again.addEventListener("click", () => { reopenDay(desk); save(); well = c.well || ""; hard = c.hard || ""; refreshAll(); });
+  again.addEventListener("click", () => { reopenDay(desk); save(); mood = c.mood || ""; blocked = new Set(c.blockers || []); said = c.line || ""; suggested = day; refreshAll(); });
   const next = h("button", { type: "button", className: "pl-go", textContent: "Plan tomorrow →" });
   next.addEventListener("click", () => { hide(); openDay(stepDay(day, 1)); });
   return [
-    focus.on ? null : h("dl", { className: "cd-said" }, c.well ? [h("dt", { textContent: "Went well" }), h("dd", { textContent: c.well })] : null, c.hard ? [h("dt", { textContent: "Got in the way" }), h("dd", { textContent: c.hard })] : null),
+    focus.on ? null : h("dl", { className: "cd-said" },
+      c.mood ? [h("dt", { textContent: "Day" }), h("dd", { textContent: MOODS.filter(([k]) => k === c.mood).map(([, f, n]) => `${f} ${n}`)[0] })] : null,
+      c.blockers?.length ? [h("dt", { textContent: "Got in the way" }), h("dd", { textContent: c.blockers.map((b) => BLOCKERS.find(([k]) => k === b)?.[1]).join(" · ") })] : null,
+      c.line ? [h("dt", { textContent: "Also" }), h("dd", { textContent: c.line })] : null,
+      c.well ? [h("dt", { textContent: "Went well" }), h("dd", { textContent: c.well })] : null, c.hard ? [h("dt", { textContent: "Got in the way" }), h("dd", { textContent: c.hard })] : null),
     h("div", { className: "cd-foot" }, again, next),
   ];
 }
@@ -145,11 +165,12 @@ async function commit(go) {
     placedOn.push({ to, ids: new Set(taken.filter((t) => t.placed).map((t) => t.placed)) });
   }
   letGo(desk, day, [...choices].filter(([, c]) => c.how === "let").map(([r]) => r), now);
-  closeDayRecord(desk, focus.on ? { well: desk.closed?.well || "", hard: desk.closed?.hard || "" } : { well, hard }, now);
+  const kept = desk.closed || {};
+  closeDayRecord(desk, focus.on ? { well: kept.well, hard: kept.hard, mood: kept.mood, blockers: kept.blockers, line: kept.line } : { well: kept.well, hard: kept.hard, mood, blockers: [...blocked], line: said }, now);
   const saved = await saveNow(desk);
   if (!saved) { go.disabled = false; render(); return; } // the reason was said (the other Mac, iCloud)
   const sent = placedOn.reduce((n, p) => n + p.ids.size, 0), let_ = [...choices.values()].filter((c) => c.how === "let").length;
-  choices.clear(); well = ""; hard = "";
+  choices.clear(); mood = ""; blocked = new Set(); said = "";
   refreshAll();
   toast(`Day closed${sent ? `: ${sent} sent on` : ""}${let_ ? `${sent ? "," : ":"} ${let_} let go` : ""}`, false, [
     { label: "Plan tomorrow", run: () => { hide(); openDay(stepDay(day, 1)); } },
@@ -164,6 +185,7 @@ function refreshAll() { render(); renderTodo(); renderTxt(); renderAgenda(); ren
 
 function show() {
   if (!day || day !== deskDay || desk.closed?.at) day = deskDay;
+  if (win.hidden) suggested = null; // a fresh opening: suggestions again for anything not yet chosen
   win.hidden = false;
   if (!placed) { restorePlace(win); placed = true; ready(); }
   render();

@@ -32,7 +32,11 @@ export function archiveEl() {
   const read = (text, done, sub = false) => h("li", { className: `ar-line${done ? " done" : ""}${sub ? " sub" : ""}` }, h("span", { className: "ar-tick", textContent: done ? "✓" : "○" }), h("span", { textContent: text }));
   const page = !p ? h("p", { className: "pl-covered", textContent: view.archive.days.length ? "Choose a day." : "No earlier days yet: yesterday's page lands here tomorrow." })
     : h("div", { className: "ar-page" }, h("p", { className: "pl-date", textContent: planDate(view.archive.day) }),
-      p.closed?.well || p.closed?.hard ? h("dl", { className: "cd-said ar-said" }, p.closed.well ? [h("dt", { textContent: "Went well" }), h("dd", { textContent: p.closed.well })] : null, p.closed.hard ? [h("dt", { textContent: "Got in the way" }), h("dd", { textContent: p.closed.hard })] : null) : null,
+      p.closed && (p.closed.well || p.closed.hard || p.closed.mood || p.closed.blockers?.length || p.closed.line) ? h("dl", { className: "cd-said ar-said" },
+        p.closed.mood ? [h("dt", { textContent: "Day" }), h("dd", { textContent: MOODS.filter(([k]) => k === p.closed.mood).map(([, f, n]) => `${f} ${n}`)[0] })] : null,
+        p.closed.blockers?.length ? [h("dt", { textContent: "Got in the way" }), h("dd", { textContent: p.closed.blockers.map((b) => BLOCKERS.find(([k]) => k === b)?.[1]).join(" · ") })] : null,
+        p.closed.line ? [h("dt", { textContent: "Also" }), h("dd", { textContent: p.closed.line })] : null,
+        p.closed.well ? [h("dt", { textContent: "Went well" }), h("dd", { textContent: p.closed.well })] : null, p.closed.hard ? [h("dt", { textContent: "Got in the way" }), h("dd", { textContent: p.closed.hard })] : null) : null,
       h("h4", { textContent: "Focuses" }), h("ol", { className: "ar-list" }, p.focus.filter(Boolean).map((f) => h("li", { textContent: f }))),
       ...p.sections.filter((s) => s.lines.some((l) => l.text)).flatMap((s) => [h("h4", { textContent: s.name || "Untitled" }), h("ul", { className: "ar-list" }, s.lines.filter((l) => l.text).map((l) => read(l.text, l.done, Boolean(l.parent))))]));
   return h("div", { className: "pl-archive" }, h("div", {}, pick, backupLine()), page);

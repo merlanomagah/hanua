@@ -1,9 +1,11 @@
 // Plan my day's files: one per day (with the week before it), their summaries for the week view, the archive's
 // list, and the planner's prompts and links. Split out of server/index.js (F6, 9 Oct 2026).
 import { readdir } from "node:fs/promises";
+import { execFile } from "node:child_process";
 import path from "node:path";
 import { notionEnabled, pageSections } from "../notion.js";
-import { dayKey, daySummary, deskShape, stepDay, versionClash, CARRY_DAYS, CLASH_TEXT, DESK_VERSION } from "../../public/shared/desk.js";
+import { closeMoment, dayKey, daySummary, deskShape, stepDay, versionClash, weekFacts, CARRY_DAYS, CLASH_TEXT, DESK_VERSION } from "../../public/shared/desk.js";
+import { todayStr } from "../../public/shared/dates.js";
 import { fileTooNew } from "../../public/shared/sync.js";
 
 export function register({ app, config, room, roomDir, roomRoute, baseOf, readJson, settings }) {
@@ -48,6 +50,18 @@ export function register({ app, config, room, roomDir, roomRoute, baseOf, readJs
     }
     res.set("Cache-Control", "no-store").json(out);
   });
+  // How the days went (15 Oct 2026; brief docs/plans/2026-10-planner-keys-and-close-insights.md): ?to=YYYY-MM-DD
+  // (default today) and ?days=N (default 14, at most 42) → weekFacts: counts, the top blocker, up to three suggestions.
+  // Worked out from the day files each time; nothing stored. The days after `to` are read too, to see a late close.
+  app.get("/api/desk/facts", async (req, res) => {
+    const to = dayKey(req.query.to) || todayStr(), n = Math.min(42, Math.max(1, Number(req.query.days) || 14));
+    const from = stepDay(to, 1 - n), days = {};
+    for (let d = stepDay(from, -CARRY_DAYS); d <= stepDay(to, CARRY_DAYS); d = stepDay(d, 1)) {
+      const r = await room.read(path.join(deskDir, `${d}.json`));
+      if (r.state === "ok") days[d] = r.data;
+    }
+    res.set("Cache-Control", "no-store").json(weekFacts(days, from, to));
+  });
   app.get("/api/desk/:day", roomRoute(async (req, res) => {
     const day = dayKey(req.params.day);
     if (!day) return res.status(400).json({ error: "Which day?" });
@@ -71,4 +85,22 @@ export function register({ app, config, room, roomDir, roomRoute, baseOf, readJs
     const { data, rev } = await room.write(path.join(deskDir, `${day}.json`), { ...deskShape(req.body), v: DESK_VERSION }, { base: baseOf(req.body), guard });
     res.json({ ...deskShape(data), rev });
   }));
+
+  // Close the day's reminder as a Mac notification (15 Oct 2026): the page's own message only showed when Hanua was on
+  // screen at 7 pm, so most evenings it never reached Mel. Once a day, from the reminder time (Desk Settings; blank =
+  // off), only when today has something written and isn't closed. Only the real Hanua on a Mac; it writes nothing.
+  if (process.env.HANUA_MAIN === "1" && process.platform === "darwin") {
+    let told = "";
+    const look = async () => {
+      const today = todayStr();
+      if (told === today || !closeMoment(new Date(), settings().close || {}).remind) return;
+      const r = await room.read(path.join(deskDir, `${today}.json`));
+      if (r.state !== "ok") return;
+      const d = deskShape(r.data);
+      told = today;
+      if (d.closed?.at || !d.sections.some((x) => x.lines.some((l) => l.text))) return;
+      execFile("osascript", ["-e", 'display notification "A minute to decide what\'s left, in Hanua." with title "Close the day?"'], (err) => { if (err) console.log(`Hanua: the Close the day notification didn't show (${err.message})`); });
+    };
+    setInterval(() => look().catch(() => {}), 60_000).unref();
+  }
 }

@@ -8,6 +8,7 @@ import { onBoard, renderBoard, viewUse } from "./board.js";
 import { jumpVisits } from "../jump.js";
 import { leafGoals, sized } from "./form.js";
 import { renderNotes } from "../app.js";
+import { factsEl, loadFacts } from "../desk/facts.js";
 
 export const ENERGY = ["Low", "Okay", "Good", "Great"];
 export const lastReview = () => state.reviews.reviews[0] || null;
@@ -144,6 +145,10 @@ export function renderReview() {
       top.push(h("p", { className: "rv-views", textContent: `Views you opened this week: ${Object.entries(names).map(([k, n]) => `${n} ${use[k] || 0}`).join(" · ")}. One you never open is a candidate to cut.` }));
       // the Jump Dashboard is a probe (10 Oct 2026): how often it was opened is what decides it
       top.push(h("p", { className: "rv-views", textContent: `Jump Dashboard opened this week: ${jumpVisits(ymd(mondayOf(new Date())))}.` }));
+      // how the planner's days went, and what Hanua noticed (15 Oct 2026): the week, from the day files
+      const days = h("div", { className: "rv-days" });
+      top.push(days);
+      loadFacts(7).then((f) => { const el = factsEl(f, { title: "Your days this week" }); if (el) days.replaceChildren(el); });
     }
   }
   const area = h("textarea", { rows: 3, placeholder: "A line or two is plenty", value: rv[step.key] });
