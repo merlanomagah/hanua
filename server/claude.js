@@ -183,3 +183,27 @@ Already planned this week: ${planned.length ? planned.join("; ") : "nothing yet"
   if (response.stop_reason === "refusal" || !response.parsed_output) throw new Error("Claude couldn't come up with ideas for this one.");
   return response.parsed_output;
 }
+
+// The Journal's Reflect (15 Oct 2026; brief docs/plans/2026-10-journal.md): Mel's week, read back to her when she asks.
+// She agreed Claude may read her journal to help her clear her head and see how she works; it only ever runs on her
+// press, never by itself, and nothing it says is saved unless she writes it in herself.
+const REFLECT_SYSTEM = `You are reading one week of a personal journal, at the writer's request, the way a trusted, warm elder would: someone who has seen many weeks and knows what matters. The writer is Pacific (Rotuman / Fijian roots) and lives in Aotearoa; her journal is organised like a fale: Family (the floor), Self, Relationships, Work (the posts), Spirit & culture (the roof), plus Write freely and Carry forward.
+Reply in plain text, short, in this shape:
+- 2 or 3 things you notice (patterns, what seems to matter to her, what she carried), each one line, in her own terms; quote at most a few of her words.
+- One area of the fale that seems quiet or heavy this week, said gently, without judgement (skip if all is in balance).
+- One question to sit with, asked as "what" or "who", never a bare "why".
+- One small, concrete next step for the coming week.
+No diagnosis, no therapy language, no lists of tips, no cultural words she didn't use. If anything suggests she is not safe or is in real distress, say kindly that it might help to talk to someone close, or to call or text 1737 (free, any time, in Aotearoa).`;
+export async function reflectJournal(week, sections) {
+  const page = Object.entries(sections).filter(([, t]) => t && t.trim()).map(([s, t]) => `## ${s}\n${t.trim()}`).join("\n\n");
+  const response = await getClient().beta.messages.create({
+    model: MODEL,
+    max_tokens: 4000,
+    betas: ["server-side-fallback-2026-07-01"],
+    fallbacks: "default",
+    output_config: { effort: "medium" },
+    system: REFLECT_SYSTEM,
+    messages: [{ role: "user", content: `The week of ${week}.\n\n<journal>\n${page}\n</journal>` }],
+  });
+  return textOf(response);
+}

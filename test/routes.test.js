@@ -187,3 +187,28 @@ test("routes: the Jump Dashboard writes both ways on sample rows: add, move, clo
   assert.equal((await call(`/api/jump/escalations/${id}/trash`, { method: "POST", body: {} })).status, 200);
   assert.equal((await cards()).some((r) => r.id === id), false);
 });
+
+test("routes: the Journal round trips on invented weeks, refuses a stale save, bins and brings back, and is never a book", async () => {
+  const week = "2026-10-12";
+  const p = await call("/api/journal/prompts");
+  assert.equal(p.json.live, false);
+  assert.ok(Object.values(p.json.prompts).flat().every((t) => t.includes("(invented)")));
+  const first = await call(`/api/journal/${week}`);
+  assert.equal(first.status, 200);
+  const saved = await call(`/api/journal/${week}`, { method: "PUT", body: { sections: { Family: "Rang home (invented)" }, base: first.json.edited } });
+  assert.equal(saved.status, 200);
+  const again = await call(`/api/journal/${week}`);
+  assert.equal(again.json.sections.Family, "Rang home (invented)");
+  const stale = await call(`/api/journal/${week}`, { method: "PUT", body: { sections: { Family: "Other (invented)" }, base: "2020-01-01T00:00:00.000Z" } });
+  assert.equal(stale.status, 409);
+  const list = await call("/api/journal");
+  assert.ok(list.json.weeks.some((w) => w.week === week && w.areas.includes("Family")));
+  assert.equal((await call(`/api/journal/${week}/trash`, { method: "POST" })).json.ok, true);
+  assert.equal((await call(`/api/journal/${week}`)).json.sections.Family, "");
+  assert.equal((await call(`/api/journal/${week}/restore`, { method: "POST" })).json.ok, true);
+  assert.equal((await call(`/api/journal/${week}`)).json.sections.Family, "Rang home (invented)");
+  assert.equal((await call("/api/journal/2026-10-13")).status, 400); // weeks start on a Monday
+  // never a book: Ask Claude and the Feed read every book, so the Journal must not be one
+  const books = await call("/api/areas");
+  assert.ok(!JSON.stringify(books.json).toLowerCase().includes("journal"));
+});

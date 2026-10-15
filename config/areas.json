@@ -148,6 +148,19 @@
       }
     ]
   },
+  "journal": {
+    "_about": "The Journal on the desk (brief docs/plans/2026-10-journal.md): one page a week in the Notion Journal database, the words in the page body (a heading per area). Never a book in areas[] (Ask Claude reads every book). The database and the prompts page must be connected to the Hanua integration (••• → Connections), with insert and update content allowed.",
+    "label": "Journal",
+    "notionDatabaseId": "518997a07e234ed3b946d5a12f7ffe1e",
+    "promptsUrl": "https://www.notion.so/3fa16603f0bd81949816e5b711345615",
+    "fields": {
+      "title": "Week",
+      "date": "Week of",
+      "areas": "Areas",
+      "writtenIn": "Written in"
+    },
+    "limit": 60
+  },
   "jump": {
     "_about": "The Jump Dashboard (right of the desk; briefs docs/plans/2026-10-jump-dashboard.md and -v2.md): reads three Jump OS databases and, since v2, writes back to them through the checks in public/shared/jump.js (checkWrite). Column names must match Notion exactly. Each database must be connected to the Hanua integration (••• → Connections), with insert and update content allowed.",
     "notionUrl": "https://www.notion.so/35d16603f0bd80d884dccf6e5e3503a0",

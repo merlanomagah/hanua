@@ -22,6 +22,7 @@ import * as money from "./routes/money.js";
 import * as music from "./routes/music.js";
 import * as books from "./routes/books.js";
 import * as jump from "./routes/jump.js";
+import * as journal from "./routes/journal.js";
 
 // Hanua's server: start-up, the guard, which room folder, and the routes by subject in server/routes/ (split into
 // them on 9 Oct 2026, Foundations F6; tested end to end in test/routes.test.js).
@@ -85,6 +86,7 @@ money.register(ctx);
 await music.register(ctx);
 await books.register(ctx);
 await jump.register(ctx);
+await journal.register(ctx);
 
 app.use((err, _req, res, _next) => {
   console.error(err);

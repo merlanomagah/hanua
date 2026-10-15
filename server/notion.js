@@ -15,7 +15,9 @@ export class NotionError extends Error {
 // database query is a POST too) still go through. Set by server/index.js from how Hanua was started (guard.js).
 let pageWritesBlocked = false;
 export const blockPageWrites = (on) => { pageWritesBlocked = Boolean(on); };
-const changesPage = (path, method) => method !== "GET" && /^\/pages(\/|$)/.test(path);
+// 15 Oct 2026 (the Journal writes page bodies): also any change to a block, and making a database. A database query
+// (POST /databases/:id/query) and reading blocks still go through.
+const changesPage = (path, method) => method !== "GET" && (/^\/pages(\/|$)/.test(path) || /^\/blocks(\/|$)/.test(path) || path === "/databases");
 
 // Notion allows about 3 requests a second. When it says "slow down" (429), wait as long as it asks and try once more.
 async function call(path, { method = "GET", body } = {}, retried = false) {
@@ -223,6 +225,22 @@ export async function createPage(area, properties) {
   return normalisePage(page, area.fields);
 }
 
+// The Journal (15 Oct 2026): a page made with its body, a body replaced, and a page brought back from the trash
+export async function createPageWithBody(area, properties, children = []) {
+  const page = await call("/pages", { method: "POST", body: { parent: { database_id: area.notionDatabaseId }, properties, children: children.slice(0, 100) } });
+  for (let i = 100; i < children.length; i += 100) await call(`/blocks/${page.id}/children`, { method: "PATCH", body: { children: children.slice(i, i + 100) } });
+  return normalisePage(page, area.fields);
+}
+// Replace a page's body: the old blocks go to Notion's trash one by one (restorable from the page's history), then
+// the new ones are added. Only for pages Hanua writes whole (the Journal's weeks).
+export async function replaceBody(pageId, children) {
+  for (const b of await pageBlocks(pageId)) await call(`/blocks/${b.id}`, { method: "DELETE" });
+  for (let i = 0; i < children.length; i += 100) await call(`/blocks/${pageId}/children`, { method: "PATCH", body: { children: children.slice(i, i + 100) } });
+}
+export async function restorePage(pageId) {
+  await call(`/pages/${pageId}`, { method: "PATCH", body: { archived: false } });
+}
+
 // One page as it is now (to check a write against what's really there)
 export async function getPage(pageId, fields = {}) {
   return normalisePage(await call(`/pages/${pageId}`), fields);
@@ -247,7 +265,7 @@ export async function pageSections(pageId) {
   return out;
 }
 const blockText = (b) => (b[b.type]?.rich_text || []).map((t) => t.plain_text).join("").trim();
-async function pageBlocks(pageId) {
+export async function pageBlocks(pageId) {
   const blocks = [];
   let cursor;
   for (let i = 0; i < 5; i++) {

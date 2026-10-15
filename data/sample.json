@@ -662,5 +662,45 @@
         "raised": 3
       }
     ]
+  },
+  "journal": {
+    "_about": "Invented prompts and one invented week for sample servers (the repo is public; real prompts live in Notion).",
+    "prompts": {
+      "Family": [
+        "Who did you catch up with at home this week? (invented)",
+        "What would make next family dinner easy? (invented)"
+      ],
+      "Self": [
+        "What gave you energy this week? (invented)",
+        "What would feel like enough next week? (invented)"
+      ],
+      "Relationships": [
+        "Who would you like to see more of? (invented)",
+        "What did a friend do that you noticed? (invented)"
+      ],
+      "Work": [
+        "What moved forward at work? (invented)",
+        "What could you hand on next week? (invented)"
+      ],
+      "Spirit & culture": [
+        "What reminded you why it matters? (invented)"
+      ],
+      "Write freely": [
+        "Set it down here. (invented)"
+      ],
+      "Carry forward": [
+        "What will you carry on, and what will you put down? (invented)"
+      ]
+    },
+    "weeks": [
+      {
+        "weeksAgo": 1,
+        "sections": {
+          "Family": "Sunday lunch at the park (invented)",
+          "Work": "Finished the quarterly slides (invented)",
+          "Carry forward": "Keep the walks (invented)"
+        }
+      }
+    ]
   }
 }

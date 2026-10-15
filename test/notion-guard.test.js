@@ -2,7 +2,7 @@
 // a page is refused before anything is sent, whatever a route forgot. Reads (a database query is a POST) still go.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { archivePage, blockPageWrites, createPage, queryArea, updatePage } from "../server/notion.js";
+import { archivePage, blockPageWrites, createPage, createPageWithBody, pageBlocks, queryArea, replaceBody, restorePage, updatePage } from "../server/notion.js";
 
 test("on a sample server, page writes never leave Hanua; reads still do", async () => {
   const sent = [];
@@ -14,7 +14,17 @@ test("on a sample server, page writes never leave Hanua; reads still do", async 
     await assert.rejects(updatePage("abc", {}), /never changes Notion/);
     await assert.rejects(createPage({ notionDatabaseId: "db" }, {}), /never changes Notion/);
     await assert.rejects(archivePage("abc"), /never changes Notion/);
+    await assert.rejects(createPageWithBody({ notionDatabaseId: "db" }, {}, [{ type: "paragraph" }]), /never changes Notion/);
+    await assert.rejects(restorePage("abc"), /never changes Notion/);
     assert.deepEqual(sent, []);
+    // a body is replaced block by block: reading the old blocks may go, deleting or adding them may not (15 Oct 2026)
+    await assert.rejects(replaceBody("abc", [{ type: "paragraph" }]), /never changes Notion/);
+    assert.equal(sent.length, 1);
+    assert.match(sent[0], /^GET .*\/blocks\/abc\/children/);
+    sent.length = 0;
+    await pageBlocks("abc");
+    assert.equal(sent.length, 1);
+    sent.length = 0;
     await queryArea({ notionDatabaseId: "db", fields: {} }, 10);
     assert.equal(sent.length, 1);
     assert.match(sent[0], /^POST .*\/databases\/db\/query$/);

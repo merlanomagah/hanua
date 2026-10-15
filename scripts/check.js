@@ -8,6 +8,8 @@
 //  5. every page signal ("hanua:…") is in public/events.js, and each one there is both sent and listened for
 //  6. the tests pass
 //  7. when the add-on list changed since GitHub's main, say so (each Mac installs them itself before restarting)
+//  8. the Journal stays private (15 Oct 2026): never a book (Ask Claude reads every book), only its own route sends it
+//     to Claude, and its sample prompts and weeks are invented (the repo is public)
 import { execFileSync, spawnSync } from "node:child_process";
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import path from "node:path";
@@ -69,12 +71,25 @@ for (const f of walk(path.join(root, "server"))) {
   }
 }
 
-// 5. the tests
+// 8. the Journal stays private
+{
+  const cfg = JSON.parse(readFileSync(path.join(root, "config/areas.json"), "utf8"));
+  if ((cfg.areas || []).some((a) => /journal/i.test(`${a.id} ${a.label}`))) problems.push("config/areas.json lists the Journal as a book: Ask Claude and the Feed read every book (keep it under its own journal key)");
+  for (const f of code.filter((x) => /server\//.test(x))) {
+    const t = readFileSync(f, "utf8");
+    if (/reflectJournal/.test(t) && !/server\/(claude|routes\/journal)\.js$/.test(f)) problems.push(`${rel(f)} reaches the Journal's Reflect: only server/routes/journal.js may send a week to Claude`);
+  }
+  const sample = JSON.parse(readFileSync(path.join(root, "data/sample.json"), "utf8")).journal || {};
+  const texts = [...Object.values(sample.prompts || {}).flat(), ...(sample.weeks || []).flatMap((w) => Object.values(w.sections || {}))];
+  for (const t of texts) if (t && !t.includes("(invented)")) problems.push(`data/sample.json's journal holds text not marked (invented): "${String(t).slice(0, 40)}…" (the repo is public)`);
+}
+
+// 6. the tests
 const tests = spawnSync("npm", ["test", "--silent"], { cwd: root, encoding: "utf8" });
 const tally = (tests.stdout || "").match(/ℹ pass (\d+)[\s\S]*?ℹ fail (\d+)/);
 if (tests.status !== 0) problems.push(`the tests failed${tally ? ` (${tally[2]} of ${Number(tally[1]) + Number(tally[2])})` : ""}:\n${(tests.stdout || "").split("\n").filter((l) => l.startsWith("✖")).slice(0, 8).join("\n")}`);
 
-// 6. add-ons changed since GitHub's main?
+// 7. add-ons changed since GitHub's main?
 let addons = "";
 try {
   const diff = execFileSync("git", ["diff", "--name-only", "origin/main", "--", "package-lock.json"], { cwd: root, encoding: "utf8" }).trim();
