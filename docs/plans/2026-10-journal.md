@@ -1,6 +1,6 @@
 # Panel brief: the Journal (a file on the desk)
 
-**Status:** awaiting Mel's yes (15 Oct 2026).
+**Status:** approved by Mel 15 Oct 2026 and built the same evening, reshaped by her answers: (1) she journals in a paper notebook, not regularly, so the Journal is **weekly**: one ruled page a week; (2) Notion; (3) the five fale areas, as **sections on one ruled page**, each with a question to start the thinking, plus Write freely and Carry forward; (4) **Claude may read it**, to help her clear her head and see how she works: **Reflect ✦** reads the week back, on her press only. So Hanua reads the page's words back from Notion (the Data steward's "write once, never read" was for the counts-only answer). Notion: the Journal database and "Hanua journal prompts" page on the Hanua page (Mel connects the Hanua integration to both).
 
 **Request (as the problem):** Mel wants a place to reflect more deeply than Close the day's taps, on specific areas of her life (she named Personal, Family, Work, Relationships), with questions that help her go further, grounded in a Pacific / Bula way of reflecting rather than generic journalling.
 **Lane:** Large (a new desk window, a new data home, possibly a Notion database) · **Seats:** Chair, Sceptic, Daily-use coach, Experience designer, Room designer, Data steward *(independent)*, Frontend engineer *(independent)*, Test lead *(independent)*, Privacy and safety, Release keeper, guest Bula

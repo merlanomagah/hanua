@@ -2543,7 +2543,7 @@ dialog.lock::backdrop { background: #14110e; }
 .desk.arranged .meal-slip { right: auto; } /* arranged, its place is its left and top: a right as well squeezed it narrow */
 /* phones: every desk window along the bottom, full width (Settings and the lists set their own left/right further down,
    hence the doubled class; window.js keeps no place under 901 px) */
-@media (max-width: 900px) { .txt-win, .txt-win:is(.set-win, .list-win, .close-win) { position: fixed; left: 8px; right: 8px; top: auto; bottom: 8px; width: auto; height: auto; max-height: 70vh; resize: none; } .txt-bar { cursor: default; } }
+@media (max-width: 900px) { .txt-win, .txt-win:is(.set-win, .list-win, .close-win, .jn-win) { position: fixed; left: 8px; right: 8px; top: auto; bottom: 8px; width: auto; height: auto; max-height: 70vh; resize: none; } .txt-bar { cursor: default; } }
 /* the page and server save a day differently (an old tab, or Hanua not restarted): saving stops and says so */
 .pl-stale { margin: 0 0 var(--line); padding: 8px 12px; border-left: 3px solid var(--terra); background: rgb(196 96 42 / 0.08); font: 13px/20px var(--ui); color: var(--ink); }
 .ar-backup { margin: var(--line) 0 0; padding: 0 8px; font: 11px/16px var(--ui); color: var(--ink-4); }
@@ -3262,3 +3262,32 @@ html.dark .jc { background: var(--page); }
   .jt-scale, .jt-row { grid-template-columns: minmax(80px, 38%) minmax(0, 1fr); }
   .jt-row .jw-today-btn { display: none; }
 }
+
+/* ---- the Journal (15 Oct 2026, public/desk/journal.js): this week's ruled page, a section per area ---- */
+.jn-win { width: min(640px, calc(100% - 32px)); height: min(760px, calc(100% - 120px)); left: auto; right: calc(var(--pc-right, 24px) + 40px); top: 80px; }
+.jn-body { padding: 14px 28px 20px; }
+.jn-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 6px; }
+.jn-eyebrow { font: 9px var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--terra); }
+.jn-title { margin: 2px 0 0; font: italic 400 28px/1.15 var(--display); color: var(--ink); }
+.jn-note { margin: 6px 0 0; font: 12px var(--ui); color: var(--ink-3); }
+.jn-fale-box { margin: 0; text-align: center; }
+.jn-fale { width: 108px; height: auto; display: block; }
+.jn-fale figcaption, .jn-fale-box figcaption { font: 8px var(--mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-4); margin-top: 2px; }
+.jn-part { fill: var(--terra); fill-opacity: 0.08; stroke: var(--border-2); stroke-width: 1.2; cursor: pointer; transition: fill-opacity 0.3s; }
+.jn-part.on { fill-opacity: var(--f, 0.5); stroke: var(--terra); }
+.jn-sec { margin-top: 18px; }
+.jn-head { display: flex; align-items: baseline; gap: 8px; }
+.jn-head h3 { margin: 0; font: 500 20px/1.2 var(--display); color: var(--ink); }
+.jn-again { border: 0; background: none; padding: 0 4px; cursor: pointer; font: 14px var(--ui); color: var(--ink-4); }
+.jn-again:hover, .jn-again:focus-visible { color: var(--terra); }
+.jn-q { margin: 2px 0 4px; font: italic 15px/1.4 var(--display); color: var(--ink-3); }
+.jn-text { display: block; width: 100%; box-sizing: border-box; min-height: 84px; padding: 0 2px; border: 0; resize: none; overflow: hidden; background: transparent linear-gradient(transparent 27px, var(--border-2) 27px, var(--border-2) 28px) 0 0 / 100% 28px; font: 15px/28px var(--ui); color: var(--ink); outline: none; }
+.jn-text:focus-visible { box-shadow: inset 2px 0 0 var(--terra); }
+.jn-foot { display: flex; align-items: center; gap: 8px; padding: 10px 16px; border-top: 1px solid var(--border-2); }
+.jn-status { flex: 1; min-width: 0; font: 12px var(--ui); color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.jn-reflection { margin: 12px 0 4px; padding: 12px 14px; border-left: 2px solid var(--terra); background: transparent; }
+.jn-reflection h4 { margin: 0 0 6px; font: 9px var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--terra); }
+.jn-r-text { margin: 0 0 10px; white-space: pre-wrap; font: 14px/1.5 var(--ui); color: var(--ink); }
+.cd-more { justify-self: start; border: 0; background: none; padding: 2px 0; cursor: pointer; font: 12px var(--ui); color: var(--ink-3); text-decoration: underline; text-underline-offset: 2px; }
+.cd-more:hover, .cd-more:focus-visible { color: var(--terra); }
+@media (max-width: 900px) { .txt-win.jn-win { height: 82vh; max-height: 82vh; } .jn-body { padding: 10px 16px 16px; } .jn-fale { width: 84px; } .jn-foot { flex-wrap: wrap; } .jn-status { flex-basis: 100%; } }

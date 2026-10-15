@@ -11,8 +11,9 @@ Mel's ask (15 Oct 2026): Hanua should notice how the planner is used, or not use
 > 1. Fetch `http://localhost:3000/api/desk/facts?days=7` from the Hanua running on this Mac. Fetch `?days=28` as well, to compare against.
 > 2. If you need more detail, read the day files in iCloud Drive › Hanua › desk (`YYYY-MM-DD.json`, read-only; never write to them). Mel agreed on 6 Oct 2026 that Claude may read planner history, personal and work.
 > 3. Write one row: Week ("D–D Mon YYYY"), From, Days used, Planned, Closed evening / morning / Not closed, Done of tasks, Top blocker, **What Hanua noticed** (2–4 plain sentences on patterns: what's rising or falling against the 28 days, what keeps getting carried or let go, when she plans and when she doesn't), **Proposals** (at most 3 ideas for Hanua, each one line: what to build, change or cut, and why from the evidence), Status = New.
-> 4. **Counts and themes only: never copy a task's text, a person's name or a work detail into the note.** Say "a home admin task carried 5 times", not the task.
-> 5. Don't change Hanua, the repo, or any other Notion page. If Hanua isn't running or the facts can't be read, write the row anyway, saying so in What Hanua noticed.
+> 4. The Journal (Notion › Hanua › Journal, one page a week): count which areas were written and how many weeks; **don't open the pages for this note** (Mel reads her own weeks back with Reflect in Hanua).
+> 5. **Counts and themes only: never copy a task's text, a person's name or a work detail into the note.** Say "a home admin task carried 5 times", not the task.
+> 6. Don't change Hanua, the repo, or any other Notion page. If Hanua isn't running or the facts can't be read, write the row anyway, saying so in What Hanua noticed.
 
 ## For the next build session
 

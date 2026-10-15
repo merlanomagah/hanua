@@ -2,7 +2,7 @@
 // title bar (red closes, yellow minimises into the dock like a Mac's, green is just for looks), drag by the bar,
 // resize from the corner, and are remembered: which are open or minimised today survives a reload or an update.
 // Places and sizes are kept in this browser (a view preference).
-import { $, h, reducedMotion } from "../lib.js";
+import { $, focus, h, reducedMotion } from "../lib.js";
 import { todayStr } from "../shared/dates.js";
 import { fitWindow } from "../shared/layout.js";
 
@@ -156,7 +156,8 @@ export function restore(id) {
 export function renderDockWindows() {
   const box = $("dock-min");
   if (!box) return;
-  const mins = [...wins.entries()].filter(([id]) => state.open[id] === "min");
+  // a personal window (the Journal) leaves no tile in the dock at work (15 Oct 2026)
+  const mins = [...wins.entries()].filter(([id, w]) => state.open[id] === "min" && !(w.personal && focus.on));
   $("dock-min-sep").hidden = !mins.length;
   box.replaceChildren(...mins.map(([id, w]) => {
     const b = h("button", { type: "button", className: "dock-app dock-win", title: w.title, ariaLabel: `${w.title}: open again`, innerHTML: w.icon || "" });
@@ -166,6 +167,7 @@ export function renderDockWindows() {
   }));
 }
 
+document.addEventListener("hanua:focus", () => renderDockWindows());
 // Once per page load, when the desk first shows: today's windows as they were left; or, the first time today,
 // the one that fits the day (passed in by the planner: "todo-txt", "plan-day" or null)
 let restored = false;
@@ -182,7 +184,7 @@ export function restoreWindows(firstToday) {
   for (const [id, how] of Object.entries(state.open)) {
     const w = wins.get(id);
     if (!w) { delete state.open[id]; continue; }
-    if (how === "open" && !w.shown()) w.show();
+    if (how === "open" && !w.shown() && !(w.personal && focus.on)) w.show();
   }
   keep();
   renderDockWindows();

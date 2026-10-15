@@ -456,6 +456,11 @@
             <svg viewBox="0 0 48 60" aria-hidden="true"><path d="M4 2h28l12 12v42a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z" fill="#fdfcf9" stroke="#cfc8bb"/><path d="M32 2v10a2 2 0 0 0 2 2h10" fill="#ebe6dc" stroke="#cfc8bb"/><path d="M24 20a7 7 0 0 0-7 7v5l-2 4h18l-2-4v-5a7 7 0 0 0-7-7z" fill="none" stroke="#3f7a5a" stroke-width="1.8" stroke-linejoin="round"/><path d="M21.5 39a2.5 2.5 0 0 0 5 0" fill="none" stroke="#3f7a5a" stroke-width="1.8"/><text x="24" y="54" text-anchor="middle" font-family="DM Mono, monospace" font-size="6.5" letter-spacing=".5" fill="#8a8275">NEW</text></svg>
             <span>Add reminder</span>
           </button>
+          <!-- the Journal (15 Oct 2026, public/desk/journal.js): this week's page, a section per area; put away at work -->
+          <button type="button" class="desk-file personal" id="open-journal" title="Double-click to open" aria-label="Journal: open this week's page">
+            <svg viewBox="0 0 48 60" aria-hidden="true"><rect x="6" y="3" width="36" height="54" rx="3" fill="#fdfcf9" stroke="#cfc8bb"/><path d="M12 3v54" stroke="#c76a3a" stroke-width="2"/><path d="M17 20h19M17 27h19M17 34h19M17 41h13" stroke="#b9b2a5" stroke-width="1.6"/></svg>
+            <span>Journal</span>
+          </button>
         </div>
         <!-- post-its on the wall (public/desk/wallnotes.js): today's focuses (the reminder post-its were cut, 6 Oct 2026) -->
         <div class="focus-notes" id="focus-notes" aria-label="Today's focuses" hidden></div>
@@ -463,6 +468,8 @@
         <section class="txt-win" id="todo-txt" aria-label="To-do.txt" hidden></section>
         <!-- Close the day (public/desk/close.js): from 4 pm, never opened by itself -->
         <section class="txt-win close-win" id="close-day" aria-label="Close the day" hidden></section>
+        <!-- the Journal (public/desk/journal.js): this week's ruled page -->
+        <section class="txt-win jn-win" id="journal-win" aria-label="Journal" hidden></section>
         <!-- Desk Settings (public/desk/settings.js), from the gear in the dock -->
         <section class="txt-win set-win" id="settings-win" aria-label="Settings" hidden></section>
         <!-- the Shopping list (Apple Reminders) and Add reminder: windows like To-do.txt -->

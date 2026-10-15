@@ -22,6 +22,7 @@ import "./desk/wallnotes.js"; // focus and reminder post-its
 import { openSettings, settings } from "./desk/settings.js"; // the gear in the dock
 import "./desk/arrange.js"; // everything on the desk moves, on one grid
 import { initLists } from "./desk/lists.js"; // the Shopping list and Add reminder (Apple Reminders)
+import { initJournal } from "./desk/journal.js";
 
 export { backup } from "./desk/state.js";
 export { openArchive, openPlan, renderTodo } from "./desk/page.js";
@@ -143,6 +144,7 @@ const file = $("open-plan");
 desktopFile(file, () => openPlan({ week: true })); // the week first: click the day to plan (Mel, 6 Oct 2026)
 initLists(desktopFile);
 desktopFile($("open-txt"), () => openTxt());
+initJournal(desktopFile); // the Journal (15 Oct 2026)
 
 // The first time the desk shows after Hanua opens: today's windows as they were left (open, or minimised in the
 // dock). The first time today: the one that fits the day (Mel, 6 Oct 2026): planned → To-do.txt; started but not

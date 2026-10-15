@@ -13,6 +13,7 @@ import { check, dayName, openDay, renderPlanWidget, renderTodo } from "./page.js
 import { renderTxt } from "./todotxt.js";
 import { renderAgenda } from "./agenda.js";
 import { openDayPicker, closeDayPicker } from "./daypick.js";
+import { openJournal } from "./journal.js";
 import { noteClosed, noteOpen, registerWindow, resizable, restorePlace, windowBar } from "./window.js";
 import { asleep } from "../lock.js";
 import { typingIn } from "../sync.js";
@@ -110,6 +111,9 @@ function openEl(items) {
   const one = h("input", { type: "text", className: "set-in cd-in", value: said, maxLength: 200, placeholder: "Anything else? (optional)", ariaLabel: "Anything else about today" });
   one.addEventListener("input", () => { said = one.value; });
   one.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); commit(go); } });
+  // more to say than a line: the Journal's page for the week, at Write freely (15 Oct 2026)
+  const more = h("button", { type: "button", className: "cd-more", textContent: "Write more in the Journal →" });
+  more.addEventListener("click", () => openJournal({ at: "Write freely" }));
   const decided = [...choices.values()];
   const tally = ["tomorrow", "day", "let"].map((k) => decided.filter((c) => c.how === k).length);
   const left = items.length - decided.length;
@@ -120,7 +124,7 @@ function openEl(items) {
     items.length ? h("ul", { className: "cd-list" }, rows) : h("p", { className: "txt-empty", textContent: "Nothing open: everything's ticked or decided." }),
     items.length > 1 ? h("div", { className: "cd-all" }, btn("All to tomorrow", () => all("tomorrow")), btn("Let all go", () => all("let")), decided.length ? btn("Clear choices", () => { choices.clear(); render(); }) : null) : null,
     // how the day went is personal: not at work
-    focus.on ? null : h("div", { className: "cd-lines" }, moods, blocks, one),
+    focus.on ? null : h("div", { className: "cd-lines" }, moods, blocks, one, more),
     h("div", { className: "cd-foot" },
       h("span", { className: "cd-tally", textContent: [tally[0] && `${tally[0]} to tomorrow`, tally[1] && `${tally[1]} to another day`, tally[2] && `${tally[2]} let go`, left > 0 && `${left} left for the morning`].filter(Boolean).join(" · ") || "Choose for each, or leave them for the morning" }),
       go),

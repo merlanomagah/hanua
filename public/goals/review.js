@@ -193,7 +193,11 @@ $("rv-next").addEventListener("click", async () => {
     else state.reviews.reviews.unshift({ id: `local-${Date.now()}`, week: values.title, date: values.date, tryNext: values.tryNext, weekGoal: values.weekGoal });
     dropDraft();
     $("review-dialog").close();
-    toast(res.live ? "Review saved to Notion ✓ See you next week." : "Review saved here only (sample data)");
+    // the week's other half (15 Oct 2026): the Journal's page for the week, one press away
+    toast(res.live ? "Review saved to Notion ✓ See you next week." : "Review saved here only (sample data)", false, { label: "Open the Journal", run: async () => {
+      const [{ showDesk }, { openJournal }] = await Promise.all([import("../planner.js"), import("../desk/journal.js")]);
+      showDesk(true); openJournal();
+    } });
     renderNotes();
     if (onBoard) renderBoard();
   } catch (err) {
