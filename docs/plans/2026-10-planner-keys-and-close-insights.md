@@ -1,6 +1,6 @@
 # Panel brief: planner keys, usual hours, and a Close the day that learns
 
-**Status:** awaiting Mel's yes (15 Oct 2026).
+**Status:** approved by Mel 15 Oct 2026 (yes / yes / both) and built the same evening: steps 1–9 live; step 10 (the Sunday read) set up in Notion (Usage notes) with its steps in `docs/usage-read.md`, to be scheduled from the Mac mini (rule 1). The "reshape" of a late close is derived (`dayFacts`), not written into earlier days.
 
 **Request (as the problem):** (A) Plan my day should forgive slips the way a Mac does: ⌘Z (held) steps back, an accidental Tab is easy to take back, and Tab keeps moving forward (subtask → Priority → Time). (B) Mel wants to set her usual day hours herself. (C) Close the day isn't earning its keep: make it quick enough to actually do, while still recording something worth learning from, and have Hanua (and Claude) notice patterns and propose changes so Mel doesn't have to be introspective.
 **Lane:** Medium (A, B) + Large-shaped brief for C · **Seats:** Chair, Sceptic, Daily-use coach, Experience designer, Data steward, Frontend engineer, Test lead, Privacy and safety, Release keeper
