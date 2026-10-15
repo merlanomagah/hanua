@@ -8,7 +8,7 @@ import os from "node:os";
 import path from "node:path";
 import { parse as parseEnv } from "dotenv";
 import { blockPageWrites, notionEnabled, NotionError } from "./notion.js";
-import { claudeEnabled } from "./claude.js";
+import { blockClaude, claudeEnabled } from "./claude.js";
 import { watchForUpdates } from "./updates.js";
 import { createRoom } from "./room.js";
 import { localOnly, roomChoice } from "./guard.js";
@@ -23,6 +23,7 @@ import * as music from "./routes/music.js";
 import * as books from "./routes/books.js";
 import * as jump from "./routes/jump.js";
 import * as journal from "./routes/journal.js";
+import * as work from "./routes/work.js";
 
 // Hanua's server: start-up, the guard, which room folder, and the routes by subject in server/routes/ (split into
 // them on 9 Oct 2026, Foundations F6; tested end to end in test/routes.test.js).
@@ -54,6 +55,7 @@ app.use(express.static(path.join(root, "public"), { setHeaders: (res) => res.set
 const fileEnv = (() => { try { return parseEnv(readFileSync(path.join(process.cwd(), ".env"))); } catch { return {}; } })();
 const choice = roomChoice(process.env, fileEnv);
 blockPageWrites(choice.sample); // a sample server never changes Notion (server/notion.js)
+blockClaude(choice.sample); // nor calls Claude (server/claude.js), whatever its .env says
 if (choice.ignored.length) console.log(`Hanua: a sample server, so .env's ${choice.ignored.join(" and ")} (Mel's real folder) is ignored`);
 const home = (p) => (p && p.startsWith("~/") ? path.join(os.homedir(), p.slice(2)) : p); // the same .env line on both Macs
 const roomDir = path.resolve(root, home(choice.dir));
@@ -87,6 +89,7 @@ await music.register(ctx);
 await books.register(ctx);
 await jump.register(ctx);
 await journal.register(ctx);
+await work.register(ctx);
 
 app.use((err, _req, res, _next) => {
   console.error(err);

@@ -159,7 +159,20 @@
       "areas": "Areas",
       "writtenIn": "Written in"
     },
-    "limit": 60
+    "limit": 60,
+    "work": {
+      "_about": "The Work reflection (brief docs/plans/2026-10-work-reflection.md): one page per reflection in the Notion Work reflections database (its own, so nothing can reach the weekly pages), questions and answers in the body. roleUrl is Mel's page \"Hanua work reflection: my role\" (role, context, panels, questions; written by role, never by name: the repo is public, so none of it is copied here). Both must be connected to the Hanua integration (••• → Connections), with insert and update content allowed for the database.",
+      "notionDatabaseId": "09c40b437e894df886775a26d55c3065",
+      "roleUrl": "https://www.notion.so/3fa16603f0bd81cfaf54d95f211b0007",
+      "fields": {
+        "title": "Reflection",
+        "date": "Date",
+        "role": "Role",
+        "panels": "Panels kept",
+        "writtenIn": "Written in"
+      },
+      "limit": 60
+    }
   },
   "jump": {
     "_about": "The Jump Dashboard (right of the desk; briefs docs/plans/2026-10-jump-dashboard.md and -v2.md): reads three Jump OS databases and, since v2, writes back to them through the checks in public/shared/jump.js (checkWrite). Column names must match Notion exactly. Each database must be connected to the Hanua integration (••• → Connections), with insert and update content allowed.",

@@ -23,7 +23,7 @@ before(async () => {
   await mkdir(path.join(dir, "room")); // a shared folder that's there (a missing one is never made again)
   child = spawn(process.execPath, ["server/index.js"], {
     cwd: root, stdio: ["ignore", "pipe", "pipe"],
-    env: { ...process.env, PORT: String(port), HANUA_SAMPLE: "1", HANUA_MAIN: "", NOTION_TOKEN: "", ANTHROPIC_API_KEY: "", ANTHROPIC_AUTH_TOKEN: "",
+    env: { ...process.env, PORT: String(port), HANUA_SAMPLE: "1", HANUA_MAIN: "", NOTION_TOKEN: "", ANTHROPIC_API_KEY: "sk-not-real-sample-must-not-use", ANTHROPIC_AUTH_TOKEN: "",
       ROOM_DATA: path.join(dir, "room"), BACKUP_DIR: "off", LOCK_FILE: path.join(dir, "lock.json"), APPLE_CAL: "0", PUTEA_URL: "http://127.0.0.1:1", WEATHER_PLACE: "" },
   });
   let said = "";
@@ -211,4 +211,44 @@ test("routes: the Journal round trips on invented weeks, refuses a stale save, b
   // never a book: Ask Claude and the Feed read every book, so the Journal must not be one
   const books = await call("/api/areas");
   assert.ok(!JSON.stringify(books.json).toLowerCase().includes("journal"));
+});
+
+test("routes: Work reflections round trip apart from the Journal's weeks; the panels on a sample server are invented and never Claude", async () => {
+  const role = await call("/api/work/role");
+  assert.equal(role.json.live, false);
+  assert.ok(role.json.role.includes("(invented)"));
+  assert.ok(Object.values(role.json.questions).flat().every((t) => t.includes("(invented)")));
+  assert.equal(role.json.panels.hp.length, 4);
+  assert.equal(role.json.context, undefined); // the context stays on the server, for the panels
+  const week = "2026-10-12";
+  await call(`/api/journal/${week}`, { method: "PUT", body: { sections: { Work: "A weekly line (invented)" } } });
+  const key = "Where I'm at · The work";
+  assert.equal((await call("/api/work", { method: "POST", body: { reflection: {} } })).status, 400); // nothing written
+  const made = await call("/api/work", { method: "POST", body: { reflection: { date: week, answers: { [key]: { q: "What moved? (invented)", a: "The report (invented)" } } } } });
+  assert.equal(made.status, 200);
+  const one = await call(`/api/work/${made.json.id}`);
+  assert.equal(one.json.answers[key].a, "The report (invented)");
+  assert.equal(one.json.answers[key].q, "What moved? (invented)");
+  // the weekly page is untouched by a reflection on the same day
+  assert.equal((await call(`/api/journal/${week}`)).json.sections.Work, "A weekly line (invented)");
+  assert.ok(!(await call("/api/journal")).json.weeks.some((w) => String(w.id || "").startsWith("sample-work")));
+  const stale = await call(`/api/work/${made.json.id}`, { method: "PUT", body: { reflection: one.json, base: "2020-01-01T00:00:00.000Z" } });
+  assert.equal(stale.status, 409);
+  // the panels: invented on a sample server even though a key is set (it must not be used), and nothing is saved
+  const panels = await call("/api/work/panels", { method: "POST", body: { reflection: one.json, id: made.json.id } });
+  assert.equal(panels.status, 200);
+  assert.equal(panels.json.live, false);
+  assert.ok(panels.json.text.includes("(invented)") && panels.json.text.startsWith("HP Panel"));
+  assert.equal((await call(`/api/work/${made.json.id}`)).json.panels, "");
+  // Keep, then Save: the reply goes in the page
+  const kept = await call(`/api/work/${made.json.id}`, { method: "PUT", body: { reflection: { ...one.json, panels: panels.json.text }, base: one.json.edited } });
+  assert.equal(kept.status, 200);
+  assert.ok((await call("/api/work")).json.items.find((x) => x.id === made.json.id).panelsKept);
+  assert.equal((await call(`/api/work/${made.json.id}/trash`, { method: "POST" })).json.ok, true);
+  assert.equal((await call(`/api/work/${made.json.id}`)).status, 404);
+  assert.equal((await call(`/api/work/${made.json.id}/restore`, { method: "POST" })).json.ok, true);
+  assert.equal((await call(`/api/work/${made.json.id}`)).status, 200);
+  assert.equal((await call("/api/work/not-an-id")).status, 400);
+  // the Journal's Reflect is refused too: the sample server won't use the key
+  assert.equal((await call(`/api/journal/${week}/reflect`, { method: "POST", body: { sections: { Work: "x (invented)" } } })).status, 503);
 });

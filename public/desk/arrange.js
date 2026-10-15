@@ -229,7 +229,7 @@ function openMenu(el, at) {
 addEventListener("pointerdown", (e) => { if (menu && !menu.contains(e.target)) closeMenu(); });
 addEventListener("keydown", (e) => { if (e.key === "Escape" && menu) { e.stopPropagation(); closeMenu(); } }, true);
 desk.addEventListener("contextmenu", (e) => {
-  if (stacked() || e.target.closest("textarea, input, .txt-win, dialog")) return;
+  if (stacked() || e.target.closest("textarea, input, .txt-win, dialog, #open-journal")) return; // the Journal has its own menu
   const el = e.target.closest("[data-move]");
   if (!el && e.target !== desk && !e.target.closest(".desk-top")) return;
   e.preventDefault();

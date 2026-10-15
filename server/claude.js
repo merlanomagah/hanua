@@ -7,7 +7,10 @@ const MODEL = process.env.CLAUDE_MODEL || "claude-opus-5-5";
 let client;
 const getClient = () => (client ??= new Anthropic());
 
-export const claudeEnabled = () => Boolean(process.env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_AUTH_TOKEN);
+// A sample server never calls Claude, whatever its .env says (set by server/index.js, like blockPageWrites in notion.js)
+let claudeBlocked = false;
+export const blockClaude = (on) => { claudeBlocked = Boolean(on); };
+export const claudeEnabled = () => !claudeBlocked && Boolean(process.env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_AUTH_TOKEN);
 
 const ASK_SYSTEM = `You are the analyst behind a personal "life dashboard". The user's records come from their Notion databases.
 Answer using only the records provided. Be direct and specific: cite numbers, dates and item names.
@@ -206,4 +209,50 @@ export async function reflectJournal(week, sections) {
     messages: [{ role: "user", content: `The week of ${week}.\n\n<journal>\n${page}\n</journal>` }],
   });
   return textOf(response);
+}
+
+// The Work reflection's two coach panels (16 Oct 2026; brief docs/plans/2026-10-work-reflection.md), on Mel's press
+// only. Who sits on each panel, her role and its context come from her Notion page (written by role, never by name);
+// her answers are this reflection's, and last is her previous one (so the accountability seat can hold her to it).
+const COACH_SYSTEM = `You are two coaching panels reading one work reflection, at the writer's request. She wants a mirror held up to her reality, not encouragement: the perspective she isn't seeing, the bigger picture, and an honest nudge, whether that is to push harder, to hold steady, or to take a breather.
+Each seat speaks in its own voice through its own lens (given to you), 2 or 3 sentences, and must:
+- anchor in her own words (quote a few where it helps) and her role's context; nothing generic, no praise for its own sake;
+- take a position: name one thing she is not seeing, or a pattern, or a tension, and what to do about it;
+- where it fits, place a move on her Good / Better / Best ladder ("that's Good; Better would be…").
+The accountability seat compares this reflection with her previous one when given; if there is none, it says what it will hold her to next time.
+Then "together": the panels agree on one push (where to lean in), one hold (what to keep steady or protect), one breather (where to ease off or recover). One sentence each.
+Plain words, warm and direct, the way a trusted senior colleague would speak. Use "what" and "who" questions, never a bare "why". No therapy language, no diagnosis, no cultural words she didn't use, no names of people (refer to roles). If anything suggests she is not safe or is in real distress, the mindset seat says kindly that it might help to talk to someone close, or to call or text 1737 (free, any time, in Aotearoa).`;
+export async function coachWorkReflection({ role, context = [], panels, answers, last = [] }) {
+  const Seat = z.object({ seat: z.string(), says: z.string() });
+  const Reply = z.object({
+    hp: z.array(Seat),
+    professional: z.array(Seat),
+    together: z.object({ push: z.string(), hold: z.string(), breather: z.string() }),
+  });
+  const seats = (list) => list.map((s) => `- ${s.seat}${s.lens ? `: ${s.lens}` : ""}`).join("\n");
+  const qa = (list) => list.map((l) => `## ${l.key}\n${l.q ? `Q: ${l.q}\n` : ""}${l.a}`).join("\n\n");
+  const response = await getClient().messages.parse({
+    model: MODEL,
+    max_tokens: 8000,
+    output_config: { effort: "medium", format: zodOutputFormat(Reply) },
+    system: COACH_SYSTEM,
+    messages: [{
+      role: "user",
+      content: `Her role: ${role || "(not given)"}
+<context>
+${context.map((c) => `- ${c}`).join("\n") || "(none)"}
+</context>
+HP Panel (high performance), one entry each in "hp", in this order:
+${seats(panels.hp)}
+Professional Panel, one entry each in "professional", in this order:
+${seats(panels.professional)}
+
+<reflection>
+${qa(answers)}
+</reflection>
+${last.length ? `\n<previous_reflection>\n${qa(last)}\n</previous_reflection>` : ""}`,
+    }],
+  });
+  if (response.stop_reason === "refusal" || !response.parsed_output) throw new Error("The panels couldn't read this one. Try adding a little more to your answers.");
+  return response.parsed_output;
 }

@@ -701,6 +701,121 @@
           "Carry forward": "Keep the walks (invented)"
         }
       }
-    ]
+    ],
+    "work": {
+      "_about": "Invented role page, reflection and panel reply for sample servers (the repo is public; the real role page lives in Notion).",
+      "role": {
+        "Role": [
+          "Operations lead for a community programme (invented)"
+        ],
+        "Last confirmed": [
+          "2026-10-01 (invented)"
+        ],
+        "Context": [
+          "Runs the day-to-day of a small programme with an outside partner (invented)"
+        ],
+        "HP Panel": [
+          "Mindset coach: the story she tells herself (invented)",
+          "High-performance coach: energy, pace and recovery (invented)",
+          "Sports psychologist: pressure and confidence (invented)",
+          "Accountability partner: what she said last time (invented)"
+        ],
+        "Professional Panel": [
+          "Operations and delivery leader: rhythms and sequencing (invented)",
+          "Stakeholder and partnership strategist: managing up and across (invented)",
+          "Organisational psychologist: the team through change (invented)",
+          "Community outcomes: whether it reaches people (invented)",
+          "Career strategist: what to make visible next (invented)"
+        ],
+        "Where I'm at · The work": [
+          "What moved forward lately? (invented)",
+          "What's stuck, and what is it waiting on? (invented)",
+          "What would your manager say you were really working on? (invented)"
+        ],
+        "Where I'm at · The people": [
+          "Who did you work well with lately? (invented)",
+          "Where does a working relationship feel stretched? (invented)"
+        ],
+        "Where I'm at · The landscape": [
+          "What's shifting around your work? (invented)"
+        ],
+        "Where I'm at · Me": [
+          "Where was your energy highest, and where did it drain? (invented)",
+          "What are you carrying that you haven't put down? (invented)"
+        ],
+        "Where I'm heading · Direction": [
+          "In a year, what do you want to have made possible? (invented)"
+        ],
+        "Where I'm heading · Growth": [
+          "What did you practise lately that you could tell as a story? (invented)"
+        ],
+        "Where I'm heading · Next step": [
+          "What's one thing you'll do differently next fortnight? (invented)",
+          "What will you stop doing? (invented)"
+        ]
+      },
+      "reflections": [
+        {
+          "daysAgo": 14,
+          "answers": {
+            "Where I'm at · The work": {
+              "q": "What moved forward lately? (invented)",
+              "a": "Got the monthly report out on time (invented)"
+            },
+            "Where I'm heading · Next step": {
+              "q": "What's one thing you'll do differently next fortnight? (invented)",
+              "a": "Block Friday mornings for deep work (invented)"
+            }
+          }
+        }
+      ],
+      "panels": {
+        "hp": [
+          {
+            "seat": "Mindset coach",
+            "says": "You call it 'just the report', which is the story of someone who doesn't count her own wins. (invented)"
+          },
+          {
+            "seat": "High-performance coach",
+            "says": "Three late finishes in a row is a sprint pace on a marathon course. (invented)"
+          },
+          {
+            "seat": "Sports psychologist",
+            "says": "Pressure showed up as over-preparing; that's Good, Better would be deciding what 'ready' means first. (invented)"
+          },
+          {
+            "seat": "Accountability partner",
+            "says": "Last time you said Friday mornings for deep work. What happened to them? (invented)"
+          }
+        ],
+        "professional": [
+          {
+            "seat": "Operations and delivery leader",
+            "says": "The stuck item is waiting on a decision, not on you: name the decision and the owner. (invented)"
+          },
+          {
+            "seat": "Stakeholder and partnership strategist",
+            "says": "Ask the partner for their view before you propose the fix. (invented)"
+          },
+          {
+            "seat": "Organisational psychologist",
+            "says": "Roles are still settling; write down what you now own so nobody has to guess. (invented)"
+          },
+          {
+            "seat": "Community outcomes",
+            "says": "Tie this month's fix to what a household would notice. (invented)"
+          },
+          {
+            "seat": "Career strategist",
+            "says": "The report is a story with a before and after: log it. (invented)"
+          }
+        ],
+        "together": {
+          "push": "Name the decision you're waiting on, and who owns it. (invented)",
+          "hold": "Your Friday mornings. (invented)",
+          "breather": "No laptop after 7 this week. (invented)"
+        }
+      }
+    }
   }
 }

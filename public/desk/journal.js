@@ -10,6 +10,9 @@ import { addDays, todayStr } from "../shared/dates.js";
 import { $, focus, h, toast } from "../lib.js";
 import { asleep } from "../lock.js";
 import { noteClosed, noteOpen, registerWindow, resizable, restorePlace, windowBar } from "./window.js";
+import { openFileMenu } from "./filemenu.js";
+import { openWork } from "./work.js";
+import { TYPES } from "../shared/reflect.js";
 
 const win = $("journal-win");
 const file = $("open-journal");
@@ -228,8 +231,12 @@ export function openJournal({ at = null } = {}) {
   if (win.hidden) { show(); noteOpen("journal-win"); }
   if (at) setTimeout(() => win.querySelector(`[data-sec="${at}"] textarea`)?.focus(), 300);
 }
+// The file opens a menu of the Journal's entry types (16 Oct 2026): Brain dump (this week's page) first, so
+// double-click then Enter is still this week; right-click opens it too
+const chooser = () => openFileMenu(file, "Journal", TYPES.map((t) => ({ label: t.label, sub: t.sub, run: t.id === "work" ? () => openWork() : () => openJournal() })));
 export function initJournal(desktopFile) {
-  desktopFile(file, () => openJournal());
+  desktopFile(file, () => { if (allowed()) chooser(); });
+  file.addEventListener("contextmenu", (e) => { e.preventDefault(); if (allowed()) chooser(); });
   applyWork();
 }
 

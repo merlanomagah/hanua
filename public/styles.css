@@ -3290,4 +3290,26 @@ html.dark .jc { background: var(--page); }
 .jn-r-text { margin: 0 0 10px; white-space: pre-wrap; font: 14px/1.5 var(--ui); color: var(--ink); }
 .cd-more { justify-self: start; border: 0; background: none; padding: 2px 0; cursor: pointer; font: 12px var(--ui); color: var(--ink-3); text-decoration: underline; text-underline-offset: 2px; }
 .cd-more:hover, .cd-more:focus-visible { color: var(--terra); }
+/* The Journal's menu of entry types, and the Work reflection (16 Oct 2026, public/desk/filemenu.js, work.js) */
+.file-menu { min-width: 210px; z-index: 60; } /* above the widgets and windows beside the file */
+.file-menu button { padding: 7px 12px; }
+.file-menu .fm-label { display: block; }
+.file-menu .fm-sub { display: block; font: 11px var(--ui); color: var(--ink-4); }
+.file-menu button:hover .fm-sub, .file-menu button:focus-visible .fm-sub { color: rgb(255 255 255 / 0.85); }
+.wk-win { right: calc(var(--pc-right, 24px) + 72px); top: 96px; }
+.wk-role { margin: 6px 0 0; font: 12px var(--ui); color: var(--ink-3); }
+.wk-win .wk-role-link { font: inherit; letter-spacing: 0; text-transform: none; color: var(--terra); }
+.wk-part { margin-top: 22px; }
+.wk-part-name { margin: 0; padding-bottom: 4px; border-bottom: 1px solid var(--border-2); font: 9px var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--terra); }
+.wk-layer { margin-top: 14px; }
+.wk-win .wk-layer-name { margin: 0; font: 500 19px/1.2 var(--display); letter-spacing: 0; text-transform: none; color: var(--ink); }
+.wk-deeper { font-size: 12px; }
+.wk-win .wk-panels h5 { margin: 0 0 6px; font: 9px var(--mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-3); }
+.wk-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.wk-seat, .wk-together p { margin: 0 0 8px; font: 14px/1.45 var(--ui); color: var(--ink); }
+.wk-seat b, .wk-together b { font-weight: 600; }
+.wk-together { margin-top: 6px; padding-top: 10px; border-top: 1px solid var(--border-2); }
+.wk-keep { display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px; }
+.wk-past { margin-right: 4px; }
+@media (max-width: 900px) { .wk-cols { grid-template-columns: 1fr; } }
 @media (max-width: 900px) { .txt-win.jn-win { height: 82vh; max-height: 82vh; } .jn-body { padding: 10px 16px 16px; } .jn-fale { width: 84px; } .jn-foot { flex-wrap: wrap; } .jn-status { flex-basis: 100%; } }
