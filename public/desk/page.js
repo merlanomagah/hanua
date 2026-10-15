@@ -291,7 +291,7 @@ function subKeys(e, input, sec, key, i) {
   const act = lineKeyAction({ key: e.key, start: input.selectionStart, end: input.selectionEnd, length: input.value.length, written: Boolean(input.value),
     sub: Boolean(written && line.parent), shift: e.shiftKey, alt: e.altKey, meta: e.metaKey, ctrl: e.ctrlKey,
     tabbed: wasTabbed, cantIndent: written && cantIndent(sec, i) });
-  // Tab on a line that can't go further in goes on to its Priority, then Time (15 Oct 2026)
+  // Tab after the start of a line, or on a line that can't go further in, goes on to Priority, then Time (16 Oct 2026)
   if (act === "toPriority") { e.preventDefault(); if (!toPriority(input)) toast("There's no task above it to go under"); return true; }
   // Backspace straight after a Tab takes that Tab back, wherever the caret is (15 Oct 2026)
   if (act === "untab") {
@@ -310,7 +310,9 @@ function subKeys(e, input, sec, key, i) {
     else if (sec.lines.slice(0, i).some((l) => l.text)) pending = `${key}:${i}`;
     else toast("There's no task above it to go under");
     if (!written) renderTodo();
+    const at = input.selectionStart;
     focusLine(key, i);
+    document.activeElement?.setSelectionRange?.(at, at); // the caret stays where it was (the start, for an indent)
     return true;
   }
   if (e.key === "Enter" && !e.shiftKey && (line?.parent || pending === `${key}:${i}`) && !sec.lines[i + 1]?.text) {

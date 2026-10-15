@@ -43,7 +43,10 @@ test("Backspace straight after a Tab takes it back; Tab that can't indent goes o
   assert.equal(lineKeyAction({ ...k, key: "Backspace", start: 0, end: 0 }), "outdent");
   assert.equal(lineKeyAction({ ...k, key: "Tab", cantIndent: true }), "toPriority");
   assert.equal(lineKeyAction({ ...k, key: "Tab", cantIndent: true, shift: true }), null);
-  assert.equal(lineKeyAction({ ...k, key: "Tab", cantIndent: false }), null);
+  assert.equal(lineKeyAction({ ...k, key: "Tab", cantIndent: false }), "toPriority"); // caret at the end: on to Priority (16 Oct 2026)
+  assert.equal(lineKeyAction({ ...k, key: "Tab", cantIndent: false, start: 2, end: 2 }), "toPriority"); // the middle too
+  assert.equal(lineKeyAction({ ...k, key: "Tab", cantIndent: false, start: 0, end: 0 }), null); // the start: it indents
+  assert.equal(lineKeyAction({ ...k, key: "Tab", cantIndent: true, start: 0, end: 0 }), "toPriority"); // can't go in: on
   assert.equal(lineKeyAction({ ...k, key: "Tab", cantIndent: true, written: false }), null);
   assert.equal(lineKeyAction({ ...k, key: "Backspace", tabbed: true, meta: true }), null);
 });

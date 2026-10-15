@@ -121,12 +121,14 @@ export function withFamilies(d, refs, { openKids = false } = {}) {
 // anything; → with the caret at the very end of a written line goes on to its Priority (then Time). Anything else,
 // or any modifier key held, is left to the text box. k: { key, start, end, length, written, sub, shift, alt, meta, ctrl }
 // Since 15 Oct 2026 (brief docs/plans/2026-10-planner-keys-and-close-insights.md): Backspace straight after a Tab
-// that indented the line (k.tabbed: no other key since) takes that Tab back, wherever the caret is; and Tab on a
-// written line that can't go further in (k.cantIndent: already a subtask, the first task, or one with subtasks) goes
-// on to its Priority, then Time, like Tab through a Mac form.
+// that indented the line (k.tabbed: no other key since) takes that Tab back; Tab on a written line goes on to its
+// Priority, then Time, like Tab through a Mac form, unless the caret is at the very start of a line that can go in
+// (k.cantIndent: already a subtask, the first task, or one with subtasks): there it indents (16 Oct 2026).
 export function lineKeyAction(k) {
   if (!k || k.alt || k.meta || k.ctrl) return null;
-  if (k.key === "Tab" && !k.shift && k.written && k.cantIndent) return "toPriority";
+  // 16 Oct 2026 (Mel): indenting belongs to the start of a line. Tab with the caret anywhere after the start goes on
+  // to Priority (then Time); at the start it indents, or goes on when the line can't go further in
+  if (k.key === "Tab" && !k.shift && k.written && (k.cantIndent || !(k.start === 0 && k.end === 0))) return "toPriority";
   if (k.shift) return null;
   if (k.key === "Backspace" && k.tabbed) return "untab";
   const collapsed = k.start === k.end;
