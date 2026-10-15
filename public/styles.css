@@ -3376,3 +3376,14 @@ html.dark .jc { background: var(--page); }
   .jf-foot .jn-status { order: -1; flex-basis: 100%; }
   .jf-foot .jf-next, .jf-foot .jn-save { margin-left: auto; }
 }
+
+/* Talk into a Journal question (16 Oct 2026, public/desk/talk.js): red while listening, until Done */
+.tk-btn { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; }
+.tk-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ink-4); }
+.tk-btn.on { border-color: #b8432f; color: #b8432f; }
+.tk-btn.on .tk-dot { background: #b8432f; animation: tk-pulse 1.2s ease-in-out infinite; }
+@keyframes tk-pulse { 50% { opacity: 0.35; transform: scale(0.8); } }
+@media (prefers-reduced-motion: reduce) { .tk-btn.on .tk-dot { animation: none; } }
+.tk-line { margin: 8px 0 0; font: italic 14px/1.4 var(--ui); color: var(--ink-4); }
+html.dark .tk-btn.on { border-color: #e07a62; color: #e07a62; }
+html.dark .tk-btn.on .tk-dot { background: #e07a62; }

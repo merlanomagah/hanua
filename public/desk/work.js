@@ -11,6 +11,7 @@ import { $, focus, h, toast } from "../lib.js";
 import { asleep } from "../lock.js";
 import { noteClosed, noteOpen, registerWindow, windowBar } from "./window.js";
 import { startStep, reviewAt } from "../shared/steps.js";
+import { stopTalk, talkFor } from "./talk.js";
 import { forget, markDot, navEl, progressEl, registerFocus, stageEl, stepKeys, takeFocus } from "./stepper.js";
 import { openFileMenu } from "./filemenu.js";
 
@@ -97,6 +98,7 @@ function layerEl(l) {
     keepDraft();
   });
   const text = h("textarea", { className: "jn-text", value: ans.a, ariaLabel: `${l.name}${shown ? `: ${shown}` : ""}`, spellcheck: true, rows: 3 });
+  const talk = talkFor(text); // 🎤 Talk: listens until Done (16 Oct 2026)
   text.addEventListener("input", () => {
     const q = r.answers[l.key].q || shown;
     r = { ...r, answers: { ...r.answers, [l.key]: { q, a: text.value } } };
@@ -108,9 +110,9 @@ function layerEl(l) {
   requestAnimationFrame(() => fit(text));
   const el = h("section", { className: "jn-sec wk-layer" },
     h("span", { className: "jn-eyebrow", textContent: l.part }),
-    h("header", { className: "jn-head" }, h("h3", { className: "wk-layer-name", textContent: l.name }), deeper),
+    h("header", { className: "jn-head" }, h("h3", { className: "wk-layer-name", textContent: l.name }), deeper, talk.button),
     shown ? h("p", { className: "jn-q", textContent: shown }) : null,
-    text);
+    text, talk.line);
   el.dataset.key = l.key;
   return el;
 }
@@ -181,6 +183,7 @@ function reviewEl() {
 }
 function render() {
   if (win.hidden) return;
+  stopTalk(); // the tile is drawn again: listening stops (Next, Back, a save)
   const past = h("button", { type: "button", className: "set-reset wk-past", textContent: "Past ▾", title: "Your earlier reflections" });
   past.addEventListener("click", () => openFileMenu(past, "Work reflections", [
     { label: "New reflection", sub: "Today", run: () => { keepDraft(); startNew(); } },
@@ -275,7 +278,7 @@ async function show() {
   await Promise.all([loadRole(), loadList()]);
   if (!win.hidden && !page) render();
 }
-function hide() { keepDraft(); win.hidden = true; noteClosed("work-win"); file.focus({ preventScroll: true }); }
+function hide() { stopTalk(); keepDraft(); win.hidden = true; noteClosed("work-win"); file.focus({ preventScroll: true }); }
 registerFocus(win, () => hide());
 registerWindow("work-win", { title: "Work reflection", icon: ICON, show, hide, shown: () => !win.hidden, personal: true });
 export function openWork() {

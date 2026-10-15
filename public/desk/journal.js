@@ -14,6 +14,7 @@ import { openFileMenu } from "./filemenu.js";
 import { openWork } from "./work.js";
 import { TYPES } from "../shared/reflect.js";
 import { startStep, reviewAt } from "../shared/steps.js";
+import { stopTalk, talkFor } from "./talk.js";
 import { forget, markDot, navEl, progressEl, registerFocus, stageEl, stepKeys, takeFocus } from "./stepper.js";
 
 const win = $("journal-win");
@@ -121,6 +122,7 @@ function sectionEl(s) {
   const again = q ? h("button", { type: "button", className: "jn-again", textContent: "↻", title: "Another question", ariaLabel: `Another question for ${s}` }) : null;
   again?.addEventListener("click", () => { skips[s] = (skips[s] || 0) + 1; const p = again.closest(".jn-sec").querySelector(".jn-q"); p.textContent = promptFor(prompts, s, week, skips[s]); });
   const text = h("textarea", { className: "jn-text", value: sections[s], ariaLabel: `${s}${q ? `: ${q}` : ""}`, spellcheck: true, rows: 3 });
+  const talk = talkFor(text); // 🎤 Talk: listens until Done (16 Oct 2026)
   text.addEventListener("input", () => {
     sections = { ...sections, [s]: text.value };
     markDot(win, SECTIONS.indexOf(s), Boolean(text.value.trim()));
@@ -130,9 +132,9 @@ function sectionEl(s) {
   });
   requestAnimationFrame(() => fit(text));
   const el = h("section", { className: `jn-sec${area ? ` jn-${area}` : ""}` },
-    h("header", { className: "jn-head" }, h("h3", { textContent: s }), again),
+    h("header", { className: "jn-head" }, h("h3", { textContent: s }), again, talk.button),
     q ? h("p", { className: "jn-q", textContent: q }) : null,
-    text);
+    text, talk.line);
   el.dataset.sec = s;
   return el;
 }
@@ -168,6 +170,7 @@ function reviewEl() {
 }
 function render() {
   if (win.hidden) return;
+  stopTalk(); // the tile is drawn again: listening stops (Next, Back, a save)
   const thisWeek = weekOf(todayStr());
   const nav = (label, wk, aria) => { const b = h("button", { type: "button", className: "ip-nav jn-nav", textContent: label, ariaLabel: aria, disabled: wk > 0 && week >= thisWeek }); b.addEventListener("click", () => go(addDays(week, 7 * wk))); return b; };
   const notion = page?.url ? h("a", { className: "b-link jn-notion", href: page.url, target: "_blank", rel: "noopener", textContent: "Notion ↗" }) : null;
@@ -254,7 +257,7 @@ function show() {
   win.hidden = false;
   load(weekOf(todayStr()));
 }
-function hide() { keepDraft(); win.hidden = true; noteClosed("journal-win"); file.focus({ preventScroll: true }); }
+function hide() { stopTalk(); keepDraft(); win.hidden = true; noteClosed("journal-win"); file.focus({ preventScroll: true }); }
 registerFocus(win, () => hide());
 registerWindow("journal-win", { title: "Journal", icon: ICON, show, hide, shown: () => !win.hidden, personal: true });
 // focus: which section to start in (Close the day's "Write more" opens at Write freely)
