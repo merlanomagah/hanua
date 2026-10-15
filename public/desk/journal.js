@@ -9,16 +9,17 @@ import { journalShape, journalShown, promptFor, faleOf, faleSpan, weekOf, weekTi
 import { addDays, todayStr } from "../shared/dates.js";
 import { $, focus, h, toast } from "../lib.js";
 import { asleep } from "../lock.js";
-import { noteClosed, noteOpen, registerWindow, resizable, restorePlace, windowBar } from "./window.js";
+import { noteClosed, noteOpen, registerWindow, windowBar } from "./window.js";
 import { openFileMenu } from "./filemenu.js";
 import { openWork } from "./work.js";
 import { TYPES } from "../shared/reflect.js";
+import { startStep, reviewAt } from "../shared/steps.js";
+import { forget, markDot, navEl, progressEl, registerFocus, stageEl, stepKeys, takeFocus } from "./stepper.js";
 
 const win = $("journal-win");
 const file = $("open-journal");
-const ready = resizable(win);
 const ICON = '<svg viewBox="0 0 48 60" aria-hidden="true" width="30"><rect x="6" y="3" width="36" height="54" rx="3" fill="#fdfcf9" stroke="#cfc8bb"/><path d="M12 3v54" stroke="#c76a3a" stroke-width="2"/><path d="M17 20h19M17 27h19M17 34h19M17 41h13" stroke="#b9b2a5" stroke-width="1.6"/></svg>';
-let placed = false;
+let wantAt = null; // a section to open at (Close the day's "Write more" → Write freely)
 let week = weekOf(todayStr());
 let page = null; // { week, id, url, edited, sections } as Notion has it
 let sections = journalShape({}).sections; // what's on the page now
@@ -26,6 +27,8 @@ let prompts = null, promptNote = "";
 const skips = {};
 let weeks = []; // [{ week, areas }] for the fale
 let reflection = "", reflecting = false, saving = false;
+let step = 0; // the question showing (SECTIONS.length = Review); one at a time since 16 Oct 2026
+const N = SECTIONS.length;
 
 // ---- the draft: what's typed and not yet saved, kept on this Mac by week (an unsent letter, like the review's) ----
 const DRAFTS = "journal-drafts";
@@ -37,7 +40,7 @@ function keepDraft() {
   clearTimeout(draftTimer);
   const d = readDrafts();
   if (page && same(sections, page.sections)) delete d[week];
-  else d[week] = { sections, base: page?.edited || null, at: new Date().toISOString() };
+  else d[week] = { sections, base: page?.edited || null, at: new Date().toISOString(), step };
   writeDrafts(d);
 }
 const dropDraft = (w = week) => { const d = readDrafts(); delete d[w]; writeDrafts(d); };
@@ -53,7 +56,8 @@ const allowed = () => journalShown({ atWork: focus.on, asleep });
 
 async function load(w) {
   const kept = readDrafts()[w];
-  week = w; page = null; reflection = ""; sections = kept ? journalShape(kept).sections : journalShape({}).sections; render();
+  week = w; page = null; reflection = ""; sections = kept ? journalShape(kept).sections : journalShape({}).sections;
+  step = startStep({ n: N, kept: kept?.step }); forget(win); render();
   try {
     const [p, list] = await Promise.all([api(`/api/journal/${w}`), api("/api/journal"), prompts ? null : loadPrompts()]);
     if (week !== w) return;
@@ -61,6 +65,11 @@ async function load(w) {
     if (list.error) toast(list.error, true);
     const draft = readDrafts()[w];
     sections = draft && !same(draft.sections, p.sections) ? journalShape(draft).sections : { ...p.sections };
+    const fresh = draft && !same(draft.sections, p.sections);
+    step = startStep({ n: N, kept: fresh ? draft.step : null, saved: Boolean(p.id) && !isEmpty(p.sections) });
+    if (wantAt && SECTIONS.includes(wantAt)) step = SECTIONS.indexOf(wantAt);
+    wantAt = null;
+    forget(win);
   } catch (err) {
     if (week !== w) return;
     page = { week: w, id: null, url: null, edited: null, sections: journalShape({}).sections, error: err.message };
@@ -86,7 +95,7 @@ function faleEl() {
     const t = document.createElementNS("http://www.w3.org/2000/svg", "title");
     t.textContent = `${a}: ${counts[a]} of the last 4 weeks`;
     el.append(t);
-    el.addEventListener("click", () => win.querySelector(`[data-sec="${a}"] textarea`)?.focus());
+    el.addEventListener("click", () => goStep(SECTIONS.indexOf(a)));
     return el;
   };
   const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
@@ -114,6 +123,7 @@ function sectionEl(s) {
   const text = h("textarea", { className: "jn-text", value: sections[s], ariaLabel: `${s}${q ? `: ${q}` : ""}`, spellcheck: true, rows: 3 });
   text.addEventListener("input", () => {
     sections = { ...sections, [s]: text.value };
+    markDot(win, SECTIONS.indexOf(s), Boolean(text.value.trim()));
     fit(text);
     clearTimeout(draftTimer); draftTimer = setTimeout(keepDraft, 400);
     status();
@@ -133,33 +143,54 @@ function status() {
   statusEl.textContent = saving ? "Saving…" : !page ? "Opening…" : page.error ? `Not connected: ${page.error}` : unsaved() ? "Not saved yet · kept on this Mac" : page.edited ? `Saved ${new Date(page.edited).toLocaleString("en-NZ", { weekday: "short", hour: "numeric", minute: "2-digit" })}` : "Nothing written this week yet";
 }
 
-function render() {
-  if (win.hidden) return;
-  const thisWeek = weekOf(todayStr());
-  const nav = (label, step, aria) => { const b = h("button", { type: "button", className: "ip-nav jn-nav", textContent: label, ariaLabel: aria, disabled: step > 0 && week >= thisWeek }); b.addEventListener("click", () => go(addDays(week, 7 * step))); return b; };
-  const notion = page?.url ? h("a", { className: "b-link jn-notion", href: page.url, target: "_blank", rel: "noopener", textContent: "Notion ↗" }) : null;
-  const bar = windowBar(win, "Journal", [nav("‹", -1, "Week before"), nav("›", 1, "Week after"), notion].filter(Boolean), hide);
-  const head = h("header", { className: "jn-top" },
-    h("div", {}, h("span", { className: "jn-eyebrow", textContent: week === thisWeek ? "This week" : "Looking back" }), h("h2", { className: "jn-title", textContent: weekTitle(week) }),
-      promptNote ? h("p", { className: "jn-note", textContent: promptNote }) : null),
-    faleEl());
-  const saveBtn = h("button", { type: "button", className: "pl-go jn-save", textContent: "Save", title: "Save to your Journal in Notion (⌘S)", disabled: saving || !page || Boolean(page.error) });
-  saveBtn.addEventListener("click", () => save());
-  const reflectBtn = h("button", { type: "button", className: "set-reset jn-reflect", textContent: reflecting ? "Reading…" : "Reflect ✦", title: "Claude reads this week back to you", disabled: reflecting || isEmpty(sections) });
-  reflectBtn.addEventListener("click", () => reflect());
-  const bin = page?.id ? h("button", { type: "button", className: "set-reset jn-bin", textContent: "Bin this week", title: "Move this week's page to Notion's trash (Undo brings it back)" }) : null;
-  bin?.addEventListener("click", () => binWeek());
-  statusEl = h("span", { className: "jn-status" });
+// one question at a time: a tile per section, the dots along the top, Review last (16 Oct 2026)
+function goStep(i) {
+  if (i === step) return;
+  step = i; keepDraft(); render();
+  if (step < N) setTimeout(() => { const t = win.querySelector(".jf-tile textarea"); if (t) { t.focus({ preventScroll: true }); t.setSelectionRange(t.value.length, t.value.length); } }, 30);
+}
+function reviewEl() {
   const reflectEl = reflection ? h("aside", { className: "jn-reflection" },
     h("h4", { textContent: "Reflecting back ✦" }), h("p", { className: "jn-r-text", textContent: reflection }),
     (() => { const b = h("button", { type: "button", className: "set-reset", textContent: "Keep it in Write freely" }); b.addEventListener("click", () => { sections = { ...sections, [FREELY]: `${sections[FREELY] ? `${sections[FREELY].replace(/\s+$/, "")}\n\n` : ""}Reflecting back (Claude):\n${reflection}` }; reflection = ""; keepDraft(); render(); }); return b; })()) : null;
-  const scroll = win.querySelector(".txt-body")?.scrollTop || 0;
-  const typing = document.activeElement?.closest?.("#journal-win [data-sec]")?.dataset.sec;
-  const body = h("div", { className: "txt-body jn-body" }, head, reflectEl, ...SECTIONS.map(sectionEl));
-  const foot = h("footer", { className: "jn-foot" }, statusEl, bin, reflectBtn, saveBtn);
-  win.replaceChildren(bar, body, foot);
-  body.scrollTop = scroll;
-  if (typing) body.querySelector(`[data-sec="${typing}"] textarea`)?.focus({ preventScroll: true });
+  const rows = SECTIONS.map((s, i) => {
+    const said = (sections[s] || "").trim();
+    const b = h("button", { type: "button", className: `jf-answer${said ? "" : " empty"}`, title: `Change ${s}` },
+      h("span", { className: "jf-answer-name", textContent: s }),
+      h("span", { className: "jf-answer-text", textContent: said || "Nothing yet · add something" }));
+    b.addEventListener("click", () => goStep(i));
+    return b;
+  });
+  return h("div", { className: "jf-review-body" },
+    h("div", { className: "jf-review-head" }, h("h3", { className: "jf-review-title", textContent: "This week, all together" }), faleEl()),
+    promptNote ? h("p", { className: "jn-note", textContent: promptNote }) : null,
+    reflectEl, ...rows);
+}
+function render() {
+  if (win.hidden) return;
+  const thisWeek = weekOf(todayStr());
+  const nav = (label, wk, aria) => { const b = h("button", { type: "button", className: "ip-nav jn-nav", textContent: label, ariaLabel: aria, disabled: wk > 0 && week >= thisWeek }); b.addEventListener("click", () => go(addDays(week, 7 * wk))); return b; };
+  const notion = page?.url ? h("a", { className: "b-link jn-notion", href: page.url, target: "_blank", rel: "noopener", textContent: "Notion ↗" }) : null;
+  const bar = windowBar(win, "Brain dump", [nav("‹", -1, "Week before"), nav("›", 1, "Week after"), notion].filter(Boolean), hide);
+  const head = h("header", { className: "jf-head" },
+    h("span", { className: "jn-eyebrow", textContent: week === thisWeek ? "This week" : "Looking back" }), h("h2", { className: "jn-title jf-title", textContent: weekTitle(week) }));
+  const progress = progressEl(SECTIONS.map((s) => ({ label: s, done: Boolean((sections[s] || "").trim()) })), step, goStep);
+  statusEl = h("span", { className: "jn-status" });
+  const onReview = step === reviewAt(N);
+  let extra = [];
+  if (onReview) {
+    const saveBtn = h("button", { type: "button", className: "pl-go jn-save", textContent: "Save", title: "Save to your Journal in Notion (⌘S)", disabled: saving || !page || Boolean(page.error) });
+    saveBtn.addEventListener("click", () => save());
+    const reflectBtn = h("button", { type: "button", className: "set-reset jn-reflect", textContent: reflecting ? "Reading…" : "Reflect ✦", title: "Claude reads this week back to you", disabled: reflecting || isEmpty(sections) });
+    reflectBtn.addEventListener("click", () => reflect());
+    const bin = page?.id ? h("button", { type: "button", className: "set-reset jn-bin", textContent: "Bin this week", title: "Move this week's page to Notion's trash (Undo brings it back)" }) : null;
+    bin?.addEventListener("click", () => binWeek());
+    extra = [bin, reflectBtn, saveBtn].filter(Boolean);
+  }
+  const scroll = onReview && win.querySelector(".jf-review-body") ? win.querySelector(".jf-tile")?.scrollTop || 0 : 0;
+  const stage = stageEl(win, step, onReview ? reviewEl() : sectionEl(SECTIONS[step]));
+  win.replaceChildren(bar, h("div", { className: "jf-top" }, head, progress), stage, navEl(step, N, goStep, { status: statusEl, extra }));
+  if (onReview) stage.firstChild.scrollTop = scroll;
   status();
 }
 
@@ -213,23 +244,26 @@ async function reflect() {
   try { reflection = (await api(`/api/journal/${week}/reflect`, { method: "POST", body: { sections } })).reflection || ""; }
   catch (err) { toast(err.message, true); }
   reflecting = false; render();
-  win.querySelector(".txt-body")?.scrollTo({ top: 0 });
+  win.querySelector(".jf-tile")?.scrollTo({ top: 0 });
 }
 
 // ---- opening and closing (a desk window like To-do.txt) ----
 function show() {
   if (!allowed()) return;
+  takeFocus(win);
   win.hidden = false;
-  if (!placed) { restorePlace(win); placed = true; ready(); }
   load(weekOf(todayStr()));
 }
 function hide() { keepDraft(); win.hidden = true; noteClosed("journal-win"); file.focus({ preventScroll: true }); }
+registerFocus(win, () => hide());
 registerWindow("journal-win", { title: "Journal", icon: ICON, show, hide, shown: () => !win.hidden, personal: true });
 // focus: which section to start in (Close the day's "Write more" opens at Write freely)
 export function openJournal({ at = null } = {}) {
   if (!allowed()) return;
+  wantAt = at;
   if (win.hidden) { show(); noteOpen("journal-win"); }
-  if (at) setTimeout(() => win.querySelector(`[data-sec="${at}"] textarea`)?.focus(), 300);
+  else if (at && SECTIONS.includes(at)) { wantAt = null; goStep(SECTIONS.indexOf(at)); }
+  setTimeout(() => win.querySelector(".jf-tile textarea")?.focus({ preventScroll: true }), 400);
 }
 // The file opens a menu of the Journal's entry types (16 Oct 2026): Brain dump (this week's page) first, so
 // double-click then Enter is still this week; right-click opens it too
@@ -240,6 +274,7 @@ export function initJournal(desktopFile) {
   applyWork();
 }
 
+stepKeys(win, { at: () => step, n: () => N, go: goStep });
 // ⌘S saves here (not the Feed's Spotlight); Esc closes, the draft kept
 win.addEventListener("keydown", (e) => {
   if ((e.metaKey || e.ctrlKey) && !e.altKey && e.key.toLowerCase() === "s") { e.preventDefault(); e.stopPropagation(); save(); return; }

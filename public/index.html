@@ -469,8 +469,6 @@
         <!-- Close the day (public/desk/close.js): from 4 pm, never opened by itself -->
         <section class="txt-win close-win" id="close-day" aria-label="Close the day" hidden></section>
         <!-- the Journal (public/desk/journal.js): this week's ruled page -->
-        <section class="txt-win jn-win" id="journal-win" aria-label="Journal" hidden></section>
-        <section class="txt-win jn-win wk-win" id="work-win" aria-label="Work reflection" hidden></section>
         <!-- Desk Settings (public/desk/settings.js), from the gear in the dock -->
         <section class="txt-win set-win" id="settings-win" aria-label="Settings" hidden></section>
         <!-- the Shopping list (Apple Reminders) and Add reminder: windows like To-do.txt -->
@@ -776,6 +774,12 @@
   </dialog>
 
   <!-- windows that belong to the whole room, not one pane: Hanua Settings (public/settings/window.js) -->
+  <!-- the Journal's focus window (16 Oct 2026, public/desk/stepper.js): wide and centred over the blurred room, one
+       question at a time; not a modal dialog, so a toast's Undo can still be clicked -->
+  <div class="focus-layer"><div class="jf-blur" aria-hidden="true"></div>
+    <section class="txt-win jn-win jf-win" id="journal-win" aria-label="Brain dump" hidden></section>
+    <section class="txt-win jn-win wk-win jf-win" id="work-win" aria-label="Work reflection" hidden></section>
+  </div>
   <div class="app-wins"><section class="txt-win set-win hs-win" id="hanua-settings" aria-label="Hanua Settings" hidden></section></div>
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 

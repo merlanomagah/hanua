@@ -9,14 +9,16 @@ import { journalShown } from "../shared/journal.js";
 import { todayStr } from "../shared/dates.js";
 import { $, focus, h, toast } from "../lib.js";
 import { asleep } from "../lock.js";
-import { noteClosed, noteOpen, registerWindow, resizable, restorePlace, windowBar } from "./window.js";
+import { noteClosed, noteOpen, registerWindow, windowBar } from "./window.js";
+import { startStep, reviewAt } from "../shared/steps.js";
+import { forget, markDot, navEl, progressEl, registerFocus, stageEl, stepKeys, takeFocus } from "./stepper.js";
 import { openFileMenu } from "./filemenu.js";
 
 const win = $("work-win");
 const file = $("open-journal");
-const ready = resizable(win);
 const ICON = '<svg viewBox="0 0 48 60" aria-hidden="true" width="30"><rect x="6" y="3" width="36" height="54" rx="3" fill="#fdfcf9" stroke="#cfc8bb"/><path d="M12 3v54" stroke="#3f7a5a" stroke-width="2"/><path d="M17 20h19M17 27h19M17 34h13" stroke="#b9b2a5" stroke-width="1.6"/><path d="M28 44l4-4 4 4" fill="none" stroke="#3f7a5a" stroke-width="1.6"/></svg>';
-let placed = false;
+const N = LAYERS.length;
+let step = 0; // the layer showing (N = Review); one at a time since 16 Oct 2026
 let role = null; // { role, confirmed, url, questions, panels: { hp: [names], professional: [names] }, error? }
 let items = []; // past reflections, newest first: { id, date, title, url }
 let page = null; // the reflection as Notion has it: { id, url, edited, date, ...reflection } (id null = not saved yet)
@@ -36,7 +38,7 @@ function keepDraft() {
   clearTimeout(draftTimer);
   const d = readDrafts();
   if (!unsaved()) delete d[slot()];
-  else d[slot()] = { reflection: r, base: page?.edited || null, at: new Date().toISOString() };
+  else d[slot()] = { reflection: r, base: page?.edited || null, at: new Date().toISOString(), step };
   writeDrafts(d);
 }
 const dropDraft = (s = slot()) => { const d = readDrafts(); delete d[s]; writeDrafts(d); };
@@ -62,6 +64,7 @@ function startNew() {
   page = null; reply = null; replyText = "";
   r = kept ? reflectionShape(kept.reflection) : reflectionShape({ date: todayStr() });
   if (!r.date) r.date = todayStr();
+  step = startStep({ n: N, kept: kept?.step }); forget(win);
   render();
 }
 async function openItem(id) {
@@ -71,7 +74,9 @@ async function openItem(id) {
     const p = await api(`/api/work/${id}`);
     page = p;
     const kept = readDrafts()[id];
-    r = kept && !same(kept.reflection, p) ? reflectionShape({ ...kept.reflection, date: p.date }) : reflectionShape(p);
+    const fresh = kept && !same(kept.reflection, p);
+    r = fresh ? reflectionShape({ ...kept.reflection, date: p.date }) : reflectionShape(p);
+    step = startStep({ n: N, kept: fresh ? kept.step : null, saved: true }); forget(win);
   } catch (err) { toast(err.message, true); page = null; startNew(); return; }
   render();
 }
@@ -95,13 +100,15 @@ function layerEl(l) {
   text.addEventListener("input", () => {
     const q = r.answers[l.key].q || shown;
     r = { ...r, answers: { ...r.answers, [l.key]: { q, a: text.value } } };
+    markDot(win, LAYERS.indexOf(l), Boolean(text.value.trim()));
     fit(text);
     clearTimeout(draftTimer); draftTimer = setTimeout(keepDraft, 400);
     status();
   });
   requestAnimationFrame(() => fit(text));
   const el = h("section", { className: "jn-sec wk-layer" },
-    h("header", { className: "jn-head" }, h("h4", { className: "wk-layer-name", textContent: l.name }), deeper),
+    h("span", { className: "jn-eyebrow", textContent: l.part }),
+    h("header", { className: "jn-head" }, h("h3", { className: "wk-layer-name", textContent: l.name }), deeper),
     shown ? h("p", { className: "jn-q", textContent: shown }) : null,
     text);
   el.dataset.key = l.key;
@@ -144,6 +151,34 @@ function status() {
 }
 const monthsSince = (day) => (day ? (Date.now() - new Date(`${day}T00:00:00`).getTime()) / (30 * 86_400_000) : 0);
 
+// one question at a time: a tile per layer, the dots under their part, Review last (16 Oct 2026)
+function goStep(i) {
+  if (i === step) return;
+  step = i; keepDraft(); render();
+  if (step < N) setTimeout(() => { const t = win.querySelector(".jf-tile textarea"); if (t) { t.focus({ preventScroll: true }); t.setSelectionRange(t.value.length, t.value.length); } }, 30);
+}
+function reviewEl() {
+  const extra = r.extra ? (() => {
+    const t = h("textarea", { className: "jn-text", value: r.extra, ariaLabel: "Also written" });
+    t.addEventListener("input", () => { r = { ...r, extra: t.value }; fit(t); keepDraft(); status(); });
+    requestAnimationFrame(() => fit(t));
+    return h("section", { className: "jn-sec" }, h("h4", { className: "jf-answer-name", textContent: "Also written" }), t);
+  })() : null;
+  const rows = [];
+  for (const part of PARTS) {
+    rows.push(h("h4", { className: "wk-part-name", textContent: part }));
+    for (const l of LAYERS.filter((x) => x.part === part)) {
+      const a = r.answers[l.key];
+      const b = h("button", { type: "button", className: `jf-answer${a.a.trim() ? "" : " empty"}`, title: `Change ${l.name}` },
+        h("span", { className: "jf-answer-name", textContent: l.name }),
+        a.a.trim() && a.q ? h("span", { className: "jf-answer-q", textContent: a.q }) : null,
+        h("span", { className: "jf-answer-text", textContent: a.a.trim() || "Nothing yet · add something" }));
+      b.addEventListener("click", () => goStep(LAYERS.indexOf(l)));
+      rows.push(b);
+    }
+  }
+  return h("div", { className: "jf-review-body" }, h("h3", { className: "jf-review-title", textContent: "All together" }), panelsEl(), ...rows, extra);
+}
 function render() {
   if (win.hidden) return;
   const past = h("button", { type: "button", className: "set-reset wk-past", textContent: "Past ▾", title: "Your earlier reflections" });
@@ -156,30 +191,29 @@ function render() {
   const stale = role?.confirmed && monthsSince(role.confirmed) > 3;
   const roleLine = h("p", { className: "wk-role" },
     document.createTextNode(role?.role ? `${role.role}${role.confirmed ? ` · confirmed ${new Date(`${role.confirmed}T00:00:00`).toLocaleDateString("en-NZ", { day: "numeric", month: "short", year: "numeric" })}` : ""}` : "Your role isn't set yet"),
-    role?.url ? h("a", { className: "b-link wk-role-link", href: role.url, target: "_blank", rel: "noopener", textContent: stale ? " · Still right? Update it in Notion ↗" : " · Has your role changed? ↗" }) : null);
-  const head = h("header", { className: "jn-top" },
-    h("div", {}, h("span", { className: "jn-eyebrow", textContent: page?.id ? "Looking back" : "Work reflection" }), h("h2", { className: "jn-title", textContent: reflectionTitle(r.date || todayStr()) }), roleLine,
-      role?.error ? h("p", { className: "jn-note", textContent: role.error } ) : null));
-  const parts = PARTS.map((p) => h("div", { className: "wk-part" }, h("h3", { className: "wk-part-name", textContent: p }), ...LAYERS.filter((l) => l.part === p).map(layerEl)));
-  const extra = r.extra ? (() => {
-    const t = h("textarea", { className: "jn-text", value: r.extra, ariaLabel: "Also written" });
-    t.addEventListener("input", () => { r = { ...r, extra: t.value }; fit(t); keepDraft(); status(); });
-    requestAnimationFrame(() => fit(t));
-    return h("section", { className: "jn-sec" }, h("header", { className: "jn-head" }, h("h4", { className: "wk-layer-name", textContent: "Also written" })), t);
-  })() : null;
-  const saveBtn = h("button", { type: "button", className: "pl-go jn-save", textContent: "Save", title: "Save to Work reflections in Notion (⌘S)", disabled: saving || page?.loading || isEmpty(r) });
-  saveBtn.addEventListener("click", () => save());
-  const askBtn = h("button", { type: "button", className: "set-reset wk-ask", textContent: asking ? "The panels are reading…" : "Send to the panels ✦", title: "The High Performance and Professional panels read this back to you", disabled: asking || isEmpty(r) });
-  askBtn.addEventListener("click", () => askPanels());
-  const bin = page?.id && !page.loading ? h("button", { type: "button", className: "set-reset jn-bin", textContent: "Bin", title: "Move this reflection to Notion's trash (Undo brings it back)" }) : null;
-  bin?.addEventListener("click", () => binIt());
-  statusEl = h("span", { className: "jn-status" }); saveEl = saveBtn; askEl = askBtn;
-  const scroll = win.querySelector(".txt-body")?.scrollTop || 0;
-  const typing = document.activeElement?.closest?.("#work-win [data-key]")?.dataset.key;
-  const body = h("div", { className: "txt-body jn-body wk-body" }, head, panelsEl(), ...parts, extra);
-  win.replaceChildren(bar, body, h("footer", { className: "jn-foot" }, statusEl, bin, askBtn, saveBtn));
-  body.scrollTop = scroll;
-  if (typing) body.querySelector(`[data-key="${typing}"] textarea`)?.focus({ preventScroll: true });
+    role?.url ? h("a", { className: "b-link wk-role-link", href: role.url, target: "_blank", rel: "noopener", textContent: stale ? " · Still right? Update it in Notion ↗" : " · Role changed? ↗" }) : null);
+  const head = h("header", { className: "jf-head" },
+    h("span", { className: "jn-eyebrow", textContent: page?.id ? "Looking back" : "Work reflection" }), h("h2", { className: "jn-title jf-title", textContent: reflectionTitle(r.date || todayStr()) }), roleLine,
+    role?.error ? h("p", { className: "jn-note", textContent: role.error }) : null);
+  const progress = progressEl(LAYERS.map((l) => ({ label: l.name, group: l.part, done: Boolean(r.answers[l.key].a.trim()) })), step, goStep);
+  statusEl = h("span", { className: "jn-status" });
+  const onReview = step === reviewAt(N);
+  saveEl = askEl = null;
+  let extra = [];
+  if (onReview) {
+    const saveBtn = h("button", { type: "button", className: "pl-go jn-save", textContent: "Save", title: "Save to Work reflections in Notion (⌘S)", disabled: saving || page?.loading || isEmpty(r) });
+    saveBtn.addEventListener("click", () => save());
+    const askBtn = h("button", { type: "button", className: "set-reset wk-ask", textContent: asking ? "The panels are reading…" : "Send to the panels ✦", title: "The High Performance and Professional panels read this back to you", disabled: asking || isEmpty(r) });
+    askBtn.addEventListener("click", () => askPanels());
+    const bin = page?.id && !page.loading ? h("button", { type: "button", className: "set-reset jn-bin", textContent: "Bin", title: "Move this reflection to Notion's trash (Undo brings it back)" }) : null;
+    bin?.addEventListener("click", () => binIt());
+    saveEl = saveBtn; askEl = askBtn;
+    extra = [bin, askBtn, saveBtn].filter(Boolean);
+  }
+  const scroll = onReview && win.querySelector(".jf-review-body") ? win.querySelector(".jf-tile")?.scrollTop || 0 : 0;
+  const stage = stageEl(win, step, onReview ? reviewEl() : layerEl(LAYERS[step]));
+  win.replaceChildren(bar, h("div", { className: "jf-top" }, head, progress), stage, navEl(step, N, goStep, { status: statusEl, extra }));
+  if (onReview) stage.firstChild.scrollTop = scroll;
   status();
 }
 
@@ -229,26 +263,28 @@ async function askPanels() {
   try { const j = await api("/api/work/panels", { method: "POST", body: { reflection: r, id: page?.id || null } }); reply = j.reply; replyText = j.text || ""; }
   catch (err) { toast(err.message, true); }
   asking = false; render();
-  win.querySelector(".txt-body")?.scrollTo({ top: 0 });
+  win.querySelector(".jf-tile")?.scrollTo({ top: 0 });
 }
 
 // ---- opening and closing (a desk window, like the Journal's) ----
 async function show() {
   if (!allowed()) return;
+  takeFocus(win);
   win.hidden = false;
-  if (!placed) { restorePlace(win); placed = true; ready(); }
   startNew();
   await Promise.all([loadRole(), loadList()]);
   if (!win.hidden && !page) render();
 }
 function hide() { keepDraft(); win.hidden = true; noteClosed("work-win"); file.focus({ preventScroll: true }); }
+registerFocus(win, () => hide());
 registerWindow("work-win", { title: "Work reflection", icon: ICON, show, hide, shown: () => !win.hidden, personal: true });
 export function openWork() {
   if (!allowed()) return;
   if (win.hidden) { show(); noteOpen("work-win"); }
-  setTimeout(() => win.querySelector("textarea")?.focus({ preventScroll: true }), 300);
+  setTimeout(() => win.querySelector(".jf-tile textarea")?.focus({ preventScroll: true }), 400);
 }
 
+stepKeys(win, { at: () => step, n: () => N, go: goStep });
 // ⌘S saves here (not the Feed's Spotlight); Esc closes, the draft kept (a menu open inside closes first)
 win.addEventListener("keydown", (e) => {
   if ((e.metaKey || e.ctrlKey) && !e.altKey && e.key.toLowerCase() === "s") { e.preventDefault(); e.stopPropagation(); save(); return; }
