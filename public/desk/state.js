@@ -56,6 +56,7 @@ async function read(s, { keepNew = true } = {}) {
       s.rev = j.rev ?? null;
       s.canSave = true;
       adopt(s, startDay(j.day, s.earlier, s.key, fixed, j.usual));
+      reread?.(s.key, s.data);
       // a new day, a fixed section added, an older day converted: saved now. A day ahead isn't saved just for being
       // looked at (keepNew false): only once something's written, so the week doesn't fill with empty files.
       if (keepNew && JSON.stringify(s.data) !== JSON.stringify(deskShape(j.day))) queue(s, true);
@@ -112,6 +113,7 @@ async function refresh(s) {
     s.rev = j.rev ?? null;
     s.earlier = j.earlier || s.earlier;
     adopt(s, deskShape(j.day));
+    reread?.(s.key, s.data);
     bind();
     document.dispatchEvent(new Event("hanua:day-refreshed"));
     saidUpdated(toast);
@@ -137,9 +139,14 @@ export const save = () => saveDay(desk);
 export const savePage = (d = page) => saveDay(d);
 export function saveDay(d) { const s = storeOf(d); if (s) queue(s); }
 // ⌘Z (desk/history.js) hears every change to an open day here, after it's made: { key, data }
-let heard = null;
+let heard = null, reread = null;
 export const onDayChange = (fn) => { heard = fn; };
+// the history hears when an open day is read again (from the server, the other Mac, Use theirs): its copy of the day
+// starts again from what's now on the page (16 Oct 2026: a history begun on the empty page before the day arrived
+// took a whole day back to empty)
+export const onDayRead = (fn) => { reread = fn; };
 // ⌘Z puts an open day back to how it was (a copy, as JSON) and saves it; the history isn't told (it did it)
+export const dayRead = (key) => Boolean(stores().find((x) => x.key === key)?.canSave);
 export function restoreDay(key, json) {
   const s = stores().find((x) => x.key === key);
   if (!s?.canSave) return false;
@@ -199,7 +206,7 @@ function otherMac(s, j) {
   const closedThere = theirs?.closed?.at && !s.data.closed?.at;
   toast(closedThere ? `${s === T ? "Today" : "That day"} was closed on your other Mac: use theirs (keeping yours would open it again and bring back what it sent on).`
     : `${s === T ? "Today's page" : "That day's page"} was changed on your other Mac.`, true, [
-    { label: "Use theirs", run: () => { adopt(s, deskShape(theirs || {})); s.rev = theirRev; bind(); document.dispatchEvent(new Event("hanua:day-refreshed")); } },
+    { label: "Use theirs", run: () => { adopt(s, deskShape(theirs || {})); reread?.(s.key, s.data); s.rev = theirRev; bind(); document.dispatchEvent(new Event("hanua:day-refreshed")); } },
     { label: "Keep mine", run: () => { s.rev = theirRev; queue(s, true); } },
   ]);
 }

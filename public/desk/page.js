@@ -296,7 +296,8 @@ function subKeys(e, input, sec, key, i) {
   // Backspace straight after a Tab takes that Tab back, wherever the caret is (15 Oct 2026)
   if (act === "untab") {
     e.preventDefault();
-    if (step()) { pending = null; renderTodo(); renderAgenda(); renderPlanWidget(); } else if (outdentLine(desk, line.id)) { save(); renderTodo(); renderAgenda(); }
+    // just that line back out (never a step through the whole history: 16 Oct 2026, a whole day was lost that way)
+    if (outdentLine(desk, line.id)) { save(); renderTodo(); renderAgenda(); }
     focusLine(key, i);
     return true;
   }
