@@ -5,11 +5,11 @@
 // the file opens the week, and a click on a day opens its page. A day ahead is the same page, saying so plainly
 // ("Planning Wed 07-Oct", a faint tint, no ticks, no morning sweep), with Clear this day; Move to… sends picked lines
 // to another day. Here `desk` is the page's day (state.js `page`), which is today's unless planning ahead.
-import { letGoIds, lineKeyAction, returnUnplaced, carriedDays, clearDay, daySummary, indentLine, kidsOf, moveLines, outdentLine, putLines, removeLines, removeMeeting, setLines, takeLines, weekDays, CLASH_TEXT, deskSections, deskShape, fromMin, isFixed, keepPlan, lastFocus, leftovers, minsText, openItems, planDay, planDate, settle, shorterCol, stampLine, stepDay, timeLabel, toMin, DEFAULT_MINS, GENERAL, MAX_LINES, MAX_MEETINGS, MAX_NAME, MAX_SECTIONS, MEETING_PICKS, SECTION_ROWS, TIME_PICKS, TIME_WORDS } from "../shared/desk.js";
+import { letGoIds, lineKeyAction, timeText, returnUnplaced, carriedDays, clearDay, daySummary, indentLine, kidsOf, moveLines, outdentLine, putLines, removeLines, removeMeeting, setLines, takeLines, weekDays, CLASH_TEXT, deskSections, deskShape, fromMin, isFixed, keepPlan, lastFocus, leftovers, minsText, openItems, planDay, planDate, settle, shorterCol, stampLine, stepDay, timeLabel, toMin, DEFAULT_MINS, GENERAL, MAX_LINES, MAX_MEETINGS, MAX_NAME, MAX_SECTIONS, MEETING_PICKS, SECTION_ROWS, TIME_PICKS, TIME_WORDS } from "../shared/desk.js";
 import { dayOf, parseDay, timeOf, todayStr, ymd } from "../shared/dates.js";
 import { $, focus, h, toast } from "../lib.js";
 import { calendarItems, ensureApple } from "../app.js";
-import { backup, changeDay, deskDay, desk as todayDesk, fixed, loaded, newId, page as desk, pageDay, pageEarlier as earlier, planningAhead, prompts, savePage as save, showDay, stale } from "./state.js";
+import { backup, changeDay, editDay, deskDay, desk as todayDesk, fixed, loaded, newId, page as desk, pageDay, pageEarlier as earlier, planningAhead, prompts, savePage as save, showDay, stale } from "./state.js";
 import { openDayPicker } from "./daypick.js";
 import { timeField } from "./timefield.js";
 import { renderAgenda } from "./agenda.js";
@@ -22,6 +22,8 @@ import { sweepEl } from "./sweep.js";
 import { archiveEl, openArchive } from "./archive.js";
 import { goDay, openWeek, weekEl } from "./week.js";
 import { closeButton } from "./close.js";
+import { follow, step } from "./history.js";
+import { put as putSettings, settings } from "../settings/store.js";
 export { goDay, openArchive, openWeek }; // other parts of the desk still ask page.js for these
 
 // what Plan my day shows besides a day's page (the archive, the two weeks) and whether the sweep was put off: one
@@ -213,6 +215,18 @@ $("todo").addEventListener("keydown", (e) => {
   const p = { h: "h", m: "m", l: "l" }[e.key.toLowerCase()];
   if (p) { e.preventDefault(); const refs = [...selected]; undoable(`${refs.length} line${refs.length === 1 ? "" : "s"}: ${PRI_LABEL[p]}`, () => setLines(desk, refs, { pri: p })); }
 });
+// ⌘Z steps back through the page's changes, ⇧⌘Z forward (15 Oct 2026; desk/history.js); held, it keeps going. Hanua's
+// own history even inside a box: the page redraws after most changes, which would leave Safari's undo out of step
+$("plan-day").addEventListener("keydown", (e) => {
+  if (!(e.metaKey || e.ctrlKey) || e.altKey || e.key.toLowerCase() !== "z" || e.isComposing) return;
+  e.preventDefault();
+  const el = document.activeElement, sec = el?.closest?.("#todo [data-section]")?.dataset.section;
+  const i = sec && el.matches(".pl-input") ? [...document.querySelectorAll(`#todo [data-section="${sec}"] .pl-input`)].indexOf(el) : -1;
+  if (!step(e.shiftKey)) return;
+  pending = null; tabbed = null;
+  renderTodo(); renderAgenda(); renderPlanWidget(); renderTxt();
+  if (i >= 0) focusLine(sec, i);
+}, true);
 // Esc lets go of the picked lines first, before it closes the window
 $("plan-day").addEventListener("cancel", (e) => { if (clearPicks()) e.preventDefault(); });
 
@@ -261,14 +275,37 @@ function focusesEl() {
 // it has words (pending), and gets its task as soon as it's typed on. Enter on a subtask makes the next empty row a
 // subtask too; Backspace in an empty indented row takes it back out.
 let pending = null; // "<section key>:<row>" of an indented empty row
+let tabbed = null; // the line a Tab just indented, until another key is pressed (Backspace then takes the Tab back)
+// a Tab can't tuck this written line in: already a subtask, the first task, or it has subtasks (one level only)
+const cantIndent = (sec, i) => { const l = sec.lines[i]; return Boolean(l.parent || kidsOf(sec.lines, l.id).length || !sec.lines.slice(0, i).some((x) => x.text)); };
+const toPriority = (input) => {
+  const pri = input.closest(".pl-line")?.querySelector(".pl-pri");
+  if (!pri || !pri.offsetParent) return false;
+  pri.focus();
+  return true;
+};
 function subKeys(e, input, sec, key, i) {
   const line = sec.lines[i], written = Boolean(line?.text);
+  const wasTabbed = written && tabbed === line.id;
+  if (!["Shift", "Meta", "Alt", "Control", "CapsLock"].includes(e.key)) tabbed = null;
+  const act = lineKeyAction({ key: e.key, start: input.selectionStart, end: input.selectionEnd, length: input.value.length, written: Boolean(input.value),
+    sub: Boolean(written && line.parent), shift: e.shiftKey, alt: e.altKey, meta: e.metaKey, ctrl: e.ctrlKey,
+    tabbed: wasTabbed, cantIndent: written && cantIndent(sec, i) });
+  // Tab on a line that can't go further in goes on to its Priority, then Time (15 Oct 2026)
+  if (act === "toPriority") { e.preventDefault(); if (!toPriority(input)) toast("There's no task above it to go under"); return true; }
+  // Backspace straight after a Tab takes that Tab back, wherever the caret is (15 Oct 2026)
+  if (act === "untab") {
+    e.preventDefault();
+    if (step()) { pending = null; renderTodo(); renderAgenda(); renderPlanWidget(); } else if (outdentLine(desk, line.id)) { save(); renderTodo(); renderAgenda(); }
+    focusLine(key, i);
+    return true;
+  }
   if (e.key === "Tab" && !e.altKey && !e.metaKey && !e.ctrlKey) {
     e.preventDefault();
     if (written) {
       const ok = e.shiftKey ? outdentLine(desk, line.id) : indentLine(desk, line.id);
-      if (!ok) toast(e.shiftKey ? "That's already a task" : kidsOf(sec.lines, line.id).length ? "It has subtasks of its own: one level only" : "There's no task above it to go under");
-      else { save(); renderTodo(); renderAgenda(); }
+      if (!ok) toast(e.shiftKey ? "That's already a task" : "There's no task above it to go under");
+      else { save(); renderTodo(); renderAgenda(); if (!e.shiftKey) tabbed = line.id; }
     } else if (e.shiftKey) pending = null;
     else if (sec.lines.slice(0, i).some((l) => l.text)) pending = `${key}:${i}`;
     else toast("There's no task above it to go under");
@@ -283,8 +320,6 @@ function subKeys(e, input, sec, key, i) {
   }
   if (e.key === "Backspace" && !input.value && pending === `${key}:${i}`) { e.preventDefault(); pending = null; renderTodo(); focusLine(key, i); return true; }
   // Backspace at the very start of a subtask brings it back out; → at the very end goes on to Priority (10 Oct 2026)
-  const act = lineKeyAction({ key: e.key, start: input.selectionStart, end: input.selectionEnd, length: input.value.length, written: Boolean(input.value),
-    sub: Boolean(written && line.parent), shift: e.shiftKey, alt: e.altKey, meta: e.metaKey, ctrl: e.ctrlKey });
   if (act === "outdent") {
     e.preventDefault();
     if (outdentLine(desk, line.id)) { save(); renderTodo(); renderAgenda(); }
@@ -292,11 +327,9 @@ function subKeys(e, input, sec, key, i) {
     document.activeElement?.setSelectionRange?.(0, 0); // the caret stays where it was, at the start
     return true;
   }
-  if (act === "toPriority") {
-    const pri = input.closest(".pl-line")?.querySelector(".pl-pri");
-    if (!pri || !pri.offsetParent) return false;
+  if (act === "toPriority" || (e.key === "ArrowRight" && lineKeyAction({ key: e.key, start: input.selectionStart, end: input.selectionEnd, length: input.value.length, written: Boolean(input.value) }) === "toPriority")) {
+    if (!toPriority(input)) return false;
     e.preventDefault();
-    pri.focus();
     return true;
   }
   return false;
@@ -470,8 +503,30 @@ function dayBar() {
   });
   // Close the day, from 4 pm, on today's page only (close.js)
   const closing = pageDay === todayStr() ? closeButton("pl-close") : null;
-  return h("div", { className: "pl-daybar" }, h("span", { className: "pl-daylabel", textContent: "My day" }), field("start", "Day starts"), h("span", { textContent: "–" }), field("end", "Day ends"), keep, closing, go);
+  // these hours as the usual (Desk Settings → Planner), when they differ from it (15 Oct 2026)
+  const usual = settings?.day && (desk.day.start !== settings.day.start || desk.day.end !== settings.day.end)
+    ? h("button", { type: "button", className: "pl-usual", textContent: "Make these my usual", title: `Your usual day is ${hoursText(settings.day)} (Desk Settings → Planner)` }) : null;
+  usual?.addEventListener("click", () => putSettings({ ...settings, day: { ...desk.day } }, { undoText: `Your usual day is now ${hoursText(desk.day)}` }));
+  return h("div", { className: "pl-daybar" }, h("span", { className: "pl-daylabel", textContent: "My day" }), field("start", "Day starts"), h("span", { textContent: "–" }), field("end", "Day ends"), usual, keep, closing, go);
 }
+const hoursText = (d) => `${timeText(d.start)} – ${timeText(d.end)}`;
+// Mel changed her usual hours here (Desk Settings, or Make these my usual): today, and a day ahead on the page, follow
+// if they still have the old usual hours (hours set by hand on a day stay). Undo puts them back (15 Oct 2026)
+document.addEventListener("hanua:settings-saved", async (e) => {
+  const { before, here } = e.detail || {};
+  const was = before?.day, now = settings?.day;
+  if (here && was && now && (was.start !== now.start || was.end !== now.end)) {
+    const same = (d) => d.day?.start === was.start && d.day?.end === was.end;
+    const days = [...new Set([deskDay, pageDay])];
+    const moved = [];
+    for (const key of days) await editDay(key, (d) => { if (same(d)) { d.day = { ...now }; moved.push(key); } });
+    if (moved.length) toast(`${moved.includes(deskDay) ? "Today" : "That day"} follows: ${hoursText(now)}`, false, { label: "Undo", run: () => {
+      for (const key of moved) editDay(key, (d) => { d.day = { ...was }; });
+      setTimeout(() => renderTodo(), 50);
+    } });
+  }
+  renderTodo();
+});
 // fixed things on a day: its jotted meetings, and timed events already in the calendars (the page's day by default)
 export function fixedOn(day = pageDay, d = desk) {
   const cal = calendarItems().filter((x) => dayOf(x.date) === day && timeOf(x.date) && x.kind !== "Due" && !x.goal)
@@ -488,6 +543,7 @@ export function renderTodo() {
   // longest time word, which Mel can rename in Settings
   $("todo").style.setProperty("--mins-n", Math.max(4, ...Object.values(TIME_WORDS).map((w) => w.length)));
   const day = pageDay, ahead = day > today;
+  follow(day, desk); // ⌘Z follows the day on the page
   const shows = deskSections(focus.on);
   // keep the cursor where it was across a re-render
   const at = document.activeElement?.closest?.("#todo [data-section]");

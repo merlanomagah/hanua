@@ -3018,6 +3018,9 @@ html.dark .topshelf .sw-knob { background: #F3ECE0; }
 .close-btn.closed:hover { background: transparent; border-color: var(--green); }
 .txt-head .th-close { margin-left: 10px; }
 .pl-daybar .pl-close { margin-left: 8px; }
+/* Make these my usual (15 Oct 2026): a quiet link, only when today's hours differ from the usual */
+.pl-usual { margin-left: 6px; padding: 0 4px; border: 0; background: none; cursor: pointer; font: 11px var(--ui); color: var(--ink-3); text-decoration: underline; text-underline-offset: 2px; }
+.pl-usual:hover, .pl-usual:focus-visible { color: var(--terra); }
 .cd-body { padding: 12px 22px 18px; }
 .cd-list { list-style: none; margin: 0; padding: 0; }
 .cd-item { padding: 8px 0 10px; border-bottom: 1px solid var(--border); }

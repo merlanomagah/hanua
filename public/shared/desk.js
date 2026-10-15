@@ -120,13 +120,46 @@ export function withFamilies(d, refs, { openKids = false } = {}) {
 // caret at the very start of a subtask (nothing selected) brings it back out, like Shift+Tab, and never deletes
 // anything; → with the caret at the very end of a written line goes on to its Priority (then Time). Anything else,
 // or any modifier key held, is left to the text box. k: { key, start, end, length, written, sub, shift, alt, meta, ctrl }
+// Since 15 Oct 2026 (brief docs/plans/2026-10-planner-keys-and-close-insights.md): Backspace straight after a Tab
+// that indented the line (k.tabbed: no other key since) takes that Tab back, wherever the caret is; and Tab on a
+// written line that can't go further in (k.cantIndent: already a subtask, the first task, or one with subtasks) goes
+// on to its Priority, then Time, like Tab through a Mac form.
 export function lineKeyAction(k) {
-  if (!k || k.alt || k.meta || k.ctrl || k.shift) return null;
+  if (!k || k.alt || k.meta || k.ctrl) return null;
+  if (k.key === "Tab" && !k.shift && k.written && k.cantIndent) return "toPriority";
+  if (k.shift) return null;
+  if (k.key === "Backspace" && k.tabbed) return "untab";
   const collapsed = k.start === k.end;
   if (k.key === "Backspace" && collapsed && k.start === 0 && k.sub) return "outdent";
   if (k.key === "ArrowRight" && collapsed && k.end === k.length && k.written) return "toPriority";
   return null;
 }
+// ---- ⌘Z in Plan my day (15 Oct 2026) ----
+// Hanua keeps its own history of the page's day (the page redraws after most changes, which wipes Safari's own undo).
+// Each change is one step, except typing in the same box with no pause longer than GROUP_MS: that's one step, the way
+// a Mac groups typing. Anything else (a Tab, a priority, a tick, a move) is always a step of its own. At most
+// HISTORY_MAX steps, in memory only. last / now: { field, at } (field: the box being typed in, or null).
+export const HISTORY_MAX = 100, GROUP_MS = 1200;
+export function historyStep(last, now) {
+  return last?.field && now?.field && last.field === now.field && now.at - last.at < GROUP_MS ? "merge" : "push";
+}
+// One change to the history { undo: [], redo: [], base }: `next` is the day as it is now (JSON). Returns the history.
+export function recordChange(hist, next, step) {
+  if (next === hist.base) return hist;
+  if (step === "push" && hist.base != null) { hist.undo.push(hist.base); if (hist.undo.length > HISTORY_MAX) hist.undo.shift(); }
+  hist.redo = [];
+  hist.base = next;
+  return hist;
+}
+// ⌘Z (redo false) or ⇧⌘Z: the day to show now, or null when there's nothing to go back (or forward) to
+export function historyMove(hist, redo = false) {
+  const from = redo ? hist.redo : hist.undo, to = redo ? hist.undo : hist.redo;
+  if (!from.length) return null;
+  to.push(hist.base);
+  hist.base = from.pop();
+  return hist.base;
+}
+
 // Tab on a line: under the nearest written task above (the task itself when that's a subtask). Not on a section's
 // first task, nor on a task that has subtasks of its own (one level). true when it moved.
 export function indentLine(d, id) {
