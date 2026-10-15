@@ -46,6 +46,8 @@ The reasoning behind Hanua lives in [Hanua OS](https://app.notion.com/p/3ee16603
 
 ## Latest (16 Oct 2026): Tab indents only at the start of a line (Small lane; Mel: yes)
 
+**Fix (16 Oct, 5:30 am): a whole day saved empty after one Backspace.** The ⌘Z history (`public/desk/history.js`) had begun on the empty page before the day was read, so Backspace after a Tab ("undo the Tab" = one history step) restored an empty day and saved it. Now the history starts only once the day is read (`dayRead`) and again whenever it's read (`onDayRead` from `state.js` read / refresh / Use theirs), and Backspace after a Tab only outdents that line. Mel's page came back at 5:55 (the 00:30 nightly backup was ready; the restore refused to overwrite a non-empty day). **Rule:** anything that can put a whole day back (undo, restore, Use theirs) is tested from a fresh page load, not only at the rule level.
+
 In Plan my day, **indenting belongs to the start of a line**: Tab with the caret at the very start makes a task a subtask (the caret stays at the start); Tab anywhere after the start (the end, the middle) goes on to **Priority**, then Tab to **Time**; Tab at the start of a line that can't go in (already a subtask, the first task) goes on to Priority too; Backspace at the start of a subtask brings it back out; Shift+Tab as before. Rule `lineKeyAction` in `shared/desk.js` (tested). The Journal database is connected; the **Hanua journal prompts** page still wasn't (16 Oct, morning): ask Mel to add the Hanua connection to it.
 
 ## Latest (15 Oct 2026, night): the Journal, and the weekly review can be closed (briefs `docs/plans/2026-10-journal.md`; Mel: weekly / Notion / the fale areas as sections / Claude may read)
