@@ -50,9 +50,21 @@ export const RV_STEPS = [
   { key: "tryNext", name: "Try", title: "One small change", prompt: "One thing to do differently next week." },
 ];
 
+// A review in progress is kept (Mel, 15 Oct 2026: closing it lost everything, and there was no way out but Esc):
+// this week's answers stay on this Mac until it's saved to Notion, so × / Finish later / Esc and coming back carry on.
+// A draft, like an unsent message: browser storage is right for it (the saved review lives in Notion).
+const DRAFT = "review-draft";
+const weekOf = () => ymd(mondayOf(new Date()));
+const readDraft = () => { try { const d = JSON.parse(localStorage.getItem(DRAFT) || "null"); return d?.week === weekOf() && d.rv ? d.rv : null; } catch { return null; } };
+export const keepDraft = () => { if (!rv) return; try { localStorage.setItem(DRAFT, JSON.stringify({ week: weekOf(), rv })); } catch { /* this visit only */ } };
+const dropDraft = () => { try { localStorage.removeItem(DRAFT); } catch { /* fine */ } };
+const started = (r) => Boolean(r && (r.step || r.energy || ["wins", "stuck", "wip", "weekGoal", "tryNext"].some((k) => r[k]?.trim())));
+
 export function openReview() {
   const last = lastReview();
-  rv = { step: 0, since: last?.date ? dayOf(last.date) : ymd(new Date(Date.now() - 7 * 86_400_000)), energy: "", wins: "", stuck: "", wip: "", weekGoal: "", tryNext: "" };
+  const draft = readDraft();
+  rv = draft || { step: 0, since: last?.date ? dayOf(last.date) : ymd(new Date(Date.now() - 7 * 86_400_000)), energy: "", wins: "", stuck: "", wip: "", weekGoal: "", tryNext: "" };
+  if (started(draft)) toast("Carrying on where you left off");
   $("review-week").textContent = `Week of ${longDate(mondayOf(new Date()), false)}`;
   $("rv-last").hidden = !last?.tryNext;
   if (last?.tryNext) $("rv-last").textContent = `Last time you said you'd try: “${last.tryNext}”. Did it help?`;
@@ -152,8 +164,9 @@ export function renderReview() {
     }
   }
   const area = h("textarea", { rows: 3, placeholder: "A line or two is plenty", value: rv[step.key] });
-  area.addEventListener("input", () => { rv[step.key] = area.value; });
+  area.addEventListener("input", () => { rv[step.key] = area.value; keepDraft(); });
   $("rv-body").replaceChildren(h("h4", { className: "rv-title", textContent: step.title }), ...top, h("label", { className: "rv-label" }, step.prompt, area));
+  keepDraft();
   $("rv-back").hidden = rv.step === 0;
   $("rv-next").textContent = rv.step === RV_STEPS.length - 1 ? (state.reviews.live ? "Save review to Notion" : "Save review") : "Next";
 }
@@ -178,6 +191,7 @@ $("rv-next").addEventListener("click", async () => {
     const res = await api("/api/reviews", { values });
     if (res.live) state.reviews = await api("/api/reviews");
     else state.reviews.reviews.unshift({ id: `local-${Date.now()}`, week: values.title, date: values.date, tryNext: values.tryNext, weekGoal: values.weekGoal });
+    dropDraft();
     $("review-dialog").close();
     toast(res.live ? "Review saved to Notion ✓ See you next week." : "Review saved here only (sample data)");
     renderNotes();
@@ -189,3 +203,11 @@ $("rv-next").addEventListener("click", async () => {
   }
 });
 $("review-open").addEventListener("click", openReview);
+// × and Finish later close it with the answers kept (Esc does the same: the draft is kept as you go)
+function later() {
+  keepDraft();
+  $("review-dialog").close();
+  if (started(rv)) toast("Kept for later: Weekly review carries on where you left off");
+}
+$("rv-close").addEventListener("click", later);
+$("rv-later").addEventListener("click", later);

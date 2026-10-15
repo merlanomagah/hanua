@@ -1810,6 +1810,10 @@ button.g-state:hover, button.g-state:focus-visible { background: var(--hair); co
 .review-dialog { width: min(640px, calc(100% - 32px)); }
 .rv-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 12px; }
 .rv-head .eyebrow { font-size: 10px; color: var(--terra); }
+/* close for now (15 Oct 2026): the answers are kept */
+.rv-head { position: relative; padding-right: 36px; }
+.rv-x { position: absolute; top: -4px; right: -4px; width: 32px; height: 32px; border: 0; border-radius: 4px; background: transparent; color: var(--ink-3); cursor: pointer; font: 20px/1 var(--ui); }
+.rv-x:hover, .rv-x:focus-visible { color: var(--terra); }
 .rv-steps { list-style: none; display: flex; gap: 4px; margin: 0; padding: 0; }
 .rv-steps li { display: flex; align-items: center; gap: 5px; padding: 5px 8px; border-radius: 3px; font: 9px var(--mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--faint); }
 .rv-steps li span { display: grid; place-items: center; width: 16px; height: 16px; border-radius: 50%; border: 1px solid currentColor; font-size: 8px; }
