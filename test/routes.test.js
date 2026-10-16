@@ -265,7 +265,9 @@ test("routes: the Jump team reads invented charters, refuses identifiers, propos
   assert.equal(no.json.scrub, true);
   assert.equal((await call("/api/team/standup", { method: "POST", body: { update: "" } })).status, 400);
   const before = JSON.stringify((await call("/api/jump")).json.escalations);
-  const s = await call("/api/team/standup", { method: "POST", body: { update: "Returns are confusing the care team this week (invented)" } });
+  // what it's about and what she wants are checked for identifiers too
+  assert.equal((await call("/api/team/standup", { method: "POST", body: { update: "x (invented)", outcome: "call 021 555 1234 back" } })).status, 400);
+  const s = await call("/api/team/standup", { method: "POST", body: { update: "Returns are confusing the care team this week (invented)", kind: "Issue raised by Care", from: "T2", outcome: "A next step for today" } });
   assert.equal(s.status, 200);
   // an advisor (Seat: Advisor) gives a steer only: whatever came back, no next steps or sign-offs reach the page, and it's always routed
   const adv = s.json.members.find((x) => x.advisor);

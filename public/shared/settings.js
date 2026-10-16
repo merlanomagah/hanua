@@ -7,7 +7,7 @@ export const DEFAULT_WORDS = { 10: "Quick", 15: "Short", 30: "Half hour", 45: "S
 export const MAX_FIXED = 8;
 // Settings files carry the version that wrote them: an older Hanua (the other Mac, not yet updated) refuses to save
 // over a newer file rather than dropping what it doesn't know. Raise it whenever settingsShape learns a group.
-export const SETTINGS_VERSION = 3; // 3: close (Close the day's times, 9 Oct 2026)
+export const SETTINGS_VERSION = 4; // 3: close (Close the day's times, 9 Oct 2026); 4: standup (the Jump stand-up's types, 16 Oct 2026)
 export const SLEEP_PICKS = [5, 10, 15, 30, 60];
 export const CLOCKS = [{ city: "Sydney", zone: "Australia/Sydney" }, { city: "Suva", zone: "Pacific/Fiji" }, { city: "Los Angeles", zone: "America/Los_Angeles" }];
 const realZone = (z) => { try { return typeof z === "string" && z.length < 60 && Boolean(new Intl.DateTimeFormat("en", { timeZone: z })); } catch { return false; } };
@@ -16,6 +16,34 @@ const names = (a, n = 40) => (Array.isArray(a) ? [...new Set(a.map((x) => clip(x
 const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/;
 const clip = (v, n) => String(v ?? "").replace(/\s+/g, " ").trim().slice(0, n);
 const minutes = (v, lo, hi, d) => { const n = Math.round(Number(v)); return Number.isFinite(n) && n >= lo && n <= hi ? n : d; };
+
+// What Mel brings to the Jump team's stand-up (16 Oct 2026, brief docs/plans/2026-10-standup-shape.md): drawn from
+// what her work OS logs show comes up. A type can carry chips for where it came from ("From", or "Where" etc.); one
+// shared set of chips fills "What I want out of this". Hers to change from the stand-up's "Edit types…".
+export const MAX_TYPES = 12, MAX_CHIPS = 6;
+export const STANDUP = {
+  types: [
+    { name: "Escalation via DIAA", ask: "From", chips: ["A partner", "A customer", "DIAA itself"] },
+    { name: "Issue raised by Care", ask: "From", chips: ["T1", "T2", "Virtual Care Specialist"] },
+    { name: "Ops or system issue", ask: "Where", chips: ["Sign-up", "Provisioning", "The app", "Shared sheets"] },
+    { name: "New project or change", ask: "", chips: [] },
+    { name: "Meeting notes to work through", ask: "", chips: [] },
+    { name: "Planning or priorities", ask: "", chips: [] },
+    { name: "Something I've noticed", ask: "", chips: [] },
+  ],
+  outcomes: ["Understand what's going on", "A next step for today", "A fix and how to stop it recurring", "Something to take to someone"],
+};
+const chipList = (a, n, len) => (Array.isArray(a) ? [...new Set(a.map((x) => clip(x, len)).filter(Boolean))].slice(0, n) : []);
+export function standupShape(x, base = STANDUP) {
+  const seen = new Set();
+  const types = Array.isArray(x?.types)
+    ? x.types.map((t) => ({ name: clip(t?.name, 50), ask: clip(t?.ask, 16), chips: chipList(t?.chips, MAX_CHIPS, 40) }))
+      .filter((t) => t.name && !seen.has(t.name.toLowerCase()) && seen.add(t.name.toLowerCase())).slice(0, MAX_TYPES)
+    : base.types.map((t) => ({ ...t, chips: [...t.chips] }));
+  for (const t of types) if (t.chips.length && !t.ask) t.ask = "From";
+  const outcomes = Array.isArray(x?.outcomes) ? chipList(x.outcomes, MAX_CHIPS, 60) : [...base.outcomes];
+  return { types, outcomes };
+}
 
 // Hanua's defaults; fixed: config/areas.json planner.fixedSections
 export const defaults = (fixed = []) => ({
@@ -32,6 +60,7 @@ export const defaults = (fixed = []) => ({
   weather: { place: "" }, // "" = .env's WEATHER_PLACE
   sleep: { after: 15 }, // minutes without use before Hanua sleeps
   close: { from: "16:00", remind: "19:00" }, // Close the day: the button from, the reminder at ("" = no reminder)
+  standup: standupShape(null), // the Jump team stand-up's types and outcome chips (16 Oct 2026)
 });
 
 // Whatever was saved or sent, tidied, with the defaults filling the gaps
@@ -62,7 +91,8 @@ export function settingsShape(o, base = defaults()) {
   // groups this Hanua doesn't know (written by a newer one) are kept as they are, never dropped
   const known = new Set([...Object.keys(base), "base", "changed", "v"]);
   const extra = Object.fromEntries(Object.entries(x).filter(([k, v]) => !known.has(k) && v && typeof v === "object"));
-  return { ...extra, fixedSections, day, timeWords, timer, lists, desk, calendar, room, calendars, weather, sleep, close };
+  const standup = x.standup && typeof x.standup === "object" ? standupShape(x.standup) : standupShape(null, base.standup || STANDUP);
+  return { ...extra, fixedSections, day, timeWords, timer, lists, desk, calendar, room, calendars, weather, sleep, close, standup };
 }
 
 // Which groups differ between two sets of Settings: a save sends only these, so a change on one Mac never undoes

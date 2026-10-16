@@ -145,3 +145,33 @@ test("an advisor: the Seat heading says so, and its steer keeps a fixed, short s
   assert.equal(hasSteer(shapeSteer({})), false);
   assert.equal(hasSteer(st), true);
 });
+
+test("the stand-up's framing: types tidy, uses counted a week, and the brief for Claude chat keeps to what was said", async () => {
+  const { STANDUP, standupShape, settingsShape, SETTINGS_VERSION } = await import("../public/shared/settings.js");
+  const { framing, bumpKind, kindUses, briefText } = await import("../public/shared/team.js");
+  assert.ok(SETTINGS_VERSION >= 4);
+  assert.equal(STANDUP.types.length, 7);
+  assert.deepEqual(settingsShape({}).standup, standupShape(null)); // nothing saved: Hanua's starting types
+  const t = standupShape({ types: [{ name: " Escalation (invented) ", chips: ["A", "A", "", "B"] }, { name: "escalation (invented)" }, { name: "" }], outcomes: ["x", "x", "y"] });
+  assert.deepEqual(t.types, [{ name: "Escalation (invented)", ask: "From", chips: ["A", "B"] }]); // duplicate names and blanks dropped; chips get a label
+  assert.deepEqual(t.outcomes, ["x", "y"]);
+  assert.deepEqual(standupShape({ types: [], outcomes: [] }), { types: [], outcomes: [] }); // she can clear them
+  assert.deepEqual(framing({ kind: "  A  ", outcome: "y".repeat(400) }).outcome.length, 300);
+  let c = bumpKind({}, "2026-10-12", "Issue raised by Care");
+  c = bumpKind(c, "2026-10-12", "Issue raised by Care");
+  c = bumpKind(c, "2026-10-12", "");
+  assert.deepEqual(c["2026-10-12"], { "Issue raised by Care": 2, "Not sure yet": 1 });
+  assert.equal(kindUses(c, "Issue raised by Care"), 2);
+  for (let i = 0; i < 10; i++) c = bumpKind(c, `2026-12-${String(i + 10).padStart(2, "0")}`, "x");
+  assert.equal(Object.keys(c).length, 8); // eight weeks kept
+  const reply = { pm: { synthesis: "Do the guide first (invented)", households: "" }, members: [
+    { member: "a", handle: "Check the article (invented)", prevent: "Add a finding (invented)", questions: ["Who confirms? (invented)"] },
+    { member: "b", advisor: true, steer: { touches: "Likely", why: "Returns (invented)", concerns: ["Load (invented)"], lands: [], check: ["Same guidance? (invented)"] } }] };
+  const text = briefText({ kind: "Issue raised by Care", from: "T2", outcome: "A next step for today", update: "Returns confusion (invented)", reply, nameOf: (id) => ({ a: "Wilson (Care)", b: "Hemi (Community Partners)" })[id] });
+  assert.match(text, /What it is: Issue raised by Care \(T2\)/);
+  assert.match(text, /What I want out of this: A next step for today/);
+  assert.match(text, /Wilson \(Care\):\n- Handle: Check the article/);
+  assert.match(text, /Hemi \(Community Partners\) \(an early steer from the partner's side, not their position\): Likely/);
+  assert.match(text, /- To check with them: Same guidance\?/);
+  assert.doesNotMatch(briefText({ update: "x" }), /What it is/); // nothing picked: nothing said
+});

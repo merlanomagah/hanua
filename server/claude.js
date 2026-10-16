@@ -262,7 +262,7 @@ ${last.length ? `\n<previous_reflection>\n${qa(last)}\n</previous_reflection>` :
 // answers in its own lane, the PM sums up. Every claim cites the records it rests on (ids it was shown) or says it's
 // unconfirmed; anything to change in Jump OS comes back as a proposal for her to approve, never done here.
 const TEAM_SYSTEM = `You are an operations team working for one person, the operations partner on a not-for-profit home broadband programme run by a telco with a community delivery partner. Each member owns one stakeholder area and holds a charter (given): what matters there, key risks, what it affects, standing questions, dated context notes. The Product Manager oversees the whole programme.
-At a stand-up she gives an update. The Product Manager decides which members it touches ("routed": their ids) and only those members answer. Each answering member, in its own lane, says:
+At a stand-up she gives an update, and may say what it is (<what_it_is>: the kind of thing and where it came from) and what she wants out of it (<what_she_wants>). Use them: the kind and its source tell the Product Manager who it touches (anything from DIAA or a partner touches the advisor for the partner; anything raised by Care touches the Care member), and when she says what she wants, the Product Manager's synthesis opens by answering that directly, in a sentence, before anything else. The Product Manager decides which members it touches ("routed": their ids) and only those members answer. Each answering member, in its own lane, says:
 - "handle": how to deal with and resolve what touches its area now (concrete next steps, who in which role, in what order), 2 to 4 sentences;
 - "prevent": what would stop it happening again (a process, an owner, a check), 1 to 3 sentences;
 - "questions": what it needs from her to be sure (0 to 3, short, "what" or "who" questions);
@@ -278,7 +278,7 @@ An advisor (a charter whose Seat is "Advisor") owns no work and is never handed 
 It is an early steer, not their position: write "they would likely ask…", never "they say…". Every advisor is in "routed".
 Then the Product Manager: "synthesis" (3 to 5 sentences: what matters most this week across the areas, conflicts between members and how to settle them, the order of work; an advisor's steer may shape it but is never treated as a decision or as the stakeholder's word), "households" (one sentence: what this means for the households the programme serves), "stale" (member ids whose charter is not confirmed or stale and that this update relied on), and "cites".
 Rules: the programme's purpose first (fair, affordable, sustainable, and reaching households not reached yet). Facts owned by the partner, ops or care teams are never settled: say "to confirm with" and the role. The partner's vantage point is required, not a courtesy. Strategy sits above operations: flag when something needs sign-off above her. Never invent records, people or numbers; never use people's names, refer to roles. Plain, direct words; no em dashes.`;
-export async function coachJumpTeam({ update, answers = [], members, records, today }) {
+export async function coachJumpTeam({ update, about = {}, answers = [], members, records, today }) {
   // every field always there ("" or [] when it doesn't apply): structured replies keep to a fixed shape
   const Signoff = z.object({ kind: z.enum(["change", "today", "charter"]), why: z.string(), area: z.string(), id: z.string(), change: z.array(z.object({ field: z.string(), value: z.string() })), text: z.string(), member: z.string(), edit: z.object({ section: z.string(), op: z.enum(["add", "replace", "remove"]), line: z.string(), with: z.string() }) });
   const Steer = z.object({ touches: z.enum(["Yes", "Likely", "Unlikely", "No", ""]), why: z.string(), concerns: z.array(z.string()), lands: z.array(z.string()), check: z.array(z.string()) });
@@ -297,7 +297,7 @@ ${members.map(charter).join("\n\n")}
 <records>
 ${JSON.stringify(records)}
 </records>
-<update>
+${about.kind ? `<what_it_is>\n${about.kind}${about.from ? ` (from: ${about.from})` : ""}\n</what_it_is>\n` : ""}${about.outcome ? `<what_she_wants>\n${about.outcome}\n</what_she_wants>\n` : ""}<update>
 ${update}
 </update>${answers.length ? `\n<her_answers_to_your_questions>\n${answers.map((a) => `- ${a.member}: ${a.question}\n  ${a.answer}`).join("\n")}\n</her_answers_to_your_questions>` : ""}` }],
   });

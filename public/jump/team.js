@@ -7,7 +7,7 @@
 // member's charter. Team: the eight members, how current each charter is, and a member's page, where she adds context
 // (typed or spoken) and the member folds it into its charter, a change at a time, never just piling it up.
 // Nothing is kept on this Mac but the count of stand-ups a week (the probe's evidence).
-import { COLOURS, EDITABLE, JOB, applyEdit, bumpWeek, cadenceOf, CADENCES, colourOf, confirmCharter, initialOf, linksTo, memberName, noteLine, NOTES, plainLine, teamRows, titleOf, watching, whoWhat } from "../shared/team.js";
+import { COLOURS, EDITABLE, JOB, applyEdit, briefText, bumpKind, bumpWeek, cadenceOf, CADENCES, colourOf, confirmCharter, initialOf, kindUses, linksTo, memberName, noteLine, NOTES, plainLine, teamRows, titleOf, watching, whoWhat } from "../shared/team.js";
 import { ageFill } from "../shared/jump.js";
 import { todayStr } from "../shared/dates.js";
 import { $, focus, h, store, toast } from "../lib.js";
@@ -16,6 +16,8 @@ import { registerWindow, windowBar, noteOpen, noteClosed } from "../desk/window.
 import { registerFocus, takeFocus } from "../desk/stepper.js";
 import { stopTalk, talkFor } from "../desk/talk.js";
 import { arrived, decorate, waitNote, wait } from "../wait.js";
+import { change as changeSettings, settings } from "../settings/store.js";
+import { MAX_CHIPS, MAX_TYPES, STANDUP, standupShape } from "../shared/settings.js";
 
 const win = $("team-win");
 let team = null; // { live, url, members, error }
@@ -24,7 +26,7 @@ let view = "standup"; // "standup" | "team" | a member's id
 // back wiped her work): the stand-up, and each member's context, its reply and her answers. A reply that comes back
 // while she's elsewhere is kept for whoever asked. Dropped after a week untouched.
 const DRAFTS = "team-drafts", WEEK = 7 * 86_400_000;
-const freshStandup = () => ({ update: "", reply: null, answers: {}, done: {} });
+const freshStandup = () => ({ update: "", kind: "", from: "", outcome: "", reply: null, answers: {}, done: {}, types: null }); // types: Edit types being edited (kept too)
 const freshMember = () => ({ note: "", fold: null, answers: {}, done: {}, noteKept: false, form: null }); // form: the ⚙ settings being edited (kept too)
 let drafts = { standup: freshStandup(), members: {} };
 try {
@@ -92,7 +94,11 @@ const countStandup = () => {
   const week = `${monday.getFullYear()}-${String(monday.getMonth() + 1).padStart(2, "0")}-${String(monday.getDate()).padStart(2, "0")}`;
   let c = {}; try { c = JSON.parse(store("team-standups") || "{}") || {}; } catch { /* a fresh count */ }
   store("team-standups", JSON.stringify(bumpWeek(c, week)));
+  let k = {}; try { k = JSON.parse(store("team-standup-kinds") || "{}") || {}; } catch { /* a fresh count */ }
+  store("team-standup-kinds", JSON.stringify(bumpKind(k, week, su().kind)));
 };
+const kindCounts = () => { try { return JSON.parse(store("team-standup-kinds") || "{}") || {}; } catch { return {}; } };
+const standupTypes = () => settings?.standup || standupShape(null, STANDUP);
 async function sendStandup(again = false) {
   const st = su();
   if (!st.update.trim()) return;
@@ -101,7 +107,7 @@ async function sendStandup(again = false) {
   try {
     const res = await wait("standup", again ? "The team is reading your answers…" : "The team is working through it…", async (signal) => {
       render();
-      return api("/api/team/standup", { method: "POST", body: { update: st.update, answers: asked }, signal });
+      return api("/api/team/standup", { method: "POST", body: { update: st.update, kind: st.kind, from: st.from, outcome: st.outcome, answers: asked }, signal });
     });
     if (res) {
       st.reply = res;
@@ -169,8 +175,99 @@ function signoffEl(s, key) {
   }
   return h("li", { className: `tm-signoff${s.invalid ? " invalid" : ""}` }, h("span", { className: "tm-what", textContent: what }), h("span", { className: "tm-why", textContent: s.why }), ...edits, action);
 }
+// What it's about (16 Oct 2026, brief docs/plans/2026-10-standup-shape.md): a type (optional), where it came from
+// (one tap, only for types that have chips) and what she wants out of it (a line, or one of the chips). All optional;
+// the team reads them as their own lines. "Edit types…" at the end of the list opens the editor in place.
+function chipRow(options, current, set, label) {
+  return h("div", { className: "tm-chips", role: "group", ariaLabel: label }, ...options.map((o) => {
+    const b = h("button", { type: "button", className: `tm-chip${current === o ? " on" : ""}`, textContent: o, ariaPressed: String(current === o) });
+    b.addEventListener("click", () => set(current === o ? "" : o));
+    return b;
+  }));
+}
+function framingEl(st) {
+  const { types, outcomes } = standupTypes();
+  const known = types.some((t) => t.name === st.kind);
+  const sel = h("select", { className: "tm-kind", ariaLabel: "What's this about?" },
+    h("option", { value: "", textContent: "Not sure yet" }),
+    ...types.map((t) => h("option", { value: t.name, textContent: t.name, selected: t.name === st.kind })),
+    st.kind && !known ? h("option", { value: st.kind, textContent: `${st.kind} (removed)`, selected: true }) : null,
+    h("option", { value: "__edit", textContent: "Edit types…" }));
+  sel.addEventListener("change", () => {
+    if (sel.value === "__edit") { st.types = withWas(standupTypes()); touch(st); render(); return; }
+    st.kind = sel.value; st.from = ""; touch(st); render();
+  });
+  const type = types.find((t) => t.name === st.kind);
+  const outcome = h("input", { className: "tm-outcome", value: st.outcome, placeholder: "What I want out of this (optional)", ariaLabel: "What I want out of this", maxLength: 300 });
+  outcome.addEventListener("input", () => { st.outcome = outcome.value; touch(st); });
+  return h("div", { className: "tm-framing" },
+    h("label", { className: "tm-frame-row" }, h("span", { className: "tm-frame-label", textContent: "What's this about?" }), sel),
+    type?.chips.length ? h("div", { className: "tm-frame-row" }, h("span", { className: "tm-frame-label", textContent: type.ask || "From" }),
+      chipRow(type.chips, st.from, (v) => { st.from = v; touch(st); render(); }, type.ask || "From")) : null,
+    h("div", { className: "tm-frame-row tm-frame-want" }, h("span", { className: "tm-frame-label", textContent: "What I want" }),
+      h("div", { className: "tm-frame-col" }, outcome, chipRow(outcomes, st.outcome, (v) => { st.outcome = v; touch(st); render(); }, "Quick outcomes"))));
+}
+// Edit types: rename, where-it-came-from chips (comma separated), reorder, remove, add; and the outcome chips. One
+// save to Hanua Settings (both Macs), with Undo
+const withWas = (x) => ({ outcomes: [...x.outcomes], types: x.types.map((t) => ({ ...t, chips: [...t.chips], was: t.name })) }); // was: its name when editing began
+function typesEditorEl(st) {
+  const ed = st.types, counts = kindCounts();
+  const close = () => { st.types = null; touch(st); render(); };
+  const rows = ed.types.map((t, i) => {
+    const name = h("input", { className: "tm-type-name", value: t.name, ariaLabel: "Type", maxLength: 50 });
+    name.addEventListener("input", () => { t.name = name.value; touch(st); });
+    const ask = h("input", { className: "tm-type-ask", value: t.ask, ariaLabel: "Chip label (From, Where…)", placeholder: "From", maxLength: 16 });
+    ask.addEventListener("input", () => { t.ask = ask.value; touch(st); });
+    const chips = h("input", { className: "tm-type-chips", value: t.chips.join(", "), ariaLabel: `Chips for ${t.name || "this type"}, comma separated`, placeholder: "Chips, comma separated (optional)" });
+    chips.addEventListener("input", () => { t.chips = chips.value.split(",").map((x) => x.trim()).filter(Boolean).slice(0, MAX_CHIPS); touch(st); });
+    const move = (d) => { const j = i + d; if (j < 0 || j >= ed.types.length) return; [ed.types[i], ed.types[j]] = [ed.types[j], ed.types[i]]; touch(st); render(); };
+    const up = h("button", { type: "button", className: "set-reset tm-type-btn", textContent: "↑", ariaLabel: `Move ${t.name} up`, disabled: i === 0 });
+    up.addEventListener("click", () => move(-1));
+    const down = h("button", { type: "button", className: "set-reset tm-type-btn", textContent: "↓", ariaLabel: `Move ${t.name} down`, disabled: i === ed.types.length - 1 });
+    down.addEventListener("click", () => move(1));
+    const del = h("button", { type: "button", className: "set-reset tm-type-btn", textContent: "×", ariaLabel: `Remove ${t.name}` });
+    del.addEventListener("click", () => { ed.types.splice(i, 1); touch(st); render(); });
+    const used = kindUses(counts, t.name);
+    return h("li", { className: "tm-type" }, h("div", { className: "tm-type-line" }, name, h("span", { className: "tm-type-used", textContent: used ? `used ${used}× in 4 weeks` : "not used yet" }), up, down, del),
+      h("div", { className: "tm-type-line" }, ask, chips));
+  });
+  const add = h("button", { type: "button", className: "set-reset", textContent: "+ Add a type", disabled: ed.types.length >= MAX_TYPES });
+  add.addEventListener("click", () => { ed.types.push({ name: "", ask: "", chips: [] }); touch(st); render(); setTimeout(() => win.querySelector(".tm-type:last-child .tm-type-name")?.focus(), 0); });
+  const outs = h("textarea", { className: "tm-answer tm-field", value: ed.outcomes.join("\n"), rows: Math.max(3, ed.outcomes.length), ariaLabel: "Outcome chips, one a line" });
+  outs.addEventListener("input", () => { ed.outcomes = outs.value.split("\n").map((x) => x.trim()).filter(Boolean).slice(0, MAX_CHIPS); touch(st); });
+  const cancel = h("button", { type: "button", className: "set-reset", textContent: "Cancel" });
+  cancel.addEventListener("click", close);
+  const reset = h("button", { type: "button", className: "set-reset", textContent: "Hanua's starting types" });
+  reset.addEventListener("click", () => { st.types = withWas(standupShape(null, STANDUP)); touch(st); render(); });
+  const save = h("button", { type: "button", className: "pl-go", textContent: "Save types" });
+  save.addEventListener("click", async () => {
+    const next = standupShape(ed), before = structuredClone(standupTypes());
+    save.disabled = true;
+    const ok = await changeSettings((s) => { s.standup = next; });
+    if (ok) {
+      const kindWas = st.kind, renamed = ed.types.find((t) => t.was && t.was === st.kind); // a type renamed while it was picked: keep it picked
+      if (renamed?.name.trim()) st.kind = renamed.name.trim();
+      st.types = null; touch(st);
+      toast("Stand-up types saved (both Macs)", false, { label: "Undo", run: async () => { if (await changeSettings((s) => { s.standup = before; })) { su().kind = kindWas; touch(su()); render(); } } });
+    }
+    render();
+  });
+  return h("section", { className: "tm-sec tm-types" },
+    h("header", { className: "jn-head" }, h("h3", { textContent: "Edit types" })),
+    h("p", { className: "tm-hint", textContent: "What you bring to the stand-up. Chips are optional: where it came from (From), or where it sits (Where). Removing a type doesn't change past stand-ups." }),
+    h("ul", { className: "tm-type-list" }, ...rows), h("div", { className: "tm-row tm-row-start" }, add),
+    h("label", { className: "tm-setting" }, h("span", { className: "tm-setting-name", textContent: "Outcome chips" }), h("span", { className: "tm-hint", textContent: "One a line: they fill “What I want” in one tap" }), outs),
+    h("div", { className: "tm-row" }, reset, cancel, save));
+}
+async function copyBrief() {
+  const st = su();
+  const text = briefText({ kind: st.kind, from: st.from, outcome: st.outcome, update: st.update, reply: st.reply, nameOf: (id) => { const m = member(id); return m ? `${memberName(m.title).name} (${memberName(m.title).role})` : null; } });
+  try { await navigator.clipboard.writeText(text); toast("Copied: paste it into a Claude chat"); }
+  catch { toast("Couldn't copy here: select the text in the stand-up instead.", true); }
+}
 function standupEl() {
   const st = su(), { reply, answers } = st;
+  if (st.types) return [typesEditorEl(st)];
   const box = h("textarea", { className: "jn-text tm-update", value: st.update, rows: 5, placeholder: "What's happening? Say it the way you'd tell the team.", ariaLabel: "Your stand-up update" });
   box.addEventListener("input", () => { st.update = box.value; touch(st); send.disabled = !st.update.trim(); });
   const talk = focus.on ? { button: null, line: null } : talkFor(box); // speech goes to Apple: not at work (Mel, 16 Oct 2026)
@@ -181,7 +278,7 @@ function standupEl() {
   const top = h("section", { className: "tm-sec" },
     h("header", { className: "jn-head" }, h("h3", { textContent: "Stand-up" }), talk.button),
     h("p", { className: "tm-hint", textContent: "Leave out names and customer details: say the role (“the partner's ops lead”, “a customer”). Hanua won't send emails, phone or account numbers." }),
-    box, talk.line, h("div", { className: "tm-row" }, fresh, send));
+    framingEl(st), box, talk.line, h("div", { className: "tm-row" }, fresh, send));
   const note = waitNote("standup", "The team usually takes 30 to 60 s");
   if (!reply) return [top, note];
   const byId = (id) => (member(id) ? memberName(member(id).title).name : "a member");
@@ -207,7 +304,9 @@ function standupEl() {
   const again = decorate(h("button", { type: "button", className: "pl-go", textContent: "Answer and ask again ✦" }), "standup");
   again.addEventListener("click", () => sendStandup(true));
   const hasQs = reply.members.some((m) => m.questions?.length);
-  return [top, note, pm, ...cards, hasQs ? h("div", { className: "tm-row" }, again) : null];
+  const copy = h("button", { type: "button", className: "set-reset tm-copy", textContent: "Copy for Claude chat", title: "Copies what it's about, what you want, what you said and the team's answer" });
+  copy.addEventListener("click", copyBrief);
+  return [top, note, pm, ...cards, h("div", { className: "tm-row" }, copy, hasQs ? again : null)];
 }
 
 // ---- the team, and one member ----
@@ -439,6 +538,7 @@ function hide() { stopTalk(); keep(true); win.hidden = true; noteClosed("team-wi
 registerFocus(win, () => hide());
 registerWindow("team-win", { title: "Jump team", icon: '<svg viewBox="0 0 48 60" aria-hidden="true" width="30"><circle cx="17" cy="24" r="7" fill="#c76a3a"/><circle cx="31" cy="24" r="7" fill="#3f7a5a"/><path d="M6 46c2-8 8-12 11-12s9 4 11 12M20 46c2-8 8-12 11-12s9 4 11 12" fill="none" stroke="#6b6155" stroke-width="2"/></svg>', show, hide, shown: () => !win.hidden });
 export function openTeam() { if (win.hidden) { show(); noteOpen("team-win"); } }
+document.addEventListener("hanua:settings", () => { if (!win.hidden && view === "standup") render(); }); // types changed (here or on the other Mac)
 export function initTeam(opts) { hooks = { ...hooks, ...opts }; $("jump-team")?.addEventListener("click", () => openTeam()); }
 win.addEventListener("keydown", (e) => { if (e.key === "Escape" && !document.querySelector("dialog[open]")) { e.preventDefault(); e.stopPropagation(); hide(); } });
 addEventListener("pagehide", () => keep(true));

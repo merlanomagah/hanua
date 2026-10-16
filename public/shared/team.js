@@ -137,6 +137,50 @@ export function bumpWeek(counts = {}, week) {
   return out;
 }
 
+// ---- what the stand-up is about (16 Oct 2026, brief docs/plans/2026-10-standup-shape.md): the type she picked,
+// where it came from and what she wants out of it go to the team as their own lines, and a type's use is counted a
+// week on this Mac (Edit types shows "used n× in 4 weeks", so a type nobody uses is plain to see) ----
+export function framing({ kind = "", from = "", outcome = "" } = {}) {
+  return { kind: clean(kind).slice(0, 50), from: clean(from).slice(0, 40), outcome: clean(outcome).slice(0, 300) };
+}
+export function bumpKind(counts = {}, week, kind) {
+  const k = clean(kind).slice(0, 50) || "Not sure yet";
+  const out = { ...counts, [week]: { ...(counts[week] || {}), [k]: ((counts[week] || {})[k] || 0) + 1 } };
+  for (const w of Object.keys(out).sort().slice(0, -8)) delete out[w];
+  return out;
+}
+export const kindUses = (counts = {}, kind, weeks = 4) => Object.keys(counts).sort().slice(-weeks).reduce((n, w) => n + ((counts[w] || {})[kind] || 0), 0);
+
+// "Copy for Claude chat": the stand-up as a brief she pastes into a chat (what it is, what she wants, what she said,
+// then the team's answer), plain text. Only what she wrote and what came back; nothing else from the board
+export function briefText({ kind, from, outcome, update, reply, nameOf = (id) => id } = {}) {
+  const f = framing({ kind, from, outcome }), out = [];
+  out.push("Jump stand-up: help me work through this.");
+  if (f.kind) out.push(`What it is: ${f.kind}${f.from ? ` (${f.from})` : ""}`);
+  if (f.outcome) out.push(`What I want out of this: ${f.outcome}`);
+  out.push("", "What's happening:", String(update || "").trim());
+  if (reply) {
+    if (reply.pm?.synthesis) out.push("", "The team's summary:", reply.pm.synthesis);
+    if (reply.pm?.households) out.push(`For households: ${reply.pm.households}`);
+    for (const m of reply.members || []) {
+      const who = nameOf(m.member) || m.title || "A member";
+      if (m.advisor) {
+        const st = m.steer || {};
+        out.push("", `${who} (an early steer from the partner's side, not their position): ${st.touches || "Not sure"}. ${st.why || ""}`.trim());
+        for (const c of st.concerns || []) out.push(`- Likely concern: ${c}`);
+        for (const l of st.lands || []) out.push(`- Where it lands: ${l}`);
+        for (const c of st.check || []) out.push(`- To check with them: ${c}`);
+        continue;
+      }
+      out.push("", `${who}:`);
+      if (m.handle) out.push(`- Handle: ${m.handle}`);
+      if (m.prevent) out.push(`- Prevent: ${m.prevent}`);
+      for (const q of m.questions || []) out.push(`- Open question: ${q}`);
+    }
+  }
+  return out.join("\n").replace(/\n{3,}/g, "\n\n").trim();
+}
+
 // ---- what a member watches on the board: lines under Watches like "tier: Partner", "area: questions",
 // "keyword: delink" (any one matching is enough; an empty Watches means nothing yet, never everything). Runs over
 // teamRows (whitelisted fields only), on the page and the server alike ----

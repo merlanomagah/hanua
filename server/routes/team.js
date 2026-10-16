@@ -12,7 +12,7 @@ import { getPage, notionEnabled, pageBlocks, replaceBody, updatePage } from "../
 import { claudeEnabled, coachJumpTeam, foldTeamContext } from "../claude.js";
 import { todayStr } from "../../public/shared/dates.js";
 import { WRITABLE, checkWrite } from "../../public/shared/jump.js";
-import { SECTIONS, applyEdit, charterBlocks, charterFrom, charterState, grounded, isAdvisor, scrub, scrubMessage, shapeSteer, teamRows } from "../../public/shared/team.js";
+import { SECTIONS, applyEdit, charterBlocks, charterFrom, charterState, framing, grounded, isAdvisor, scrub, scrubMessage, shapeSteer, teamRows } from "../../public/shared/team.js";
 
 export async function register({ app, root, config, jumpNow }) {
   const cfg = config.jump?.team || {};
@@ -83,9 +83,9 @@ export async function register({ app, root, config, jumpNow }) {
 
   // the stand-up: her update (and her answers to the team's questions, the second time round) → the team's proposals
   app.post("/api/team/standup", async (req, res, next) => {
-    const update = String(req.body?.update || "").trim().slice(0, 8000), answers = answersOf(req.body);
+    const update = String(req.body?.update || "").trim().slice(0, 8000), answers = answersOf(req.body), about = framing(req.body);
     if (!update) return res.status(400).json({ error: "Say what's happening first." });
-    const no = refuse([update, ...answers.map((a) => a.answer)]);
+    const no = refuse([update, about.kind, about.from, about.outcome, ...answers.map((a) => a.answer)]);
     if (no) return res.status(400).json({ error: no, scrub: true });
     try {
       const today = todayStr(), team = await members(), jump = await jumpNow();
@@ -99,7 +99,7 @@ export async function register({ app, root, config, jumpNow }) {
         reply.routed = reply.routed.map(swap); reply.pm.cites = reply.pm.cites.map(swap); reply.pm.stale = reply.pm.stale.map(swap);
         for (const m of reply.members) { m.member = swap(m.member); m.cites = m.cites.map(swap); for (const s of m.signoffs) { s.id = swap(s.id); s.member = swap(s.member); } }
       } else {
-        reply = await coachJumpTeam({ update, answers, today, records,
+        reply = await coachJumpTeam({ update, about, answers, today, records,
           members: team.map((m) => ({ id: m.id, title: m.title, sections: m.sections, state: m.state.label, advisor: isAdvisor(m.sections) })) });
       }
       res.json({ live: live(), records, ...check(reply, team, records, jump) });

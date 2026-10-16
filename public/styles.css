@@ -3450,6 +3450,27 @@ html.dark .tk-btn.on .tk-dot { background: #e07a62; }
 .tm-touch-v.t-unlikely, .tm-touch-v.t-no { color: var(--green); }
 .tm-touch-v.t-unsure { color: var(--ink-3); }
 .tm-steer-note { margin-top: 10px !important; font-size: 12px !important; color: var(--ink-3) !important; }
+.tm-framing { display: grid; gap: 8px; margin: 4px 0 12px; }
+.tm-frame-row { display: grid; grid-template-columns: 140px 1fr; align-items: center; gap: 10px; }
+.tm-frame-want { align-items: start; }
+.tm-frame-label { font: 600 12px/1.3 var(--ui); color: var(--ink-3); }
+.tm-frame-col { display: grid; gap: 6px; }
+.tm-kind, .tm-outcome, .tm-type-name, .tm-type-ask, .tm-type-chips { box-sizing: border-box; min-height: 32px; padding: 5px 8px; border: 1px solid var(--border-2); border-radius: 4px; background: var(--page); font: 14px/1.4 var(--ui); color: var(--ink); }
+.tm-kind { max-width: 320px; }
+.tm-outcome { width: 100%; }
+.tm-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.tm-chip { min-height: 28px; padding: 3px 10px; border: 1px solid var(--border-2); border-radius: 14px; background: transparent; font: 13px/1.3 var(--ui); color: var(--ink); cursor: pointer; }
+.tm-chip.on { border-color: var(--terra); color: var(--terra); font-weight: 600; }
+.tm-type-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.tm-type { display: grid; gap: 6px; padding: 8px 10px; border: 1px solid var(--border-2); border-radius: 4px; }
+.tm-type-line { display: flex; align-items: center; gap: 8px; }
+.tm-type-name { flex: 1; }
+.tm-type-ask { width: 90px; }
+.tm-type-chips { flex: 1; }
+.tm-type-used { font: 12px var(--ui); color: var(--ink-3); white-space: nowrap; }
+.tm-type-btn { min-width: 32px; }
+.tm-row-start { justify-content: flex-start; }
+@media (max-width: 760px) { .tm-frame-row { grid-template-columns: 1fr; gap: 4px; } .tm-type-line { flex-wrap: wrap; } .tm-chip { min-height: 40px; } }
 .tm-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
 .tm-member { display: flex; flex-direction: column; gap: 4px; padding: 14px; border: 1px solid var(--border-2); border-radius: 6px; background: rgb(255 255 255 / 0.35); text-align: left; cursor: pointer; color: var(--ink); }
 .tm-member:hover, .tm-member:focus-visible { border-color: var(--terra); outline: none; }
