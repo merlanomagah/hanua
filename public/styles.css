@@ -3399,8 +3399,13 @@ html.dark .tk-btn.on .tk-dot { background: #e07a62; }
 
 /* The Jump team (16 Oct 2026, public/jump/team.js): a Team button on the dashboard, the focus window with Stand-up and
    Team, member cards, sign-offs approved one at a time */
-.jump-team-btn { margin-left: auto; padding: 4px 12px; border: 1px solid var(--border-2); border-radius: 4px; background: var(--page); font: 10px var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink); cursor: pointer; }
-.jump-team-btn:hover, .jump-team-btn:focus-visible { border-color: var(--terra); color: var(--terra); outline: none; }
+/* a solid plate like JUMP's, at the right beside ↻, so it reads on the bricks in light and dark (16 Oct 2026: the first,
+   outlined one disappeared in dark mode) */
+.jump-team-btn { flex: none; margin-left: auto; display: inline-flex; align-items: center; gap: 7px; padding: 6px 12px 5px; border: 0; border-radius: 3px; background: var(--ink); color: var(--page); font: 500 11px var(--mono); letter-spacing: 0.2em; text-transform: uppercase; cursor: pointer; box-shadow: 0 6px 14px -6px color-mix(in srgb, var(--ink) 60%, transparent); }
+.jump-team-btn::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--terra); }
+.jump-team-btn:hover, .jump-team-btn:focus-visible { background: var(--terra); color: #fff; outline: none; }
+.jump-team-btn:hover::before, .jump-team-btn:focus-visible::before { background: #fff; }
+.jump-team-btn + .jump-refresh { margin-left: 0; }
 .tm-tab { padding: 3px 10px; border: 0; border-radius: 4px; background: none; font: 12px var(--ui); color: var(--ink-3); cursor: pointer; }
 .tm-tab.on { background: rgb(196 96 42 / 0.12); color: var(--terra); }
 .tm-body { flex: 1; min-height: 0; overflow-y: auto; padding: 18px clamp(18px, 5vw, 72px) 28px; }
@@ -3443,7 +3448,6 @@ html.dark .tk-btn.on .tk-dot { background: #e07a62; }
 .tm-charter-sec h4 { margin: 16px 0 4px; font: 9px var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--terra); }
 .tm-charter-sec ul { margin: 0; padding-left: 18px; font: 14px/1.5 var(--ui); color: var(--ink); }
 html.dark :is(.tm-card, .tm-member) { background: var(--dk-raised); }
-html.dark .jump-team-btn { background: transparent; }
 .tm-win .jn-title { margin: 8px 0 18px; font-size: 30px; }
 .tm-qs > .pl-go { justify-self: end; }
 @media (max-width: 760px) { .tm-win .pw-title { display: none; } .tm-signoff { grid-template-columns: 1fr; } .tm-signoff > button, .tm-signoff > .tm-done, .tm-signoff > .tm-invalid { grid-column: 1; grid-row: auto; justify-self: end; } .jump-team-btn { padding: 4px 8px; } }
