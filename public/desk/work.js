@@ -15,6 +15,7 @@ import { stopTalk, talkFor } from "./talk.js";
 import { iconButton } from "./icons.js";
 import { forget, markDot, navEl, progressEl, registerFocus, stageEl, stepKeys, takeFocus } from "./stepper.js";
 import { openFileMenu } from "./filemenu.js";
+import { arrived, decorate, waitNote, wait } from "../wait.js";
 
 const win = $("work-win");
 const file = $("open-journal");
@@ -26,7 +27,7 @@ let items = []; // past reflections, newest first: { id, date, title, url }
 let page = null; // the reflection as Notion has it: { id, url, edited, date, ...reflection } (id null = not saved yet)
 let r = reflectionShape({ date: todayStr() }); // what's on screen
 const depth = {};
-let reply = null, replyText = "", asking = false, saving = false;
+let reply = null, replyText = "", saving = false;
 
 // ---- the draft, kept on this Mac by reflection ("new" for one not saved yet) ----
 const DRAFTS = "work-drafts";
@@ -149,7 +150,7 @@ function status() {
   if (!statusEl) return;
   // the buttons follow what's typed (no redraw while typing)
   if (saveEl) saveEl.disabled = saving || Boolean(page?.loading) || isEmpty(r) || (Boolean(page) && !unsaved());
-  if (askEl) askEl.disabled = asking || isEmpty(r);
+  if (askEl && !askEl.dataset.wait) askEl.disabled = isEmpty(r);
   statusEl.textContent = saving ? "Saving…" : page?.loading ? "Opening…" : unsaved() ? "Not saved yet · kept on this Mac" : page?.edited ? `Saved ${new Date(page.edited).toLocaleString("en-NZ", { weekday: "short", hour: "numeric", minute: "2-digit" })}` : "Every question is optional";
 }
 const monthsSince = (day) => (day ? (Date.now() - new Date(`${day}T00:00:00`).getTime()) / (30 * 86_400_000) : 0);
@@ -180,7 +181,7 @@ function reviewEl() {
       rows.push(b);
     }
   }
-  return h("div", { className: "jf-review-body" }, h("h3", { className: "jf-review-title", textContent: "All together" }), panelsEl(), ...rows, extra);
+  return h("div", { className: "jf-review-body" }, h("h3", { className: "jf-review-title", textContent: "All together" }), waitNote("panels", "The panels usually take 20 to 40 s"), panelsEl(), ...rows, extra);
 }
 function render() {
   if (win.hidden) return;
@@ -207,7 +208,7 @@ function render() {
   if (onReview) {
     const saveBtn = h("button", { type: "button", className: "pl-go jn-save", textContent: "Save", title: "Save to Work reflections in Notion (⌘S)", disabled: saving || page?.loading || isEmpty(r) });
     saveBtn.addEventListener("click", () => save());
-    const askBtn = h("button", { type: "button", className: "set-reset wk-ask", textContent: asking ? "The panels are reading…" : "Send to the panels ✦", title: "The High Performance and Professional panels read this back to you", disabled: asking || isEmpty(r) });
+    const askBtn = decorate(h("button", { type: "button", className: "set-reset wk-ask", textContent: "Send to the panels ✦", title: "The High Performance and Professional panels read this back to you", disabled: isEmpty(r) }), "panels");
     askBtn.addEventListener("click", () => askPanels());
     const bin = page?.id && !page.loading ? iconButton(h, "trash", "Bin this reflection: to Notion's trash (Undo brings it back)", { className: "set-reset jn-bin" }) : null;
     bin?.addEventListener("click", () => binIt());
@@ -262,12 +263,13 @@ async function binIt() {
 }
 
 async function askPanels() {
-  if (asking || isEmpty(r)) return;
-  asking = true; render();
-  try { const j = await api("/api/work/panels", { method: "POST", body: { reflection: r, id: page?.id || null } }); reply = j.reply; replyText = j.text || ""; }
-  catch (err) { toast(err.message, true); }
-  asking = false; render();
-  win.querySelector(".jf-tile")?.scrollTo({ top: 0 });
+  if (isEmpty(r)) return;
+  try {
+    const j = await wait("panels", "The panels are reading…", (signal) => { render(); return api("/api/work/panels", { method: "POST", body: { reflection: r, id: page?.id || null }, signal }); });
+    if (j) { reply = j.reply; replyText = j.text || ""; }
+  } catch (err) { toast(err.message, true); }
+  render();
+  arrived(win.querySelector(".wk-panels"));
 }
 
 // ---- opening and closing (a desk window, like the Journal's) ----

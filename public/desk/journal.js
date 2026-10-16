@@ -16,6 +16,7 @@ import { TYPES } from "../shared/reflect.js";
 import { startStep, reviewAt } from "../shared/steps.js";
 import { stopTalk, talkFor } from "./talk.js";
 import { iconButton } from "./icons.js";
+import { arrived, decorate, waitNote, wait } from "../wait.js";
 import { forget, markDot, navEl, progressEl, registerFocus, stageEl, stepKeys, takeFocus } from "./stepper.js";
 
 const win = $("journal-win");
@@ -28,7 +29,7 @@ let sections = journalShape({}).sections; // what's on the page now
 let prompts = null, promptNote = "";
 const skips = {};
 let weeks = []; // [{ week, areas }] for the fale
-let reflection = "", reflecting = false, saving = false;
+let reflection = "", saving = false;
 let step = 0; // the question showing (SECTIONS.length = Review); one at a time since 16 Oct 2026
 const N = SECTIONS.length;
 
@@ -164,7 +165,7 @@ function reviewEl() {
     b.addEventListener("click", () => goStep(i));
     return b;
   });
-  return h("div", { className: "jf-review-body" },
+  return h("div", { className: "jf-review-body" }, waitNote("reflect", "Usually 15 to 30 s"),
     h("div", { className: "jf-review-head" }, h("h3", { className: "jf-review-title", textContent: "This week, all together" }), faleEl()),
     promptNote ? h("p", { className: "jn-note", textContent: promptNote }) : null,
     reflectEl, ...rows);
@@ -185,7 +186,7 @@ function render() {
   if (onReview) {
     const saveBtn = h("button", { type: "button", className: "pl-go jn-save", textContent: "Save", title: "Save to your Journal in Notion (⌘S)", disabled: saving || !page || Boolean(page.error) });
     saveBtn.addEventListener("click", () => save());
-    const reflectBtn = h("button", { type: "button", className: "set-reset jn-reflect", textContent: reflecting ? "Reading…" : "Reflect ✦", title: "Claude reads this week back to you", disabled: reflecting || isEmpty(sections) });
+    const reflectBtn = decorate(h("button", { type: "button", className: "set-reset jn-reflect", textContent: "Reflect ✦", title: "Claude reads this week back to you", disabled: isEmpty(sections) }), "reflect");
     reflectBtn.addEventListener("click", () => reflect());
     const bin = page?.id ? iconButton(h, "trash", "Bin this week: to Notion's trash (Undo brings it back)", { className: "set-reset jn-bin" }) : null;
     bin?.addEventListener("click", () => binWeek());
@@ -243,12 +244,13 @@ async function binWeek() {
 }
 
 async function reflect() {
-  if (reflecting || isEmpty(sections)) return;
-  reflecting = true; render();
-  try { reflection = (await api(`/api/journal/${week}/reflect`, { method: "POST", body: { sections } })).reflection || ""; }
-  catch (err) { toast(err.message, true); }
-  reflecting = false; render();
-  win.querySelector(".jf-tile")?.scrollTo({ top: 0 });
+  if (isEmpty(sections)) return;
+  try {
+    const j = await wait("reflect", "Claude is reading your week…", (signal) => { render(); return api(`/api/journal/${week}/reflect`, { method: "POST", body: { sections }, signal }); });
+    if (j) reflection = j.reflection || "";
+  } catch (err) { toast(err.message, true); }
+  render();
+  arrived(win.querySelector(".jn-reflection"));
 }
 
 // ---- opening and closing (a desk window like To-do.txt) ----

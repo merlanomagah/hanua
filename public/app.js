@@ -22,6 +22,7 @@ import { loadWhiteboard, renderWhiteboard } from "./whiteboard.js";
 import "./menu-plan.js"; // Plan the week ✦ on the menu board
 import { onKitchen, renderMealSlip, showKitchen } from "./kitchen.js"; // swipe left: the weather window and the menu
 import "./jump.js"; // swipe right on the desk: the Jump Dashboard
+import { wait, waitNote } from "./wait.js"; // every ✦: one request a press, a counter while it works
 import { weatherLine } from "./weather-window.js";
 import "./bird.js"; // the canary: just for life
 import { syncState } from "./sync.js";
@@ -997,14 +998,17 @@ export function askForm(areaId, label) {
     e.preventDefault();
     const question = input.value.trim();
     if (!question) return;
-    answer.hidden = false; answer.className = "answer loading"; answer.textContent = "Claude is reading this book…";
-    button.disabled = true;
+    const key = `ask:${areaId || "all"}`;
     try {
-      const res = await api("/api/ask", { question, areaId: areaId || undefined });
-      answer.className = "answer"; answer.textContent = res.answer;
+      const res = await wait(key, "Claude is reading this book…", (signal) => {
+        answer.hidden = false; answer.className = "answer loading"; answer.replaceChildren(waitNote(key, "Usually 5 to 15 s"));
+        return api("/api/ask", { question, areaId: areaId || undefined }, { signal });
+      }, { button, short: "" });
+      if (res) { answer.className = "answer"; answer.textContent = res.answer; }
+      else if (!answer.textContent.trim()) answer.hidden = true;
     } catch (err) {
       answer.className = "answer error"; answer.textContent = err.message;
-    } finally { button.disabled = false; }
+    }
   });
   return h("div", {}, form, answer);
 }
@@ -1469,10 +1473,12 @@ function askSay(kind, text) {
 async function askNow() {
   const question = askInput.value.trim();
   if (!question) return;
-  askSay("loading", "Claude is reading your wall…");
   try {
-    const res = await api("/api/ask", { question });
-    askSay("", res.answer);
+    const res = await wait("ask:wall", "Claude is reading your wall…", (signal) => {
+      askSay("loading", ""); $("ask-text").replaceChildren(waitNote("ask:wall", "Usually 5 to 15 s"));
+      return api("/api/ask", { question }, { signal });
+    }, { button: $("ask-form").querySelector("button[type=submit]"), short: "" });
+    if (res) askSay("", res.answer);
   } catch (err) {
     askSay("error", err.message);
   }
@@ -1534,9 +1540,10 @@ $("feed-form").addEventListener("submit", async (e) => {
   const text = $("feed-input").value.trim();
   if (!text) return;
   const button = e.submitter;
-  button.disabled = true; button.textContent = "…";
   try {
-    const { draft, areaLabel } = await api("/api/feed/draft", { text });
+    const res = await wait("feed", "Drafting…", (signal) => api("/api/feed/draft", { text }, { signal }), { button, short: "" });
+    if (!res) return;
+    const { draft, areaLabel } = res;
     pendingDraft = draft;
     $("draft-area").textContent = areaLabel;
     $("draft-note").textContent = draft.note || "Check the fields, then save.";
@@ -1549,8 +1556,6 @@ $("feed-form").addEventListener("submit", async (e) => {
     $("draft-dialog").showModal();
   } catch (err) {
     toast(err.message, true);
-  } finally {
-    button.disabled = false; button.textContent = "ADD";
   }
 });
 

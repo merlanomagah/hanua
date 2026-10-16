@@ -78,10 +78,11 @@ export function ago(iso) {
 export const updatedLine = (id) => { const e = lastEdited(id); return e ? `updated ${ago(e)}` : ""; };
 
 
-export async function api(path, body) {
+// opts.signal: lets a wait be stopped (public/wait.js)
+export async function api(path, body, opts = {}) {
   const res = await fetch(path, body
-    ? { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }
-    : undefined);
+    ? { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body), signal: opts.signal }
+    : { signal: opts.signal });
   const json = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(json.error || `Request failed (${res.status})`);
   return json;

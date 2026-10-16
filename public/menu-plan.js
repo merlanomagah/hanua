@@ -7,6 +7,7 @@ import { DAYS, MEALS, PROTEINS, menuShape, menuTips } from "./shared/menu.js";
 import { $, focus, fmtDay, h, toast } from "./lib.js";
 import { menuIcon } from "./menu-icons.js";
 import { HABIT_ICONS, applyMenu, boardWeek } from "./whiteboard.js";
+import { wait, waitNote } from "./wait.js";
 
 let plan = null; // { week, menu, protein: { "mon.Dinner": "Steak" }, extra: Set of day keys whose dinner makes lunch }
 let day = 0;
@@ -88,13 +89,18 @@ function renderRows() {
 
 // three ideas around the protein, kept to Our tastes; pick one to fill the meal
 async function askClaude(meal, protein, box, text) {
-  box.replaceChildren(h("p", { className: "coach-small", textContent: `Asking Claude for ${protein ? `${protein.toLowerCase()} ` : ""}ideas…` }));
   try {
     const planned = DAYS.flatMap((d) => MEALS.map((m) => plan.menu[d][m])).filter(Boolean);
-    const res = await fetch("/api/menu/ideas", { method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ meal, protein, day: fmtDay(addDays(plan.week, day), { weekday: "long" }), planned }) });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(data.error || "Claude couldn't come up with ideas just now.");
+    const key = `meal:${day}:${meal}`;
+    const data = await wait(key, `Asking Claude for ${protein ? `${protein.toLowerCase()} ` : ""}ideas…`, async (signal) => {
+      box.replaceChildren(waitNote(key, "Usually 5 to 15 s"));
+      const res = await fetch("/api/menu/ideas", { method: "POST", headers: { "Content-Type": "application/json" }, signal,
+        body: JSON.stringify({ meal, protein, day: fmtDay(addDays(plan.week, day), { weekday: "long" }), planned }) });
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(d.error || "Claude couldn't come up with ideas just now.");
+      return d;
+    });
+    if (!data) return;
     box.replaceChildren(...data.ideas.map((idea) => {
       const b = h("button", { type: "button", className: "meal-idea" }, h("b", { textContent: idea.title }), h("span", { textContent: idea.note }));
       b.addEventListener("click", () => {

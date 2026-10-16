@@ -7,6 +7,7 @@ import { createGoals } from "./store.js";
 import { flashGoals, kidsOf, renderBoard, setFocusGoal } from "./board.js";
 import { sized } from "./form.js";
 import { whenHint, whenPicker } from "./when.js";
+import { wait, waitNote } from "../wait.js";
 export let planParent = null;
 export const planLevel = () => LEVELS[levelIndex(planParent?.level) + 1];
 
@@ -83,13 +84,15 @@ export function openPlan(parent) {
 $("plan-ideas").addEventListener("click", async () => {
   const p = planParent, lvl = planLevel();
   const btn = $("plan-ideas");
-  btn.disabled = true;
-  $("plan-gaps").replaceChildren(h("p", { className: "coach-reply loading", textContent: "Claude is looking for gaps…" }));
   try {
-    const r = await api("/api/goals/ideas", {
-      parent: { level: p.level, title: p.title, why: p.why, doneWhen: p.doneWhen, notes: p.description },
-      children: [...kidsOf(p.id).map((k) => k.title), ...planValues().map((v) => v.title)], level: lvl.name,
-    });
+    const r = await wait("ideas:plan", "Claude is looking for gaps…", (signal) => {
+      $("plan-gaps").replaceChildren(waitNote("ideas:plan", "Usually 10 to 20 s"));
+      return api("/api/goals/ideas", {
+        parent: { level: p.level, title: p.title, why: p.why, doneWhen: p.doneWhen, notes: p.description },
+        children: [...kidsOf(p.id).map((k) => k.title), ...planValues().map((v) => v.title)], level: lvl.name,
+      }, { signal });
+    }, { button: btn, short: "" });
+    if (!r) return;
     // ideas fill the empty rows first, then add new ones
     for (const idea of r.ideas) {
       const empty = [...$("plan-rows").children].find((row) => !row.querySelector('[name="t"]').value.trim());

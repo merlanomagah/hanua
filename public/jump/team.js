@@ -14,12 +14,34 @@ import { change as changeRecord, data as jumpData } from "./store.js";
 import { registerWindow, windowBar, noteOpen, noteClosed } from "../desk/window.js";
 import { registerFocus, takeFocus } from "../desk/stepper.js";
 import { stopTalk, talkFor } from "../desk/talk.js";
+import { arrived, decorate, waitNote, wait } from "../wait.js";
 
 const win = $("team-win");
 let team = null; // { live, url, members, error }
 let view = "standup"; // "standup" | "team" | a member's id
-let update = "", reply = null, answers = {}, done = {}, sending = false;
-let ctx = { note: "", fold: null, answers: {}, done: {}, sending: false, noteKept: false };
+// What's being worked on, kept on this Mac until Mel presses Start fresh (16 Oct 2026: leaving a member and coming
+// back wiped her work): the stand-up, and each member's context, its reply and her answers. A reply that comes back
+// while she's elsewhere is kept for whoever asked. Dropped after a week untouched.
+const DRAFTS = "team-drafts", WEEK = 7 * 86_400_000;
+const freshStandup = () => ({ update: "", reply: null, answers: {}, done: {} });
+const freshMember = () => ({ note: "", fold: null, answers: {}, done: {}, noteKept: false });
+let drafts = { standup: freshStandup(), members: {} };
+try {
+  const d = JSON.parse(store(DRAFTS) || "null");
+  if (d && typeof d === "object") {
+    const recent = (x) => x && Date.now() - (x.at || 0) < WEEK;
+    drafts = { standup: recent(d.standup) ? { ...freshStandup(), ...d.standup } : freshStandup(), members: Object.fromEntries(Object.entries(d.members || {}).filter(([, v]) => recent(v)).map(([k, v]) => [k, { ...freshMember(), ...v }])) };
+  }
+} catch { /* a fresh start */ }
+let keepTimer = 0;
+function keep(now = false) {
+  clearTimeout(keepTimer);
+  const write = () => { try { store(DRAFTS, JSON.stringify(drafts)); } catch { /* this visit only */ } };
+  if (now) write(); else keepTimer = setTimeout(write, 400);
+}
+const touch = (x) => { x.at = Date.now(); keep(); return x; };
+const su = () => drafts.standup;
+const ctxOf = (id) => (drafts.members[id] ||= freshMember());
 let hooks = { toToday: async () => false };
 
 async function api(url, opts = {}) {
@@ -64,19 +86,25 @@ const countStandup = () => {
   store("team-standups", JSON.stringify(bumpWeek(c, week)));
 };
 async function sendStandup(again = false) {
-  if (sending || !update.trim()) return;
+  const st = su();
+  if (!st.update.trim()) return;
   stopTalk();
-  sending = true; render();
-  const asked = again ? Object.entries(answers).filter(([, a]) => a.trim()).map(([k, answer]) => { const [mid, i] = k.split("|"); return { member: member(mid)?.title || "", question: reply?.members?.find((x) => x.member === mid)?.questions?.[Number(i)] || "", answer }; }) : [];
+  const asked = again ? Object.entries(st.answers).filter(([, a]) => a.trim()).map(([k, answer]) => { const [mid, i] = k.split("|"); return { member: member(mid)?.title || "", question: st.reply?.members?.find((x) => x.member === mid)?.questions?.[Number(i)] || "", answer }; }) : [];
   try {
-    reply = await api("/api/team/standup", { method: "POST", body: { update, answers: asked } });
-    if (!again) countStandup();
-    done = {}; if (!again) answers = {};
+    const res = await wait("standup", again ? "The team is reading your answers…" : "The team is working through it…", async (signal) => {
+      render();
+      return api("/api/team/standup", { method: "POST", body: { update: st.update, answers: asked }, signal });
+    });
+    if (res) {
+      st.reply = res;
+      if (!again) { countStandup(); st.answers = {}; }
+      st.done = {}; touch(st); keep(true);
+    }
   } catch (err) { toast(err.message, true); }
-  sending = false; render();
-  win.querySelector(".tm-body")?.scrollTo({ top: 0 });
+  render();
+  if (view === "standup") arrived(win.querySelector(".tm-pm"));
 }
-const recordTitle = (id) => reply?.records?.find((r) => r.id === id)?.title || "a record";
+const recordTitle = (id) => su().reply?.records?.find((r) => r.id === id)?.title || "a record";
 function citesEl(item) {
   return h("p", { className: "tm-cites" },
     item.unconfirmed ? h("span", { className: "tm-unconf", textContent: "Unconfirmed: rests on nothing you were shown" }) : null,
@@ -91,7 +119,7 @@ function signoffEl(s, key) {
   const edits = long.map((k) => { const t = h("textarea", { className: "tm-edit", value: s.change[k], rows: 3, ariaLabel: `${k} before approving` }); t.addEventListener("input", () => { s.change[k] = t.value; }); return t; });
   let action;
   if (s.invalid) action = h("span", { className: "tm-invalid", textContent: `Can't be done from here: ${s.invalid}` });
-  else if (done[key]) action = h("span", { className: "tm-done", textContent: "Done ✓" });
+  else if (su().done[key]) action = h("span", { className: "tm-done", textContent: "Done ✓" });
   else {
     action = h("button", { type: "button", className: "pl-go tm-approve", textContent: "Approve" });
     action.addEventListener("click", async () => {
@@ -104,23 +132,27 @@ function signoffEl(s, key) {
         if (!r?.ok) toast(r?.error || "That member isn't on the team any more.", true);
         else ok = await saveCharter(m, r.sections, `${m.title}'s charter updated`);
       }
-      if (ok) done[key] = true;
+      if (ok) { su().done[key] = true; touch(su()); }
       render();
     });
   }
   return h("li", { className: `tm-signoff${s.invalid ? " invalid" : ""}` }, h("span", { className: "tm-what", textContent: what }), h("span", { className: "tm-why", textContent: s.why }), ...edits, action);
 }
 function standupEl() {
-  const box = h("textarea", { className: "jn-text tm-update", value: update, rows: 5, placeholder: "What's happening? Say it the way you'd tell the team.", ariaLabel: "Your stand-up update" });
-  box.addEventListener("input", () => { update = box.value; send.disabled = sending || !update.trim(); });
+  const st = su(), { reply, answers } = st;
+  const box = h("textarea", { className: "jn-text tm-update", value: st.update, rows: 5, placeholder: "What's happening? Say it the way you'd tell the team.", ariaLabel: "Your stand-up update" });
+  box.addEventListener("input", () => { st.update = box.value; touch(st); send.disabled = !st.update.trim(); });
   const talk = focus.on ? { button: null, line: null } : talkFor(box); // speech goes to Apple: not at work (Mel, 16 Oct 2026)
-  const send = h("button", { type: "button", className: "pl-go", textContent: sending ? "The team is working through it…" : reply ? "Send again (fresh)" : "Send to the team ✦", disabled: sending || !update.trim() });
+  const send = decorate(h("button", { type: "button", className: "pl-go", textContent: reply ? "Send again (fresh) ✦" : "Send to the team ✦", disabled: !st.update.trim() }), "standup");
   send.addEventListener("click", () => sendStandup(false));
+  const fresh = reply || st.update ? h("button", { type: "button", className: "set-reset", textContent: "Start fresh" }) : null;
+  fresh?.addEventListener("click", () => { const was = drafts.standup; drafts.standup = freshStandup(); keep(true); render(); toast("Stand-up cleared", false, { label: "Undo", run: () => { drafts.standup = was; keep(true); render(); } }); });
   const top = h("section", { className: "tm-sec" },
     h("header", { className: "jn-head" }, h("h3", { textContent: "Stand-up" }), talk.button),
     h("p", { className: "tm-hint", textContent: "Leave out names and customer details: say the role (“the partner's ops lead”, “a customer”). Hanua won't send emails, phone or account numbers." }),
-    box, talk.line, h("div", { className: "tm-row" }, send));
-  if (!reply) return [top];
+    box, talk.line, h("div", { className: "tm-row" }, fresh, send));
+  const note = waitNote("standup", "The team usually takes 30 to 60 s");
+  if (!reply) return [top, note];
   const byId = (id) => member(id)?.title || "a member";
   const pm = h("section", { className: "tm-card tm-pm" },
     h("h4", { textContent: "Product Manager" }),
@@ -136,14 +168,14 @@ function standupEl() {
     citesEl(m),
     m.questions.length ? h("div", { className: "tm-qs" }, ...m.questions.map((q, i) => {
       const k = `${m.member}|${i}`, a = h("textarea", { className: "tm-answer", value: answers[k] || "", rows: 2, ariaLabel: q, placeholder: "Your answer" });
-      a.addEventListener("input", () => { answers[k] = a.value; fit(a); });
+      a.addEventListener("input", () => { answers[k] = a.value; touch(st); fit(a); });
       return h("label", { className: "tm-q" }, h("span", { textContent: q }), a);
     })) : null,
     m.signoffs.length ? h("ul", { className: "tm-signoffs" }, ...m.signoffs.map((s, i) => signoffEl(s, `${m.member}|${i}`))) : null));
-  const again = h("button", { type: "button", className: "pl-go", textContent: "Answer and ask again ✦", disabled: sending });
+  const again = decorate(h("button", { type: "button", className: "pl-go", textContent: "Answer and ask again ✦" }), "standup");
   again.addEventListener("click", () => sendStandup(true));
   const hasQs = reply.members.some((m) => m.questions.length);
-  return [top, pm, ...cards, hasQs ? h("div", { className: "tm-row" }, again) : null];
+  return [top, note, pm, ...cards, hasQs ? h("div", { className: "tm-row" }, again) : null];
 }
 
 // ---- the team, and one member ----
@@ -154,22 +186,31 @@ function teamEl() {
     const b = h("button", { type: "button", className: `tm-member${m.state.stale ? " stale" : ""}` },
       h("span", { className: "tm-name", textContent: m.title }),
       h("span", { className: "tm-holds", textContent: m.sections.Holds?.[0] || "" }),
-      h("span", { className: "tm-state", textContent: `${m.state.label}${m.state.oldNotes ? ` · ${m.state.oldNotes} note${m.state.oldNotes === 1 ? "" : "s"} to review` : ""}` }));
-    b.addEventListener("click", () => { view = m.id; ctx = { note: "", fold: null, answers: {}, done: {}, sending: false, noteKept: false }; render(); });
+      h("span", { className: "tm-state", textContent: `${m.state.label}${m.state.oldNotes ? ` · ${m.state.oldNotes} note${m.state.oldNotes === 1 ? "" : "s"} to review` : ""}` }),
+      drafts.members[m.id]?.note || drafts.members[m.id]?.fold ? h("span", { className: "tm-wip", textContent: "Your work in progress is kept" }) : null);
+    b.addEventListener("click", () => { view = m.id; render(); }); // its work is kept (ctxOf), never started over
     return b;
   }))];
 }
 async function fold(again = false) {
   const m = member(view);
-  if (!m || ctx.sending || !ctx.note.trim()) return;
+  if (!m) return;
+  const id = m.id, ctx = ctxOf(id); // the reply is kept for this member, wherever Mel is when it comes back
+  if (!ctx.note.trim()) return;
   stopTalk();
-  ctx.sending = true; render();
   const asked = again ? Object.entries(ctx.answers).filter(([, a]) => a.trim()).map(([i, answer]) => ({ question: ctx.fold?.questions?.[Number(i)] || "", answer })) : [];
-  try { ctx.fold = await api(`/api/team/${encodeURIComponent(m.id)}/context`, { method: "POST", body: { note: ctx.note, answers: asked } }); ctx.done = {}; ctx.noteKept = false; if (!again) ctx.answers = {}; }
-  catch (err) { toast(err.message, true); }
-  ctx.sending = false; render();
+  try {
+    const res = await wait(`fold:${id}`, again ? `${m.title} is reading your answers…` : `${m.title} is folding it in…`, async (signal) => {
+      render();
+      return api(`/api/team/${encodeURIComponent(id)}/context`, { method: "POST", body: { note: ctx.note, answers: asked }, signal });
+    });
+    if (res) { ctx.fold = res; ctx.done = {}; ctx.noteKept = false; if (!again) ctx.answers = {}; touch(ctx); keep(true); }
+  } catch (err) { toast(err.message, true); }
+  render();
+  if (view === id) arrived(win.querySelector(".tm-suggests"));
 }
 function memberEl(m) {
+  const ctx = ctxOf(m.id), key = `fold:${m.id}`;
   const back = h("button", { type: "button", className: "set-reset", textContent: "‹ The team" });
   back.addEventListener("click", () => { view = "team"; render(); });
   const confirm = h("button", { type: "button", className: "set-reset", textContent: "Confirm charter", title: "Say this charter is still right today (sets Last confirmed)" });
@@ -178,19 +219,21 @@ function memberEl(m) {
     h("h4", { textContent: s }), lines.length ? h("ul", {}, ...lines.map((l) => h("li", { textContent: l }))) : h("p", { className: "tm-hint", textContent: "Nothing yet." })));
   const box = h("textarea", { className: "jn-text tm-update", value: ctx.note, rows: 4, placeholder: `Tell ${m.title} what you know about this area: what's changed, what matters, what worries you.`, ariaLabel: `New context for ${m.title}` });
   const talk = focus.on ? { button: null, line: null } : talkFor(box);
-  const go = h("button", { type: "button", className: "pl-go", textContent: ctx.sending ? "Folding it in…" : "Fold it in ✦", disabled: ctx.sending || !ctx.note.trim() });
-  box.addEventListener("input", () => { ctx.note = box.value; go.disabled = ctx.sending || !ctx.note.trim(); });
+  const go = decorate(h("button", { type: "button", className: "pl-go", textContent: "Fold it in ✦", disabled: !ctx.note.trim() }), key);
+  box.addEventListener("input", () => { ctx.note = box.value; touch(ctx); go.disabled = !ctx.note.trim(); });
   go.addEventListener("click", () => fold(false));
+  const fresh = ctx.note || ctx.fold ? h("button", { type: "button", className: "set-reset", textContent: "Start fresh" }) : null;
+  fresh?.addEventListener("click", () => { const was = drafts.members[m.id]; drafts.members[m.id] = freshMember(); keep(true); render(); toast(`Cleared what you were working on with ${m.title}`, false, { label: "Undo", run: () => { drafts.members[m.id] = was; keep(true); render(); } }); });
   const add = h("section", { className: "tm-sec" },
     h("header", { className: "jn-head" }, h("h3", { textContent: "Add context" }), talk.button),
     h("p", { className: "tm-hint", textContent: "It won't just be stored: the member suggests where it changes the charter, and you approve each change. The note itself is kept, dated, and comes up for review after 90 days." }),
-    box, talk.line, h("div", { className: "tm-row" }, go));
+    box, talk.line, h("div", { className: "tm-row" }, fresh, go), waitNote(key, "Usually 15 to 40 s"));
   let result = null;
   if (ctx.fold) {
     const f = ctx.fold;
     const keep = ctx.noteKept ? h("span", { className: "tm-done", textContent: "Kept ✓" }) : h("button", { type: "button", className: "pl-go tm-approve", textContent: "Keep the note" });
-    if (!ctx.noteKept) keep.addEventListener("click", async () => { if (await saveCharter(m, { ...m.sections, [NOTES]: [...(m.sections[NOTES] || []), noteLine(todayStr(), f.note)] }, `Note kept in ${m.title}'s charter`)) { ctx.noteKept = true; render(); } });
-    result = h("section", { className: "tm-card" },
+    if (!ctx.noteKept) keep.addEventListener("click", async () => { if (await saveCharter(m, { ...m.sections, [NOTES]: [...(m.sections[NOTES] || []), noteLine(todayStr(), f.note)] }, `Note kept in ${m.title}'s charter`)) { ctx.noteKept = true; touch(ctx); render(); } });
+    result = h("section", { className: "tm-card tm-suggests" },
       h("h4", { textContent: `${m.title} suggests` }),
       h("ul", { className: "tm-signoffs" },
         h("li", { className: "tm-signoff" }, h("span", { className: "tm-what", textContent: `Context notes: add “${noteLine(todayStr(), f.note)}”` }), keep),
@@ -204,16 +247,16 @@ function memberEl(m) {
             action.addEventListener("click", async () => {
               const r = applyEdit(m.sections, e);
               if (!r.ok) return toast(r.error, true);
-              if (await saveCharter(m, r.sections, `${m.title}'s charter updated`)) { ctx.done[i] = true; render(); }
+              if (await saveCharter(m, r.sections, `${m.title}'s charter updated`)) { ctx.done[i] = true; touch(ctx); render(); }
             });
           }
           return h("li", { className: `tm-signoff${e.invalid ? " invalid" : ""}` }, h("span", { className: "tm-what", textContent: what }), h("span", { className: "tm-why", textContent: e.why }), action);
         })),
       f.questions.length ? h("div", { className: "tm-qs" }, ...f.questions.map((q, i) => {
         const a = h("textarea", { className: "tm-answer", value: ctx.answers[i] || "", rows: 2, ariaLabel: q, placeholder: "Your answer" });
-        a.addEventListener("input", () => { ctx.answers[i] = a.value; fit(a); });
+        a.addEventListener("input", () => { ctx.answers[i] = a.value; touch(ctx); fit(a); });
         return h("label", { className: "tm-q" }, h("span", { textContent: q }), a);
-      }), (() => { const b = h("button", { type: "button", className: "pl-go", textContent: "Answer and fold again ✦" }); b.addEventListener("click", () => fold(true)); return b; })()) : null);
+      }), (() => { const b = decorate(h("button", { type: "button", className: "pl-go", textContent: "Answer and fold again ✦" }), key); b.addEventListener("click", () => fold(true)); return b; })()) : null);
   }
   return [h("div", { className: "tm-row tm-member-head" }, back, h("span", { className: `tm-state${m.state.stale ? " stale" : ""}`, textContent: m.state.label }), confirm,
       m.url ? h("a", { className: "b-link", href: m.url, target: "_blank", rel: "noopener", textContent: "Notion ↗" }) : null),
@@ -237,9 +280,10 @@ function render() {
 }
 
 function show() { takeFocus(win); win.hidden = false; render(); loadTeam(); }
-function hide() { stopTalk(); win.hidden = true; noteClosed("team-win"); $("jump-team")?.focus({ preventScroll: true }); }
+function hide() { stopTalk(); keep(true); win.hidden = true; noteClosed("team-win"); $("jump-team")?.focus({ preventScroll: true }); }
 registerFocus(win, () => hide());
 registerWindow("team-win", { title: "Jump team", icon: '<svg viewBox="0 0 48 60" aria-hidden="true" width="30"><circle cx="17" cy="24" r="7" fill="#c76a3a"/><circle cx="31" cy="24" r="7" fill="#3f7a5a"/><path d="M6 46c2-8 8-12 11-12s9 4 11 12M20 46c2-8 8-12 11-12s9 4 11 12" fill="none" stroke="#6b6155" stroke-width="2"/></svg>', show, hide, shown: () => !win.hidden });
 export function openTeam() { if (win.hidden) { show(); noteOpen("team-win"); } }
 export function initTeam(opts) { hooks = { ...hooks, ...opts }; $("jump-team")?.addEventListener("click", () => openTeam()); }
 win.addEventListener("keydown", (e) => { if (e.key === "Escape" && !document.querySelector("dialog[open]")) { e.preventDefault(); e.stopPropagation(); hide(); } });
+addEventListener("pagehide", () => keep(true));

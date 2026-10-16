@@ -7,6 +7,7 @@ import { alsoInOptions, areaOptions, createGoal, statusOptions, updateGoal } fro
 import { GOAL_AREAS, GOAL_BOOKS, GOAL_STATUS, boardLevel, boardView, flashGoals, goalById, renderBoard, toggleNewMenu } from "./board.js";
 import { coinText } from "../shelf.js";
 import { refreshWhen, whenHint, whenPicker } from "./when.js";
+import { wait, waitNote } from "../wait.js";
 export let editingGoal = null;
 export function fillSelect(sel, options, value, blank = "—") {
   sel.replaceChildren(h("option", { value: "", textContent: blank }), ...options.map((o) => typeof o === "string" ? h("option", { value: o, textContent: o }) : h("option", { value: o.value, textContent: o.label })));
@@ -245,14 +246,16 @@ export function renderCoachParent(v) {
 }
 
 export async function loadIdeas(parent, kids, level, box, btn) {
-  btn.disabled = true;
   ideasFor = parent.id;
-  box.replaceChildren(h("p", { className: "coach-reply loading", textContent: "Claude is looking for gaps…" }));
   try {
-    const r = await api("/api/goals/ideas", {
-      parent: { level: parent.level, title: parent.title, why: parent.why, doneWhen: parent.doneWhen, notes: parent.description },
-      children: kids.map((k) => k.title), level,
-    });
+    const r = await wait("ideas:form", "Claude is looking for gaps…", (signal) => {
+      box.replaceChildren(waitNote("ideas:form", "Usually 10 to 20 s"));
+      return api("/api/goals/ideas", {
+        parent: { level: parent.level, title: parent.title, why: parent.why, doneWhen: parent.doneWhen, notes: parent.description },
+        children: kids.map((k) => k.title), level,
+      }, { signal });
+    }, { button: btn, short: "" });
+    if (!r) return;
     const f = $("goal-form").elements;
     box.replaceChildren(
       h("p", { className: "cp-gaps", textContent: r.gaps }),
@@ -281,12 +284,12 @@ $("coach-ask").addEventListener("click", async () => {
   const box = $("coach-reply");
   if (!v.title.trim()) return toast("Give the goal a title first.", true);
   const parent = goalById(v.parent);
-  box.hidden = false;
-  box.className = "coach-reply loading";
-  box.textContent = "Claude is reading your goal…";
-  $("coach-ask").disabled = true;
   try {
-    const r = await api("/api/goals/coach", { goal: v, parent: parent ? { level: parent.level, title: parent.title, why: parent.why, doneWhen: parent.doneWhen } : null });
+    const r = await wait("coach", "Claude is reading your goal…", (signal) => {
+      box.hidden = false; box.className = "coach-reply loading"; box.replaceChildren(waitNote("coach", "Usually 10 to 20 s"));
+      return api("/api/goals/coach", { goal: v, parent: parent ? { level: parent.level, title: parent.title, why: parent.why, doneWhen: parent.doneWhen } : null }, { signal });
+    }, { button: $("coach-ask"), short: "" });
+    if (!r) return;
     const use = (label, fn) => { const b = h("button", { type: "button", className: "g-act", textContent: label }); b.addEventListener("click", () => { fn(); updateCoach(); b.textContent = "Used ✓"; b.disabled = true; }); return b; };
     const f = $("goal-form").elements;
     box.className = "coach-reply";
