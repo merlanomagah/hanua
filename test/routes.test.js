@@ -267,8 +267,16 @@ test("routes: the Jump team reads invented charters, refuses identifiers, propos
   const before = JSON.stringify((await call("/api/jump")).json.escalations);
   const s = await call("/api/team/standup", { method: "POST", body: { update: "Returns are confusing the care team this week (invented)" } });
   assert.equal(s.status, 200);
+  // an advisor (Seat: Advisor) gives a steer only: whatever came back, no next steps or sign-offs reach the page, and it's always routed
+  const adv = s.json.members.find((x) => x.advisor);
+  assert.ok(adv, "the sample's advisor answers");
+  assert.equal(adv.handle, "");
+  assert.deepEqual(adv.signoffs, []);
+  assert.equal(adv.steer.touches, "Likely");
+  assert.ok(adv.steer.check.length && s.json.routed.includes(adv.member));
+  assert.ok(s.json.members.filter((x) => !x.advisor).every((x) => x.steer === null));
   assert.equal(s.json.live, false);
-  assert.deepEqual(s.json.routed, [t.json.members[3].id, t.json.members[6].id]);
+  assert.deepEqual(s.json.routed, [t.json.members[3].id, t.json.members[6].id, t.json.members[2].id]);
   const care = s.json.members[0];
   assert.equal(care.title, "Ema · Care Lead");
   assert.ok(care.cites.every((c) => s.json.records.some((r) => r.id === c)));

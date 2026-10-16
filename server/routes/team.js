@@ -12,7 +12,7 @@ import { getPage, notionEnabled, pageBlocks, replaceBody, updatePage } from "../
 import { claudeEnabled, coachJumpTeam, foldTeamContext } from "../claude.js";
 import { todayStr } from "../../public/shared/dates.js";
 import { WRITABLE, checkWrite } from "../../public/shared/jump.js";
-import { SECTIONS, applyEdit, charterBlocks, charterFrom, charterState, grounded, scrub, scrubMessage, teamRows } from "../../public/shared/team.js";
+import { SECTIONS, applyEdit, charterBlocks, charterFrom, charterState, grounded, isAdvisor, scrub, scrubMessage, shapeSteer, teamRows } from "../../public/shared/team.js";
 
 export async function register({ app, root, config, jumpNow }) {
   const cfg = config.jump?.team || {};
@@ -100,7 +100,7 @@ export async function register({ app, root, config, jumpNow }) {
         for (const m of reply.members) { m.member = swap(m.member); m.cites = m.cites.map(swap); for (const s of m.signoffs) { s.id = swap(s.id); s.member = swap(s.member); } }
       } else {
         reply = await coachJumpTeam({ update, answers, today, records,
-          members: team.map((m) => ({ id: m.id, title: m.title, sections: m.sections, state: m.state.label })) });
+          members: team.map((m) => ({ id: m.id, title: m.title, sections: m.sections, state: m.state.label, advisor: isAdvisor(m.sections) })) });
       }
       res.json({ live: live(), records, ...check(reply, team, records, jump) });
     } catch (err) {
@@ -115,8 +115,13 @@ export async function register({ app, root, config, jumpNow }) {
   function check(reply, team, records, jump) {
     const known = records.map((r) => r.id), byId = new Map(team.map((m) => [m.id, m]));
     const rowOf = (area, id) => (area === "escalations" ? jump.escalations?.columns?.flatMap((c) => c.items) : jump[area]?.items)?.find((r) => r.id === id) || null;
-    const members = grounded(reply.members.filter((m) => byId.has(m.member)), known).map((m) => ({
-      ...m, title: byId.get(m.member).title,
+    // an advisor gives a steer and nothing else (no next steps, questions or sign-offs, whatever came back); an owner no steer
+    const steerOf = (raw) => { const st = shapeSteer(raw); return { ...st, check: st.check.filter((t) => scrub(t).ok) }; }; // a check can go to today's list
+    const advisors = team.filter((m) => isAdvisor(m.sections)).map((m) => m.id);
+    const members = grounded(reply.members.filter((m) => byId.has(m.member)), known).map((m) => advisors.includes(m.member)
+      ? { ...m, title: byId.get(m.member).title, advisor: true, steer: steerOf(m.steer), handle: "", prevent: "", questions: [], signoffs: [] }
+      : ({
+      ...m, title: byId.get(m.member).title, steer: null,
       signoffs: m.signoffs.map((s) => {
         const out = { kind: s.kind, why: s.why };
         if (s.kind === "change") {
@@ -134,7 +139,8 @@ export async function register({ app, root, config, jumpNow }) {
       }),
     }));
     const [pm] = grounded([{ ...reply.pm }], known);
-    return { routed: reply.routed.filter((id) => byId.has(id)), members, pm: { ...pm, stale: (pm.stale || []).filter((id) => byId.has(id)) } };
+    const routed = [...new Set([...reply.routed.filter((id) => byId.has(id)), ...members.filter((m) => m.advisor).map((m) => m.member)])];
+    return { routed, members, pm: { ...pm, stale: (pm.stale || []).filter((id) => byId.has(id)) } };
   }
 
   // new context for one member: its proposed changes to its own charter, a note, and its questions

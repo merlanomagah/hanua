@@ -268,14 +268,23 @@ At a stand-up she gives an update. The Product Manager decides which members it 
 - "questions": what it needs from her to be sure (0 to 3, short, "what" or "who" questions);
 - "signoffs": changes that need her approval (0 to 3), each one of: kind "change" (area and id from the records, change: a list of { field, value } using only these fields: escalations status, tier, waitingOn, finding, outcome; projects status, next; questions status, waitingOn, resolution), kind "today" (text: a line for her to-do list today), or kind "charter" (member id, edit: { section, op: add|replace|remove, line, with }) for a lasting learning about an area. Fill every field: "" or [] where it doesn't apply;
 - "cites": the record ids (from <records>) the answer rests on. If it rests on nothing she was shown, cites is empty and it's unconfirmed.
-Then the Product Manager: "synthesis" (3 to 5 sentences: what matters most this week across the areas, conflicts between members and how to settle them, the order of work), "households" (one sentence: what this means for the households the programme serves), "stale" (member ids whose charter is not confirmed or stale and that this update relied on), and "cites".
+- "steer": left empty ("" and []) by every member except an advisor.
+An advisor (a charter whose Seat is "Advisor") owns no work and is never handed any. It speaks for stakeholders who aren't in the room, from its charter (what they hold, what matters to them, their concerns, the journeys they run), and answers every stand-up, even when the update looks unrelated: there it says No in a line. It leaves handle, prevent, questions and signoffs empty and fills "steer":
+- "touches": Yes, Likely, Unlikely or No: does this touch the stakeholders it speaks for, or any process they're part of;
+- "why": one sentence on that;
+- "concerns": what they would likely be concerned about, by their key areas (0 to 4, each a sentence);
+- "lands": which steps of the journeys in its charter this lands on, and what changes there (0 to 3);
+- "check": what to check with them for real before going ahead, through the member who holds that relationship (0 to 3).
+It is an early steer, not their position: write "they would likely ask…", never "they say…". Every advisor is in "routed".
+Then the Product Manager: "synthesis" (3 to 5 sentences: what matters most this week across the areas, conflicts between members and how to settle them, the order of work; an advisor's steer may shape it but is never treated as a decision or as the stakeholder's word), "households" (one sentence: what this means for the households the programme serves), "stale" (member ids whose charter is not confirmed or stale and that this update relied on), and "cites".
 Rules: the programme's purpose first (fair, affordable, sustainable, and reaching households not reached yet). Facts owned by the partner, ops or care teams are never settled: say "to confirm with" and the role. The partner's vantage point is required, not a courtesy. Strategy sits above operations: flag when something needs sign-off above her. Never invent records, people or numbers; never use people's names, refer to roles. Plain, direct words; no em dashes.`;
 export async function coachJumpTeam({ update, answers = [], members, records, today }) {
   // every field always there ("" or [] when it doesn't apply): structured replies keep to a fixed shape
   const Signoff = z.object({ kind: z.enum(["change", "today", "charter"]), why: z.string(), area: z.string(), id: z.string(), change: z.array(z.object({ field: z.string(), value: z.string() })), text: z.string(), member: z.string(), edit: z.object({ section: z.string(), op: z.enum(["add", "replace", "remove"]), line: z.string(), with: z.string() }) });
-  const Member = z.object({ member: z.string(), handle: z.string(), prevent: z.string(), questions: z.array(z.string()), signoffs: z.array(Signoff), cites: z.array(z.string()) });
+  const Steer = z.object({ touches: z.enum(["Yes", "Likely", "Unlikely", "No", ""]), why: z.string(), concerns: z.array(z.string()), lands: z.array(z.string()), check: z.array(z.string()) });
+  const Member = z.object({ member: z.string(), handle: z.string(), prevent: z.string(), questions: z.array(z.string()), signoffs: z.array(Signoff), cites: z.array(z.string()), steer: Steer });
   const Reply = z.object({ routed: z.array(z.string()), members: z.array(Member), pm: z.object({ synthesis: z.string(), households: z.string(), stale: z.array(z.string()), cites: z.array(z.string()) }) });
-  const charter = (m) => `### ${m.title} (id ${m.id}; ${m.state})\n${Object.entries(m.sections).filter(([, l]) => l.length).map(([s, l]) => `${s}:\n${l.map((x) => `- ${x}`).join("\n")}`).join("\n")}`;
+  const charter = (m) => `### ${m.title} (id ${m.id}; ${m.advisor ? "advisor; " : ""}${m.state})\n${Object.entries(m.sections).filter(([, l]) => l.length).map(([s, l]) => `${s}:\n${l.map((x) => `- ${x}`).join("\n")}`).join("\n")}`;
   const response = await getClient().messages.parse({
     model: MODEL,
     max_tokens: 12000,

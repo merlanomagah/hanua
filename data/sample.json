@@ -781,6 +781,9 @@
             ],
             "Last confirmed": [
               "Not yet (invented)"
+            ],
+            "Seat": [
+              "Advisor (invented)"
             ]
           }
         },
@@ -950,7 +953,8 @@
       "standup": {
         "routed": [
           "m3",
-          "m6"
+          "m6",
+          "m2"
         ],
         "members": [
           {
@@ -1026,6 +1030,46 @@
                 }
               }
             ]
+          },
+          {
+            "member": "m2",
+            "handle": "An advisor's next steps are dropped before you see them (invented)",
+            "prevent": "",
+            "questions": [],
+            "cites": [
+              "r0"
+            ],
+            "signoffs": [
+              {
+                "kind": "today",
+                "why": "An advisor's sign-offs are dropped too (invented)",
+                "area": "",
+                "id": "",
+                "change": [],
+                "text": "Should never show (invented)",
+                "member": "",
+                "edit": {
+                  "section": "",
+                  "op": "add",
+                  "line": "",
+                  "with": ""
+                }
+              }
+            ],
+            "steer": {
+              "touches": "Likely",
+              "why": "Returns guidance changes what counter staff tell households handing modems back (invented)",
+              "concerns": [
+                "Another step at the counter on a busy day (invented)",
+                "Mixed messages if care and the partner give different return advice (invented)"
+              ],
+              "lands": [
+                "Modem return: what the household is told at hand-back (invented)"
+              ],
+              "check": [
+                "Does the partner's own returns guidance say the same thing? (invented)"
+              ]
+            }
           }
         ],
         "pm": {

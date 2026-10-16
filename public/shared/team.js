@@ -9,7 +9,7 @@ import { daysBetween } from "./dates.js";
 // The job (16 Oct 2026, brief docs/plans/2026-10-team-jd.md: each member set up like a real hire) comes first, then
 // what it holds, then where it reads from and what it watches on the board, then the dated notes
 export const JOB = ["Role purpose", "Key responsibilities", "FY focus areas", "Success looks like", "Ways of working", "Rhythm", "Keep updated", "Comms format"];
-export const SECTIONS = [...JOB, "Holds", "What matters", "Key risks", "Affects", "Standing questions", "Sources", "Watches", "Colour", "Context notes", "Last confirmed"];
+export const SECTIONS = [...JOB, "Holds", "What matters", "Key risks", "Affects", "Standing questions", "Sources", "Watches", "Seat", "Colour", "Context notes", "Last confirmed"];
 export const EDITABLE = SECTIONS.filter((s) => s !== "Last confirmed");
 export const NOTES = "Context notes", CONFIRMED = "Last confirmed";
 export const STALE_DAYS = 30; // a charter not confirmed for a month: the PM flags it
@@ -51,6 +51,19 @@ export function charterBlocks({ sections = {}, extra = [] } = {}) {
   for (const x of extra) add(x.heading, x.lines);
   return out;
 }
+
+// ---- the seat (16 Oct 2026, brief docs/plans/2026-10-advisor-steer.md): most members own work; an advisor owns none.
+// It speaks for stakeholders who aren't in the room (e.g. the delivery partner and the community partners) and gives an
+// early steer: does this touch them, what would they likely be concerned about, where it lands, what to check with them
+// for real. Never tasks, never sign-offs, never their actual position. "Seat: Advisor" in the charter; blank = owner.
+export const isAdvisor = (sections) => /^advis/i.test(String(sections?.Seat?.[0] || "").trim());
+export const TOUCHES = ["Yes", "Likely", "Unlikely", "No"];
+const list = (xs, n) => (Array.isArray(xs) ? xs : []).map(clean).filter(Boolean).slice(0, n);
+export function shapeSteer(raw = {}) {
+  const touches = TOUCHES.find((t) => norm(t) === norm(raw?.touches)) || "";
+  return { touches, why: clean(raw?.why), concerns: list(raw?.concerns, 4), lands: list(raw?.lands, 3), check: list(raw?.check, 3) };
+}
+export const hasSteer = (s) => Boolean(s && (s.touches || s.why || s.concerns?.length || s.lands?.length || s.check?.length));
 
 // ---- staying current ----
 const dateIn = (t) => /\b(\d{4}-\d{2}-\d{2})\b/.exec(String(t || ""))?.[1] || null;

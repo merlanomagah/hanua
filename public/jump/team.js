@@ -119,6 +119,29 @@ function citesEl(item) {
     ...(item.cites || []).map((c) => h("span", { className: "tm-cite", textContent: recordTitle(c) })),
     item.droppedCites ? h("span", { className: "tm-unconf", textContent: `${item.droppedCites} made-up reference${item.droppedCites === 1 ? "" : "s"} left out` }) : null);
 }
+// An advisor's card (brief docs/plans/2026-10-advisor-steer.md): an early steer from the side of the people it speaks
+// for, never tasks. Does it touch them first, then what they'd likely worry about, where it lands, and what to check
+// with them for real (each can go to today's list, on her press)
+function steerEl(m) {
+  const st = m.steer || {}, who = member(m.member);
+  const part = (title, lines, extra) => lines?.length ? h("div", { className: "tm-steer-part" }, h("h5", { textContent: title }),
+    h("ul", {}, ...lines.map((l, i) => h("li", {}, h("span", { textContent: l }), extra ? extra(l, i) : null)))) : null;
+  const toToday = (line, i) => {
+    const key = `${m.member}|check${i}`;
+    if (su().done[key]) return h("span", { className: "tm-done", textContent: "On today's list ✓" });
+    const b = h("button", { type: "button", className: "set-reset tm-to-today", textContent: "→ Today", title: `Add to today's ${jumpData?.section || "Jump issues"}` });
+    b.addEventListener("click", async () => { b.disabled = true; if (await hooks.toToday(`Check with the partner: ${line}`)) { su().done[key] = true; touch(su()); } render(); });
+    return b;
+  };
+  return h("section", { className: `tm-card tm-steer${who ? ` mc-${colourOf(who)}` : ""}` },
+    who ? whoEl(who, "Advisor · an early steer") : h("h4", { textContent: m.title }),
+    h("p", { className: "tm-touch" }, h("b", { className: `tm-touch-v t-${(st.touches || "unsure").toLowerCase()}`, textContent: st.touches || "Not sure" }),
+      document.createTextNode(` Does it touch them? ${st.why || ""}`)),
+    part("They would likely be concerned about", st.concerns),
+    part("Where it lands", st.lands),
+    part("To check with them for real", st.check, toToday),
+    h("p", { className: "tm-steer-note", textContent: "An early steer from their side, not their position: the real answer comes from them, through whoever holds that relationship." }));
+}
 function signoffEl(s, key) {
   const what = s.kind === "change" ? `${s.title}: ${Object.entries(s.change || {}).map(([k, v]) => `${k} → ${v}`).join(", ")}`
     : s.kind === "today" ? `Add to today's ${jumpData?.section || "Jump issues"}: ${s.text}`
@@ -170,7 +193,7 @@ function standupEl() {
     reply.routed.length ? h("p", { className: "tm-routed", textContent: `Working on it: ${reply.routed.map(byId).join(", ")}` }) : null,
     reply.pm.stale?.length ? h("p", { className: "tm-stale", textContent: `Charters to confirm before relying on them: ${reply.pm.stale.map(byId).join(", ")}` }) : null,
     citesEl(reply.pm));
-  const cards = reply.members.map((m) => h("section", { className: `tm-card${member(m.member) ? ` mc-${colourOf(member(m.member))}` : ""}` },
+  const cards = reply.members.map((m) => m.advisor ? steerEl(m) : h("section", { className: `tm-card${member(m.member) ? ` mc-${colourOf(member(m.member))}` : ""}` },
     member(m.member) ? whoEl(member(m.member)) : h("h4", { textContent: m.title }),
     h("p", {}, h("b", { textContent: "Handle. " }), document.createTextNode(m.handle)),
     h("p", {}, h("b", { textContent: "Prevent. " }), document.createTextNode(m.prevent)),
@@ -183,7 +206,7 @@ function standupEl() {
     m.signoffs.length ? h("ul", { className: "tm-signoffs" }, ...m.signoffs.map((s, i) => signoffEl(s, `${m.member}|${i}`))) : null));
   const again = decorate(h("button", { type: "button", className: "pl-go", textContent: "Answer and ask again ✦" }), "standup");
   again.addEventListener("click", () => sendStandup(true));
-  const hasQs = reply.members.some((m) => m.questions.length);
+  const hasQs = reply.members.some((m) => m.questions?.length);
   return [top, note, pm, ...cards, hasQs ? h("div", { className: "tm-row" }, again) : null];
 }
 
@@ -355,6 +378,7 @@ const HINTS = {
   "Comms format": "The structure and register that suits their audience",
   "Sources": "Jump OS pages and public sites they read",
   "Watches": "One rule a line: tier: Partner · area: questions · keyword: delink",
+  "Seat": "Blank: owns work. “Advisor”: owns none, and in a stand-up gives an early steer from its stakeholders' side instead of next steps",
 };
 function settingsEl(m, ctx, back) {
   const nameIn = h("input", { className: "tm-name-in", value: ctx.form._name ?? memberName(m.title).name, ariaLabel: "Their name", maxLength: 30 });

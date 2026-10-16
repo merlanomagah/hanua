@@ -2,7 +2,7 @@
 // identifies a customer sent to Claude, and answers that may only cite what they were shown. Invented text only.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { SECTIONS, applyEdit, bumpWeek, watching, memberName, titleOf, initialOf, colourOf, cadenceOf, plainLine, whoWhat, linksTo, charterBlocks, charterFrom, charterState, confirmCharter, grounded, noteLine, scrub, teamRows } from "../public/shared/team.js";
+import { SECTIONS, applyEdit, bumpWeek, watching, memberName, titleOf, initialOf, colourOf, cadenceOf, plainLine, whoWhat, linksTo, charterBlocks, charterFrom, charterState, confirmCharter, grounded, hasSteer, isAdvisor, noteLine, scrub, shapeSteer, teamRows } from "../public/shared/team.js";
 
 const b = (type, t) => ({ type, [type]: { rich_text: [{ plain_text: t }] } });
 const plain = (blocks) => blocks.map((x) => ({ type: x.type, [x.type]: { rich_text: x[x.type].rich_text.map((t) => ({ plain_text: t.text.content })) } }));
@@ -128,4 +128,20 @@ test("team: who a member's area affects, by the words of their roles", () => {
   const ms = [{ id: "a", title: "Ana · DIAA Partnership Lead" }, { id: "h", title: "Hemi · Community Partners Lead" }, { id: "l", title: "Leilani · Care Lead" }, { id: "s", title: "Losa · Distribution & Stock Lead" }, { id: "t", title: "Tama · Product Manager" }];
   assert.deepEqual(linksTo(["Community delivery partners (training)", "Distribution & stock (delinking)", "Skinny Care (escalations)"], ms, "a"), ["h", "l", "s"]);
   assert.deepEqual(linksTo([], ms, "a"), []);
+});
+
+test("an advisor: the Seat heading says so, and its steer keeps a fixed, short shape", () => {
+  const h = (t) => ({ type: "heading_2", heading_2: { rich_text: [{ plain_text: t }] } }), b = (t) => ({ type: "bulleted_list_item", bulleted_list_item: { rich_text: [{ plain_text: t }] } });
+  const { sections } = charterFrom([h("Role purpose"), b("Speak for the partner (invented)"), h("Seat"), b("Advisor")]);
+  assert.equal(isAdvisor(sections), true);
+  assert.equal(isAdvisor({ Seat: [] }), false);
+  assert.equal(isAdvisor({ Seat: ["Owner"] }), false);
+  assert.equal(isAdvisor({ Seat: ["advisory (invented)"] }), true);
+  // the Seat heading is written back where it was read
+  assert.ok(charterBlocks({ sections }).some((x) => x.heading_2?.rich_text?.[0]?.text?.content === "Seat"));
+  const st = shapeSteer({ touches: "likely", why: " Adds  a step (invented) ", concerns: ["a", "b", "c", "d", "e"], lands: ["x", ""], check: null });
+  assert.deepEqual(st, { touches: "Likely", why: "Adds a step (invented)", concerns: ["a", "b", "c", "d"], lands: ["x"], check: [] });
+  assert.equal(shapeSteer({ touches: "Maybe" }).touches, "");
+  assert.equal(hasSteer(shapeSteer({})), false);
+  assert.equal(hasSteer(st), true);
 });
