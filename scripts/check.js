@@ -78,17 +78,19 @@ for (const f of walk(path.join(root, "server"))) {
   for (const f of code.filter((x) => /server\//.test(x))) {
     const t = readFileSync(f, "utf8");
     // each private Claude call, and the one route file allowed to make it (16 Oct 2026: the Work reflection's panels)
-    for (const [fn, home] of [["reflectJournal", "routes/journal"], ["coachWorkReflection", "routes/work"]]) {
+    for (const [fn, home] of [["reflectJournal", "routes/journal"], ["coachWorkReflection", "routes/work"], ["coachJumpTeam", "routes/team"], ["foldTeamContext", "routes/team"]]) {
       if (new RegExp(`\\b${fn}\\b`).test(t) && !new RegExp(`server/(claude|${home})\\.js$`).test(f)) problems.push(`${rel(f)} reaches ${fn}: only server/${home}.js may send the Journal's words to Claude`);
     }
   }
   // a Claude call in claude.js that takes journal words but isn't listed above slips past this rule: name them all
   const claudeSrc = readFileSync(path.join(root, "server/claude.js"), "utf8");
-  for (const m of claudeSrc.matchAll(/export async function (\w*(?:Journal|Reflection)\w*)/g)) if (!["reflectJournal", "coachWorkReflection"].includes(m[1])) problems.push(`server/claude.js has ${m[1]}, a journal Claude call rule 8 doesn't know: add it to the list in scripts/check.js with the one route file allowed to use it`);
+  for (const m of claudeSrc.matchAll(/export async function (\w*(?:Journal|Reflection|Team|Jump)\w*)/g)) if (!["reflectJournal", "coachWorkReflection", "coachJumpTeam", "foldTeamContext"].includes(m[1])) problems.push(`server/claude.js has ${m[1]}, a journal Claude call rule 8 doesn't know: add it to the list in scripts/check.js with the one route file allowed to use it`);
   const sample = JSON.parse(readFileSync(path.join(root, "data/sample.json"), "utf8")).journal || {};
   const work = sample.work || {};
+  const team = JSON.parse(readFileSync(path.join(root, "data/sample.json"), "utf8")).jump?.team || {};
   const flat = (o) => (o && typeof o === "object" ? Object.entries(o).filter(([k]) => !["_about", "daysAgo", "seat"].includes(k)).flatMap(([, v]) => flat(v)) : typeof o === "string" ? [o] : []);
-  const texts = [...Object.values(sample.prompts || {}).flat(), ...(sample.weeks || []).flatMap((w) => Object.values(w.sections || {})), ...flat(work.role), ...flat(work.reflections), ...flat(work.panels)]; // a seat's name is a generic craft, not a fact
+  const texts = [...Object.values(sample.prompts || {}).flat(), ...(sample.weeks || []).flatMap((w) => Object.values(w.sections || {})), ...flat(work.role), ...flat(work.reflections), ...flat(work.panels),
+    ...(team.members || []).flatMap((m) => flat(m.sections)), ...flat(team.standup?.members?.map((m) => ({ handle: m.handle, prevent: m.prevent, questions: m.questions, s: m.signoffs.map((x) => ({ why: x.why, text: x.text, line: x.edit?.line })) }))), ...flat(team.standup?.pm && { synthesis: team.standup.pm.synthesis, households: team.standup.pm.households }), ...flat(team.fold)].filter((t) => t && !/^(add|replace|remove|change|today|charter|escalations|status|Interim guidance given|r\d+|m\d+|Key risks|Standing questions|\d{4}-\d{2}-\d{2})$/.test(t)); // a seat's name is a generic craft, not a fact
   for (const t of texts) if (t && !t.includes("(invented)")) problems.push(`data/sample.json's journal holds text not marked (invented): "${String(t).slice(0, 40)}…" (the repo is public)`);
 }
 

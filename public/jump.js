@@ -20,6 +20,7 @@ import { renderPeople } from "./jump/people.js";
 import { renderTimeline } from "./jump/timeline.js";
 import { answerQuestion } from "./jump/form.js";
 import { closePop, openPop, popOpen } from "./jump/pop.js";
+import { initTeam } from "./jump/team.js";
 
 const pane = $("jump-pane"), deskEl = document.querySelector("#desk-pane > .desk");
 const stacked = () => matchMedia("(max-width: 900px)").matches;
@@ -61,6 +62,7 @@ $("jump-refresh").addEventListener("click", () => load(true));
 // (<dialog>) closes itself first and every Esc handler waits while one is open
 addEventListener("keydown", (e) => {
   if (e.key !== "Escape" || document.querySelector("dialog[open]")) return;
+  if (document.querySelector(".focus-layer .jf-win:not([hidden])")) return; // the Jump team's window closes itself first
   if (popOpen()) { e.preventDefault(); e.stopImmediatePropagation(); closePop(); return; }
   if (!onJump || e.target.closest?.("input, textarea")) return;
   e.preventDefault(); e.stopImmediatePropagation();
@@ -139,15 +141,18 @@ function toTodayButton(row) {
   return b;
 }
 async function sendToToday(row) {
-  const section = data?.section || "Jump issues", ref = /^sample-/.test(row.id) ? null : row.id.replace(/[^\w-]/g, "").slice(0, 40);
+  const section = data?.section || "Jump issues", ref = /^[0-9a-f-]{32,36}$/i.test(String(row.id || "")) ? row.id : null; // a Jump OS page, or none (a sample row, the team's line)
   const already = desk.sections.some((s) => s.lines.some((l) => l.text && ((ref && l.ref === ref) || l.text === row.title)));
-  if (already) return toast(`Already in today's ${section}`);
+  if (already) { toast(`Already in today's ${section}`); return false; }
   const line = stampLine({ id: newId(), text: row.title.slice(0, 200), done: false, pri: "", mins: 0, ...(ref ? { ref } : {}) });
   const ok = await changeDay(todayStr(), (d) => addLineTo(d, section, true, line, newId));
-  if (!ok) return toast(`Couldn't add it to today just now: nothing was added.`, true);
+  if (!ok) { toast(`Couldn't add it to today just now: nothing was added.`, true); return false; }
   redraw();
   toast(`Added to today's ${section}`, false, { label: "Undo", run: async () => { await changeDay(todayStr(), (d) => { for (const s of d.sections) s.lines = s.lines.filter((l) => l.id !== line.id); }); redraw(); } });
+  return true;
 }
+// the Jump team (16 Oct 2026): a Team button opens it; an approved "add to today" comes through here
+initTeam({ toToday: (text) => sendToToday({ id: "", title: text }) });
 const redraw = () => { renderTodo(); renderTxt(); renderToday(); };
 
 // Today: today's work events, the lines under Jump issues in Plan my day (tickable here as there), and the open

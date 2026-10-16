@@ -3396,3 +3396,54 @@ html.dark .tk-btn.on .tk-dot { background: #e07a62; }
 .tk-btn .tk-dot { display: none; }
 .tk-btn.on .tk-dot { display: block; }
 @media (hover: none), (max-width: 760px) { .ic-btn { min-width: 40px; min-height: 40px; } }
+
+/* The Jump team (16 Oct 2026, public/jump/team.js): a Team button on the dashboard, the focus window with Stand-up and
+   Team, member cards, sign-offs approved one at a time */
+.jump-team-btn { margin-left: auto; padding: 4px 12px; border: 1px solid var(--border-2); border-radius: 4px; background: var(--page); font: 10px var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink); cursor: pointer; }
+.jump-team-btn:hover, .jump-team-btn:focus-visible { border-color: var(--terra); color: var(--terra); outline: none; }
+.tm-tab { padding: 3px 10px; border: 0; border-radius: 4px; background: none; font: 12px var(--ui); color: var(--ink-3); cursor: pointer; }
+.tm-tab.on { background: rgb(196 96 42 / 0.12); color: var(--terra); }
+.tm-body { flex: 1; min-height: 0; overflow-y: auto; padding: 18px clamp(18px, 5vw, 72px) 28px; }
+.tm-body > * { max-width: 820px; margin-left: auto; margin-right: auto; }
+.tm-sec .jn-head h3 { margin: 0; font: 500 26px/1.2 var(--display); color: var(--ink); }
+.tm-sec .tk-btn { margin-left: auto; }
+.tm-hint { margin: 6px 0 10px; font: 13px/1.45 var(--ui); color: var(--ink-3); }
+.tm-update { min-height: 120px; }
+.tm-row { display: flex; align-items: center; justify-content: flex-end; gap: 10px; margin: 12px auto; }
+.tm-card { margin: 16px auto; padding: 14px 16px; border: 1px solid var(--border-2); border-radius: 6px; background: rgb(255 255 255 / 0.35); }
+.tm-card h4 { margin: 0 0 8px; font: 500 20px/1.2 var(--display); color: var(--ink); }
+.tm-card p { margin: 0 0 8px; font: 14px/1.5 var(--ui); color: var(--ink); }
+.tm-pm { border-left: 3px solid var(--terra); }
+.tm-households { color: var(--ink-2, var(--ink)); }
+.tm-routed, .tm-stale { font-size: 12px !important; color: var(--ink-3) !important; }
+.tm-stale { color: var(--terra) !important; }
+.tm-cites { display: flex; flex-wrap: wrap; gap: 6px; }
+.tm-cite, .tm-unconf { padding: 2px 8px; border-radius: 3px; font: 11px var(--ui); background: rgb(0 0 0 / 0.05); color: var(--ink-3); }
+.tm-unconf { background: rgb(196 96 42 / 0.1); color: var(--terra); }
+.tm-qs { display: grid; gap: 8px; margin: 10px 0; }
+.tm-q span { display: block; font: italic 15px/1.4 var(--display); color: var(--ink-3); }
+.tm-answer, .tm-edit { width: 100%; box-sizing: border-box; margin-top: 4px; padding: 6px 8px; border: 1px solid var(--border-2); border-radius: 4px; background: var(--page); font: 14px/1.5 var(--ui); color: var(--ink); resize: vertical; }
+.tm-signoffs { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 8px; }
+.tm-signoff { display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; align-items: center; padding: 8px 10px; border-radius: 4px; background: rgb(0 0 0 / 0.03); }
+.tm-signoff .tm-what { font: 14px/1.4 var(--ui); color: var(--ink); }
+.tm-signoff .tm-why { grid-column: 1; font: 12px/1.4 var(--ui); color: var(--ink-3); }
+.tm-signoff > button, .tm-signoff > .tm-done, .tm-signoff > .tm-invalid { grid-column: 2; grid-row: 1 / span 2; }
+.tm-signoff .tm-edit { grid-column: 1 / -1; }
+.tm-signoff.invalid { opacity: 0.75; }
+.tm-done { font: 12px var(--ui); color: var(--green, #3f7a5a); }
+.tm-invalid { max-width: 220px; font: 12px/1.35 var(--ui); color: var(--ink-3); }
+.tm-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+.tm-member { display: flex; flex-direction: column; gap: 4px; padding: 14px; border: 1px solid var(--border-2); border-radius: 6px; background: rgb(255 255 255 / 0.35); text-align: left; cursor: pointer; color: var(--ink); }
+.tm-member:hover, .tm-member:focus-visible { border-color: var(--terra); outline: none; }
+.tm-name { font: 500 19px/1.2 var(--display); }
+.tm-holds { font: 13px/1.4 var(--ui); color: var(--ink-3); }
+.tm-state { font: 9px var(--mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--green, #3f7a5a); }
+.tm-member.stale .tm-state, .tm-state.stale { color: var(--terra); }
+.tm-member-head { justify-content: flex-start; }
+.tm-charter-sec h4 { margin: 16px 0 4px; font: 9px var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--terra); }
+.tm-charter-sec ul { margin: 0; padding-left: 18px; font: 14px/1.5 var(--ui); color: var(--ink); }
+html.dark :is(.tm-card, .tm-member) { background: var(--dk-raised); }
+html.dark .jump-team-btn { background: transparent; }
+.tm-win .jn-title { margin: 8px 0 18px; font-size: 30px; }
+.tm-qs > .pl-go { justify-self: end; }
+@media (max-width: 760px) { .tm-win .pw-title { display: none; } .tm-signoff { grid-template-columns: 1fr; } .tm-signoff > button, .tm-signoff > .tm-done, .tm-signoff > .tm-invalid { grid-column: 1; grid-row: auto; justify-self: end; } .jump-team-btn { padding: 4px 8px; } }

@@ -24,6 +24,7 @@ import * as books from "./routes/books.js";
 import * as jump from "./routes/jump.js";
 import * as journal from "./routes/journal.js";
 import * as work from "./routes/work.js";
+import * as team from "./routes/team.js";
 
 // Hanua's server: start-up, the guard, which room folder, and the routes by subject in server/routes/ (split into
 // them on 9 Oct 2026, Foundations F6; tested end to end in test/routes.test.js).
@@ -87,9 +88,10 @@ apple.register(ctx);
 money.register(ctx);
 await music.register(ctx);
 await books.register(ctx);
-await jump.register(ctx);
+const jumpApi = await jump.register(ctx);
 await journal.register(ctx);
 await work.register(ctx);
+await team.register({ ...ctx, jumpNow: jumpApi.snapshot }); // the Jump team reads what the dashboard shows
 
 app.use((err, _req, res, _next) => {
   console.error(err);

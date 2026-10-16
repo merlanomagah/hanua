@@ -661,7 +661,335 @@
         "Priority": "Worth resolving",
         "raised": 3
       }
-    ]
+    ],
+    "team": {
+      "_about": "Invented team, stand-up reply and fold reply for sample servers (the repo is public; the real charters live in Notion). Members and records are named m0…m7 and r0… by position, swapped for the sample ids.",
+      "members": [
+        {
+          "title": "Product Manager",
+          "sections": {
+            "Holds": [
+              "The whole programme (invented)"
+            ],
+            "What matters": [
+              "Right change, right order (invented)"
+            ],
+            "Key risks": [
+              "Fixes that break another area (invented)"
+            ],
+            "Affects": [
+              "Every area (invented)"
+            ],
+            "Standing questions": [
+              "Who owns this? (invented)"
+            ],
+            "Context notes": [
+              "2026-10-01 · Drafted for the sample (invented)"
+            ],
+            "Last confirmed": [
+              "2026-10-15"
+            ]
+          }
+        },
+        {
+          "title": "Partner Lead",
+          "sections": {
+            "Holds": [
+              "The delivery partner (invented)"
+            ],
+            "What matters": [
+              "Their view of the stock (invented)"
+            ],
+            "Key risks": [
+              "Learning of changes late (invented)"
+            ],
+            "Affects": [
+              "Stock Lead (invented)"
+            ],
+            "Standing questions": [
+              "How would the partner see this? (invented)"
+            ],
+            "Context notes": [
+              "2026-10-01 · Drafted for the sample (invented)"
+            ],
+            "Last confirmed": [
+              "Not yet (invented)"
+            ]
+          }
+        },
+        {
+          "title": "Counter Lead",
+          "sections": {
+            "Holds": [
+              "Partners at the counter (invented)"
+            ],
+            "What matters": [
+              "No extra load at the counter (invented)"
+            ],
+            "Key risks": [
+              "A new check at sign-up (invented)"
+            ],
+            "Affects": [
+              "Partner Lead (invented)"
+            ],
+            "Standing questions": [
+              "Does this add work at the counter? (invented)"
+            ],
+            "Context notes": [
+              "2026-10-01 · Drafted for the sample (invented)"
+            ],
+            "Last confirmed": [
+              "Not yet (invented)"
+            ]
+          }
+        },
+        {
+          "title": "Care Lead",
+          "sections": {
+            "Holds": [
+              "The care team (invented)"
+            ],
+            "What matters": [
+              "Guidance agents can find (invented)"
+            ],
+            "Key risks": [
+              "The same call coming back (invented)"
+            ],
+            "Affects": [
+              "Ops Lead (invented)"
+            ],
+            "Standing questions": [
+              "Was the guidance there? (invented)"
+            ],
+            "Context notes": [
+              "2026-10-01 · Drafted for the sample (invented)"
+            ],
+            "Last confirmed": [
+              "Not yet (invented)"
+            ]
+          }
+        },
+        {
+          "title": "Ops Lead",
+          "sections": {
+            "Holds": [
+              "Provisioning and source data (invented)"
+            ],
+            "What matters": [
+              "Records others can rely on (invented)"
+            ],
+            "Key risks": [
+              "A tool change with no date (invented)"
+            ],
+            "Affects": [
+              "Care Lead (invented)"
+            ],
+            "Standing questions": [
+              "Is there a manual fallback? (invented)"
+            ],
+            "Context notes": [
+              "2026-10-01 · Drafted for the sample (invented)"
+            ],
+            "Last confirmed": [
+              "Not yet (invented)"
+            ]
+          }
+        },
+        {
+          "title": "Digital Lead",
+          "sections": {
+            "Holds": [
+              "Network, app and web (invented)"
+            ],
+            "What matters": [
+              "Sign-up that works (invented)"
+            ],
+            "Key risks": [
+              "A fix with no owner (invented)"
+            ],
+            "Affects": [
+              "Care Lead (invented)"
+            ],
+            "Standing questions": [
+              "Who owns this fix now? (invented)"
+            ],
+            "Context notes": [
+              "2026-10-01 · Drafted for the sample (invented)"
+            ],
+            "Last confirmed": [
+              "Not yet (invented)"
+            ]
+          }
+        },
+        {
+          "title": "Stock Lead",
+          "sections": {
+            "Holds": [
+              "Modems and returns (invented)"
+            ],
+            "What matters": [
+              "No modem stuck in limbo (invented)"
+            ],
+            "Key risks": [
+              "Missed returns (invented)"
+            ],
+            "Affects": [
+              "Partner Lead (invented)"
+            ],
+            "Standing questions": [
+              "Where is this modem? (invented)"
+            ],
+            "Context notes": [
+              "2026-10-01 · Drafted for the sample (invented)"
+            ],
+            "Last confirmed": [
+              "Not yet (invented)"
+            ]
+          }
+        },
+        {
+          "title": "Governance Lead",
+          "sections": {
+            "Holds": [
+              "Direction and sign-off (invented)"
+            ],
+            "What matters": [
+              "Ops and strategy kept apart (invented)"
+            ],
+            "Key risks": [
+              "A figure used without its definition (invented)"
+            ],
+            "Affects": [
+              "Every area (invented)"
+            ],
+            "Standing questions": [
+              "Does this need sign-off above? (invented)"
+            ],
+            "Context notes": [
+              "2026-10-01 · Drafted for the sample (invented)"
+            ],
+            "Last confirmed": [
+              "Not yet (invented)"
+            ]
+          }
+        }
+      ],
+      "standup": {
+        "routed": [
+          "m3",
+          "m6"
+        ],
+        "members": [
+          {
+            "member": "m3",
+            "handle": "Ask the care team which article agents used, then fix the one that misled them (invented)",
+            "prevent": "Add the finding to the escalation when it closes, so the article is reviewed (invented)",
+            "questions": [
+              "Who on the care side can confirm which article was used? (invented)"
+            ],
+            "cites": [
+              "r0"
+            ],
+            "signoffs": [
+              {
+                "kind": "change",
+                "why": "Guidance has been given while the fix is checked (invented)",
+                "area": "escalations",
+                "id": "r0",
+                "change": [
+                  {
+                    "field": "status",
+                    "value": "Interim guidance given"
+                  }
+                ],
+                "text": "",
+                "member": "",
+                "edit": {
+                  "section": "",
+                  "op": "add",
+                  "line": "",
+                  "with": ""
+                }
+              },
+              {
+                "kind": "today",
+                "why": "So it doesn't slip (invented)",
+                "area": "",
+                "id": "",
+                "change": [],
+                "text": "Check the returns article with the care team (invented)",
+                "member": "",
+                "edit": {
+                  "section": "",
+                  "op": "add",
+                  "line": "",
+                  "with": ""
+                }
+              }
+            ]
+          },
+          {
+            "member": "m6",
+            "handle": "Confirm the returned modems are freed before the partner's next order (invented)",
+            "prevent": "A weekly check of returns against the stock sheet (invented)",
+            "questions": [],
+            "cites": [
+              "r99"
+            ],
+            "signoffs": [
+              {
+                "kind": "charter",
+                "why": "A risk worth keeping (invented)",
+                "area": "",
+                "id": "",
+                "change": [],
+                "text": "",
+                "member": "m6",
+                "edit": {
+                  "section": "Key risks",
+                  "op": "add",
+                  "line": "Returns not checked against the stock sheet (invented)",
+                  "with": ""
+                }
+              }
+            ]
+          }
+        ],
+        "pm": {
+          "synthesis": "Care first: the article is causing the calls; stock second, before the partner's next order (invented)",
+          "households": "Households waiting on a freed modem wait longer while this sits (invented)",
+          "stale": [
+            "m3",
+            "m6"
+          ],
+          "cites": [
+            "r0"
+          ]
+        }
+      },
+      "fold": {
+        "note": "Mel says the returns process changed this month (invented)",
+        "edits": [
+          {
+            "section": "Key risks",
+            "op": "add",
+            "line": "The new returns process isn't written down yet (invented)",
+            "with": "",
+            "why": "It changed this month (invented)"
+          },
+          {
+            "section": "Standing questions",
+            "op": "add",
+            "line": "Is the returns process written where the partner can see it? (invented)",
+            "with": "",
+            "why": "So it gets asked each time (invented)"
+          }
+        ],
+        "questions": [
+          "Who owns the new returns process? (invented)"
+        ]
+      }
+    }
   },
   "journal": {
     "_about": "Invented prompts and one invented week for sample servers (the repo is public; real prompts live in Notion).",

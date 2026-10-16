@@ -69,23 +69,23 @@ export async function register({ app, root, config }) {
     return out;
   }
 
+  // what the dashboard shows (also what the Jump team is shown, through teamRows: server/routes/team.js)
+  async function snapshot(fresh = false) {
+    const today = todayStr();
+    const isLive = live();
+    const sources = Object.fromEntries(await Promise.all(AREAS.map(async (area) =>
+      [area, isLive ? await rowsFor(area, today, fresh) : { rows: mem[area] }])));
+    const options = await allOptions();
+    return {
+      live: isLive, sample: !isLive, fetchedAt: new Date().toISOString(), today, options,
+      ...shapeJump(sources, today, { closedStatus: rules.closedStatus, showStatuses: cfg?.projects?.showStatuses,
+        openStatuses: cfg?.questions?.openStatuses, blocking: cfg?.questions?.blocking, options }),
+      section: cfg?.section || "Jump issues",
+      links: isLive ? [{ label: "Jump OS", url: cfg.notionUrl || null }, ...AREAS.map((a) => ({ label: LABELS[a], url: linkOf(cfg[a]?.notionDatabaseId) }))].filter((l) => l.url) : [],
+    };
+  }
   app.get("/api/jump", async (req, res, next) => {
-    try {
-      const today = todayStr(), fresh = req.query.fresh === "1";
-      const isLive = live();
-      const sources = Object.fromEntries(await Promise.all(AREAS.map(async (area) =>
-        [area, isLive ? await rowsFor(area, today, fresh) : { rows: mem[area] }])));
-      const options = await allOptions();
-      res.json({
-        live: isLive, sample: !isLive, fetchedAt: new Date().toISOString(), today, options,
-        ...shapeJump(sources, today, { closedStatus: rules.closedStatus, showStatuses: cfg?.projects?.showStatuses,
-          openStatuses: cfg?.questions?.openStatuses, blocking: cfg?.questions?.blocking, options }),
-        section: cfg?.section || "Jump issues",
-        links: isLive ? [{ label: "Jump OS", url: cfg.notionUrl || null }, ...AREAS.map((a) => ({ label: LABELS[a], url: linkOf(cfg[a]?.notionDatabaseId) }))].filter((l) => l.url) : [],
-      });
-    } catch (err) {
-      next(err);
-    }
+    try { res.json(await snapshot(req.query.fresh === "1")); } catch (err) { next(err); }
   });
 
   // ---- writing (v2) ----
@@ -172,4 +172,5 @@ export async function register({ app, root, config }) {
       next(err);
     }
   });
+  return { snapshot };
 }

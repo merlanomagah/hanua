@@ -256,3 +256,71 @@ ${last.length ? `\n<previous_reflection>\n${qa(last)}\n</previous_reflection>` :
   if (response.stop_reason === "refusal" || !response.parsed_output) throw new Error("The panels couldn't read this one. Try adding a little more to your answers.");
   return response.parsed_output;
 }
+
+// The Jump team (16 Oct 2026; brief docs/plans/2026-10-jump-team.md), on Mel's press only, from server/routes/team.js
+// (npm run check, rule 8). One call: the Product Manager routes her stand-up update to the members it touches, each
+// answers in its own lane, the PM sums up. Every claim cites the records it rests on (ids it was shown) or says it's
+// unconfirmed; anything to change in Jump OS comes back as a proposal for her to approve, never done here.
+const TEAM_SYSTEM = `You are an operations team working for one person, the operations partner on a not-for-profit home broadband programme run by a telco with a community delivery partner. Each member owns one stakeholder area and holds a charter (given): what matters there, key risks, what it affects, standing questions, dated context notes. The Product Manager oversees the whole programme.
+At a stand-up she gives an update. The Product Manager decides which members it touches ("routed": their ids) and only those members answer. Each answering member, in its own lane, says:
+- "handle": how to deal with and resolve what touches its area now (concrete next steps, who in which role, in what order), 2 to 4 sentences;
+- "prevent": what would stop it happening again (a process, an owner, a check), 1 to 3 sentences;
+- "questions": what it needs from her to be sure (0 to 3, short, "what" or "who" questions);
+- "signoffs": changes that need her approval (0 to 3), each one of: kind "change" (area and id from the records, change: a list of { field, value } using only these fields: escalations status, tier, waitingOn, finding, outcome; projects status, next; questions status, waitingOn, resolution), kind "today" (text: a line for her to-do list today), or kind "charter" (member id, edit: { section, op: add|replace|remove, line, with }) for a lasting learning about an area. Fill every field: "" or [] where it doesn't apply;
+- "cites": the record ids (from <records>) the answer rests on. If it rests on nothing she was shown, cites is empty and it's unconfirmed.
+Then the Product Manager: "synthesis" (3 to 5 sentences: what matters most this week across the areas, conflicts between members and how to settle them, the order of work), "households" (one sentence: what this means for the households the programme serves), "stale" (member ids whose charter is not confirmed or stale and that this update relied on), and "cites".
+Rules: the programme's purpose first (fair, affordable, sustainable, and reaching households not reached yet). Facts owned by the partner, ops or care teams are never settled: say "to confirm with" and the role. The partner's vantage point is required, not a courtesy. Strategy sits above operations: flag when something needs sign-off above her. Never invent records, people or numbers; never use people's names, refer to roles. Plain, direct words; no em dashes.`;
+export async function coachJumpTeam({ update, answers = [], members, records, today }) {
+  // every field always there ("" or [] when it doesn't apply): structured replies keep to a fixed shape
+  const Signoff = z.object({ kind: z.enum(["change", "today", "charter"]), why: z.string(), area: z.string(), id: z.string(), change: z.array(z.object({ field: z.string(), value: z.string() })), text: z.string(), member: z.string(), edit: z.object({ section: z.string(), op: z.enum(["add", "replace", "remove"]), line: z.string(), with: z.string() }) });
+  const Member = z.object({ member: z.string(), handle: z.string(), prevent: z.string(), questions: z.array(z.string()), signoffs: z.array(Signoff), cites: z.array(z.string()) });
+  const Reply = z.object({ routed: z.array(z.string()), members: z.array(Member), pm: z.object({ synthesis: z.string(), households: z.string(), stale: z.array(z.string()), cites: z.array(z.string()) }) });
+  const charter = (m) => `### ${m.title} (id ${m.id}; ${m.state})\n${Object.entries(m.sections).filter(([, l]) => l.length).map(([s, l]) => `${s}:\n${l.map((x) => `- ${x}`).join("\n")}`).join("\n")}`;
+  const response = await getClient().messages.parse({
+    model: MODEL,
+    max_tokens: 12000,
+    output_config: { effort: "medium", format: zodOutputFormat(Reply) },
+    system: TEAM_SYSTEM,
+    messages: [{ role: "user", content: `Today is ${today}.
+<team>
+${members.map(charter).join("\n\n")}
+</team>
+<records>
+${JSON.stringify(records)}
+</records>
+<update>
+${update}
+</update>${answers.length ? `\n<her_answers_to_your_questions>\n${answers.map((a) => `- ${a.member}: ${a.question}\n  ${a.answer}`).join("\n")}\n</her_answers_to_your_questions>` : ""}` }],
+  });
+  if (response.stop_reason === "refusal" || !response.parsed_output) throw new Error("The team couldn't work through this one. Try adding a little more to the update.");
+  return response.parsed_output;
+}
+
+// One member folds new context Mel gives it into its own charter: changes to its sections (each approved by her one
+// at a time), a dated note of what she said, and what it needs to ask. Nothing is written here.
+export async function foldTeamContext({ member, others, note, answers = [], today }) {
+  const Reply = z.object({
+    note: z.string(),
+    edits: z.array(z.object({ section: z.string(), op: z.enum(["add", "replace", "remove"]), line: z.string(), with: z.string(), why: z.string() })), // "with": "" unless replacing
+    questions: z.array(z.string()),
+  });
+  const response = await getClient().messages.parse({
+    model: MODEL,
+    max_tokens: 6000,
+    output_config: { effort: "medium", format: zodOutputFormat(Reply) },
+    system: `You are ${member.title}, a member of an operations team on a not-for-profit home broadband programme. Your charter is below. The operations partner you work for has given you new context about your area. Fold it into your charter so nothing is just stored and left to go stale:
+- "edits": 0 to 6 changes to your charter's sections (Holds, What matters, Key risks, Affects, Standing questions, Context notes). Prefer changing or removing a line that this context makes out of date over adding another; for "replace" and "remove", "line" must be copied exactly from the charter. Each with a short "why".
+- "note": one line summing up what she told you, in her terms (it is kept, dated, under Context notes).
+- "questions": 0 to 3 things you need to ask to understand it properly.
+Never use people's names (refer to roles); never invent facts; facts owned by others are "to confirm". Plain words, no em dashes. Other members, for "Affects": ${others.join(", ")}.`,
+    messages: [{ role: "user", content: `Today is ${today}.
+<charter>
+${Object.entries(member.sections).map(([s, l]) => `## ${s}\n${l.map((x) => `- ${x}`).join("\n")}`).join("\n")}
+</charter>
+<new_context>
+${note}
+</new_context>${answers.length ? `\n<her_answers>\n${answers.map((a) => `- ${a.question}\n  ${a.answer}`).join("\n")}\n</her_answers>` : ""}` }],
+  });
+  if (response.stop_reason === "refusal" || !response.parsed_output) throw new Error("Couldn't fold that in. Try saying a little more.");
+  return response.parsed_output;
+}

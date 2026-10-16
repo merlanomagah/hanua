@@ -252,3 +252,43 @@ test("routes: Work reflections round trip apart from the Journal's weeks; the pa
   // the Journal's Reflect is refused too: the sample server won't use the key
   assert.equal((await call(`/api/journal/${week}/reflect`, { method: "POST", body: { sections: { Work: "x (invented)" } } })).status, 503);
 });
+
+test("routes: the Jump team reads invented charters, refuses identifiers, proposes without writing, and saves a charter only when asked", async () => {
+  const t = await call("/api/team");
+  assert.equal(t.json.live, false);
+  assert.equal(t.json.members.length, 8);
+  const m = t.json.members[3];
+  assert.equal(m.state.label, "Not confirmed yet");
+  // identifiers are refused before anything is sent (a key is set on this server, and it still never calls Claude)
+  const no = await call("/api/team/standup", { method: "POST", body: { update: "the customer on 021 555 1234 called (invented)" } });
+  assert.equal(no.status, 400);
+  assert.equal(no.json.scrub, true);
+  assert.equal((await call("/api/team/standup", { method: "POST", body: { update: "" } })).status, 400);
+  const before = JSON.stringify((await call("/api/jump")).json.escalations);
+  const s = await call("/api/team/standup", { method: "POST", body: { update: "Returns are confusing the care team this week (invented)" } });
+  assert.equal(s.status, 200);
+  assert.equal(s.json.live, false);
+  assert.deepEqual(s.json.routed, [t.json.members[3].id, t.json.members[6].id]);
+  const care = s.json.members[0];
+  assert.equal(care.title, "Care Lead");
+  assert.ok(care.cites.every((c) => s.json.records.some((r) => r.id === c)));
+  assert.equal(care.signoffs[0].kind, "change");
+  assert.equal(care.signoffs[0].invalid, undefined); // a change Jump OS's own rules accept
+  assert.equal(care.signoffs[1].text, "Check the returns article with the care team (invented)");
+  assert.equal(s.json.members[1].signoffs[0].kind, "charter");
+  assert.equal(s.json.members[1].cites.length, 0); // it cited a record it wasn't shown: dropped, so unconfirmed
+  assert.equal(s.json.members[1].unconfirmed, true);
+  assert.equal(JSON.stringify((await call("/api/jump")).json.escalations), before); // nothing written before an approval
+  for (const r of s.json.records) assert.deepEqual(Object.keys(r).filter((k) => /issue|outcome|resolution|waitingOn|raisedBy/i.test(k)), []);
+  // context for one member: proposals only, then a charter saved on approval, then Undo
+  const f = await call(`/api/team/${m.id}/context`, { method: "POST", body: { note: "The returns process changed this month (invented)" } });
+  assert.equal(f.status, 200);
+  assert.equal(f.json.edits.length, 2);
+  assert.equal((await call("/api/team")).json.members[3].sections["Key risks"].length, m.sections["Key risks"].length);
+  const next = { ...m.sections, "Key risks": [...m.sections["Key risks"], f.json.edits[0].line] };
+  const saved = await call(`/api/team/${m.id}`, { method: "PUT", body: { sections: next, base: m.edited } });
+  assert.equal(saved.status, 200);
+  assert.equal((await call(`/api/team/${m.id}`, { method: "PUT", body: { sections: m.sections, base: "2020-01-01T00:00:00.000Z" } })).status, 409);
+  assert.equal((await call(`/api/team/${m.id}`, { method: "PUT", body: { sections: m.sections, base: saved.json.edited } })).status, 200); // Undo
+  assert.deepEqual((await call("/api/team")).json.members[3].sections["Key risks"], m.sections["Key risks"]);
+});

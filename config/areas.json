@@ -177,6 +177,10 @@
   "jump": {
     "_about": "The Jump Dashboard (right of the desk; briefs docs/plans/2026-10-jump-dashboard.md and -v2.md): reads three Jump OS databases and, since v2, writes back to them through the checks in public/shared/jump.js (checkWrite). Column names must match Notion exactly. Each database must be connected to the Hanua integration (••• → Connections), with insert and update content allowed.",
     "notionUrl": "https://www.notion.so/35d16603f0bd80d884dccf6e5e3503a0",
+    "team": {
+      "_about": "The Jump team (brief docs/plans/2026-10-jump-team.md): a page in Jump OS with a charter page per member under it (headings: Holds, What matters, Key risks, Affects, Standing questions, Context notes, Last confirmed). Written by role, never by name; nothing of it is copied here (the repo is public). The page must be connected to the Hanua integration (••• → Connections), with update content allowed.",
+      "pageUrl": "https://www.notion.so/3fb16603f0bd819e8a27f770c092f9eb"
+    },
     "section": "Jump issues",
     "escalations": {
       "notionDatabaseId": "f611ef976c264ab0b8fbeb00b73dfca4",
