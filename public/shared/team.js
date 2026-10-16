@@ -6,7 +6,10 @@
 // Shared by the page, the server and the tests.
 import { daysBetween } from "./dates.js";
 
-export const SECTIONS = ["Holds", "What matters", "Key risks", "Affects", "Standing questions", "Context notes", "Last confirmed"];
+// The job (16 Oct 2026, brief docs/plans/2026-10-team-jd.md: each member set up like a real hire) comes first, then
+// what it holds, then where it reads from and what it watches on the board, then the dated notes
+export const JOB = ["Role purpose", "Key responsibilities", "FY focus areas", "Success looks like", "Ways of working", "Rhythm", "Keep updated", "Comms format"];
+export const SECTIONS = [...JOB, "Holds", "What matters", "Key risks", "Affects", "Standing questions", "Sources", "Watches", "Context notes", "Last confirmed"];
 export const EDITABLE = SECTIONS.filter((s) => s !== "Last confirmed");
 export const NOTES = "Context notes", CONFIRMED = "Last confirmed";
 export const STALE_DAYS = 30; // a charter not confirmed for a month: the PM flags it
@@ -119,4 +122,27 @@ export function bumpWeek(counts = {}, week) {
   const out = { ...counts, [week]: (counts[week] || 0) + 1 };
   for (const k of Object.keys(out).sort().slice(0, -8)) delete out[k];
   return out;
+}
+
+// ---- what a member watches on the board: lines under Watches like "tier: Partner", "area: questions",
+// "keyword: delink" (any one matching is enough; an empty Watches means nothing yet, never everything). Runs over
+// teamRows (whitelisted fields only), on the page and the server alike ----
+export function watchRules(sections) {
+  const rules = { tiers: [], areas: [], keywords: [] };
+  for (const raw of sections?.Watches || []) {
+    const m = /^\s*(tier|area|keyword)s?\s*:\s*(.+?)\s*$/i.exec(String(raw).replace(/\s*\(invented\)\s*$/i, ""));
+    if (!m) continue;
+    const v = m[2].toLowerCase();
+    if (m[1].toLowerCase() === "tier") rules.tiers.push(v);
+    else if (m[1].toLowerCase() === "area") rules.areas.push(v);
+    else rules.keywords.push(v);
+  }
+  return rules;
+}
+export function watching(sections, rows = []) {
+  const r = watchRules(sections);
+  if (!r.tiers.length && !r.areas.length && !r.keywords.length) return [];
+  return rows.filter((row) => (row.tier && r.tiers.includes(String(row.tier).toLowerCase()))
+    || r.areas.includes(row.area)
+    || r.keywords.some((k) => String(row.title || "").toLowerCase().includes(k)));
 }

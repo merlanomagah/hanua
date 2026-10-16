@@ -2,7 +2,7 @@
 // identifies a customer sent to Claude, and answers that may only cite what they were shown. Invented text only.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { SECTIONS, applyEdit, bumpWeek, charterBlocks, charterFrom, charterState, confirmCharter, grounded, noteLine, scrub, teamRows } from "../public/shared/team.js";
+import { SECTIONS, applyEdit, bumpWeek, watching, charterBlocks, charterFrom, charterState, confirmCharter, grounded, noteLine, scrub, teamRows } from "../public/shared/team.js";
 
 const b = (type, t) => ({ type, [type]: { rich_text: [{ plain_text: t }] } });
 const plain = (blocks) => blocks.map((x) => ({ type: x.type, [x.type]: { rich_text: x[x.type].rich_text.map((t) => ({ plain_text: t.text.content })) } }));
@@ -76,4 +76,31 @@ test("team: stand-ups counted by week, the last 8 kept", () => {
   for (let i = 1; i <= 10; i++) c = bumpWeek(c, `2026-0${i < 10 ? i : 9}-01`.replace("-010-", "-10-"));
   assert.ok(Object.keys(c).length <= 8);
   assert.equal(bumpWeek({ "2026-10-12": 2 }, "2026-10-12")["2026-10-12"], 3);
+});
+
+test("team: the job's headings come first and round-trip like the rest", () => {
+  const page = charterFrom([b("heading_2", "Role purpose"), b("bulleted_list_item", "Keep it strong (invented)"), b("heading_2", "FY focus areas"), b("bulleted_list_item", "FY27: one thing (invented)"), b("heading_2", "Watches"), b("bulleted_list_item", "tier: Partner")]);
+  assert.deepEqual(page.sections["Role purpose"], ["Keep it strong (invented)"]);
+  assert.deepEqual(page.extra, []);
+  const blocks = charterBlocks(page), heads = blocks.filter((x) => x.type === "heading_2").map((x) => x.heading_2.rich_text[0].text.content);
+  assert.equal(heads[0], "Role purpose");
+  assert.ok(heads.indexOf("Watches") > heads.indexOf("Holds"));
+  assert.deepEqual(charterFrom(plain(blocks)), page);
+  assert.equal(applyEdit(page.sections, { section: "Key responsibilities", op: "add", line: "A duty (invented)" }).ok, true);
+});
+
+test("team: what a member watches: tiers, areas and keywords; nothing when it has no rules", () => {
+  const rows = [
+    { id: "e1", area: "escalations", title: "Modem not delinked (invented)", tier: "T2" },
+    { id: "e2", area: "escalations", title: "Partner can't log in (invented)", tier: "Partner" },
+    { id: "p1", area: "projects", title: "Stock sheet tidy (invented)" },
+    { id: "q1", area: "questions", title: "Who owns the app? (invented)" },
+  ];
+  const ids = (w) => watching({ Watches: w }, rows).map((r) => r.id);
+  assert.deepEqual(ids(["tier: Partner"]), ["e2"]);
+  assert.deepEqual(ids(["keyword: DELINK", "keyword: stock"]), ["e1", "p1"]);
+  assert.deepEqual(ids(["area: questions"]), ["q1"]);
+  assert.deepEqual(ids(["Tiers: t2 (invented)"]), ["e1"]);
+  assert.deepEqual(ids([]), []);
+  assert.deepEqual(ids(["just a note"]), []);
 });

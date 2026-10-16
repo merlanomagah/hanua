@@ -7,7 +7,7 @@
 // member's charter. Team: the eight members, how current each charter is, and a member's page, where she adds context
 // (typed or spoken) and the member folds it into its charter, a change at a time, never just piling it up.
 // Nothing is kept on this Mac but the count of stand-ups a week (the probe's evidence).
-import { applyEdit, bumpWeek, confirmCharter, noteLine, NOTES } from "../shared/team.js";
+import { EDITABLE, JOB, applyEdit, bumpWeek, confirmCharter, noteLine, NOTES, teamRows, watching } from "../shared/team.js";
 import { todayStr } from "../shared/dates.js";
 import { $, focus, h, store, toast } from "../lib.js";
 import { change as changeRecord, data as jumpData } from "./store.js";
@@ -24,7 +24,7 @@ let view = "standup"; // "standup" | "team" | a member's id
 // while she's elsewhere is kept for whoever asked. Dropped after a week untouched.
 const DRAFTS = "team-drafts", WEEK = 7 * 86_400_000;
 const freshStandup = () => ({ update: "", reply: null, answers: {}, done: {} });
-const freshMember = () => ({ note: "", fold: null, answers: {}, done: {}, noteKept: false });
+const freshMember = () => ({ note: "", fold: null, answers: {}, done: {}, noteKept: false, form: null }); // form: the ⚙ settings being edited (kept too)
 let drafts = { standup: freshStandup(), members: {} };
 try {
   const d = JSON.parse(store(DRAFTS) || "null");
@@ -215,8 +215,27 @@ function memberEl(m) {
   back.addEventListener("click", () => { view = "team"; render(); });
   const confirm = h("button", { type: "button", className: "set-reset", textContent: "Confirm charter", title: "Say this charter is still right today (sets Last confirmed)" });
   confirm.addEventListener("click", () => saveCharter(m, confirmCharter(m.sections, todayStr()), `${m.title}'s charter confirmed`));
-  const sections = Object.entries(m.sections).filter(([s]) => s !== "Last confirmed").map(([s, lines]) => h("section", { className: "tm-charter-sec" },
-    h("h4", { textContent: s }), lines.length ? h("ul", {}, ...lines.map((l) => h("li", { textContent: l }))) : h("p", { className: "tm-hint", textContent: "Nothing yet." })));
+  const secEl = (s, lines) => h("section", { className: "tm-charter-sec" },
+    h("h4", { textContent: s }), lines?.length ? h("ul", {}, ...lines.map((l) => h("li", { textContent: l }))) : h("p", { className: "tm-hint", textContent: "Nothing yet: add it in ⚙ Settings." }));
+  if (ctx.form) return settingsEl(m, ctx, back);
+  const gear = h("button", { type: "button", className: "set-reset tm-gear", textContent: "⚙ Settings", title: `Edit ${m.title}'s job, responsibilities, focus, rhythm, sources and what it watches` });
+  gear.addEventListener("click", () => { ctx.form = Object.fromEntries(EDITABLE.filter((x) => x !== NOTES).map((x) => [x, (m.sections[x] || []).join("\n")])); touch(ctx); render(); });
+  // what's on its desk: the board's records it watches (by tier, area or keyword), live
+  const rows = teamRows(jumpData && !jumpData.error ? jumpData : {}), mine = watching(m.sections, rows);
+  const urlOf = (id) => (jumpData?.escalations?.columns?.flatMap((c) => c.items) || []).concat(jumpData?.projects?.items || [], jumpData?.questions?.items || []).find((r) => r.id === id)?.url || null;
+  const AREA = { escalations: "Escalation", projects: "Project", questions: "Question" };
+  const desk = h("section", { className: "tm-card tm-desk" },
+    h("h4", { textContent: "On their desk now" }),
+    mine.length ? h("ul", { className: "tm-watch" }, ...mine.map((r) => h("li", {},
+      h("span", { className: "tm-cite", textContent: AREA[r.area] || r.area }),
+      h("span", { className: "tm-watch-title", textContent: r.title }),
+      h("span", { className: "tm-watch-meta", textContent: [r.status, r.tier, r.age != null ? `${r.age} days` : null].filter(Boolean).join(" · ") }),
+      urlOf(r.id) ? h("a", { className: "jw-open", href: urlOf(r.id), target: "_blank", rel: "noopener", textContent: "↗", ariaLabel: `Open “${r.title}” in Jump OS` }) : null)))
+      : h("p", { className: "tm-hint", textContent: m.sections.Watches?.length ? "Nothing on the board matches what they watch right now." : "They aren't watching anything yet: in ⚙ Settings, add lines under Watches like “tier: Partner”, “area: questions” or “keyword: delink”." }));
+  const glance = h("div", { className: "tm-glance" }, ...["FY focus areas", "Key responsibilities", "Rhythm", "Keep updated"].map((x) => secEl(x, m.sections[x])));
+  const full = h("details", { className: "tm-full" }, h("summary", { textContent: "The whole charter" }),
+    ...Object.entries(m.sections).filter(([x]) => x !== "Last confirmed").map(([x, lines]) => secEl(x, lines)),
+    ...(m.extra || []).map((x) => secEl(x.heading, x.lines)));
   const box = h("textarea", { className: "jn-text tm-update", value: ctx.note, rows: 4, placeholder: `Tell ${m.title} what you know about this area: what's changed, what matters, what worries you.`, ariaLabel: `New context for ${m.title}` });
   const talk = focus.on ? { button: null, line: null } : talkFor(box);
   const go = decorate(h("button", { type: "button", className: "pl-go", textContent: "Fold it in ✦", disabled: !ctx.note.trim() }), key);
@@ -258,9 +277,47 @@ function memberEl(m) {
         return h("label", { className: "tm-q" }, h("span", { textContent: q }), a);
       }), (() => { const b = decorate(h("button", { type: "button", className: "pl-go", textContent: "Answer and fold again ✦" }), key); b.addEventListener("click", () => fold(true)); return b; })()) : null);
   }
-  return [h("div", { className: "tm-row tm-member-head" }, back, h("span", { className: `tm-state${m.state.stale ? " stale" : ""}`, textContent: m.state.label }), confirm,
+  return [h("div", { className: "tm-row tm-member-head" }, back, h("span", { className: `tm-state${m.state.stale ? " stale" : ""}`, textContent: m.state.label }), confirm, gear,
       m.url ? h("a", { className: "b-link", href: m.url, target: "_blank", rel: "noopener", textContent: "Notion ↗" }) : null),
-    h("h2", { className: "jn-title", textContent: m.title }), add, result, ...sections];
+    h("h2", { className: "jn-title", textContent: m.title }),
+    m.sections["Role purpose"]?.[0] ? h("p", { className: "tm-purpose", textContent: m.sections["Role purpose"][0] }) : null,
+    desk, glance, add, result, full];
+}
+
+// ⚙ Settings: the member's job, focus, rhythm, sources and what it watches, one box per part (a line per item),
+// saved to its charter in one go (Undo; refused if it changed in Notion meanwhile). What's typed is kept until saved
+// or cancelled, like everything else here. Context notes and Last confirmed aren't edited here.
+const HINTS = {
+  "Role purpose": "Why the role exists, in a sentence or two",
+  "FY focus areas": "This year's 3 to 5 priorities, e.g. “FY27: …”",
+  "Ways of working": "How they solve problems, handle escalations, run meetings",
+  "Rhythm": "Internal stand-ups, and the meetings they recommend with their stakeholders: purpose, cadence",
+  "Keep updated": "Who besides you, by role: what they get, when",
+  "Comms format": "The structure and register that suits their audience",
+  "Sources": "Jump OS pages and public sites they read",
+  "Watches": "One rule a line: tier: Partner · area: questions · keyword: delink",
+};
+function settingsEl(m, ctx, back) {
+  const fields = EDITABLE.filter((x) => x !== NOTES).map((x) => {
+    const t = h("textarea", { className: "tm-answer tm-field", value: ctx.form[x] ?? "", rows: Math.max(2, (ctx.form[x] || "").split("\n").length), ariaLabel: x });
+    t.addEventListener("input", () => { ctx.form[x] = t.value; touch(ctx); fit(t); });
+    return h("label", { className: "tm-setting" }, h("span", { className: "tm-setting-name", textContent: x }), HINTS[x] ? h("span", { className: "tm-hint", textContent: HINTS[x] }) : null, t);
+  });
+  const cancel = h("button", { type: "button", className: "set-reset", textContent: "Cancel" });
+  cancel.addEventListener("click", () => { ctx.form = null; touch(ctx); render(); });
+  const save = h("button", { type: "button", className: "pl-go", textContent: "Save to the charter" });
+  save.addEventListener("click", async () => {
+    const lines = (x) => String(ctx.form[x] || "").split("\n").map((l) => l.trim()).filter(Boolean);
+    const sections = { ...m.sections, ...Object.fromEntries(EDITABLE.filter((x) => x !== NOTES).map((x) => [x, lines(x)])) };
+    save.disabled = true;
+    if (await saveCharter(m, sections, `${m.title}'s settings saved`)) { ctx.form = null; touch(ctx); }
+    render();
+  });
+  return [h("div", { className: "tm-row tm-member-head" }, back, h("span", { className: "tm-state", textContent: "⚙ Settings" })),
+    h("h2", { className: "jn-title", textContent: `${m.title}: the job` }),
+    h("p", { className: "tm-hint", textContent: "One item a line. Saved to their charter page in Jump OS, so it works without Hanua and can be handed on. Write by role, never by name." }),
+    h("div", { className: "tm-settings" }, ...JOB.concat(EDITABLE.filter((x) => !JOB.includes(x) && x !== NOTES)).map((x) => fields[EDITABLE.filter((y) => y !== NOTES).indexOf(x)])),
+    h("div", { className: "tm-row" }, cancel, save)];
 }
 
 function render() {

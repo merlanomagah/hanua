@@ -3468,3 +3468,28 @@ html.dark :is(.tm-card, .tm-member) { background: var(--dk-raised); }
 @keyframes wt-arrived { from { box-shadow: 0 0 0 3px rgb(196 96 42 / 0.45); } to { box-shadow: 0 0 0 3px rgb(196 96 42 / 0); } }
 @media (prefers-reduced-motion: reduce) { .wt-spin, .wt-note, .wt-arrived { animation: none; } }
 .tm-wip { font: italic 12px var(--ui); color: var(--terra); }
+/* The workbench and ⚙ Settings (16 Oct 2026, public/jump/team.js) */
+.tm-purpose { margin: -10px auto 14px; font: italic 17px/1.45 var(--display); color: var(--ink-3); }
+.tm-desk h4 { margin-bottom: 6px; }
+.tm-watch { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.tm-watch li { display: grid; grid-template-columns: auto 1fr auto auto; gap: 8px; align-items: center; padding: 6px 8px; border-radius: 4px; background: rgb(0 0 0 / 0.03); }
+.tm-watch-title { font: 14px/1.35 var(--ui); color: var(--ink); }
+.tm-watch-meta { font: 11px var(--ui); color: var(--ink-3); white-space: nowrap; }
+.tm-glance { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 4px 24px; margin: 4px auto 8px; }
+.tm-glance .tm-charter-sec h4 { margin-top: 10px; }
+.tm-full { margin: 20px auto; }
+.tm-full summary { cursor: pointer; font: 9px var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-3); }
+.tm-settings { display: grid; gap: 14px; }
+.tm-setting { display: grid; gap: 2px; }
+.tm-setting-name { font: 500 17px/1.2 var(--display); color: var(--ink); }
+.tm-setting .tm-hint { margin: 0; font-size: 12px; }
+.tm-field { min-height: 52px; }
+@media (max-width: 760px) { .tm-watch li { grid-template-columns: 1fr auto; } .tm-watch li .tm-cite { display: none; } }
+
+/* the mic on every text field (16 Oct 2026, public/desk/talk.js): small, at the box's top right, above windows */
+.tk-float { position: fixed; z-index: 29; width: 24px; height: 24px; padding: 0; display: grid; place-items: center; border: 1px solid var(--border-2); border-radius: 50%; background: var(--page); color: var(--ink-3); cursor: pointer; box-shadow: 0 2px 6px -2px rgb(0 0 0 / 0.25); }
+.tk-float svg { width: 13px; height: 13px; }
+.tk-float:hover, .tk-float:focus-visible { color: var(--terra); border-color: var(--terra); outline: none; }
+.tk-float.on { background: #b8432f; border-color: #b8432f; color: #fff; animation: tk-pulse 1.2s ease-in-out infinite; }
+.tk-float-line { position: fixed; z-index: 29; margin: 0; padding: 4px 8px; border-radius: 4px; background: var(--page); box-shadow: 0 2px 8px -2px rgb(0 0 0 / 0.25); }
+@media (prefers-reduced-motion: reduce) { .tk-float.on { animation: none; } }
