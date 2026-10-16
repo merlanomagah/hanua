@@ -8,7 +8,7 @@
 // (npm run check, rule 8). A sample server uses invented charters and invented replies.
 import { readFile } from "node:fs/promises";
 import path from "node:path";
-import { getPage, notionEnabled, pageBlocks, replaceBody } from "../notion.js";
+import { getPage, notionEnabled, pageBlocks, replaceBody, updatePage } from "../notion.js";
 import { claudeEnabled, coachJumpTeam, foldTeamContext } from "../claude.js";
 import { todayStr } from "../../public/shared/dates.js";
 import { WRITABLE, checkWrite } from "../../public/shared/jump.js";
@@ -54,11 +54,14 @@ export async function register({ app, root, config, jumpNow }) {
     const { id } = req.params, base = req.body?.base ?? null;
     const sections = Object.fromEntries(SECTIONS.map((s) => [s, (Array.isArray(req.body?.sections?.[s]) ? req.body.sections[s] : []).map(String).filter((l) => l.trim()).slice(0, 60)]));
     const extra = (Array.isArray(req.body?.extra) ? req.body.extra : []).map((x) => ({ heading: String(x?.heading || "").slice(0, 200), lines: (x?.lines || []).map(String).slice(0, 60) })).filter((x) => x.heading);
+    // a new name (⚙ Settings): the page's title, "Name · Role"; never an identifier
+    const title = typeof req.body?.title === "string" ? req.body.title.replace(/\s+/g, " ").trim().slice(0, 80) : null;
+    if (title !== null && (!title || !scrub(title).ok)) return res.status(400).json({ error: "That name can't be used: a first name, then · and the role." });
     if (!live()) {
       const m = mem.find((x) => x.id === id);
       if (!m) return res.status(404).json({ error: "That member isn't on the team any more." });
       if (base && m.edited !== base) return res.status(409).json({ error: "This charter was changed somewhere else since you opened it.", conflict: "changed" });
-      Object.assign(m, { sections, extra, edited: new Date().toISOString() });
+      Object.assign(m, { sections, extra, ...(title ? { title } : {}), edited: new Date().toISOString() });
       return res.json({ live: false, ...shape(m, todayStr()) });
     }
     try {
@@ -67,6 +70,7 @@ export async function register({ app, root, config, jumpNow }) {
       const now = await getPage(id);
       if (base && now.edited !== base) return res.status(409).json({ error: "This charter was changed in Notion since you opened it.", conflict: "changed" });
       await replaceBody(id, charterBlocks({ sections, extra }));
+      if (title && title !== m.title) await updatePage(id, { title: { title: [{ type: "text", text: { content: title } }] } });
       cache = null;
       const fresh = await find(id);
       res.json({ live: true, ...fresh });

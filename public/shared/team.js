@@ -9,7 +9,7 @@ import { daysBetween } from "./dates.js";
 // The job (16 Oct 2026, brief docs/plans/2026-10-team-jd.md: each member set up like a real hire) comes first, then
 // what it holds, then where it reads from and what it watches on the board, then the dated notes
 export const JOB = ["Role purpose", "Key responsibilities", "FY focus areas", "Success looks like", "Ways of working", "Rhythm", "Keep updated", "Comms format"];
-export const SECTIONS = [...JOB, "Holds", "What matters", "Key risks", "Affects", "Standing questions", "Sources", "Watches", "Context notes", "Last confirmed"];
+export const SECTIONS = [...JOB, "Holds", "What matters", "Key risks", "Affects", "Standing questions", "Sources", "Watches", "Colour", "Context notes", "Last confirmed"];
 export const EDITABLE = SECTIONS.filter((s) => s !== "Last confirmed");
 export const NOTES = "Context notes", CONFIRMED = "Last confirmed";
 export const STALE_DAYS = 30; // a charter not confirmed for a month: the PM flags it
@@ -145,4 +145,58 @@ export function watching(sections, rows = []) {
   return rows.filter((row) => (row.tier && r.tiers.includes(String(row.tier).toLowerCase()))
     || r.areas.includes(row.area)
     || r.keywords.some((k) => String(row.title || "").toLowerCase().includes(k)));
+}
+
+// ---- who: a member's page title is "Name · Role" (16 Oct 2026: names Mel gave them, never anyone real) ----
+export function memberName(title) {
+  const t = String(title || "").trim(), i = t.indexOf(" · ");
+  return i > 0 ? { name: t.slice(0, i).trim(), role: t.slice(i + 3).trim() } : { name: t, role: "" };
+}
+export const titleOf = (name, role) => (role ? `${String(name).trim()} · ${role}` : String(name).trim());
+export const initialOf = (name) => (String(name || "?").trim()[0] || "?").toUpperCase();
+// one colour each, from the room's palette (the stylesheet defines them, light and dark): set under Colour, else
+// chosen from the role so each area keeps the same one
+export const COLOURS = ["terracotta", "green", "ochre", "teal", "slate", "blue", "clay", "plum"];
+const BY_ROLE = [[/product|programme/i, "terracotta"], [/diaa|partnership/i, "green"], [/community|counter/i, "ochre"], [/care/i, "teal"],
+  [/ops|provision/i, "slate"], [/network|digital|app/i, "blue"], [/stock|distribution/i, "clay"], [/leadership|governance/i, "plum"]];
+export function colourOf(member) {
+  const set = String(member?.sections?.Colour?.[0] || "").trim().toLowerCase();
+  if (COLOURS.includes(set)) return set;
+  const role = memberName(member?.title).role || member?.title || "";
+  return BY_ROLE.find(([re]) => re.test(role))?.[1] || "slate";
+}
+
+// ---- reading the job as pictures ----
+// Rhythm lines into lanes by how often (the words in the line); the rest under "As needed"
+export const CADENCES = ["Weekly", "Fortnightly", "Monthly", "Quarterly", "Yearly", "As needed"];
+export function cadenceOf(line) {
+  const t = String(line || "").toLowerCase();
+  if (/fortnight|bi-?weekly|every two weeks/.test(t)) return "Fortnightly";
+  if (/weekly|each week|every week/.test(t)) return "Weekly";
+  if (/monthly|each month|every month/.test(t)) return "Monthly";
+  if (/quarter/.test(t)) return "Quarterly";
+  if (/twice a year|half-?year|annual|yearly|each year/.test(t)) return "Yearly";
+  return "As needed";
+}
+// a line without its tag-alongs: "(proposed)", "(invented)" kept as a flag, and an "Internal:" / "With the partner:" lead-in
+export function plainLine(line) {
+  let t = String(line || "").trim();
+  const proposed = /\(proposed\)/i.test(t);
+  t = t.replace(/\s*\((proposed)\)\s*/gi, " ").trim();
+  const lead = /^(internal|with [^:]{2,40}|ad hoc|before [^:]{2,30}|always|monthly|weekly|quarterly|fortnightly|twice a year|once a [a-z]+)\s*:\s*/i.exec(t);
+  return { text: lead ? t.slice(lead[0].length) : t, lead: lead ? lead[1] : null, proposed };
+}
+// "Who: what (when)" → { who, what }; a line without a colon is all "what"
+export function whoWhat(line) {
+  const t = String(line || "").trim(), i = t.indexOf(":");
+  return i > 0 && i < 60 ? { who: t.slice(0, i).trim(), what: t.slice(i + 1).trim() } : { who: "", what: t };
+}
+// which other members a member's Affects lines point at (by the distinctive words of their role)
+const PLAIN = new Set(["lead", "and", "the", "manager", "partners", "partner"]);
+export function linksTo(lines = [], members = [], self = null) {
+  const text = lines.join(" \n ").toLowerCase();
+  return members.filter((m) => m.id !== self).filter((m) => {
+    const words = (memberName(m.title).role || m.title).toLowerCase().split(/[^a-z]+/).filter((w) => w.length > 2 && !PLAIN.has(w));
+    return words.some((w) => text.includes(w.replace(/s$/, "")));
+  }).map((m) => m.id);
 }

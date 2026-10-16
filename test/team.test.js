@@ -2,7 +2,7 @@
 // identifies a customer sent to Claude, and answers that may only cite what they were shown. Invented text only.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { SECTIONS, applyEdit, bumpWeek, watching, charterBlocks, charterFrom, charterState, confirmCharter, grounded, noteLine, scrub, teamRows } from "../public/shared/team.js";
+import { SECTIONS, applyEdit, bumpWeek, watching, memberName, titleOf, initialOf, colourOf, cadenceOf, plainLine, whoWhat, linksTo, charterBlocks, charterFrom, charterState, confirmCharter, grounded, noteLine, scrub, teamRows } from "../public/shared/team.js";
 
 const b = (type, t) => ({ type, [type]: { rich_text: [{ plain_text: t }] } });
 const plain = (blocks) => blocks.map((x) => ({ type: x.type, [x.type]: { rich_text: x[x.type].rich_text.map((t) => ({ plain_text: t.text.content })) } }));
@@ -103,4 +103,29 @@ test("team: what a member watches: tiers, areas and keywords; nothing when it ha
   assert.deepEqual(ids(["Tiers: t2 (invented)"]), ["e1"]);
   assert.deepEqual(ids([]), []);
   assert.deepEqual(ids(["just a note"]), []);
+});
+
+test("team: names, initials, colours", () => {
+  assert.deepEqual(memberName("Ana · DIAA Partnership Lead"), { name: "Ana", role: "DIAA Partnership Lead" });
+  assert.deepEqual(memberName("Care Lead"), { name: "Care Lead", role: "" });
+  assert.equal(titleOf(" Ana ", "DIAA Partnership Lead"), "Ana · DIAA Partnership Lead");
+  assert.equal(initialOf("leilani"), "L");
+  assert.equal(colourOf({ title: "Ana · DIAA Partnership Lead", sections: {} }), "green");
+  assert.equal(colourOf({ title: "Leilani · Care Lead", sections: { Colour: ["Plum"] } }), "plum");
+  assert.equal(colourOf({ title: "Someone · Unusual", sections: { Colour: ["neon"] } }), "slate");
+});
+
+test("team: rhythm lanes, plain lines, who and what", () => {
+  assert.deepEqual(["Internal: weekly Jump Ops stand-up (proposed)", "With the partner: fortnightly operations meeting", "Monthly: reconciliation", "Quarterly look-back", "Twice a year: a review", "A heads-up before a change"].map(cadenceOf),
+    ["Weekly", "Fortnightly", "Monthly", "Quarterly", "Yearly", "As needed"]);
+  assert.deepEqual(plainLine("Internal: weekly Jump Ops stand-up (proposed)"), { text: "weekly Jump Ops stand-up", lead: "Internal", proposed: true });
+  assert.deepEqual(plainLine("With the partner: fortnightly meeting"), { text: "fortnightly meeting", lead: "With the partner", proposed: false });
+  assert.deepEqual(whoWhat("The partner's operations lead: open items (fortnightly)"), { who: "The partner's operations lead", what: "open items (fortnightly)" });
+  assert.deepEqual(whoWhat("Just a note"), { who: "", what: "Just a note" });
+});
+
+test("team: who a member's area affects, by the words of their roles", () => {
+  const ms = [{ id: "a", title: "Ana · DIAA Partnership Lead" }, { id: "h", title: "Hemi · Community Partners Lead" }, { id: "l", title: "Leilani · Care Lead" }, { id: "s", title: "Losa · Distribution & Stock Lead" }, { id: "t", title: "Tama · Product Manager" }];
+  assert.deepEqual(linksTo(["Community delivery partners (training)", "Distribution & stock (delinking)", "Skinny Care (escalations)"], ms, "a"), ["h", "l", "s"]);
+  assert.deepEqual(linksTo([], ms, "a"), []);
 });

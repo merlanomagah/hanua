@@ -7,10 +7,11 @@
 // member's charter. Team: the eight members, how current each charter is, and a member's page, where she adds context
 // (typed or spoken) and the member folds it into its charter, a change at a time, never just piling it up.
 // Nothing is kept on this Mac but the count of stand-ups a week (the probe's evidence).
-import { EDITABLE, JOB, applyEdit, bumpWeek, confirmCharter, noteLine, NOTES, teamRows, watching } from "../shared/team.js";
+import { COLOURS, EDITABLE, JOB, applyEdit, bumpWeek, cadenceOf, CADENCES, colourOf, confirmCharter, initialOf, linksTo, memberName, noteLine, NOTES, plainLine, teamRows, titleOf, watching, whoWhat } from "../shared/team.js";
+import { ageFill } from "../shared/jump.js";
 import { todayStr } from "../shared/dates.js";
 import { $, focus, h, store, toast } from "../lib.js";
-import { change as changeRecord, data as jumpData } from "./store.js";
+import { change as changeRecord, data as jumpData, load as loadJump } from "./store.js";
 import { registerWindow, windowBar, noteOpen, noteClosed } from "../desk/window.js";
 import { registerFocus, takeFocus } from "../desk/stepper.js";
 import { stopTalk, talkFor } from "../desk/talk.js";
@@ -56,18 +57,25 @@ async function loadTeam(fresh = false) {
   render();
 }
 const member = (id) => team?.members?.find((m) => m.id === id) || null;
+// who: the same avatar (their initial, their colour) wherever a member appears, so it's clear who's speaking
+const avatar = (m, size = "") => h("span", { className: `tm-av ${size} mc-${colourOf(m)}`, ariaHidden: "true", textContent: initialOf(memberName(m.title).name) });
+function whoEl(m, sub = null, size = "") {
+  const { name, role } = memberName(m.title);
+  const el = h("span", { className: `tm-who mc-${colourOf(m)}` }, avatar(m, size), h("span", {}, h("b", { textContent: name }), h("small", { textContent: sub ?? role })));
+  return el;
+}
 const fit = (el) => { el.style.height = "auto"; el.style.height = `${Math.max(el.rows * 24, el.scrollHeight)}px`; };
 const say = (live) => (live ? "" : " (sample: not saved to Notion)");
 
 // ---- a charter saved (an approved change, or Confirm), with Undo ----
-async function saveCharter(m, sections, label) {
-  const before = m.sections;
+async function saveCharter(m, sections, label, title = null) {
+  const before = m.sections, beforeTitle = m.title;
   try {
-    const j = await api(`/api/team/${encodeURIComponent(m.id)}`, { method: "PUT", body: { sections, extra: m.extra, base: m.edited } });
+    const j = await api(`/api/team/${encodeURIComponent(m.id)}`, { method: "PUT", body: { sections, extra: m.extra, base: m.edited, ...(title ? { title } : {}) } });
     Object.assign(m, j);
     render();
     toast(`${label}${say(team.live)}`, false, { label: "Undo", run: async () => {
-      try { Object.assign(m, await api(`/api/team/${encodeURIComponent(m.id)}`, { method: "PUT", body: { sections: before, extra: m.extra, base: m.edited } })); render(); toast("Put back"); }
+      try { Object.assign(m, await api(`/api/team/${encodeURIComponent(m.id)}`, { method: "PUT", body: { sections: before, extra: m.extra, base: m.edited, ...(title ? { title: beforeTitle } : {}) } })); render(); toast("Put back"); }
       catch (err) { toast(`Couldn't undo: ${err.message}`, true); }
     } });
     return true;
@@ -153,16 +161,17 @@ function standupEl() {
     box, talk.line, h("div", { className: "tm-row" }, fresh, send));
   const note = waitNote("standup", "The team usually takes 30 to 60 s");
   if (!reply) return [top, note];
-  const byId = (id) => member(id)?.title || "a member";
-  const pm = h("section", { className: "tm-card tm-pm" },
-    h("h4", { textContent: "Product Manager" }),
+  const byId = (id) => (member(id) ? memberName(member(id).title).name : "a member");
+  const pmMember = team?.members?.find((x) => /product manager/i.test(x.title));
+  const pm = h("section", { className: `tm-card tm-pm${pmMember ? ` mc-${colourOf(pmMember)}` : ""}` },
+    pmMember ? whoEl(pmMember, "Product Manager · the whole programme") : h("h4", { textContent: "Product Manager" }),
     h("p", { textContent: reply.pm.synthesis }),
     reply.pm.households ? h("p", { className: "tm-households" }, h("b", { textContent: "For households. " }), document.createTextNode(reply.pm.households)) : null,
     reply.routed.length ? h("p", { className: "tm-routed", textContent: `Working on it: ${reply.routed.map(byId).join(", ")}` }) : null,
     reply.pm.stale?.length ? h("p", { className: "tm-stale", textContent: `Charters to confirm before relying on them: ${reply.pm.stale.map(byId).join(", ")}` }) : null,
     citesEl(reply.pm));
-  const cards = reply.members.map((m) => h("section", { className: "tm-card" },
-    h("h4", { textContent: m.title }),
+  const cards = reply.members.map((m) => h("section", { className: `tm-card${member(m.member) ? ` mc-${colourOf(member(m.member))}` : ""}` },
+    member(m.member) ? whoEl(member(m.member)) : h("h4", { textContent: m.title }),
     h("p", {}, h("b", { textContent: "Handle. " }), document.createTextNode(m.handle)),
     h("p", {}, h("b", { textContent: "Prevent. " }), document.createTextNode(m.prevent)),
     citesEl(m),
@@ -183,8 +192,8 @@ function teamEl() {
   if (!team) return [h("p", { className: "tm-hint", textContent: "Reading the team…" })];
   if (!team.members.length) return [h("p", { className: "tm-hint", textContent: team.error || "No members yet." })];
   return [h("div", { className: "tm-grid" }, ...team.members.map((m) => {
-    const b = h("button", { type: "button", className: `tm-member${m.state.stale ? " stale" : ""}` },
-      h("span", { className: "tm-name", textContent: m.title }),
+    const b = h("button", { type: "button", className: `tm-member mc-${colourOf(m)}${m.state.stale ? " stale" : ""}` },
+      h("span", { className: "tm-member-top" }, avatar(m), h("span", { className: "tm-name", textContent: memberName(m.title).name }), h("small", { className: "tm-holds", textContent: memberName(m.title).role })),
       h("span", { className: "tm-holds", textContent: m.sections.Holds?.[0] || "" }),
       h("span", { className: "tm-state", textContent: `${m.state.label}${m.state.oldNotes ? ` · ${m.state.oldNotes} note${m.state.oldNotes === 1 ? "" : "s"} to review` : ""}` }),
       drafts.members[m.id]?.note || drafts.members[m.id]?.fold ? h("span", { className: "tm-wip", textContent: "Your work in progress is kept" }) : null);
@@ -219,24 +228,75 @@ function memberEl(m) {
     h("h4", { textContent: s }), lines?.length ? h("ul", {}, ...lines.map((l) => h("li", { textContent: l }))) : h("p", { className: "tm-hint", textContent: "Nothing yet: add it in ⚙ Settings." }));
   if (ctx.form) return settingsEl(m, ctx, back);
   const gear = h("button", { type: "button", className: "set-reset tm-gear", textContent: "⚙ Settings", title: `Edit ${m.title}'s job, responsibilities, focus, rhythm, sources and what it watches` });
-  gear.addEventListener("click", () => { ctx.form = Object.fromEntries(EDITABLE.filter((x) => x !== NOTES).map((x) => [x, (m.sections[x] || []).join("\n")])); touch(ctx); render(); });
-  // what's on its desk: the board's records it watches (by tier, area or keyword), live
+  gear.addEventListener("click", () => { ctx.form = { ...Object.fromEntries(EDITABLE.filter((x) => x !== NOTES && x !== "Colour").map((x) => [x, (m.sections[x] || []).join("\n")])), _name: memberName(m.title).name, _colour: colourOf(m) }; touch(ctx); render(); });
+  // ---- the workbench, visual (16 Oct 2026): each part drawn from the shape of its information ----
+  const { name } = memberName(m.title);
   const rows = teamRows(jumpData && !jumpData.error ? jumpData : {}), mine = watching(m.sections, rows);
-  const urlOf = (id) => (jumpData?.escalations?.columns?.flatMap((c) => c.items) || []).concat(jumpData?.projects?.items || [], jumpData?.questions?.items || []).find((r) => r.id === id)?.url || null;
+  const all = (jumpData?.escalations?.columns?.flatMap((c) => c.items) || []).concat(jumpData?.projects?.items || [], jumpData?.questions?.items || []);
+  const urlOf = (id) => all.find((r) => r.id === id)?.url || null;
   const AREA = { escalations: "Escalation", projects: "Project", questions: "Question" };
-  const desk = h("section", { className: "tm-card tm-desk" },
-    h("h4", { textContent: "On their desk now" }),
-    mine.length ? h("ul", { className: "tm-watch" }, ...mine.map((r) => h("li", {},
-      h("span", { className: "tm-cite", textContent: AREA[r.area] || r.area }),
-      h("span", { className: "tm-watch-title", textContent: r.title }),
-      h("span", { className: "tm-watch-meta", textContent: [r.status, r.tier, r.age != null ? `${r.age} days` : null].filter(Boolean).join(" · ") }),
-      urlOf(r.id) ? h("a", { className: "jw-open", href: urlOf(r.id), target: "_blank", rel: "noopener", textContent: "↗", ariaLabel: `Open “${r.title}” in Jump OS` }) : null)))
-      : h("p", { className: "tm-hint", textContent: m.sections.Watches?.length ? "Nothing on the board matches what they watch right now." : "They aren't watching anything yet: in ⚙ Settings, add lines under Watches like “tier: Partner”, “area: questions” or “keyword: delink”." }));
-  const glance = h("div", { className: "tm-glance" }, ...["FY focus areas", "Key responsibilities", "Rhythm", "Keep updated"].map((x) => secEl(x, m.sections[x])));
-  const full = h("details", { className: "tm-full" }, h("summary", { textContent: "The whole charter" }),
-    ...Object.entries(m.sections).filter(([x]) => x !== "Last confirmed").map(([x, lines]) => secEl(x, lines)),
+  const aged = mine.filter((r) => r.age != null), oldest = aged.length ? aged.reduce((a, b) => (b.age > a.age ? b : a)) : null;
+  const stat = (label, value, alert = false) => h("div", { className: `tm-stat${alert ? " alert" : ""}` }, h("span", { textContent: label }), h("b", { textContent: value }));
+  const head = h("header", { className: `tm-wb-head mc-${colourOf(m)}` },
+    whoEl(m, `${memberName(m.title).role}${m.sections["Role purpose"]?.[0] ? ` · ${m.sections["Role purpose"][0]}` : ""}`, "lg"),
+    h("div", { className: "tm-stats" },
+      stat("Charter", m.state.confirmed ? (m.state.days === 0 ? "today" : `${m.state.days} d`) : "not yet", m.state.stale),
+      stat("On desk", String(mine.length)),
+      stat("Oldest", oldest ? `${oldest.age} d` : "–", Boolean(oldest && oldest.age >= 14))));
+  // on their desk: mini cards with age bars; the oldest is the one highlight
+  const items = mine.length ? h("div", { className: "tm-items" }, ...[...mine].sort((a, b) => (b.age ?? -1) - (a.age ?? -1)).map((r) => {
+    const url = urlOf(r.id), tag = url ? "a" : "div";
+    const card = h(tag, { className: `tm-item${r === oldest ? " oldest" : ""}`, ...(url ? { href: url, target: "_blank", rel: "noopener", title: "Open in Jump OS" } : {}) },
+      h("p", { textContent: r.title }),
+      r.age != null ? h("span", { className: "tm-bar", ariaHidden: "true" }, h("i", { style: `--fill:${ageFill(r.age)}` })) : null,
+      h("small", { textContent: [AREA[r.area], r.status, r.tier, r.age != null ? `${r.age} days` : r.target ? `due ${r.target}` : null].filter(Boolean).join(" · ") }));
+    return card;
+  })) : h("p", { className: "tm-hint", textContent: m.sections.Watches?.length ? `Nothing on the board matches what ${name} watches right now.` : `${name} isn't watching anything yet: in ⚙ Settings, add Watches like “tier: Partner” or “keyword: delink”.` });
+  const fy = (m.sections["FY focus areas"] || []).map((l) => l.replace(/^FY\d+\s*:\s*/i, ""));
+  const tiles = fy.length ? h("div", { className: "tm-tiles" }, ...fy.map((t, i) => h("div", { className: "tm-tile" }, h("b", { textContent: String(i + 1) }), document.createTextNode(plainLine(t).text)))) : h("p", { className: "tm-hint", textContent: "No focus areas yet: add them in ⚙ Settings." });
+  // rhythm: a lane per cadence; proposed ones drawn as outlines
+  const rhythm = m.sections.Rhythm || [];
+  const lanes = rhythm.length ? h("div", { className: "tm-lanes" }, ...CADENCES.flatMap((c) => {
+    const these = rhythm.filter((l) => cadenceOf(l) === c);
+    if (!these.length) return [];
+    return [h("span", { className: "tm-lane-name", textContent: c }), h("div", { className: "tm-lane" }, ...these.map((l) => {
+      const p = plainLine(l);
+      return h("span", { className: `tm-pill${p.proposed ? " proposed" : ""}`, title: `${l}${p.proposed ? " · proposed: change it in ⚙ Settings" : ""}`, textContent: `${p.lead ? `${p.lead}: ` : ""}${p.text.replace(/\b(weekly|fortnightly|monthly|quarterly)\s*/i, "").replace(/^./, (x) => x.toUpperCase())}`.slice(0, 80) });
+    }))];
+  })) : h("p", { className: "tm-hint", textContent: "No rhythm yet: add it in ⚙ Settings." });
+  const keeps = (m.sections["Keep updated"] || []).length ? h("div", { className: "tm-keeps" }, ...m.sections["Keep updated"].map((l) => { const w = whoWhat(l); return h("div", { className: "tm-keep" }, h("b", { textContent: w.who || "·" }), h("span", { textContent: w.what })); })) : h("p", { className: "tm-hint", textContent: "No one yet: add who they keep updated in ⚙ Settings." });
+  // works closely with: their avatar in the middle, the members their area affects around it
+  const linked = linksTo(m.sections.Affects || [], team?.members || [], m.id).map(member).filter(Boolean);
+  const map = linked.length ? (() => {
+    const NS = "http://www.w3.org/2000/svg", W = 440, H = 200, cx = W / 2, cy = H / 2 - 6, RX = 160, RY = 66;
+    const el = (tag, attrs, ...kids) => { const e = document.createElementNS(NS, tag); for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v); e.append(...kids); return e; };
+    const node = (x, y, mm, me) => {
+      const g = el("g", { class: `node mc-${colourOf(mm)}${me ? " me" : ""}`, transform: `translate(${x},${y})`, tabindex: me ? "-1" : "0", role: me ? "img" : "button", "aria-label": me ? memberName(mm.title).name : `Open ${memberName(mm.title).name}'s workbench` },
+        el("circle", { r: me ? 24 : 16 }), el("text", { class: "ini", "text-anchor": "middle", dy: "0.35em" }, initialOf(memberName(mm.title).name)));
+      if (!me) { const go = () => { view = mm.id; render(); }; g.addEventListener("click", go); g.addEventListener("keydown", (e) => { if (e.key === "Enter") go(); }); }
+      return g;
+    };
+    const svg = el("svg", { class: "tm-map", viewBox: `0 0 ${W} ${H}`, role: "group", "aria-label": `${name} works closely with ${linked.map((x) => memberName(x.title).name).join(", ")}` });
+    linked.forEach((x, i) => {
+      const a = (Math.PI * 2 * i) / linked.length - Math.PI / 2, px = cx + Math.cos(a) * RX, py = cy + Math.sin(a) * RY;
+      svg.append(el("line", { x1: cx, y1: cy, x2: px, y2: py }));
+    });
+    linked.forEach((x, i) => {
+      const a = (Math.PI * 2 * i) / linked.length - Math.PI / 2, px = cx + Math.cos(a) * RX, py = cy + Math.sin(a) * RY;
+      // the name beside its avatar, on the side away from the middle, so nothing crowds the centre
+      const right = px >= cx, lx = px + (Math.abs(px - cx) < 20 ? 22 : right ? 22 : -22), anchor = Math.abs(px - cx) < 20 ? "start" : right ? "start" : "end";
+      svg.append(node(px, py, x, false), el("text", { x: lx, y: py + 4, "text-anchor": anchor }, memberName(x.title).name));
+    });
+    svg.append(node(cx, cy, m, true));
+    return svg;
+  })() : h("p", { className: "tm-hint", textContent: "Add which areas this one affects (Affects, in ⚙ Settings) to see who they work with." });
+  const wb = h("div", { className: `tm-wb mc-${colourOf(m)}` },
+    h("div", {}, h("p", { className: "tm-lbl", textContent: "On their desk now" }), items, h("p", { className: "tm-lbl", textContent: "This year's focus" }), tiles),
+    h("div", {}, h("p", { className: "tm-lbl", textContent: "Rhythm" }), lanes, h("p", { className: "tm-lbl", textContent: "Keeps updated" }), keeps, h("p", { className: "tm-lbl", textContent: "Works closely with" }), map));
+  const full = h("details", { className: "tm-full" }, h("summary", { textContent: `Ways of working, comms format and ${name}'s whole charter` }),
+    ...Object.entries(m.sections).filter(([x]) => !["Last confirmed", "Colour"].includes(x)).map(([x, lines]) => secEl(x, lines)),
     ...(m.extra || []).map((x) => secEl(x.heading, x.lines)));
-  const box = h("textarea", { className: "jn-text tm-update", value: ctx.note, rows: 4, placeholder: `Tell ${m.title} what you know about this area: what's changed, what matters, what worries you.`, ariaLabel: `New context for ${m.title}` });
+  const box = h("textarea", { className: "jn-text tm-update", value: ctx.note, rows: 4, placeholder: `What should ${memberName(m.title).name} know about this area? What's changed, what matters, what worries you.`, ariaLabel: `New context for ${memberName(m.title).name}` });
   const talk = focus.on ? { button: null, line: null } : talkFor(box);
   const go = decorate(h("button", { type: "button", className: "pl-go", textContent: "Fold it in ✦", disabled: !ctx.note.trim() }), key);
   box.addEventListener("input", () => { ctx.note = box.value; touch(ctx); go.disabled = !ctx.note.trim(); });
@@ -244,7 +304,7 @@ function memberEl(m) {
   const fresh = ctx.note || ctx.fold ? h("button", { type: "button", className: "set-reset", textContent: "Start fresh" }) : null;
   fresh?.addEventListener("click", () => { const was = drafts.members[m.id]; drafts.members[m.id] = freshMember(); keep(true); render(); toast(`Cleared what you were working on with ${m.title}`, false, { label: "Undo", run: () => { drafts.members[m.id] = was; keep(true); render(); } }); });
   const add = h("section", { className: "tm-sec" },
-    h("header", { className: "jn-head" }, h("h3", { textContent: "Add context" }), talk.button),
+    h("header", { className: "jn-head" }, h("h3", { textContent: `Tell ${memberName(m.title).name} something` }), talk.button),
     h("p", { className: "tm-hint", textContent: "It won't just be stored: the member suggests where it changes the charter, and you approve each change. The note itself is kept, dated, and comes up for review after 90 days." }),
     box, talk.line, h("div", { className: "tm-row" }, fresh, go), waitNote(key, "Usually 15 to 40 s"));
   let result = null;
@@ -277,11 +337,10 @@ function memberEl(m) {
         return h("label", { className: "tm-q" }, h("span", { textContent: q }), a);
       }), (() => { const b = decorate(h("button", { type: "button", className: "pl-go", textContent: "Answer and fold again ✦" }), key); b.addEventListener("click", () => fold(true)); return b; })()) : null);
   }
-  return [h("div", { className: "tm-row tm-member-head" }, back, h("span", { className: `tm-state${m.state.stale ? " stale" : ""}`, textContent: m.state.label }), confirm, gear,
+  return [head,
+    h("div", { className: "tm-wb-actions" }, back, h("span", { className: `tm-state${m.state.stale ? " stale" : ""}`, textContent: m.state.label }), confirm, gear,
       m.url ? h("a", { className: "b-link", href: m.url, target: "_blank", rel: "noopener", textContent: "Notion ↗" }) : null),
-    h("h2", { className: "jn-title", textContent: m.title }),
-    m.sections["Role purpose"]?.[0] ? h("p", { className: "tm-purpose", textContent: m.sections["Role purpose"][0] }) : null,
-    desk, glance, add, result, full];
+    wb, add, result, full];
 }
 
 // ⚙ Settings: the member's job, focus, rhythm, sources and what it watches, one box per part (a line per item),
@@ -298,7 +357,18 @@ const HINTS = {
   "Watches": "One rule a line: tier: Partner · area: questions · keyword: delink",
 };
 function settingsEl(m, ctx, back) {
-  const fields = EDITABLE.filter((x) => x !== NOTES).map((x) => {
+  const nameIn = h("input", { className: "tm-name-in", value: ctx.form._name ?? memberName(m.title).name, ariaLabel: "Their name", maxLength: 30 });
+  nameIn.addEventListener("input", () => { ctx.form._name = nameIn.value; touch(ctx); });
+  const swatches = h("div", { className: "tm-swatches", role: "radiogroup", ariaLabel: "Their colour" }, ...COLOURS.map((c) => {
+    const b = h("button", { type: "button", className: `tm-swatch mc-${c}${(ctx.form._colour || colourOf(m)) === c ? " on" : ""}`, title: c, ariaLabel: c, role: "radio" });
+    b.setAttribute("aria-checked", String((ctx.form._colour || colourOf(m)) === c));
+    b.addEventListener("click", () => { ctx.form._colour = c; touch(ctx); render(); });
+    return b;
+  }));
+  const identity = h("div", { className: "tm-settings" },
+    h("label", { className: "tm-setting" }, h("span", { className: "tm-setting-name", textContent: "Name" }), h("span", { className: "tm-hint", textContent: `A first name: never anyone real (it shows as “Name · ${memberName(m.title).role}”)` }), nameIn),
+    h("div", { className: "tm-setting" }, h("span", { className: "tm-setting-name", textContent: "Colour" }), h("span", { className: "tm-hint", textContent: "Their colour wherever they appear" }), swatches));
+  const fields = EDITABLE.filter((x) => x !== NOTES && x !== "Colour").map((x) => {
     const t = h("textarea", { className: "tm-answer tm-field", value: ctx.form[x] ?? "", rows: Math.max(2, (ctx.form[x] || "").split("\n").length), ariaLabel: x });
     t.addEventListener("input", () => { ctx.form[x] = t.value; touch(ctx); fit(t); });
     return h("label", { className: "tm-setting" }, h("span", { className: "tm-setting-name", textContent: x }), HINTS[x] ? h("span", { className: "tm-hint", textContent: HINTS[x] }) : null, t);
@@ -308,15 +378,19 @@ function settingsEl(m, ctx, back) {
   const save = h("button", { type: "button", className: "pl-go", textContent: "Save to the charter" });
   save.addEventListener("click", async () => {
     const lines = (x) => String(ctx.form[x] || "").split("\n").map((l) => l.trim()).filter(Boolean);
-    const sections = { ...m.sections, ...Object.fromEntries(EDITABLE.filter((x) => x !== NOTES).map((x) => [x, lines(x)])) };
+    const sections = { ...m.sections, ...Object.fromEntries(EDITABLE.filter((x) => x !== NOTES && x !== "Colour").map((x) => [x, lines(x)])), Colour: [ctx.form._colour || colourOf(m)] };
+    const newName = String(ctx.form._name || "").replace(/\s+/g, " ").trim();
+    if (!newName) { toast("Give them a name first.", true); return; }
+    const title = titleOf(newName, memberName(m.title).role);
     save.disabled = true;
-    if (await saveCharter(m, sections, `${m.title}'s settings saved`)) { ctx.form = null; touch(ctx); }
+    if (await saveCharter(m, sections, `${newName}'s settings saved`, title !== m.title ? title : null)) { ctx.form = null; touch(ctx); }
     render();
   });
   return [h("div", { className: "tm-row tm-member-head" }, back, h("span", { className: "tm-state", textContent: "⚙ Settings" })),
-    h("h2", { className: "jn-title", textContent: `${m.title}: the job` }),
+    h("header", { className: `tm-wb-head mc-${ctx.form._colour || colourOf(m)}` }, whoEl({ ...m, title: titleOf(ctx.form._name || memberName(m.title).name, memberName(m.title).role), sections: { ...m.sections, Colour: [ctx.form._colour || colourOf(m)] } }, "⚙ Settings: the job", "lg")),
+    identity,
     h("p", { className: "tm-hint", textContent: "One item a line. Saved to their charter page in Jump OS, so it works without Hanua and can be handed on. Write by role, never by name." }),
-    h("div", { className: "tm-settings" }, ...JOB.concat(EDITABLE.filter((x) => !JOB.includes(x) && x !== NOTES)).map((x) => fields[EDITABLE.filter((y) => y !== NOTES).indexOf(x)])),
+    h("div", { className: "tm-settings" }, ...fields),
     h("div", { className: "tm-row" }, cancel, save)];
 }
 
@@ -326,7 +400,7 @@ function render() {
   const tab = (id, label) => { const b = h("button", { type: "button", className: `tm-tab${(view === id || (id === "team" && member(view))) ? " on" : ""}`, textContent: label }); b.addEventListener("click", () => { view = id; render(); }); return b; };
   const stale = team?.members?.filter((m) => m.state.stale).length || 0;
   const notion = team?.url && team.live ? h("a", { className: "b-link", href: team.url, target: "_blank", rel: "noopener", textContent: "Notion ↗" }) : null;
-  const bar = windowBar(win, "Jump team", [tab("standup", "Stand-up"), tab("team", `Team${stale ? ` · ${stale} to confirm` : ""}`), notion].filter(Boolean), hide);
+  const bar = windowBar(win, member(view) ? `Jump team · ${memberName(member(view).title).name}` : "Jump team", [tab("standup", "Stand-up"), tab("team", `Team${stale ? ` · ${stale} to confirm` : ""}`), notion].filter(Boolean), hide);
   const m = member(view);
   const parts = view === "standup" ? standupEl() : m ? memberEl(m) : teamEl();
   const scroll = win.querySelector(".tm-body")?.scrollTop || 0;
@@ -336,7 +410,7 @@ function render() {
   for (const t of body.querySelectorAll("textarea")) requestAnimationFrame(() => fit(t));
 }
 
-function show() { takeFocus(win); win.hidden = false; render(); loadTeam(); }
+function show() { takeFocus(win); win.hidden = false; render(); loadTeam(); if (!jumpData) loadJump().then(() => render()); } // the desks need the board read
 function hide() { stopTalk(); keep(true); win.hidden = true; noteClosed("team-win"); $("jump-team")?.focus({ preventScroll: true }); }
 registerFocus(win, () => hide());
 registerWindow("team-win", { title: "Jump team", icon: '<svg viewBox="0 0 48 60" aria-hidden="true" width="30"><circle cx="17" cy="24" r="7" fill="#c76a3a"/><circle cx="31" cy="24" r="7" fill="#3f7a5a"/><path d="M6 46c2-8 8-12 11-12s9 4 11 12M20 46c2-8 8-12 11-12s9 4 11 12" fill="none" stroke="#6b6155" stroke-width="2"/></svg>', show, hide, shown: () => !win.hidden });

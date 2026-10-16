@@ -270,7 +270,7 @@ test("routes: the Jump team reads invented charters, refuses identifiers, propos
   assert.equal(s.json.live, false);
   assert.deepEqual(s.json.routed, [t.json.members[3].id, t.json.members[6].id]);
   const care = s.json.members[0];
-  assert.equal(care.title, "Care Lead");
+  assert.equal(care.title, "Ema · Care Lead");
   assert.ok(care.cites.every((c) => s.json.records.some((r) => r.id === c)));
   assert.equal(care.signoffs[0].kind, "change");
   assert.equal(care.signoffs[0].invalid, undefined); // a change Jump OS's own rules accept

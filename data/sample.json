@@ -666,7 +666,7 @@
       "_about": "Invented team, stand-up reply and fold reply for sample servers (the repo is public; the real charters live in Notion). Members and records are named m0…m7 and r0… by position, swapped for the sample ids.",
       "members": [
         {
-          "title": "Product Manager",
+          "title": "Tui · Product Manager",
           "sections": {
             "Holds": [
               "The whole programme (invented)"
@@ -708,7 +708,7 @@
           }
         },
         {
-          "title": "Partner Lead",
+          "title": "Moana · Partner Lead",
           "sections": {
             "Holds": [
               "The delivery partner (invented)"
@@ -720,7 +720,9 @@
               "Learning of changes late (invented)"
             ],
             "Affects": [
-              "Stock Lead (invented)"
+              "Counter Lead (invented)",
+              "Stock Lead (invented)",
+              "Care Lead (invented)"
             ],
             "Standing questions": [
               "How would the partner see this? (invented)"
@@ -746,12 +748,18 @@
               "keyword: modem"
             ],
             "Rhythm": [
-              "Fortnightly partner meeting, fixed agenda (invented)"
+              "Internal: weekly Jump Ops stand-up (proposed) (invented)",
+              "With the partner: fortnightly operations meeting (invented)",
+              "Quarterly planning and look-back (invented)"
+            ],
+            "Keep updated": [
+              "The partner's ops lead: open items, fortnightly (invented)",
+              "The lead partner role: relationship health, monthly (invented)"
             ]
           }
         },
         {
-          "title": "Counter Lead",
+          "title": "Rua · Counter Lead",
           "sections": {
             "Holds": [
               "Partners at the counter (invented)"
@@ -777,7 +785,7 @@
           }
         },
         {
-          "title": "Care Lead",
+          "title": "Ema · Care Lead",
           "sections": {
             "Holds": [
               "The care team (invented)"
@@ -819,7 +827,7 @@
           }
         },
         {
-          "title": "Ops Lead",
+          "title": "Pele · Ops Lead",
           "sections": {
             "Holds": [
               "Provisioning and source data (invented)"
@@ -845,7 +853,7 @@
           }
         },
         {
-          "title": "Digital Lead",
+          "title": "Nia · Digital Lead",
           "sections": {
             "Holds": [
               "Network, app and web (invented)"
@@ -871,7 +879,7 @@
           }
         },
         {
-          "title": "Stock Lead",
+          "title": "Toa · Stock Lead",
           "sections": {
             "Holds": [
               "Modems and returns (invented)"
@@ -913,7 +921,7 @@
           }
         },
         {
-          "title": "Governance Lead",
+          "title": "Vai · Governance Lead",
           "sections": {
             "Holds": [
               "Direction and sign-off (invented)"
